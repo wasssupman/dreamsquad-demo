@@ -1,6 +1,6 @@
 # battle-core-rebuild — 전투를 ECS 에서 순수 C# 「전투 코어」로 옮긴다
 
-상태: **초안 rev 2 · 2026-09-23 · 사용자 승인 대기** (units 0~10 착수 전)
+상태: **승인·진행 중 2026-09-23** — unit 0 완료(main `4caee406`) · unit 1 완료(브랜치 `rebuild/battle-core` `384e869b`, core-reviewer APPROVE, 헤드리스 31/31) · unit 2 구현 중 · unit 2~4 spec 작성됨. Unity EditMode 는 에디터가 열릴 때 일괄 확인(조각 A 끝).
 
 설계 입력: [`docs/plans/2026-09-22-battle-core-rebuild-census/`](../../plans/2026-09-22-battle-core-rebuild-census/) — 6영역 census(약 395행) · 종합(`00`) · 상호 리뷰(`01`·`03`) · 트리거→발동 rev 3(`04`) · 매치 모드 연구(`05`) · **계획 완전성 리뷰(`06`, 13건 — 이 rev 2 의 근거)**. 핵심 클래스 UML 은 [`class-diagram.md`](class-diagram.md), 매치 모드는 [`match-mode-design.md`](match-mode-design.md).
 선행 spec 처리: `battle-sim-extraction` **M0 완료·M1+ 폐기**(후계 = 이 spec) · `battlebridge-dissolution` **흡수** · `ecs-lifecycle-teardown` **은퇴**.
