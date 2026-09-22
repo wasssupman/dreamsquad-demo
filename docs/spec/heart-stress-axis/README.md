@@ -118,7 +118,7 @@
 | 9 | 프레젠테이션 | [`9_heart_stress_bar.md`](9_heart_stress_bar.md) | **머리 위 차오르는 스트레스 바** — 파랑→빨강 램프 · 상승 펀치 · 0 이면 미노출. 숫자는 끔 |
 | 10 | 브리지 + 프레젠테이션 | [`10_core_burst_beat.md`](10_core_burst_beat.md) | **마음이 터지는 한 박자** — 붕괴 연출을 배수구에서 분리 + 결과 화면만 지연 |
 | 11 | 인계 | [`11_handoff_summary.md`](11_handoff_summary.md) | 작성 완료 |
-| 12 | 재설계 | [`12_shared_heart_pool.md`](12_shared_heart_pool.md) | **마음 N개, 체력 하나** — 통합 스트레스 + 맵별 체력 오버라이드. 착수 전 (소비자: `wide-board-content`) |
+| 12 | 재설계 | [`12_shared_heart_pool.md`](12_shared_heart_pool.md) | **마음 N개, 체력 하나** — 통합 스트레스 + 맵별 체력 오버라이드. 착수 전 (소비자: `wide-board-content`). **battle-core-rebuild unit 0 판정(2026-09-23): 보류 → 새 전투 코어 unit 4 의 `HeartMeter` 에서 구현**(옛 전투 동결) |
 
 **의존**: `0 → 1`(바가 그릴 산식이 먼저) · `0 → 4`(종료 라벨이 생겨야 화면이 읽는다) ·
 `2 → 5`(회복이 있어야 배율을 잰다) · `0,2 → 5`(골든은 마지막). `3` 은 `0` 뒤라면 언제든.

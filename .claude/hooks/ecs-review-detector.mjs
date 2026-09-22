@@ -34,6 +34,13 @@ const ECS_PATH_FRAGMENTS = [
   'BattleBridge.cs',
 ];
 
+// ── 전투 코어(battle-core-rebuild) file patterns ──────────────────────────
+// unit 0 항목 5 — 새 코어 경로는 ecs-reviewer 가 아니라 core-reviewer 로 간다.
+const CORE_PATH_FRAGMENTS = [
+  'Assets/_Project/Scripts/BattleCore/',
+  'Assets/_Project/Scenes/BattleCoreScene.unity',
+];
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function extractPrompt(data) {
@@ -66,6 +73,32 @@ function getEcsChangedFiles(cwd) {
     .forEach(f => files.add(f));
 
   return [...files].filter(f => ECS_PATH_FRAGMENTS.some(p => f.includes(p)));
+}
+
+function getCoreChangedFiles(cwd) {
+  const files = new Set();
+  const run = (cmd) => {
+    try {
+      return execSync(cmd, { cwd, timeout: 4000, stdio: ['pipe', 'pipe', 'pipe'] })
+        .toString().trim().split('\n').filter(Boolean);
+    } catch { return []; }
+  };
+  [...run('git diff --name-only'), ...run('git diff --name-only --cached'), ...run('git diff --name-only HEAD~1..HEAD')]
+    .forEach(f => files.add(f));
+  return [...files].filter(f => CORE_PATH_FRAGMENTS.some(p => f.includes(p)));
+}
+
+function createCoreContext(coreFiles) {
+  const fileList = coreFiles.map(f => `  - ${f}`).join('\n');
+  return `<core-review-context>
+[전투 코어 변경 감지됨]
+다음 전투 코어(battle-core-rebuild) 파일이 변경되었습니다:
+${fileList}
+
+리뷰는 core-reviewer 에이전트로 진행하세요 (ecs-reviewer 아님 — 새 코어에는 ECS 제약이 적용되지 않는다):
+  Agent: core-reviewer — CLAUDE.md 「새 전투 코어 — 절대 제약」 6항 · spec 계약 13 · 장부 정합
+  병행: code-reviewer — spec 준수 · 일반 코드 품질
+</core-review-context>`;
 }
 
 function createContext(ecsFiles) {
@@ -109,20 +142,25 @@ async function main() {
       return;
     }
 
-    // Condition 2: ECS files changed
+    // Condition 2: ECS files and/or 전투 코어 files changed
     const cwd = data.cwd || data.directory || process.cwd();
     const ecsFiles = getEcsChangedFiles(cwd);
-    if (ecsFiles.length === 0) {
+    const coreFiles = getCoreChangedFiles(cwd);
+    if (ecsFiles.length === 0 && coreFiles.length === 0) {
       process.stdout.write(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
     }
 
-    // Both conditions met — inject context
+    // Conditions met — inject context (both blocks when both changed)
+    const ctx = [
+      ecsFiles.length ? createContext(ecsFiles) : '',
+      coreFiles.length ? createCoreContext(coreFiles) : '',
+    ].filter(Boolean).join('\n');
     process.stdout.write(JSON.stringify({
       continue: true,
       hookSpecificOutput: {
         hookEventName: 'UserPromptSubmit',
-        additionalContext: createContext(ecsFiles)
+        additionalContext: ctx
       }
     }));
   } catch {

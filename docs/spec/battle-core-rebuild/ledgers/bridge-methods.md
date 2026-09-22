@@ -1,0 +1,407 @@
+# 장부 — 브리지 메서드 귀속표 (unit 0 · 항목 6 · bridge-methods.md)
+
+> 생성/갱신: `python3 Tools/battle-core-rebuild/check_ledgers.py --generate`. 키 = `이름/인자수`. 「새 주인」 열은 사람이 고친다(재생성 시 보존). 「미정」은 조각 E 진입 전 0 이어야 한다. 접두사 휴리스틱 초안이므로 **틀린 귀속이 있을 수 있다** — 유닛별로 옮길 때 그 파일의 행을 확정한다.
+
+총 367 선언 · 파일 7
+
+## BattleBridge.BonusWave.cs (9)
+
+| # | 메서드 | 새 주인 | 비고 |
+|---|---|---|---|
+| 1 | `SetBonusPullSuppressed/1` | WaveScheduler |  |
+| 2 | `ResetBonusWaveState/0` | WaveScheduler |  |
+| 3 | `TickBonusPullOffer/0` | WaveScheduler |  |
+| 4 | `TryBonusPull/0` | WaveScheduler |  |
+| 5 | `ForceBonusWave/0` | WaveScheduler |  |
+| 6 | `TickBonusWave/1` | WaveScheduler |  |
+| 7 | `SpawnBonusUnit/1` | WaveScheduler |  |
+| 8 | `OpenBonusPortals/0` | WaveScheduler |  |
+| 9 | `ClearBonusPortalViews/0` | WaveScheduler |  |
+
+## BattleBridge.BossLeap.cs (7)
+
+| # | 메서드 | 새 주인 | 비고 |
+|---|---|---|---|
+| 1 | `TryGetEnemyViewOverride/3` | 뷰 풀 |  |
+| 2 | `CreateBossLeapChannel/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 3 | `DisposeBossLeapChannel/0` | 미정 |  |
+| 4 | `DrainBossLeapVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 5 | `RunBossLeap/1` | 미정 |  |
+| 6 | `ResolveLanding/2` | 미정 |  |
+| 7 | `PlayLeapPuff/2` | 미정 |  |
+
+## BattleBridge.Dreamcatcher.cs (22)
+
+| # | 메서드 | 새 주인 | 비고 |
+|---|---|---|---|
+| 1 | `NotifyEnemyGoneIfMarked/1` | 미정 |  |
+| 2 | `IsEnemyMarked/1` | 미정 |  |
+| 3 | `ApplyDreamcatcherCard/2` | HandDeck |  |
+| 4 | `ApplyDreamcatcherCardHosted/1` | HandDeck |  |
+| 5 | `ApplyDreamcatcherCardInternal/2` | HandDeck |  |
+| 6 | `RevokeDreamcatcherEffects/1` | HandDeck |  |
+| 7 | `ApplyActiveDcEffectsTo/2` | HandDeck |  |
+| 8 | `ApplyPlacementSleep/2` | PlacementService |  |
+| 9 | `ApplyDreamcatcherCardToUnit/2` | HandDeck |  |
+| 10 | `WouldDreamcatcherCardApply/2` | HandDeck |  |
+| 11 | `ApplyBountyMark/2` | 미정 |  |
+| 12 | `PassesAttachRequirement/2` | HandDeck |  |
+| 13 | `LogAttachRequirementReject/2` | HandDeck |  |
+| 14 | `BuildHostProfile/1` | 미정 |  |
+| 15 | `TargetsEnemies/1` | 미정 |  |
+| 16 | `HasPositiveDamageOutput/1` | 미정 |  |
+| 17 | `RegisterPlacementAura/3` | PlacementService |  |
+| 18 | `MapDcEffect/3` | HandDeck |  |
+| 19 | `MapDcBuff/4` | HandDeck |  |
+| 20 | `MapDcCc/1` | HandDeck |  |
+| 21 | `MapDcStack/1` | HandDeck |  |
+| 22 | `MatchesDcAxis/2` | HandDeck |  |
+
+## BattleBridge.Relocation.cs (17)
+
+| # | 메서드 | 새 주인 | 비고 |
+|---|---|---|---|
+| 1 | `RelocationCheck/7` | 미정 |  |
+| 2 | `RelocationFootprintCheck/9` | PlacementService |  |
+| 3 | `TryGetDefenderAt/4` | 미정 |  |
+| 4 | `TryGetDefenderCell/2` | MapRuntime (코어) |  |
+| 5 | `CanRelocateDefender/3` | PlacementService |  |
+| 6 | `HasCostForRelocation/1` | CostLedger |  |
+| 7 | `TryBeginDefenderRelocation/4` | PlacementService |  |
+| 8 | `RelocatePatrolAnchorFor/2` | 미정 |  |
+| 9 | `SetDefenderViewOverride/4` | 뷰 풀 |  |
+| 10 | `ClearDefenderViewOverride/1` | 뷰 풀 |  |
+| 11 | `PlayLandingSquash/3` | 미정 |  |
+| 12 | `TryGetDefenderViewOverride/4` | 뷰 풀 |  |
+| 13 | `TryGetRelocationAnchors/5` | 미정 |  |
+| 14 | `ActivateRelocatedDefender/3` | 미정 |  |
+| 15 | `ApplyRefitHeal/2` | 미정 |  |
+| 16 | `FinishDefenderRelocation/2` | 미정 |  |
+| 17 | `DebugRelocateFirstDefender/0` | 디버그/로그 (도구 처분표) |  |
+
+## BattleBridge.UltimateLeap.cs (6)
+
+| # | 메서드 | 새 주인 | 비고 |
+|---|---|---|---|
+| 1 | `CreateUltimateLeapChannel/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 2 | `DisposeUltimateLeapChannel/0` | 미정 |  |
+| 3 | `ShowLandingTelegraph/1` | 미정 |  |
+| 4 | `DrainUltimateLeapVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 5 | `RunUltimateLeapAscend/2` | 미정 |  |
+| 6 | `RunUltimateLeapDescend/3` | 미정 |  |
+
+## BattleBridge.UnitStats.cs (1)
+
+| # | 메서드 | 새 주인 | 비고 |
+|---|---|---|---|
+| 1 | `TryGetUnitStatReadout/2` | 미정 |  |
+
+## BattleBridge.cs (305)
+
+| # | 메서드 | 새 주인 | 비고 |
+|---|---|---|---|
+| 1 | `SetEnemiesDimmed/1` | 미정 |  |
+| 2 | `SetPlacementHighlightAboveUnits/1` | PlacementService |  |
+| 3 | `CreateAliveAttackerQueries/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 4 | `MirrorLiftKnobs/0` | 뷰 풀 |  |
+| 5 | `SetMatchSeed/1` | 미정 |  |
+| 6 | `BuildBriefingWavePlan/0` | WaveScheduler |  |
+| 7 | `SetAssignedGimmick/1` | GimmickHost |  |
+| 8 | `Awake/0` | 미정 |  |
+| 9 | `OnValidate/0` | 미정 |  |
+| 10 | `ApplyUnitHealthPresentationMode/0` | 미정 |  |
+| 11 | `EnterPlacementOrIntro/0` | PlacementService |  |
+| 12 | `OnRestartRequested/0` | 미정 |  |
+| 13 | `ReLogSkillLoadoutForNewSession/1` | BindingRegistry / TriggerDispatcher |  |
+| 14 | `TeardownCurrentBattle/0` | MatchClock |  |
+| 15 | `HasLiveEntityManager/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 16 | `AttachSimEntityId/1` | HandDeck |  |
+| 17 | `DestroyBattleEntities/0` | 미정 |  |
+| 18 | `DestroyEcsInfrastructureEntities/0` | 미정 |  |
+| 19 | `DisposeEcsInfrastructureNativeContainers/0` | 미정 |  |
+| 20 | `DisposeCachedQueries/0` | 미정 |  |
+| 21 | `BuildFlowField/0` | MapRuntime (코어) |  |
+| 22 | `AddTraversalMask/2` | 미정 |  |
+| 23 | `BuildPickupSpawnState/0` | GimmickHost |  |
+| 24 | `TeardownPickupSpawnState/0` | MatchClock |  |
+| 25 | `ComputeSpawnLateralOffset/1` | 미정 |  |
+| 26 | `BuildStageMarkerRegistry/0` | 미정 |  |
+| 27 | `TryGetGoalVisualAnchor/1` | HeartMeter |  |
+| 28 | `TryGetSpawnVisualAnchor/2` | 뷰 풀 |  |
+| 29 | `CellCenterView/1` | MapRuntime (코어) |  |
+| 30 | `TeardownGeneratedMap/0` | MatchClock |  |
+| 31 | `BuildMapForBattle/0` | MapRuntime (코어) |  |
+| 32 | `TeardownFlowField/0` | MatchClock |  |
+| 33 | `BeginPlacement/0` | PlacementService |  |
+| 34 | `StartBattle/0` | MatchClock |  |
+| 35 | `EnsureQueriesAndQueues/0` | 미정 |  |
+| 36 | `StopBattle/0` | MatchClock |  |
+| 37 | `PrepareDraftMap/0` | MapRuntime (코어) |  |
+| 38 | `DeferredPrepareDraftMap/0` | MapRuntime (코어) |  |
+| 39 | `CleanupDraftMapBeforeRebuild/0` | MapRuntime (코어) |  |
+| 40 | `DestroyEntitiesByType/0` | 미정 |  |
+| 41 | `RebuildDraftMap/0` | MapRuntime (코어) |  |
+| 42 | `SetAuthoredWavePlan/1` | WaveScheduler |  |
+| 43 | `TryInitializeGeneratedWaves/0` | WaveScheduler |  |
+| 44 | `ScheduledWaveTime/1` | WaveScheduler |  |
+| 45 | `QueueDueWaves/1` | WaveScheduler |  |
+| 46 | `RefreshTimerHud/0` | MatchClock |  |
+| 47 | `TryGetSpawnGuideForecast/2` | 미정 |  |
+| 48 | `LastSpawnSec/1` | 미정 |  |
+| 49 | `TryGetSpawnPathSim/4` | 미정 |  |
+| 50 | `TryResolveFirstStructureDestination/3` | 미정 |  |
+| 51 | `AppendSpawnPathSegment/8` | 미정 |  |
+| 52 | `TryPullNextWave/0` | WaveScheduler |  |
+| 53 | `ForceNextWave/0` | WaveScheduler |  |
+| 54 | `QueueWave/4` | WaveScheduler |  |
+| 55 | `SetDefenderPool/1` | 미정 |  |
+| 56 | `SetSkillLoadout/1` | BindingRegistry / TriggerDispatcher |  |
+| 57 | `CastSkillAtTile/3` | MapRuntime (코어) |  |
+| 58 | `CastPortal/4` | BindingRegistry / TriggerDispatcher |  |
+| 59 | `CollectAlliesInRange/3` | MatchDefinitionBuilder |  |
+| 60 | `GridToWorldCenter/2` | 미정 |  |
+| 61 | `GridToWorldCenterVector/2` | 미정 |  |
+| 62 | `InTileRange/3` | MapRuntime (코어) |  |
+| 63 | `DebugWorldToCell/1` | MapRuntime (코어) |  |
+| 64 | `DebugWorldToCellFractional/1` | MapRuntime (코어) |  |
+| 65 | `WorldToFractionalCell/1` | MapRuntime (코어) |  |
+| 66 | `DebugCollectReachSpheres/1` | MatchDefinitionBuilder |  |
+| 67 | `TryGetNearestWalkCell/2` | MapRuntime (코어) |  |
+| 68 | `TryFindValidBlockingHazardCell/4` | MapRuntime (코어) |  |
+| 69 | `IsInGeneratedMapBounds/1` | MapRuntime (코어) |  |
+| 70 | `CastActiveSkillAtTile/9` | MapRuntime (코어) |  |
+| 71 | `CountAlliesInTileRange/2` | MapRuntime (코어) |  |
+| 72 | `CountEnemiesInTileRange/2` | MapRuntime (코어) |  |
+| 73 | `Update/0` | 미정 |  |
+| 74 | `TickBattleFrame/0` | 미정 |  |
+| 75 | `ReadFinalTally/3` | ScoreLedger |  |
+| 76 | `SimIdOf/1` | 미정 |  |
+| 77 | `CollectMatchConfig/0` | MatchDefinitionBuilder |  |
+| 78 | `StepOneTick/0` | 미정 |  |
+| 79 | `ResolveBattleSimGroup/0` | 미정 |  |
+| 80 | `LateUpdate/0` | 미정 |  |
+| 81 | `SyncProjectileViews/0` | 뷰 풀 |  |
+| 82 | `ReconcileStatusFx/0` | 미정 |  |
+| 83 | `ReconcilePickupViews/0` | GimmickHost |  |
+| 84 | `ClearPickupVisuals/0` | GimmickHost |  |
+| 85 | `ReconcileResignationViews/0` | GimmickHost |  |
+| 86 | `ClearResignationVisuals/0` | GimmickHost |  |
+| 87 | `PushBattleTimeScaleToEcs/0` | 미정 |  |
+| 88 | `SyncMonoUnitViews/0` | 뷰 풀 |  |
+| 89 | `SyncPatrolViews/3` | 뷰 풀 |  |
+| 90 | `ShieldRatioOf/2` | 미정 |  |
+| 91 | `GatherOverheadStacks/1` | 미정 |  |
+| 92 | `TryMapOverheadStackKind/2` | MapRuntime (코어) |  |
+| 93 | `EvaluateEnemyHealthTint/1` | 미정 |  |
+| 94 | `SyncSummonerAnimationState/3` | 뷰 풀 |  |
+| 95 | `TraceDefenderAiTransition/1` | 디버그/로그 (도구 처분표) |  |
+| 96 | `FindSummonPatrolAbility/1` | 미정 |  |
+| 97 | `DrainDefenderDeathEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 98 | `OccupyDefenderFootprint/2` | PlacementService |  |
+| 99 | `ReleaseDefenderFootprint/1` | PlacementService |  |
+| 100 | `TryResolveDefenderKey/2` | 미정 |  |
+| 101 | `TryCancelPendingDeployment/1` | 미정 |  |
+| 102 | `IsDefenderPendingDeployment/1` | 미정 |  |
+| 103 | `RetireDefender/1` | 미정 |  |
+| 104 | `DrainDcTriggerFiredEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 105 | `ResolveBeamViewPos/3` | 뷰 풀 |  |
+| 106 | `EnsureBeamPresenter/0` | 뷰 풀 |  |
+| 107 | `DrainKnockupVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 108 | `DrainShieldBreakEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 109 | `FactionOfEntity/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 110 | `HostBodyRadiusOf/1` | 미정 |  |
+| 111 | `DrainUnitAttackVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 112 | `TickPendingHitVfx/1` | 뷰 풀 |  |
+| 113 | `DotAuraKind/1` | 미정 |  |
+| 114 | `FindDefenderData/1` | 미정 |  |
+| 115 | `DrainAttackOutputLogEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 116 | `TrySpawnCastVfx/2` | BindingRegistry / TriggerDispatcher |  |
+| 117 | `PushStagePostVolume/0` | 미정 |  |
+| 118 | `EnsureCameraDirector/0` | 미정 |  |
+| 119 | `ImpactSocketHeightOf/1` | 미정 |  |
+| 120 | `DrainProjectileHitEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 121 | `DrainHealAppliedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 122 | `DrainShieldGrantedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 123 | `DrainDetectionEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 124 | `DrainDamageNumberEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 125 | `ResolveUnitViewTransform/1` | 뷰 풀 |  |
+| 126 | `TryGetUnitScreenAnchor/3` | 미정 |  |
+| 127 | `ProjectTileScreenWidth/1` | MapRuntime (코어) |  |
+| 128 | `TryGetGoalViewAnchor/1` | HeartMeter |  |
+| 129 | `TryGetUnitViewAnchor/2` | 뷰 풀 |  |
+| 130 | `TryGetUnitView/2` | 뷰 풀 |  |
+| 131 | `SpawnCardAbsorbVfx/1` | HandDeck |  |
+| 132 | `GridCellToViewCenter/1` | MapRuntime (코어) |  |
+| 133 | `TryGetDefenderRestViewPos/2` | 뷰 풀 |  |
+| 134 | `FootprintAnchorToFoot/1` | PlacementService |  |
+| 135 | `GridAnchorToViewCenter/2` | 뷰 풀 |  |
+| 136 | `DrainEnemyKilledEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 137 | `DrainProjectileSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 138 | `DrainMeteorBarrageRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 139 | `SpawnProjectile/2` | 미정 |  |
+| 140 | `CanDefenderTargetMover/2` | 미정 |  |
+| 141 | `RegisteredFootprintRect/2` | PlacementService |  |
+| 142 | `EnqueueStatModifier/6` | 삭제 (코어 내부 호출) |  |
+| 143 | `EnqueueStatModifierRaw/7` | 삭제 (코어 내부 호출) |  |
+| 144 | `EnqueueDamageMul/4` | 삭제 (코어 내부 호출) |  |
+| 145 | `EnqueueMoveSpeedMul/4` | 삭제 (코어 내부 호출) |  |
+| 146 | `TryScreenToCell/3` | MapRuntime (코어) |  |
+| 147 | `TryScreenToCellStrict/3` | MapRuntime (코어) |  |
+| 148 | `TryScreenToBoardFrac/3` | 미정 |  |
+| 149 | `TryPickNearestEnemy/4` | 미정 |  |
+| 150 | `TryGetDefenderAt/2` | 미정 |  |
+| 151 | `SetDefenderHoverHighlight/3` | 미정 |  |
+| 152 | `TryPickDefenderAtScreen/7` | 미정 |  |
+| 153 | `ScreenDistanceToRect/2` | 미정 |  |
+| 154 | `TryGetUnitScreenRect/3` | 미정 |  |
+| 155 | `TryGetDefenderData/2` | 미정 |  |
+| 156 | `SetDreamstones/1` | 미정 |  |
+| 157 | `ApplyPendingDreamstones/0` | 미정 |  |
+| 158 | `KnockbackOn/1` | 미정 |  |
+| 159 | `GetOrCreateSkillVfxIndex/1` | BindingRegistry / TriggerDispatcher |  |
+| 160 | `GetOrCreateProjectileDataIndex/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 161 | `EffectiveLeakLimit/0` | 미정 |  |
+| 162 | `ResetGoalStability/0` | HeartMeter |  |
+| 163 | `BakeProjectileRef/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 164 | `SpawnStructureEntities/0` | 미정 |  |
+| 165 | `SpawnStructureViews/0` | 뷰 풀 |  |
+| 166 | `ClearStructureViews/0` | 뷰 풀 |  |
+| 167 | `DestroyStructureEntities/0` | 미정 |  |
+| 168 | `RemainingLeakAllowance/0` | 미정 |  |
+| 169 | `TryPayLeakAllowance/1` | 미정 |  |
+| 170 | `DrainGoalEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 171 | `NearestGoalCell/1` | HeartMeter |  |
+| 172 | `EnqueueGoalHeal/1` | 삭제 (코어 내부 호출) |  |
+| 173 | `EnqueueGoalTowerDamage/2` | 삭제 (코어 내부 호출) |  |
+| 174 | `PushGoalCrack/2` | HeartMeter |  |
+| 175 | `SyncGoalStability/0` | HeartMeter |  |
+| 176 | `OpenBreachedCellsForLeak/1` | MapRuntime (코어) |  |
+| 177 | `OpenGoalCellAfterBreach/1` | HeartMeter |  |
+| 178 | `LeakSiegingEnemy/1` | 미정 |  |
+| 179 | `SubmitMatch/0` | MatchClock |  |
+| 180 | `CheckTimer/0` | MatchClock |  |
+| 181 | `NoQueuedAttackersRemain/0` | 미정 |  |
+| 182 | `ReportMatchResult/1` | 미정 |  |
+| 183 | `EndMatch/1` | MatchClock |  |
+| 184 | `ShowResult/1` | 미정 |  |
+| 185 | `HoldThenShowResult/1` | 미정 |  |
+| 186 | `ReleaseCoreBurstHold/1` | PlacementService |  |
+| 187 | `PlayCoreBurst/1` | HeartMeter |  |
+| 188 | `BuildTally/1` | ScoreLedger |  |
+| 189 | `PlaceDefender/2` | 미정 |  |
+| 190 | `SpatialPlacementCheck/4` | PlacementService |  |
+| 191 | `SpatialFootprintCheck/7` | PlacementService |  |
+| 192 | `GetPlacementCellReasons/4` | PlacementService |  |
+| 193 | `TryFindNearestPlaceableAnchor/4` | 미정 |  |
+| 194 | `SetPlacementGhostCells/2` | PlacementService |  |
+| 195 | `IsPlacementRangeCell/1` | PlacementService |  |
+| 196 | `ClearPlacementGhostCells/0` | PlacementService |  |
+| 197 | `CanPlaceDefenderAt/4` | PlacementService |  |
+| 198 | `DeployedCountOf/1` | 미정 |  |
+| 199 | `TryGetDeployedEntity/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 200 | `TryQueueDeployedDefenderMaxHealthDamage/2` | 미정 |  |
+| 201 | `CloseCellLayers/1` | MapRuntime (코어) |  |
+| 202 | `ShowPlacementHighlight/2` | PlacementService |  |
+| 203 | `HidePlacementHighlight/0` | PlacementService |  |
+| 204 | `AnyEnemyWithinTilesOfGoal/1` | HeartMeter |  |
+| 205 | `NearestGoalDistance/1` | HeartMeter |  |
+| 206 | `ShowBlockedHighlight/1` | 미정 |  |
+| 207 | `HideBlockedHighlight/0` | 미정 |  |
+| 208 | `RefreshPlacementHighlightIfShown/0` | PlacementService |  |
+| 209 | `RepaintPlacementHighlight/0` | PlacementService |  |
+| 210 | `PlaceDefenderAs/3` | 미정 |  |
+| 211 | `TryBeginDefenderDeployment/4` | PlacementService |  |
+| 212 | `LandDeployedDefender/1` | 미정 |  |
+| 213 | `ActivateDeployedDefender/2` | 미정 |  |
+| 214 | `OnDefenderActivated/1` | 미정 |  |
+| 215 | `DrainDefenderActivatedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 216 | `TriggerDeploymentOnPlaceSkill/2` | BindingRegistry / TriggerDispatcher |  |
+| 217 | `ApplyEnvironmentGating/0` | 미정 |  |
+| 218 | `SetPlacementHover/2` | PlacementService |  |
+| 219 | `SetPlacementHover/3` | PlacementService |  |
+| 220 | `PulsePlacementHover/2` | PlacementService |  |
+| 221 | `PulsePlacementHover/3` | PlacementService |  |
+| 222 | `SetPlacementStretch/4` | PlacementService |  |
+| 223 | `ClearPlacementStretch/0` | PlacementService |  |
+| 224 | `ClearPlacementHover/1` | PlacementService |  |
+| 225 | `ClearPlacementHover/0` | PlacementService |  |
+| 226 | `SetRangeOwner/1` | 미정 |  |
+| 227 | `BakeAttackShape/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 228 | `SetPlacementRange/2` | PlacementService |  |
+| 229 | `RefreshRangeTargetMarks/3` | 미정 |  |
+| 230 | `ClearPlacementRange/0` | PlacementService |  |
+| 231 | `SetSkillAimRange/2` | BindingRegistry / TriggerDispatcher |  |
+| 232 | `ClearSkillAimRange/0` | BindingRegistry / TriggerDispatcher |  |
+| 233 | `TryGetTileScreenCenter/3` | MapRuntime (코어) |  |
+| 234 | `SetSkillAimCells/1` | MapRuntime (코어) |  |
+| 235 | `PinSkillTelegraph/2` | BindingRegistry / TriggerDispatcher |  |
+| 236 | `CenteredRingRadius/1` | 미정 |  |
+| 237 | `PinCenteredRange/3` | 미정 |  |
+| 238 | `ClearSkillTelegraph/0` | BindingRegistry / TriggerDispatcher |  |
+| 239 | `ClearRange/1` | 미정 |  |
+| 240 | `SetAttachPreview/3` | HandDeck |  |
+| 241 | `CanDrawAttachPreviewFor/1` | HandDeck |  |
+| 242 | `ClearAttachPreview/0` | HandDeck |  |
+| 243 | `RedrawAttachPreview/0` | HandDeck |  |
+| 244 | `SetPlacementRangeValidity/1` | PlacementService |  |
+| 245 | `FlashPlacementReject/1` | PlacementService |  |
+| 246 | `PlayDeploymentPresentation/3` | 미정 |  |
+| 247 | `PlayFallbackDeploymentPulse/3` | 미정 |  |
+| 248 | `PlayDeploymentRingPulse/2` | 미정 |  |
+| 249 | `CreateDefenderEntity/3` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 250 | `CreatePatrolEntity/5` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 251 | `TryGetPatrolHomeCell/4` | MapRuntime (코어) |  |
+| 252 | `DebugSpawnPatrolAt/3` | 디버그/로그 (도구 처분표) |  |
+| 253 | `DebugTryGetPatrolAnchorCell/2` | MapRuntime (코어) |  |
+| 254 | `RegisterPatrolUnitSO/1` | 미정 |  |
+| 255 | `DrainPatrolSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 256 | `AddEffectTile/2` | MapRuntime (코어) |  |
+| 257 | `ApplyEffectTileIfAny/2` | MapRuntime (코어) |  |
+| 258 | `ApplyEffectTileOnce/2` | MapRuntime (코어) |  |
+| 259 | `FireOnPlaceCameraShake/1` | 미정 |  |
+| 260 | `MarkJustDeployedForRules/1` | 미정 |  |
+| 261 | `DebugSpawnObstacleAt/2` | 디버그/로그 (도구 처분표) |  |
+| 262 | `SpawnHazardWithVisual/3` | 뷰 풀 |  |
+| 263 | `DebugSpawnHazardAt/2` | 디버그/로그 (도구 처분표) |  |
+| 264 | `SpawnBlockingHazardWithVisual/2` | 뷰 풀 |  |
+| 265 | `DebugSpawnBlockingHazardAt/2` | 디버그/로그 (도구 처분표) |  |
+| 266 | `DebugLogFatigueStacks/0` | 디버그/로그 (도구 처분표) |  |
+| 267 | `DebugLogPickups/0` | GimmickHost |  |
+| 268 | `RegisterBlockingHazardSO/1` | 미정 |  |
+| 269 | `RegisterZoneHazardSO/1` | 미정 |  |
+| 270 | `EnsureBlockingHazardVisualRoot/0` | 뷰 풀 |  |
+| 271 | `ClearBlockingHazardVisuals/0` | 뷰 풀 |  |
+| 272 | `RecordHazardSpawn/2` | 미정 |  |
+| 273 | `DrainHazardRuntimeEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 274 | `DrainHazardSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 275 | `SyncBlockingHazardOverheadGauges/1` | 뷰 풀 |  |
+| 276 | `DrainHazardDestroyedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 277 | `DrainGoalCollapsedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 278 | `SyncGoalOverheadGauges/1` | HeartMeter |  |
+| 279 | `RecordBlockingHazard/4` | 미정 |  |
+| 280 | `RecordBlockingHazardDestroyed/2` | 미정 |  |
+| 281 | `WorldToLogCell/1` | MapRuntime (코어) |  |
+| 282 | `BlockingHazardLogSide/1` | 디버그/로그 (도구 처분표) |  |
+| 283 | `BuildStackThresholdRegistry/0` | 미정 |  |
+| 284 | `CreateGimmickConfigIfActive/0` | GimmickHost |  |
+| 285 | `GetStackThresholds/1` | 미정 |  |
+| 286 | `ShapeToHazardVisualScale/3` | 뷰 풀 |  |
+| 287 | `DebugSpawnObstacleContext/0` | 디버그/로그 (도구 처분표) |  |
+| 288 | `LogPlacementReject/3` | PlacementService |  |
+| 289 | `OnDestroy/0` | 미정 |  |
+| 290 | `EnsureMonoViewPools/0` | 뷰 풀 |  |
+| 291 | `CreateViewPool/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 292 | `ResolveUnitMaterial/2` | 미정 |  |
+| 293 | `InstallSkillLayer/0` | BindingRegistry / TriggerDispatcher |  |
+| 294 | `RunImmediateSkills/0` | BindingRegistry / TriggerDispatcher |  |
+| 295 | `RoutingProbe/2` | 미정 |  |
+| 296 | `BakeNightmareMechanics/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 297 | `BakeUnitMechanics/6` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 298 | `BakeDefenderDirectionalPattern/3` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 299 | `TryBuildPatternSlot/5` | 미정 |  |
+| 300 | `BuildPatternTemplate/4` | 미정 |  |
+| 301 | `SpawnUnit/1` | WaveScheduler |  |
+| 302 | `CreateEnemyEntity/4` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
+| 303 | `ConeCosSq/1` | 미정 |  |
+| 304 | `SpawnSplitChildren/2` | 미정 |  |
+| 305 | `CreateAttackUnitRuntimeMaterial/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |

@@ -6,7 +6,7 @@
 > 2. **팬을 개통한다.** 줌은 여전히 상태가 소유하고 플레이어에게 주지 않는다(핀치 없음).
 > 3. **판 전체를 보는 것은 「동사」가 된다** — 오버뷰 버튼을 누르고 있는 동안만.
 
-상태: **작성됨 2026-08-25** · 착수 전
+상태: **작성됨 2026-08-25** · 착수 전 · **battle-core-rebuild unit 0 판정(2026-09-23): 계속 진행 가능**(판 밖 — 카메라. 옛 전투 규칙 무변)
 > 2026-09-22 정리: 이 spec 을 쓴 세션이 남긴 **탐색 튜닝**(`CameraDirectionConfig` pitch 35→45/30→59.6·fov 25→45/50.9 · `BattleScene` 후처리 off ·
 > `MapStagePool.devEntries` 에 빌딩 스테이지 · `subway/M_Unit.mat` 셰이더 교체)은 검증 없는 실험값이라 main 에 넣지 않았다 — 브랜치 `wip/wide-board-camera`
 > 에 그대로 있다(착수 시 `git show wip/wide-board-camera -- <파일>` 로 참고). 같이 있던 콘텐츠(빌딩 테마 아트·`MapStage_Building`·subway 06/07·`MapDocument_MovementStress`·

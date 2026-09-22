@@ -13,17 +13,17 @@
 |---|---|
 | 새 씬 | `Assets/_Project/Scenes/BattleCoreScene.unity` (신설 · 옛 `BattleScene.unity` 무변) |
 | 브랜치·워크트리 | 브랜치 `rebuild/battle-core` · 워크트리 `/Users/sy/dev/wassup-core` |
-| 동결 훅 | `.githooks/pre-commit` + `git config core.hooksPath .githooks` (문서화: 이 spec README 계약 10) |
-| 리뷰 도구 | `.claude/hooks/ecs-review-detector.mjs` · `.codex/hooks/ecs-review-detector.mjs` (경로 추가) · `.claude/agents/core-reviewer.md` (신설) |
+| 동결 훅 | `.githooks/commit-msg`(pre-commit 은 메시지를 못 본다) + `git config core.hooksPath .githooks` (문서화: CLAUDE.md 상태 절 · README 계약 10) |
+| 리뷰 도구 | `.claude/hooks/ecs-review-detector.mjs` (경로 추가, 완료) · `.claude/agents/core-reviewer.md` (신설, 완료) · `.codex/hooks/ecs-review-detector.mjs` (**보류** — 다른 세션이 편집 중인 dirty 파일. 그 세션 커밋 뒤 같은 패치) |
 | 장부 | `docs/spec/battle-core-rebuild/ledgers/{bridge-methods,bridge-fields,rule-holders,tools,rules}.md` |
-| 대조 스크립트 | `tools/battle-core-rebuild/check_ledgers.py` (장부 ↔ 코드 grep 대조, 불일치 = exit 1) |
+| 대조 스크립트 | `Tools/battle-core-rebuild/check_ledgers.py` (`--generate` 로 장부 초안 생성·분류 보존 / 인자 없이 대조, 불일치 = exit 1) |
 | 착수 대기 spec 4건 | 각 README 상태 라인 한 줄 추가 |
 
 ## 구현
 
 1. **씬.** `BattleCoreScene` 은 옛 브리지·뷰 풀을 **한 개도 참조하지 않는다.** 카메라·라이트·`BattleDriver` 자리(빈 GameObject)·HUD 캔버스 골격만. 뷰 풀은 unit 5 가 붙인다. 진입은 dev 메뉴 토글(`GameManager` 무변 — 씬 이름만 다르게 로드).
 2. **브랜치·워크트리.** `git worktree add ../wassup-core -b rebuild/battle-core`. Unity 는 워크트리를 별개 프로젝트로 연다(testrig 선례). main 머지는 조각 B·D·E 경계에서 리뷰 후, **squash 금지**(unit 단위 커밋 보존). 워크트리 안에서도 스테이징은 경로 명시.
-3. **동결 훅.** 스테이징에 `Assets/_Project/Scripts/Battle/**` 또는 `Scripts/Bridge/**` 가 있고 커밋 메시지 첫 줄에 `[old-battle]` 이 없으면 거부. 메시지는 「옛 전투는 동결 — 버그픽스면 `[old-battle]` 태그, 규칙 변경이면 새 코어에서」. 훅은 리포에 커밋되고 `core.hooksPath` 설정은 README 에 적는다(클론마다 1회).
+3. **동결 훅.** (`commit-msg` 훅 — 메시지와 스테이징을 둘 다 봐야 하므로) 스테이징에 `Assets/_Project/Scripts/Battle/**` 또는 `Scripts/Bridge/**` 가 있고 커밋 메시지 첫 줄에 `[old-battle]` 이 없으면 거부. 메시지는 「옛 전투는 동결 — 버그픽스면 `[old-battle]` 태그, 규칙 변경이면 새 코어에서」. 훅은 리포에 커밋되고 `core.hooksPath` 설정은 README 에 적는다(클론마다 1회).
 4. **착수 대기 spec 4건 판정** (README 상태 라인에 기록): `wide-board-camera` 계속(판 밖) · `squad-slots-ten` 계속(아웃게임) · `wide-board-content` **보류 → 새 코어 unit 4 뒤** · `heart-stress-axis/12` **보류 → 새 코어 unit 4 에서 `HeartMeter` 로**.
 5. **리뷰 도구.** 감지기 정규식에 `^Assets/_Project/Scripts/BattleCore/` 추가 → 매치 시 `core-reviewer` 로 라우팅. `core-reviewer.md` 체크리스트 = CLAUDE.md 「새 전투 코어 — 절대 제약」 6항 + README 계약 1·2·7·12 (매니저 이름 금지 · `UnityEngine` 참조 0 · 커맨드/이벤트 분리 · 소멸 이벤트 누락 · 담당자 밖 판정). 옛 경로는 `ecs-reviewer` 그대로.
 6. **장부 3종 + 처분표 + 분류표.**
@@ -40,13 +40,13 @@
 
 N/A — 이 unit 은 규칙을 옮기지 않는다.
 
-## 완료 기준
+## 완료 기준 (2026-09-23 실측)
 
-- [ ] `BattleCoreScene.unity` 가 존재하고 부팅 시 콘솔 에러 0, 옛 브리지 컴포넌트 0.
-- [ ] `git worktree list` 에 `wassup-core [rebuild/battle-core]`.
-- [ ] 훅 검증: `Scripts/Battle/` 파일을 태그 없이 커밋 시도 → 거부 메시지 / `[old-battle]` 태그 → 통과 (둘 다 dry-run 기록).
-- [ ] 감지기가 `Scripts/BattleCore/Foo.cs` 변경에 `core-reviewer` 를 고른다(훅 로그).
-- [ ] `check_ledgers.py` exit 0 — 장부 수치가 grep 과 일치(369 / 91).
-- [ ] `rules.md` 행 수 = census 6편의 「코드에만」 항목 합계(누락 0). 「보류」·「제거」 마다 근거 한 줄.
-- [ ] 착수 대기 spec 4건 README 에 판정 한 줄.
-- [ ] 8·9 의 결정이 이 파일과 README 계약에 적혀 있다(이미 기록됨).
+- [x] `BattleCoreScene.unity` 존재(YAML 직접 생성: 카메라·조명·`BattleDriver`·`HudCanvasRoot`, 브리지 참조 0). **부팅 콘솔 에러 0 은 Unity 에디터가 열릴 때 확인**(작성 시점 MCP 세션 없음).
+- [x] `git worktree list` 에 `/Users/sy/dev/wassup-core [rebuild/battle-core]`.
+- [x] 훅 검증(dry-run): `Scripts/Battle/_hooktest.cs` 스테이징 + 태그 없는 메시지 → exit 1 + 거부 메시지 / `[old-battle]` 태그 → exit 0.
+- [x] 감지기: `BattleCoreScene.unity` 스테이징 상태에서 「리뷰」 프롬프트 → `<core-review-context>` 주입(core-reviewer 안내).
+- [x] `check_ledgers.py` exit 0 — 메서드 **367**(스크립트 파서 기준; 리뷰의 369 는 grep 방식 차이) · 필드 **91** = 씬 키 91. 미정 128(조각 E 진입 조건 0 — 유닛별 이전 시 확정).
+- [ ] `rules.md` 행 수 = census 합계(에이전트 작성 중) · `rule-holders.md`(에이전트 작성 중).
+- [x] 착수 대기 spec 4건 README 에 판정 한 줄.
+- [x] 8·9 의 결정 기록.

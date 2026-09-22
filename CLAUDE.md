@@ -10,6 +10,7 @@
 - **옛 전투**(`Assets/_Project/Scripts/Battle/` · `Bridge/` 와 그 직접 소비자) — **동결.** 규칙 변경 금지, 버그픽스·뷰·카메라·UI·아웃게임만 계속. 아래 「옛 전투 — ECS 맥락 분리」 절과 `[옛 전투]` 꼬리표가 붙은 제약이 적용된다.
 - **새 전투 코어**(`Assets/_Project/Scripts/BattleCore/` + 새 Unity 층) — 「새 전투 코어 — 절대 제약」 절 + spec README 계약이 정본. ECS 제약은 적용되지 않는다.
 - 꼬리표 없는 제약·워크플로는 공통이다. 전환이 끝나는 unit 9 에서 옛 전투 절은 삭제되고 코어 절이 본문으로 승격된다.
+- **동결 장치**: `.githooks/commit-msg` 가 옛 전투 경로 스테이징을 `[old-battle]` 태그 없이 거부한다. 클론마다 1회 `git config core.hooksPath .githooks`(워크트리는 공용 config 를 따른다). 새 코어 리뷰는 `core-reviewer` 에이전트(감지기가 `Scripts/BattleCore/` 변경 시 안내).
 
 ## 프로젝트 한 줄
 
