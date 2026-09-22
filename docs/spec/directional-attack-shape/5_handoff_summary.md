@@ -52,8 +52,20 @@
   가 `NearestTargeting.RanksBefore` 로 최근접을 뽑아 방향을 넘긴다. 색 = 빨강(`rangeTargetMarkColor`, 마크 언어) · 정렬 `PlacementShapeGuideOrder(-7)`
   = 링·타일 위, 마크(-6) 아래. 띠(Rect)도 `SetShapeGuide(band: true, halfWidthTiles)`. 라이브 검증 완료(`guide_f.png`·`rect_d.png`).
 
+## unit 7 (2026-09-14 추가) — 참격 자국을 판정 도형에서 실시간 생성
+- 사용자 제안(「메시를 굽는 게 아니라 실시간으로 생성하고 풀링」). `Presentation/ShapeMeshBuilder`(가이드의 4함수를 옮김 + 채움/테 UV 마크 2함수)
+  → `ProjectileViewPool.GetShapeMarkMesh(spec)` 캐시 → `PlayHit(meshOverride:)`. 브리지 드레인 2경로가 `AttackState.shape`(bake) + 사거리 + 내 몸 +
+  뷰 cellSize 로 spec 을 짓고 **`scale = 1`**. 구운 텍스처 2·메시 2·띠 프리팹/머티리얼 은퇴, `SlashMark_Ramp.png`(4×1, 주황 채움/크림 테) 신설.
+- 잡은 결함: 가이드 부채꼴 테 꼭짓점이 각 밖(마이터로 정정). 첫 렌더 회색(주황은 옛 텍스처 RGB 에 있었다 → 램프에 실음).
+- Verified: EditMode 코어 2680/에셋 168(선행 2건 외 0) · 오프스크린 3방향(`slash_proc_tint.png`, 띠 길이 5 포함). **라이브·사용자 Play 확인 대기.**
+- ⚠ `PlayHit(meshOverride)` 는 풀 인스턴스에 메시가 남는다 — 같은 프리팹을 오버라이드 없이도 쓰는 날엔 원본 메시 복원이 필요(헤더 주석).
+
+## 골든 (2026-09-14 실측)
+- **이 spec 의 저작은 코퍼스에 비트 무영향** — 저작을 spec 이전으로 되돌려 4 시나리오 A/B → 동일. 코퍼스 9건 빨강은 ① `attackShape` 필드로 인한
+  해시 리베이스(`no_defense`·`summoner` 는 숫자 동일·해시만 다름) ② 기준선 덱 출처 불명(기준선 `long_boss` 해저드 1605 vs 씬 풀 0). 재베이크는
+  `battle-sim-extraction` 백로그 [높음]에서 — 여기서 하지 않는다. `MapStage_StreetDay.prefab` WIP 는 사용자 지시로 원복.
+
 ## Follow-up
-- 골든 재베이크(map WIP 정리 후) · Play 육안(링 원 복귀 · 위쪽 적도 때림 · 참격 자국 방향) · `wide_body` 골든 첫 베이크.
-- 참격 VFX 정식화(`_SKELETON` 접미사 제거 = 사용자 폴리시) · 유닛별 톤 · 타격점 히트 + 공격자 참격 2슬롯.
-- VFX 카탈로그(`common-skill-vfx-reference.md`)에 Slash Mark **띠 변형** 항목 추가(승인제).
+- ~~골든 재베이크~~ → battle-sim-extraction 백로그로 이관(위). Play 육안(링 원 복귀 · 위쪽 적도 때림 · 참격 자국 방향) 사용자 확인 09-14.
+- 참격 VFX `_SKELETON` 접미사 제거(사용자 폴리시) · 유닛별 톤 · 타격점 히트 + 공격자 참격 2슬롯.
 - README 후속 후보: 스킬 광역 방향 항 · frontmost swap × 도형 · `SkillCone` 흡수 · 각 경계 히스테리시스(긴창 유닛은 이쑤시개로 해소).

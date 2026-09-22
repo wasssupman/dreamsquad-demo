@@ -863,10 +863,14 @@ namespace Wassup.Core
         private Mesh _shapeGuideFillMesh, _shapeGuideRimMesh;
         private float _shapeGuideAngleDeg = -1f, _shapeGuideRadiusTiles = -1f, _shapeGuideCellSize = -1f;   // 메시 캐시 키
         private bool _shapeGuideMatMissing;   // 머티리얼 팩토리 실패 경고 1회 게이트(링과 같은 규약)
-        private const int ShapeGuideSegments = 24;
         private const float ShapeGuideFillAlpha = 0.22f;
         private const float ShapeGuideRimAlpha = 0.85f;
-        private const float ShapeGuideRimWidthTiles = 0.07f;
+        // unit 7 — 참격 자국과 같은 테 폭(같은 빌더). 둘이 겹쳐 보일 때 윤곽이 일치해야 한다.
+        private const float ShapeGuideRimWidthTiles = ShapeMeshBuilder.DefaultRimWidthTiles;
+
+        // 뷰 grid 의 타일 한 변(월드). rect 보드·균일 cellSize 전제(ConfigureGrid). 참격 메시(unit 7)가 타일 → 월드 환산에 쓴다 —
+        // 가이드가 같은 값으로 굽고 있어 두 표기의 크기가 한 원천에서 나온다.
+        public float CellSize => grid != null ? grid.cellSize.x : 1f;
 
         // `centerTiles` = 베이스(발밑, 타일 실수) · `dirTiles` = 타겟 방향(타일 축, 정규화 불필요) ·
         // `radiusTiles` = 사거리 + 내 몸 · `angleDeg` = 전체각. 방향이 없거나(같은 자리) 각이 정의역 밖이면 숨긴다.
@@ -894,13 +898,13 @@ namespace Wassup.Core
                 {
                     // 폭 0 저작(bake 는 여전히 Band — 축 위 몸 걸침만 히트)도 선으로는 보이게 테 폭을 하한으로.
                     float hw = Mathf.Max(halfWidthTiles, ShapeGuideRimWidthTiles) * cs;
-                    BuildBand(_shapeGuideFillMesh, hw, r);
-                    BuildBandOutline(_shapeGuideRimMesh, hw, r, ShapeGuideRimWidthTiles * cs);
+                    ShapeMeshBuilder.BuildBand(_shapeGuideFillMesh, hw, r);
+                    ShapeMeshBuilder.BuildBandOutline(_shapeGuideRimMesh, hw, r, ShapeGuideRimWidthTiles * cs);
                 }
                 else
                 {
-                    BuildFan(_shapeGuideFillMesh, angleDeg, r);
-                    BuildFanOutline(_shapeGuideRimMesh, angleDeg, r, ShapeGuideRimWidthTiles * cs);
+                    ShapeMeshBuilder.BuildFan(_shapeGuideFillMesh, angleDeg, r);
+                    ShapeMeshBuilder.BuildFanOutline(_shapeGuideRimMesh, angleDeg, r, ShapeGuideRimWidthTiles * cs);
                 }
                 _shapeGuideAngleDeg = key; _shapeGuideRadiusTiles = radiusTiles; _shapeGuideCellSize = cs;
             }
@@ -978,79 +982,7 @@ namespace Wassup.Core
             return mr;
         }
 
-        // 부채꼴 채움: 꼭짓점(원점) + 호. +Y 가 중심 방향.
-        private static void BuildFan(Mesh mesh, float angleDeg, float rOuter)
-        {
-            int n = ShapeGuideSegments;
-            float half = angleDeg * 0.5f * Mathf.Deg2Rad;
-            var v = new Vector3[n + 2]; var t = new int[n * 3];
-            v[0] = Vector3.zero;
-            for (int i = 0; i <= n; i++)
-            {
-                float a = Mathf.PI * 0.5f - half + (2f * half) * i / n;
-                v[i + 1] = new Vector3(Mathf.Cos(a) * rOuter, Mathf.Sin(a) * rOuter, 0f);
-            }
-            for (int i = 0; i < n; i++) { t[i * 3] = 0; t[i * 3 + 1] = i + 2; t[i * 3 + 2] = i + 1; }
-            mesh.Clear(); mesh.vertices = v; mesh.triangles = t; mesh.RecalculateBounds();
-        }
-
-        // 부채꼴 테: 호 띠 + 두 직선 가장자리 띠(안쪽으로 `w`). 모서리 겹침은 알파가 조금 진해질 뿐이라 허용.
-        private static void BuildFanOutline(Mesh mesh, float angleDeg, float r, float w)
-        {
-            int n = ShapeGuideSegments;
-            float half = angleDeg * 0.5f * Mathf.Deg2Rad;
-            var verts = new List<Vector3>(); var tris = new List<int>();
-            // 호 띠
-            for (int i = 0; i <= n; i++)
-            {
-                float a = Mathf.PI * 0.5f - half + (2f * half) * i / n;
-                var d = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
-                verts.Add(d * (r - w)); verts.Add(d * r);
-            }
-            for (int i = 0; i < n; i++)
-            {
-                int b = i * 2;
-                tris.Add(b); tris.Add(b + 3); tris.Add(b + 1);
-                tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
-            }
-            // 직선 가장자리 띠 2개 — 안쪽(중심 방향 +Y 쪽) 법선으로 오프셋
-            for (int side = -1; side <= 1; side += 2)
-            {
-                float a = Mathf.PI * 0.5f + side * half;
-                var e = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
-                // 부채꼴 안쪽(중심 축 +Y 쪽)을 향하는 수직 — 오른쪽 가장자리(side −1)는 e 를 +90°, 왼쪽은 −90° 회전.
-                // ⚠ 부호가 뒤집히면 테가 판정 도형 **밖**으로 나가 「가이드 = 판정」이 테 폭만큼 깨진다(리뷰 nit).
-                var nrm = new Vector3(side * e.y, -side * e.x, 0f);
-                int b = verts.Count;
-                verts.Add(Vector3.zero); verts.Add(nrm * w); verts.Add(e * r); verts.Add(e * r + nrm * w);
-                if (side < 0) { tris.Add(b); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2); }
-                else          { tris.Add(b); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3); }
-            }
-            mesh.Clear(); mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateBounds();
-        }
-
-        // 띠 채움: 꼭짓점(원점)에서 +Y 로 `length`, 좌우 `halfWidth`. sim 의 `BandGate` 상자(along ∈ [0, L], |across| ≤ w) 와 같은 도형.
-        private static void BuildBand(Mesh mesh, float halfWidth, float length)
-        {
-            var v = new[] { new Vector3(-halfWidth, 0f, 0f), new Vector3(halfWidth, 0f, 0f), new Vector3(-halfWidth, length, 0f), new Vector3(halfWidth, length, 0f) };
-            var t = new[] { 0, 2, 1, 1, 2, 3 };
-            mesh.Clear(); mesh.vertices = v; mesh.triangles = t; mesh.RecalculateBounds();
-        }
-
-        // 띠 테: 네 변을 안쪽으로 `w` 만큼 두른 띠(모서리 겹침 허용).
-        private static void BuildBandOutline(Mesh mesh, float halfWidth, float length, float w)
-        {
-            var verts = new List<Vector3>(); var tris = new List<int>();
-            Vector3[] outer = { new Vector3(-halfWidth, 0f, 0f), new Vector3(halfWidth, 0f, 0f), new Vector3(halfWidth, length, 0f), new Vector3(-halfWidth, length, 0f) };
-            Vector3[] inner = { new Vector3(-halfWidth + w, w, 0f), new Vector3(halfWidth - w, w, 0f), new Vector3(halfWidth - w, length - w, 0f), new Vector3(-halfWidth + w, length - w, 0f) };
-            for (int i = 0; i < 4; i++)
-            {
-                int j = (i + 1) % 4; int b = verts.Count;
-                verts.Add(outer[i]); verts.Add(outer[j]); verts.Add(inner[i]); verts.Add(inner[j]);
-                tris.Add(b); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2);   // 단면 — 셰이더가 Cull Off 라 양면은 알파 2배일 뿐
-            }
-            mesh.Clear(); mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateBounds();
-        }
+        // 부채꼴·띠 메시 빌더는 unit 7 에서 `Presentation/ShapeMeshBuilder` 로 옮겼다 — 참격 자국(unit 7)과 같은 함수를 쓴다.
 
         // unit 11 — 방향 조준 화살표(SetAimArrows 계열)는 facing 과 함께 은퇴.
 

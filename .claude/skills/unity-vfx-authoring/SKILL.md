@@ -34,12 +34,14 @@ description: Use when authoring a new VFX (particle prefab + material) for this 
 | 레시피 | 언제 | 구성 | 선례 |
 | --- | --- | --- | --- |
 | **A. 스프라이트 빌보드** | 스파크·퍼프·링·글리프 | `renderMode Billboard`, 알파/가산, 버스트 1~2발 | `DetectionMark_SKELETON`, `DamageNumberSpark_SKELETON` |
-| **B. 절차 텍스처 + 쿼드 메시** | **지면에 눕는 도형**(참격 부채꼴/띠, 배치 링, 방향이 있는 것) | `Texture2D.SetPixels → EncodeToPNG` 로 텍스처, `Mesh` 에셋(꼭짓점 원점·+Y 전방), `renderMode Mesh`, `alignment Local`, `startRotation3D x=90°`, 알파 블렌드, `scalingMode Hierarchy`(크기는 호출부 `scale` 인자) | `SlashMark_SKELETON`, `SlashMark_Band_SKELETON` |
+| **B. 절차 텍스처 + 쿼드 메시** | **지면에 눕는 도형**(배치 링, 방향이 있는 것) | `Texture2D.SetPixels → EncodeToPNG` 로 텍스처, `Mesh` 에셋(꼭짓점 원점·+Y 전방), `renderMode Mesh`, `alignment Local`, `startRotation3D x=90°`, 알파 블렌드, `scalingMode Hierarchy`(크기는 호출부 `scale` 인자) | — |
+| **B′. 실시간 메시 + 램프 텍스처** | 지면 도형이 **판정 데이터를 따라야 할 때**(참격 부채꼴/띠) | 모양은 굽지 않는다 — `Presentation/ShapeMeshBuilder`(배치 가이드와 같은 빌더)가 bake·사거리·내 몸에서 메시를 만들고 `ProjectileViewPool.GetShapeMarkMesh` 가 캐시, `PlayHit(meshOverride:)` 로 교체. 채움/테는 `uv.x` 0/1 + 4×1 램프 텍스처(정점색은 파티클 색 스트림에 덮여 못 쓴다). 파티클 모듈은 B 와 같고 크기는 `scale 1`(메시가 월드 단위) | `SlashMark_SKELETON` |
 | **C. 벤더 사본 스트립** | 이미 좋은 벤더 팩(PixPlays·GA·WALLCOEUR)이 있을 때 | `_Project` 로 복사 → 무버/RB/Collider/제어 스크립트 제거 → 정렬·자세·활성 그룹 수동 | `StatusAura_*`, `Burnout_Smoke`, `BusterBeam`, `WeaponTrail_*` |
 
 레시피 B 를 고르는 기준: **카메라 pitch(배치 55°/전투 ~50°)에 파편 팬이 눌려 발밑 빛으로만 보인다.** 지면 도형은 쿼드에
-텍스처로 그린다(참격 1차가 정확히 이 이유로 「거의 안 보인다」 판정을 받았다). 판정 도형과 크기를 맞출 때는 메시 단위 =
-타일 단위(예: 폭 1·길이 3 쿼드 = 판정 상자 코어), 크기 커브는 **상수 1**(첫 프레임부터 정확).
+텍스처로 그린다(참격 1차가 정확히 이 이유로 「거의 안 보인다」 판정을 받았다). 크기 커브는 **상수 1**(첫 프레임부터 정확).
+**판정 도형과 맞춰야 하는 그림은 B 가 아니라 B′** — 텍스처·메시에 구운 각도/비율은 저작이 바뀌면 조용히 거짓말이 된다
+(참격 2차: 반각 30° 텍스처 · 3:1 띠 메시가 그랬다, directional-attack-shape unit 7 에서 절차화).
 
 ## 도구 매핑 (UnityMCP 10.x)
 | 작업 | 1순위 | 2순위 |

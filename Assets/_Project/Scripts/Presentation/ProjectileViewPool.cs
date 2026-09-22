@@ -44,6 +44,11 @@ namespace Wassup.Presentation
         // Top-level particle systems only. Play(true) cascades to children/subemitters,
         // so restarting only roots preserves authored trigger relationships.
         public ParticleSystem[] rootParticles;
+        // directional-attack-shape unit 7 — 루트의 메시 파티클 렌더러(renderMode Mesh 일 때만, 아니면 null).
+        // `PlayHit(meshOverride)` 가 재생 직전 메시를 갈아끼우는 자리. 풀 재사용마다 GetComponent 를 안 부르려고 캐시.
+        public ParticleSystemRenderer rootMeshRenderer;
+        // 프리팹이 저작한 원본 메시 — 오버라이드 없는 재생이 **직전 재생의 메시**를 물려받지 않게 되돌리는 기준(리뷰 M-1).
+        public Mesh rootMeshOriginal;
     }
 
     public class ProjectileViewPool : MonoBehaviour
@@ -81,6 +86,10 @@ namespace Wassup.Presentation
         private readonly Dictionary<Entity, ProjectileViewState> _active = new();
         private readonly Dictionary<GameObject, Stack<GameObject>> _pool = new();
         private readonly Dictionary<ProjectileData, int> _spawnCounters = new();
+        // directional-attack-shape unit 7 — 참격 자국 메시 **캐시**(풀 아님). 판정 도형 조합(kind·각/반폭·길이·cellSize)마다
+        // 한 장을 `ShapeMeshBuilder` 로 만들어 재사용한다 — 저작 조합은 한 손에 꼽힌다(오늘 3종). 수명 = 이 풀(OnDestroy).
+        private readonly Dictionary<ShapeMarkSpec, Mesh> _shapeMarkMeshes = new();
+        private readonly HashSet<GameObject> _meshOverrideWarned = new();   // 프리팹당 1회 경고 게이트(리뷰 M-3)
         private MaterialPropertyBlock _mpb;
         private System.Random _visualRng;
         private Camera _projectionCamera;
@@ -342,15 +351,45 @@ namespace Wassup.Presentation
             return HeadAnchor.Lift((Vector3)basePosition, Vector3.up * height, _projectionCamera);
         }
 
+        // directional-attack-shape unit 7 — 판정 도형에서 만든 참격 메시. 브리지가 `AttackState.shape` + 사거리 + 내 몸으로
+        // spec 을 짓고 여기서 메시를 받아 `PlayHit(meshOverride)` 로 넘긴다. 같은 spec 은 같은 Mesh 인스턴스(캐시).
+        public Mesh GetShapeMarkMesh(in ShapeMarkSpec spec)
+        {
+            if (_shapeMarkMeshes.TryGetValue(spec, out var mesh) && mesh != null) return mesh;
+            mesh = new Mesh { name = $"SlashMark_{(spec.kind == AttackShapeBaked.BandKind ? "Band" : "Sector")}_{spec.lengthTiles:0.##}" };
+            ShapeMeshBuilder.BuildMark(mesh, in spec);
+            _shapeMarkMeshes[spec] = mesh;
+            return mesh;
+        }
+
+        private void OnDestroy()
+        {
+            foreach (var m in _shapeMarkMeshes.Values)
+                if (m != null) Destroy(m);
+            _shapeMarkMeshes.Clear();
+        }
+
         // Fix 5: hitVfxLifetime > 0 overrides auto-detect.
         // facingViewDir: 타격 방향(**view 공간**). 지정하면 VFX 가 그 방향으로 회전한다
         // (말파이트 흙 폭발처럼 방향성이 있는 히트용). 기본 default = 회전 없음(기존 동작).
+        // meshOverride: 루트 메시 파티클의 메시를 이 재생에 한해 교체(참격 자국 — 판정 도형에서 실시간 생성). null = 프리팹 원본 메시로
+        //   **되돌린다** — 풀 인스턴스엔 직전 메시가 남아 있어, 되돌리지 않으면 공격자가 드레인 전에 죽어 메시를 못 지은 재생이나 reflex 저작이
+        //   Omni 로 접힌 재생이 남의 참격 모양을 물려받는다(리뷰 M-1).
         public void PlayHit(GameObject hitPrefab, float3 position, float hitVfxLifetime = 0f,
                             float heightOffset = 0f, float scale = 1f, Vector3 facingViewDir = default,
-                            Vector3 eulerOffset = default)
+                            Vector3 eulerOffset = default, Mesh meshOverride = null)
         {
             var view = GetOrCreate(hitPrefab);
             view.SetActive(true);
+            if (view.TryGetComponent<ViewRendererCache>(out var rcache))
+            {
+                if (rcache.rootMeshRenderer != null)
+                    rcache.rootMeshRenderer.mesh = meshOverride != null ? meshOverride : rcache.rootMeshOriginal;
+                else if (meshOverride != null && _meshOverrideWarned.Add(hitPrefab))
+                    // 루트가 메시 파티클이 아닌 프리팹에 참격 메시를 넘겼다 — 조용히 옛 그림이 뜨면 이 unit 이 없애려던 거짓말의 재발이다.
+                    // 프리팹당 1회(머티리얼 팩토리 실패 게이트와 같은 규약).
+                    Debug.LogWarning($"[ProjectileViewPool] '{hitPrefab.name}' 루트가 Mesh 렌더 모드 파티클이 아니라 meshOverride 를 적용할 수 없다 — 참격 프리팹 저작을 확인할 것.", hitPrefab);
+            }
             view.transform.localScale = Vector3.one * scale;   // 원본이 작으면 키움
             // ⚠ 위 줄이 프리팹 스케일을 **덮는다** — 크기 조절은 프리팹이 아니라 이 인자로.
             if (facingViewDir.sqrMagnitude > 0.0001f)
@@ -480,6 +519,10 @@ namespace Wassup.Presentation
             rc.trails = view.GetComponentsInChildren<TrailRenderer>(includeInactive: true);
             rc.rootParticles = ComputeRootParticles(
                 view.transform, view.GetComponentsInChildren<ParticleSystem>(includeInactive: true));
+            // unit 7 — 루트가 메시 파티클이면 그 렌더러를 잡아 둔다(참격 메시 오버라이드 자리). 빌보드 루트면 null.
+            var rootPsr = view.GetComponent<ParticleSystemRenderer>();
+            rc.rootMeshRenderer = rootPsr != null && rootPsr.renderMode == ParticleSystemRenderMode.Mesh ? rootPsr : null;
+            rc.rootMeshOriginal = rc.rootMeshRenderer != null ? rc.rootMeshRenderer.mesh : null;
             // 투사체/hit/cast VFX 를 유닛 스프라이트 위로. Instantiate 당 1회만(풀 재사용은
             // stack.Pop 으로 빠져 스킵) → 누적 없음. 렌더러 간 상대 순서(mesh/trail/flare)는 보존.
             // 깊이 소팅 경로가 기준으로 쓸 원래 값을 **더하기 전에** 저장한다.

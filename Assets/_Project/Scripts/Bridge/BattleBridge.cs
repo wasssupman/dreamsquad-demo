@@ -4843,14 +4843,16 @@ namespace Wassup.Bridge
                 {
                     // 방향성 히트(흙 폭발 등)는 공격자→대상 방향으로 회전시킨다. 방향은 **view 공간**
                     // 에서 구한다 — sim 방향을 그대로 쓰면 평면 보드에서 엉뚱한 축으로 돈다.
+                    // 공격자 자리 참격(`attackVfxAtAttacker`)이 실제로 발밑을 잡을 수 있나 — 방향 원점·그림 원점·참격 메시가 **같은 판정**을 본다.
+                    bool atAttacker = defData.attackVfxAtAttacker && HasLiveEntityManager() && _em.Exists(evt.attacker)
+                        && _em.HasComponent<LocalTransform>(evt.attacker);
                     Vector3 hitFacing = default;
                     if (defData.attackVfxFacesTarget)
                     {
-                        // 방향의 원점 = 그림의 원점. 공격자 자리 참격(`attackVfxAtAttacker`)은 발밑(LocalTransform)에 찍히므로
+                        // 방향의 원점 = 그림의 원점. 공격자 자리 참격은 발밑(LocalTransform)에 찍히므로
                         // 발밑에서 재고, 타격점 VFX 는 종전대로 임팩트 소켓(anchor)에서 잰다 — 소켓이 치우친 유닛에서 축이 갈리지 않게.
                         Vector3 atkView;
-                        bool haveOrigin = defData.attackVfxAtAttacker && HasLiveEntityManager() && _em.Exists(evt.attacker)
-                                          && _em.HasComponent<LocalTransform>(evt.attacker);
+                        bool haveOrigin = atAttacker;
                         if (haveOrigin) atkView = (Vector3)Wassup.Core.BoardSpace.ToView(_em.GetComponentData<LocalTransform>(evt.attacker).Position);
                         else haveOrigin = ResolveBeamViewPos(evt.attacker, true, out atkView);
                         if (haveOrigin) hitFacing = (Vector3)Wassup.Core.BoardSpace.ToView(evt.targetWorld) - atkView;
@@ -4862,15 +4864,33 @@ namespace Wassup.Bridge
                     // directional-attack-shape rev 3 — 도형 유닛의 참격 자국은 **공격자 자리**에서 대상 방향으로 찍는다.
                     // 회전하는 부가 타격 도형의 유일한 시각 보증자다(정적 가이드 없음). `attackVfxFacesTarget` 과 함께 저작.
                     float3 hitVfxSimPos = evt.targetWorld;
-                    if (defData.attackVfxAtAttacker && HasLiveEntityManager() && _em.Exists(evt.attacker)
-                        && _em.HasComponent<LocalTransform>(evt.attacker))
+                    if (atAttacker)
                         hitVfxSimPos = _em.GetComponentData<LocalTransform>(evt.attacker).Position;
+                    // directional-attack-shape unit 7 — 도형 유닛의 참격 자국은 **판정 도형에서 실시간 생성한 메시**로 그린다
+                    // (배치 가이드와 같은 빌더). 각·반폭은 bake(`AttackState.shape`), 길이는 사거리 + 내 몸(가이드·링과 같은 값),
+                    // 단위는 뷰 grid. 메시가 이미 월드 단위라 `attackVfxScale` 은 여기서 안 쓴다(1) — 저작 배율을 곱하면
+                    // 「판정보다 작게 그린 참격」이 되고, 그게 이 unit 이 없애려는 거짓말이다.
+                    Mesh markMesh = null;
+                    float vfxScale = defData.attackVfxScale;
+                    if (atAttacker && _projectileViewPool != null && _em.HasComponent<AttackState>(evt.attacker))
+                    {
+                        var atk = _em.GetComponentData<AttackState>(evt.attacker);
+                        if (!atk.shape.IsOmni)
+                        {
+                            float cs = tilemapMapView != null ? tilemapMapView.CellSize : tileSize;
+                            // 길이는 **런타임 사거리**(`AttackState.range`) — SO 값을 읽으면 사거리 버프가 생기는 날 참격이 판정보다 짧아진다(리뷰 L-4).
+                            markMesh = _projectileViewPool.GetShapeMarkMesh(
+                                Wassup.Presentation.ShapeMarkSpec.FromBaked(in atk.shape, atk.range + defData.BodyRadiusTiles, cs));
+                            vfxScale = 1f;
+                        }
+                    }
                     if (defData.hitDelaySec > 0f)
                         _pendingHitVfx.Add(new PendingHitVfx
                         {
                             prefab = defData.attackVfxPrefab,
                             simPos = hitVfxSimPos,
-                            scale = defData.attackVfxScale,
+                            scale = vfxScale,
+                            mesh = markMesh,
                             facing = hitFacing,
                             euler = defData.attackVfxEulerOffset,
                             remaining = defData.hitDelaySec,
@@ -4880,8 +4900,8 @@ namespace Wassup.Bridge
                         });
                     else
                         _projectileViewPool?.PlayHit(defData.attackVfxPrefab, hitVfxSimPos,
-                            scale: defData.attackVfxScale, facingViewDir: hitFacing,
-                            eulerOffset: defData.attackVfxEulerOffset);
+                            scale: vfxScale, facingViewDir: hitFacing,
+                            eulerOffset: defData.attackVfxEulerOffset, meshOverride: markMesh);
                 }
 
                 // beam-ranger-defender unit 1 — 빔 유닛이면 이 공격 사건으로 세션을 열거나 잇는다.
@@ -4921,6 +4941,8 @@ namespace Wassup.Bridge
             public Entity attacker;
             public Entity target;
             public bool originAtAttacker;   // simPos 가 공격자 발밑이면 방향 원점도 그것
+            // unit 7 — 참격 메시(판정 도형에서 생성·캐시). 재생 시점에 다시 풀지 않는다 — 시점이 달라도 도형은 같다. null = 프리팹 메시.
+            public Mesh mesh;
         }
         private readonly System.Collections.Generic.List<PendingHitVfx> _pendingHitVfx = new();
 
@@ -4943,7 +4965,7 @@ namespace Wassup.Bridge
                     if (ok) facing = (Vector3)Wassup.Core.BoardSpace.ToView(_em.GetComponentData<LocalTransform>(p.target).Position) - originView;
                 }
                 _projectileViewPool?.PlayHit(p.prefab, p.simPos, scale: p.scale,
-                    facingViewDir: facing, eulerOffset: p.euler);
+                    facingViewDir: facing, eulerOffset: p.euler, meshOverride: p.mesh);
                 _pendingHitVfx.RemoveAt(i);
             }
         }
@@ -8155,7 +8177,7 @@ namespace Wassup.Bridge
                 tilemapMapView.SetShapeGuide(
                     new Vector2(center.x + markBase.x, center.y + markBase.y),
                     new Vector2(guidePos.x - atkPos.x, guidePos.z - atkPos.z),
-                    unit.attackRange + unit.BodyRadiusTiles, unit.attackShape.angleDeg,
+                    unit.attackRange + unit.BodyRadiusTiles, Wassup.Presentation.ShapeMarkSpec.AngleDegOf(in guideShape),   // 각도 bake 역산 — 참격과 같은 원천(unit 7)
                     band: guideShape.kind == Wassup.Data.AttackShapeBaked.BandKind,
                     halfWidthTiles: guideShape.halfWidth);
             else tilemapMapView.ClearShapeGuide();

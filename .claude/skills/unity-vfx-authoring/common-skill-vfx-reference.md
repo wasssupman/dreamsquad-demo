@@ -8,8 +8,8 @@
 
 | 프리팹 | 역할 | 레시피 | 상태 | 비고 |
 | --- | --- | --- | --- | --- |
-| `SlashMark_SKELETON` | 참격 자국 — 60° 부채꼴(브루저·말파이트) | B | 승인 2026-09-12 | 다음 편집 때 접미사 제거 대상 |
-| `SlashMark_Band_SKELETON` | 참격 자국 — 띠 폭 1·길이 3(이쑤시개) | B | 승인 2026-09-12 | 크기 커브 상수 1 |
+| `SlashMark_SKELETON` | 참격 자국 — 부채꼴·띠 공용(브루저·말파이트·이쑤시개). **메시는 `ShapeMeshBuilder` 가 판정 도형(bake + 사거리 + 내 몸)에서 실시간 생성·캐시**, 텍스처는 4×1 램프(채움/테 알파·주황) | B′ | 승인 2026-09-12 · 절차화 2026-09-14(directional-attack-shape unit 7) | 다음 편집 때 접미사 제거 대상. 프리팹 메시는 빌트인 Quad 폴백 — `PlayHit(meshOverride)` 없이 재생하면 사각이 뜬다 |
+| ~~`SlashMark_Band_SKELETON`~~ | 은퇴 2026-09-14 — 띠도 위 프리팹 하나(메시 교체) | — | — | 구운 텍스처·메시 4종도 함께 은퇴 |
 | `DetectionMark_SKELETON` | 「발견」 표식(「!」 + 몸 플래시) | A | 승인 2026-09-08 | `ConfigureOneShot` 버스트 하한 4 주의 |
 | `DamageNumberSpark_SKELETON` | 대미지 넘버 스파크 | A | 운용 중 | 오프스크린 렌더 튜닝 선례 |
 | `DamageNumber_Popup` | 대미지 넘버 팝업 | A | 운용 중 | |
