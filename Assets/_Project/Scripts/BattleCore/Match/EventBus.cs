@@ -29,7 +29,9 @@ namespace Wassup.BattleCore
             }
         }
 
-        private const int KindCount = 8;   // CoreEventKind 의 여유 폭. 늘리면 여기도 늘린다.
+        // 종류 수는 enum 이 말한다. 상수로 적어 두면 종류를 하나 늘린 날 **그 종류만
+        // 조용히 배달되지 않는다**(배열은 넉넉해서 예외도 안 난다).
+        private static readonly int KindCount = (int)CoreEventKind._Count;
 
         private readonly List<Subscription>[] _subs = new List<Subscription>[KindCount];
 
@@ -57,6 +59,7 @@ namespace Wassup.BattleCore
         public void Subscribe(CoreEventKind kind, int order, Action<CoreEvent> handler)
         {
             if (handler == null) throw new ArgumentNullException(nameof(handler));
+            RequireKnown(kind, nameof(Subscribe));
             var list = _subs[(int)kind];
             var sub = new Subscription(order, _seq++, handler);
 
@@ -66,7 +69,21 @@ namespace Wassup.BattleCore
         }
 
         /// <summary>발행. 쌓기만 한다 — 배달은 `Flush`.</summary>
-        public void Publish(in CoreEvent e) => _pending.Add(e);
+        public void Publish(in CoreEvent e)
+        {
+            RequireKnown(e.Kind, nameof(Publish));
+            _pending.Add(e);
+        }
+
+        // 범위 밖은 **바로 던진다.** `None`(0) 도 막는다 — 기본값으로 남은 `CoreEvent` 가
+        // 발행되면 구독자가 0명이라 조용히 사라지고, 「이벤트가 안 온다」를 며칠 쫓게 된다.
+        private static void RequireKnown(CoreEventKind kind, string call)
+        {
+            if (kind > CoreEventKind.None && (int)kind < KindCount) return;
+            throw new ArgumentOutOfRangeException(nameof(kind),
+                $"{call}: 알 수 없는 사건 종류 {(int)kind}. "
+                + $"CoreEventKind 는 1..{KindCount - 1} 이고 새 종류는 _Count 앞에 넣는다.");
+        }
 
         /// <summary>
         /// 발행 순서대로 배달하고 outbox 로 옮긴다. 배달 중 새로 발행된 것은 **같은

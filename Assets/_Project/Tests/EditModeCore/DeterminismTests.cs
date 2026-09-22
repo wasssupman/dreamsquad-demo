@@ -64,6 +64,21 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
+        public void 버스는_모르는_종류를_바로_거절한다()
+        {
+            var bus = new EventBus();
+
+            // 기본값(`None`)으로 남은 이벤트가 새어 들어오면 구독자가 0명이라 조용히
+            // 사라진다 — 「이벤트가 안 온다」를 며칠 쫓게 되는 종류의 실패다.
+            Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => bus.Subscribe(CoreEventKind.None, 0, _ => { }));
+            Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => bus.Publish(default));
+            Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => bus.Subscribe(CoreEventKind._Count, 0, _ => { }));
+        }
+
+        [Test]
         public void 시드가_다르면_난수_계열이_갈린다()
         {
             var a = new RngStreams(1234);
