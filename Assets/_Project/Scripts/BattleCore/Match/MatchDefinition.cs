@@ -30,6 +30,49 @@ namespace Wassup.BattleCore
         public ProjectileDef[] Projectiles = System.Array.Empty<ProjectileDef>();
         public PatternDef[] Patterns = System.Array.Empty<PatternDef>();
 
+        // ── unit 4 (매치 담당자) ──────────────────────────────────────────────
+
+        /// <summary>
+        /// 드림캐쳐 카드. **이 배열의 순서가 곧 덱의 구성 순서**다(저장 부착 10 + 공용 액티브 2) —
+        /// 별도의 「덱」 배열을 두지 않는 이유는 둘이 갈릴 수 있기 때문이다.
+        /// </summary>
+        public CardDef[] Cards = System.Array.Empty<CardDef>();
+
+        /// <summary>
+        /// 놓을 수 있는 방어유닛(`Units` 의 인덱스). **비면 정의표 전체**다(고정구).
+        /// 실제로 필요한 이유: 전투 빌더가 카탈로그 밖 에셋(순찰 소환물)을 `Units` 에
+        /// 편입하므로 「표에 있다 = 놓을 수 있다」가 언제나 참인 것이 아니다.
+        /// </summary>
+        public int[] Roster = System.Array.Empty<int>();
+
+        /// <summary>이번 판의 기믹 후보. 고르는 것은 `GimmickHost`, 부착은 unit 7.</summary>
+        public GimmickDef[] Gimmicks = System.Array.Empty<GimmickDef>();
+
+        /// <summary>시드 생성 덱. `Mode.WaveSource` 가 `GeneratedFromDeck` 일 때 읽힌다.</summary>
+        public Wave.WaveDeckDef WaveDeck = Wave.WaveDeckDef.Empty();
+
+        /// <summary>저작 플랜. 웨이브가 있으면 **덱보다 이긴다**(플랜 우선순위).</summary>
+        public Wave.WavePlanDef WavePlan;
+
+        /// <summary>보너스 당김의 저작. 기본은 없음.</summary>
+        public Wave.BonusWaveDef Bonus = Wave.BonusWaveDef.None();
+
+        /// <summary>마음의 체력·회복 배율. 체력을 드는 것은 `HeartMeter` 다(거점 개체가 아니다).</summary>
+        public HeartDef Heart = HeartDef.Default();
+
+        /// <summary>
+        /// 코스트 재생 배율(드림스톤 `CostRate`). **모드 값이 아니다** — 그 판에 들고 들어온
+        /// 플레이어의 장비라 모드가 아니라 반입이 정한다(C7 이 「초기화가 절대 건드리지 마라」로
+        /// 지키려던 것이 이 구분이다). 1 = 버프 없음.
+        /// </summary>
+        public float CostRateMultiplier = 1f;
+
+        /// <summary>
+        /// 판 시작에 뽑는 효과 타일 수. 0 = 이 판에 효과 타일이 없다.
+        /// 뽑기는 `PlacementService` 가 하고 **효과의 적용은 unit 6** 이다.
+        /// </summary>
+        public int EffectTileCount;
+
         public MapSnapshot Map = MapSnapshot.Empty();
 
         /// <summary>
@@ -65,10 +108,17 @@ namespace Wassup.BattleCore
             var inv = CultureInfo.InvariantCulture;
 
             sb.Append("[mode]\n");
-            Put(sb, "modeId", Mode.ModeId);
-            Put(sb, "matchSeconds", Mode.MatchSeconds, inv);
-            Put(sb, "submitUnlockSeconds", Mode.SubmitUnlockSeconds, inv);
-            Put(sb, "submitsReport", Mode.SubmitsReport ? 1 : 0, inv);
+            Mode.Canonicalize(sb, inv);
+            Put(sb, "costRateMultiplier", CostRateMultiplier, inv);
+            Put(sb, "effectTileCount", EffectTileCount, inv);
+            Heart.Canonicalize(sb, inv);
+            Bonus.Canonicalize(sb, inv);
+
+            sb.Append("[deck]\n");
+            WaveDeck.Canonicalize(sb, inv);
+
+            sb.Append("[plan]\n");
+            WavePlan.Canonicalize(sb, inv);
 
             sb.Append("[map]\n");
             Put(sb, "width", Map.Width, inv);
@@ -128,6 +178,16 @@ namespace Wassup.BattleCore
                 sb.Append("[pattern").Append(i.ToString(inv)).Append("]\n");
                 Patterns[i].Canonicalize(sb, inv);
             }
+            for (int i = 0; i < Cards.Length; i++)
+            {
+                sb.Append("[card").Append(i.ToString(inv)).Append("]\n");
+                Cards[i].Canonicalize(sb, inv);
+            }
+            for (int i = 0; i < Gimmicks.Length; i++)
+            {
+                sb.Append("[gimmick").Append(i.ToString(inv)).Append("]\n");
+                Gimmicks[i].Canonicalize(sb, inv);
+            }
         }
 
         private static string Cell(int2 c, CultureInfo inv)
@@ -153,26 +213,6 @@ namespace Wassup.BattleCore
                 return hex.ToString();
             }
         }
-    }
-
-    // 모드가 정하는 판의 틀. SO(`MatchModeData`) → 여기는 unit 4 에서 이어진다 —
-    // 이 unit 은 코드 기본값(180초 · 제출 해금 60초)으로 채운다.
-    public struct ModeDef
-    {
-        public string ModeId;
-        public float MatchSeconds;
-        public float SubmitUnlockSeconds;
-
-        /// <summary>서버에 리포트를 제출하는 모드인가. v1 은 `KillScoreTimed` 만 true(unit 0 항목 8).</summary>
-        public bool SubmitsReport;
-
-        public static ModeDef Default() => new ModeDef
-        {
-            ModeId = "kill_score_timed",
-            MatchSeconds = 180f,
-            SubmitUnlockSeconds = 60f,
-            SubmitsReport = true,
-        };
     }
 
     // 방어 유닛 정의표 한 줄. SO 의 **plain 수치·열거형만** 온다(아트 참조 없음).
@@ -209,6 +249,50 @@ namespace Wassup.BattleCore
         /// <summary>공격 저작. 통합 루프는 방어유닛·적을 구분하지 않으므로 **같은 타입**이다.</summary>
         public AttackDef Attack;
 
+        // ── unit 4 (배치 판정) ────────────────────────────────────────────────
+
+        /// <summary>배치에 드는 코스트.</summary>
+        public int Cost;
+
+        /// <summary>
+        /// 「방금 놓았다」가 거는 연사 게이트(초). 0 = 없는 것과 같다.
+        /// ⚠ `MaxOnBoard` 가 1 이면 이 값은 죽은 값이다 — 배치 즉시 소진이라 끝나도 못 놓는다.
+        /// 두 손잡이는 상보적으로 쓴다: 상한 1 = 「고유 유닛」, 상한 100 + 쿨타임 = 「연사 제어」.
+        /// </summary>
+        public float PlacementCooldown;
+
+        /// <summary>「판에서 자리가 비었다」가 거는 재배치 대기(초). 사망이 이 값 그대로.</summary>
+        public float DeathCooldown;
+
+        /// <summary>
+        /// 퇴근 대기 = 사망 대기 × 이 비율. **초를 두 개 저작하지 않는 것이 계약**이다 —
+        /// 독립 저작하면 언젠가 뒤집히고(퇴근이 사망보다 길어지고) 그 인버전은 화면에 안 보인다.
+        /// 읽는 자리에서 `Clamp01` 하는 것이 진짜 방어선이다(시트 임포터는 리플렉션으로 직접 쓴다).
+        /// </summary>
+        public float RetireCooldownRatio;
+
+        /// <summary>판 위 동시 존재 상한. **매치당 총 횟수가 아니다.** 0 이하는 1 로 접힌다.</summary>
+        public int MaxOnBoard;
+
+        /// <summary>
+        /// 배치 모션 길이(초) = 배치 페이즈의 길이. **저작 초가 아니라 모션에서 파생된 값**이고
+        /// 그 파생은 소유자(SO)가 한다 — 코어는 결과 숫자만 받는다.
+        /// </summary>
+        public float DeployMotionSeconds;
+
+        /// <summary>
+        /// 이 유닛이 **죽었을 때** 주는 각성. 각성은 처치와 사망의 보상이고 퇴근은 0 이다(D7) —
+        /// 그래서 이 값은 「죽음의 값」이지 「보유의 값」이 아니다.
+        /// </summary>
+        public int AwakeningReward;
+
+        public int EffectiveMaxOnBoard => MaxOnBoard <= 0 ? 1 : MaxOnBoard;
+
+        public float EffectiveDeathCooldown => DeathCooldown > 0f ? DeathCooldown : 0f;
+
+        public float EffectiveRetireCooldown
+            => EffectiveDeathCooldown * math.clamp(RetireCooldownRatio, 0f, 1f);
+
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
             MatchDefinition.Put(sb, "id", Id);
@@ -226,6 +310,13 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "aggroCapacity", AggroCapacity, inv);
             MatchDefinition.Put(sb, "targetFactions", TargetFactions, inv);
             MatchDefinition.Put(sb, "moveSpeed", MoveSpeed, inv);
+            MatchDefinition.Put(sb, "cost", Cost, inv);
+            MatchDefinition.Put(sb, "placementCooldown", PlacementCooldown, inv);
+            MatchDefinition.Put(sb, "deathCooldown", DeathCooldown, inv);
+            MatchDefinition.Put(sb, "retireCooldownRatio", RetireCooldownRatio, inv);
+            MatchDefinition.Put(sb, "maxOnBoard", MaxOnBoard, inv);
+            MatchDefinition.Put(sb, "deployMotionSeconds", DeployMotionSeconds, inv);
+            MatchDefinition.Put(sb, "awakeningReward", AwakeningReward, inv);
             Attack.Canonicalize(sb, inv);
         }
     }

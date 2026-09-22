@@ -32,20 +32,117 @@
 
 | 안 옮긴 것 | 이유 | 등급 |
 |---|---|---|
-| 판 경계 리셋 3곳 중복 | 한 곳(`MatchClock`) | 보류(X8) |
-| 종료 후 전투 계속 | 계약 5 | 보류(X1) |
-| 코스트 재생 스위치 UI 소유 | 담당자 소유 | 필수 규칙의 **소유 이전**(X24) |
+| 판 경계 리셋 3곳 중복 | 담당자마다 자기 `Begin` — 「판 경계」를 부르는 한 함수를 만들지 않았다 | 보류(X8) 해소 |
+| 종료 후 전투 계속 | 계약 5 — `BattleMatch.Tick()` 이 종료 뒤 no-op | 보류(X1) |
+| 코스트 재생 스위치 UI 소유 | `CostLedger` 가 `PlacementPhaseChanged` 를 구독해 스스로 켠다 | 필수 규칙의 **소유 이전**(X24) |
 | 유출 카운터·`OpenBreachedCellsForLeak`·몽마의 계약·적 마음 판정·뽑기 폴백·재시작 경로 | 제거 확정 | 제거(X17·X20~X23) |
-| `GamePhase.Tally` 합산 연출 | 이미 은퇴. enum 값은 카메라 에셋 정수라 유지(X16) | 보류(X19) |
-| `_spawnSpreadCounter` 가변 상태 | 현행 의미 유지, 순번 파생은 후속 후보 | 보류(X25) |
-| 타이머 소유자 2곳 | `ModeDef.durationSec` 하나(덱 값은 조각 E 까지 폴백) | 보류 |
+| `GamePhase.Tally` 합산 연출 | 코어에 판 **밖** 국면이 없다(`MatchPhase` 는 배치·전투 둘). 카메라 에셋 정수는 뷰 층의 `GamePhase` 가 계속 진다 | 보류(X19·X16) |
+| `_spawnSpreadCounter` 가변 상태 | 현행 의미 유지(`BattleWorld.SpawnOrdinal`), 순번 파생은 후속 후보 | 보류(X25) |
+| 타이머 소유자 2곳 | `ModeDef.MatchSeconds` 하나. 덱의 `timerDurationSec` 은 **생성기 안**에서만 명목 그리드로 쓰이고 판 길이를 정하지 않는다 | 해소 |
+| 보스 폴백(`bossPool` 비면 `bossUnit` 단일) | 코어 덱 정의표에 단일 보스 칸이 **없다**(표현이 하나뿐) — 접는 자리를 SO 를 아는 쪽(`MatchDefinitionBuilder.ToDeckDef`)으로 옮겼다 | 소유 이전 |
+| 손패 셔플의 `System.Random` | 계약 5 가 금지(플랫폼·런타임 버전 의존) — xorshift 로 바꿔 **같은 시드의 순열이 라이브와 다르다**. 규칙(한 곳·판 시드·1회)은 보존 | 의도만 이식 |
+| 액티브 쿨다운의 벽시계 | 판의 시계로 옮겼다(spec 구현 10 의 기본값). 답이 다르면 `HandDeck.Run` 하나가 바뀐다 | **사용자 답 대기** |
+| 판 안 재시작 | 없음. `BattleMatch` 를 새로 조립한다 — C7·S6·K5 계약을 옮기지 않았다 | **사용자 답 대기** |
+| 카드 효과(부착·시전의 실행) | unit 7. 커맨드는 **성사**되고 자원이 움직이되 효과 자리는 진단 통로로 말하고 지나간다(조용한 무동작 금지) | unit 7 |
+| 거점 개체(마음·본능)의 스폰 | 아직 어느 unit 도 세우지 않는다. `HeartMeter` 의 「거점 피해 → 마음」 구독은 **배선만** 서 있고 생산자가 없다 | 후속 |
+| 효과 타일의 **효과** | 뽑기·1회 소비 가드만 이식(`PlacementService`). 적용은 unit 6 | unit 6 |
 
 ## 완료 기준
 
-- [ ] 헤드리스 초록. `WavePatternGenerator` RNG 소비 순서 테스트 byte-identical(옛 테스트 복사).
-- [ ] 골든 `kill_race_3min`: 라이브 덱(`Deck_Duel`)·맵 스냅샷·기본 모드로 3분 완주, 종료 사유 `complete`, 킬 > 0, 결정론 2회 동일. `wave_clear_8`·`time_attack_8`: 8웨이브 클리어 종료, 마음 붕괴 시나리오에서 `MatchOutcome.kind = Defeat`.
-- [ ] 모드 유효성 테스트(Assets lane) 빨강 케이스 확인(`targetWaves 12` vs 덱 `maxWaveCount 10`).
-- [ ] 담당자 안 `mode` 분기 0(grep) · `EndMatch` 호출처 = `MatchClock` 만료·`HeartMeter` 붕괴·목표·제출 커맨드 **4곳 정확히**(통로는 3, 목표는 `complete` 를 공유).
-- [ ] rule-holders 133행 중 `HandDeck`·`CostLedger`·`PlacementService`·`MatchClock`·`ScoreLedger`·`WaveScheduler`·`HeartMeter` 귀속 56행이 코드 포인터로 매핑(표 하단). 미정 2 는 사용자 답으로 닫음.
-- [ ] 옛 코퍼스 `basic`·`long_boss`·`force_wave` 와 거시 지표 대조표(참고).
+- [x] 헤드리스 초록(**348 통과 / 0 실패**). RNG 소비 순서는 **오라클 테스트**가 증언한다 — 옛 EditMode 테스트는 SO 를 만들어 돌려 헤드리스에서 컴파일되지 않으므로, 그 테스트가 지키던 «소비 차례»를 `WaveGeneratorTests` 가 손으로 재현해 대조한다(웨이브 수 → 종 A → 종 B → 지터 → 배분 → 보스 후처리).
+- [x] 골든 `kill_race_3min`: 고정구 덱(`Deck_Duel` 손잡이 복제)·맵 스냅샷·라이브 등가 모드로 3분 완주, 종료 사유 `complete`(틱 10810 = 배치 창 10 + 10800), 킬 126, 결정론 2회 동일. `wave_clear_8`·`time_attack_8`: 8웨이브 클리어 종료. `heart_collapse`: `MatchOutcome.kind = Defeat`.
+- [x] 모드 유효성 테스트 빨강 케이스 확인(`targetWaves 12` vs 덱 `maxWaveCount 10` · 저작 플랜 × `clockKind` · 손패 > 덱). ⚠ **Assets lane 이 아니라 코어 lane**에 있다 — 검증기(`ModeValidation`)가 코어에 있어야 헤드리스와 에셋이 **같은 자**를 쓴다.
+- [x] 담당자 안 `mode` 분기 0(`CoreArchitectureTests` — `MatchClock` 만 예외이고 그것이 시계 정책의 소유자다) · `EndMatch` 호출처 **4곳 정확히**.
+- [x] rule-holders 56행 매핑(아래 표).
+- [ ] 옛 코퍼스 `basic`·`long_boss`·`force_wave` 와 거시 지표 대조표(참고) — 옛 러너가 Unity 에디터를 요구해 이 세션에서 못 돌렸다.
 - [ ] `core-reviewer` APPROVE.
+- [ ] **Unity 층 미검증(에디터 열릴 때)**: `MatchModeData` SO 의 인스펙터 표시 · `MatchMode_KillScore3Min.asset` 의 역직렬화 · `MatchDefinitionBuilder.Build(mode, …)` 의 실제 SO 입력. 컴파일은 **헤드리스 Unity 층 검사 lane**(`BattleCoreUnity.Check.csproj`)에서 초록이고, 그 lane 에 이 모드 SO 파일을 명시로 넣었다.
+
+---
+
+## rule-holders 귀속 56행 → 코드 포인터
+
+`ledgers/rule-holders.md` 에서 이 unit 의 담당자 7 에게 귀속된 행 전부다. 「이관」 = 규칙이 그대로
+왔다, 「소유 이전」 = 규칙은 같은데 주인이 바뀌었다, 「보류」 = 자리만 만들고 내용은 뒤 unit.
+
+| 행 | 새 자리 | 비고 |
+|---|---|---|
+| D1 덱을 배치 진입마다 새로 구성 | `HandDeck.Begin` | 판 경계는 담당자 자기 `Begin` |
+| D2 덱 = 저장 10 + 공용 액티브 2, 셔플 1회·판 시드 | `HandDeck.Begin` | 난수원만 xorshift(이식 제외 표) |
+| D5 온보딩 첫 손패 고정 | `HandDeck.Begin(pinnedFront)` | 저작 목록은 정의표의 몫 |
+| D6 각성 상한 초과분 소멸 + 손실 고지 | `HandDeck.Gain` · `OverflowLost` | |
+| D7 각성은 처치·사망의 보상(퇴근 0) | `HandDeck.OnSlain` | 퇴근은 `Retired` 만 구독(게이지 미접촉) |
+| D8 숙주가 떠나면 카드 전부 큐 맨 뒤로 | `HandDeck.Recover` | |
+| D9 퇴근 + 「인수인계」 → 나머지가 앞으로 | `HandDeck.Recover(retired: true)` | 선언 카드 자신은 맨 뒤 |
+| D10 「인수인계」 판정이 두 곳에 있으면 안 된다 | `CardDef.DeclaresRetireRecall` | 저작 한 칸이 곧 판정(중복 2 해소) |
+| D11 부착 결과 규약 3종 | `HandDeck.TryAttach` receipt | 실패·성공만 남고 「회수 불필요」는 숙주 소멸로 자동 |
+| D12 먼저 적용하고 값을 나중에 | `HandDeck.TryAttach` 순서 ①②③ | |
+| D13 부착 상한 3 | `HandDeck.CanAttachMore` · `CountAttachedTo` | |
+| D14 적 표식에는 그 상한을 안 쓴다 | 보류 | 표식은 unit 7(적 부착 경로 자체가 없다) |
+| D15 쓸 수 있는 조건 = 손패 + 각성 | `HandDeck.TryAttach`/`TryCast` | 값은 카드가 정한다(`CardDef.Cost`) |
+| D16 액티브↔부착 경로 배타 | `RejectReason.WrongCardKind` | |
+| D17 액티브는 뒤로 재활용, 부착은 이탈 | `HandDeck.TryCast` / `TryAttach` | |
+| D18 지불은 0 밑으로 안 내려간다 | `HandDeck.Spend` | |
+| D20 부착 목록은 부착 번호 오름차순 | `HandDeck.CompareByAttachSeq` | |
+| D23 각성 손패는 실시간 | 뷰(unit 5) | 규칙은 틱 — 이 담당자는 시간을 안 쓴다 |
+| D24 부착 순서 자체가 기능 | `HandDeck._attachSeq` | |
+| K1 기록이 없으면 준비된 것 | `HandDeck.IsReady` | |
+| K2 시전 성사 → 쿨다운 재충전 | `HandDeck.TryCast` | **확인과 커밋이 한 함수**(호출부 책임이 사라졌다) |
+| K3 쿨다운 감소는 일괄 | `HandDeck.ReduceAllCooldowns` | |
+| K5 판 경계에서 전량 소거 | `HandDeck.Begin` | |
+| C1 시작값 → 상한, 초당 재생(배율) | `CostLedger.Begin` · `Run` | |
+| C2 재생 스위치 3단 | `CostLedger.OnPhase` | **소유 이전**(X24) |
+| C3 시작값 클램프·상한 최소 1·속도 음수 불가 | `CostLedger.Begin` | |
+| C4 모자라면 거부 | `CostLedger.CanAfford` · `TryPay` | |
+| C5 화면은 내림, 판정은 실수 | `CostLedger.CurrentInt` | |
+| C6 환급은 상한을 안 넘는다 | `CostLedger.Gain` | |
+| C7 재생 배율은 초기화가 안 건드린다 | `MatchDefinition.CostRateMultiplier` | setter 가 없다 — 구조로 막았다 |
+| C8 코스트는 배치를 막는 판 상태 | `CostLedger` 가 틱 단계 | `Update` 가 통째로 사라졌다(중복 10) |
+| C9 판의 시계를 따른다 | 같은 자리 | 틱 발행률로 자동 성립 |
+| G10 돌 코스트 배율은 판 진입에만 | `MatchDefinitionBuilder.Build(costRateMultiplier)` | 호출처 0(중복 4 해소) |
+| L1 놓으면 그 종류에 대기 | `PlacementService.StartCooldown(Place)` | |
+| L2 0 = 없는 것과 같다 | 같은 함수 + `StepCooldowns` 조기 반환 | |
+| L3 놓을 수 있나 = 남은 시간 0 | `PlacementService.IsReady` | |
+| L4 배치 진입·판 정리에서 전부 지움 | `PlacementService.Begin` | |
+| L5 배치 취소는 **그 배치가 건 대기만** | `PlacementService.ClearPlaceCooldown` | 출처를 키에 넣어 **근사가 사라졌다** |
+| L6 대기는 판의 시계 | `PlacementService.Run` | 초가 아니라 **틱**으로 센다(실측 드리프트) |
+| P5 모자라면 배치 시도 자체 거부 | `PlacementService.Judge` → `InsufficientCost` | 입력이 미리 거르지 않는다(중복 3 해소) |
+| P6 성사 뒤에 깎는다 | `PlacementService.TryPlace` 순서 | |
+| G1 한 번에 한 국면, 재진입 무시 | `MatchClock.Phase` · `FinishPlacement` | |
+| G20 씬이 꺼지면 전투를 멈춘다 | 뷰(unit 5) | 코어는 판 수명을 `BattleMatch` 로 갖는다 |
+| Y1 결과 라벨 셋, 승패 자리 없음 | `MatchEndReason` 3 | 승패는 **목표**가 붙인다(`OutcomeKind`) |
+| Y2 통로는 둘, 제출은 절차 밖 | `MatchClock` 통로 3 · `ModeDef.AllowSubmit` | 제출 어휘는 그 모드에만 |
+| Y10 성적 조립 지점은 하나 | `IMatchGoal.BuildOutcome` | |
+| Y11 성적은 아키텍처를 모르는 순수 값 | `MatchOutcome` | |
+| Y3 1킬 = 1점, 예외 없음 | `ScoreLedger.OnSlain` | |
+| Y4 흘려보낸 적은 점수에 없다 | 같은 자리 | 그쪽은 처치 사건을 안 낸다 |
+| Y5 제출값은 총점 그대로 | `ScoreLedger.SubmissionScore` | |
+| Y6 음수 처치는 0 | `MatchOutcome` 생성자 | 더하기만 하므로 발생 경로도 없다 |
+| G12 보너스 억제는 조건 **밖**에서 | `WaveScheduler.BonusPullSuppressed` | `Begin` 이 안 지운다(X6) |
+| G24 일시정지 웨이브 브리핑 | `WaveScheduler` 읽기 모델(`WaveReached`·`WaveCount`) | 다시 만들지 않고 **읽는다** |
+| Y7 도달 웨이브 = 마지막 큐잉 번호 | `WaveScheduler.WaveReached` | |
+| Y8 마음의 남은 안정도·최대치 | `HeartMeter.Health` · `MaxHealth` | |
+| Y9 「놓쳤다」 = 돌격형 산화 수 | `HeartMeter.Leaks` | 화면에 「유출」이라 쓰면 거짓말 |
+
+**미정 2** 는 이 unit 에서 닫히지 않았다 — 둘 다 「플레이어가 겪는 규칙」이라 기본값으로
+구현하고 이식 제외 표에 **사용자 답 대기**로 적었다(판 안 재시작 없음 · 액티브 쿨다운은 판의 시계).
+
+## `rules.md` 매치·프레젠테이션 필수 15 → 코드 포인터
+
+| # | 새 자리 |
+|---|---|
+| X2 한 틱 안 순서 3건 | `EventOrder`(한 파일에 전순서) + 틱 단계 순서. 「골 이벤트 → 안정도 → 보너스 제안」은 `HeartMeter` 가 내는 `HeartChanged` 를 `WaveScheduler` 가 구독하는 **연쇄**로 성립한다 |
+| X3 도약 2채널을 뷰 갱신 앞에 | 뷰(unit 5) — 코어는 사건을 순서대로 낸다 |
+| X5 뷰가 없어도 채널이 빈다 | `EventBus` — 구독자 수와 무관하게 발행된다 |
+| X6 보너스 억제는 판 경계 리셋 **밖** | `WaveScheduler.BonusPullSuppressed`(프로퍼티, `Begin` 미접촉) |
+| X7 해시 수집 실패해도 판은 시작 | `MatchDefinition.ConfigHash` 는 값일 뿐 게이트가 아니다 |
+| X9 관측 채널 번호 append-only | `CoreTraceChannel` 19~31 추가(재사용 0) |
+| X10 리드인은 스폰 기준시각에만 | `WaveScheduler.Dispatch` 의 `spawnBase` |
+| X11 간격 폴백 사슬 | `WaveScheduler.Interval`(덱 → 플랜 → 20) |
+| X12 살아 있는 공격자 목록에 필터 금지 | `WaveScheduler.FieldClear` 만 자기 술어(보너스 제외) |
+| X13 보스 판별·경보 한 곳 | `PlannedWave.IsBoss`(생성기가 굽는다) → `WaveStarted` 1회 |
+| X14 보너스 크레딧은 한 회분씩 | `WaveScheduler.TryPullBonus` 의 `_bonusConsumed += KillThreshold` |
+| X15 붕괴 종료만 연출 박자 | `MatchClock.EndHasPresentationBeat` |
+| X16 게임 단계 enum 은 카메라 에셋 정수 | 코어에 판 밖 국면이 없다 — 뷰 층 `GamePhase` 가 계속 진다 |
+| X18 「패배 없음」은 거짓 | `HeartMeter.Damage` → `EndMatch(StressFull)` |
+| X24 코스트 재생은 배치 종료에 시작 | `CostLedger.OnPhase` |

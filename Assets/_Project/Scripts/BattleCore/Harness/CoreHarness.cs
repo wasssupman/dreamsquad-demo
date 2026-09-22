@@ -66,6 +66,20 @@ namespace Wassup.BattleCore
             match.Bus.Subscribe(CoreEventKind.Knockup, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.LeapAscend, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.LeapDescend, 0, trace.Record);
+            // unit 4 — 매치 담당자의 사건. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.WaveQueued, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.WaveStarted, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.BonusOffered, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.BonusPulled, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CostChanged, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.Placed, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.Retired, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.PlacementRejected, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.DefenderActivated, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.HeartChanged, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.HeartCollapsed, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.GimmickAssigned, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.PlacementPhaseChanged, 0, trace.Record);
 
             int kills = 0;
             match.Bus.Subscribe(CoreEventKind.UnitSlain, 1, _ => kills++);
@@ -84,9 +98,13 @@ namespace Wassup.BattleCore
             }
 
             trace.finalStateHash = match.World.StateHash();
+            // 처치 수는 사건을 세어 만든다 — **피해로 죽은 것**의 수이고 진영을 안 가린다.
             trace.finalKills = kills;
-            // 점수·유출은 담당자(`ScoreLedger`·`HeartMeter`)가 생기는 unit 4 부터 채워진다.
-            // 처치 수만 여기서 센다 — **피해로 죽은 것**의 수이고, 그것이 unit 3 의 규칙이다.
+            // unit 4 — 점수·유출은 담당자가 말한다. 처치 수와 점수가 **다를 수 있다**:
+            // 점수는 적을 잡은 것만 세고(방어유닛의 죽음은 처치가 아니다), 유출은 처치가
+            // 아니라 「돌격형이 마음을 치고 산화한 수」다(Y9).
+            trace.finalScore = match.Score.SubmissionScore;
+            trace.finalLeaks = match.Heart.Leaks;
             return new Result { Trace = trace, Match = match, Receipts = receipts };
         }
     }

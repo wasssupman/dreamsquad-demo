@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Wassup.BattleCore.Goals;
 using Wassup.BattleCore.Map;
 using Wassup.BattleCore.Move;
 
@@ -11,6 +12,10 @@ namespace Wassup.BattleCore
     //
     // 판정·저장·판단이 이 파일에 들어오는 순간 그것은 매니저이고, 새 전투 코어의 절대
     // 제약 1 위반이다. 「여기 두면 편한데」가 곧 그 신호다 — 그 일의 담당자를 찾는다.
+    //
+    // unit 4 — 담당자 8 이 전부 섰다. 그들 사이의 **순서 의존은 이 파일에 없다** —
+    // 사건 구독 순서(`EventOrder`)와 아래 단계 목록이 그것을 대신한다. 한 함수가 담당자
+    // 둘을 차례로 부르는 모양이 생기면 그것이 계약 12 가 깨지는 첫 장면이다.
     public sealed class BattleMatch
     {
         /// <summary>고정 틱. 코어에는 가변 dt 가 없다 — 슬로모·정지는 틱 발행률이다(계약 5).</summary>
@@ -22,11 +27,22 @@ namespace Wassup.BattleCore
         private readonly RngStreams _rng;
         private readonly TickContext _ctx;
 
-        // ── 담당자 ──
+        // ── 담당자 8 ──
         private readonly MatchClock _clock;
+        private readonly CostLedger _cost;
+        private readonly ScoreLedger _score;
+        private readonly HeartMeter _heart;
+        private readonly WaveScheduler _waves;
+        private readonly PlacementService _placement;
+        private readonly HandDeck _hand;
+        private readonly GimmickHost _gimmick;
+
         private readonly CommandPhase _commands;
         private readonly MapRuntime _map;
         private readonly SeamHooks _seams;
+
+        private readonly IMatchGoal _goal;
+        private readonly MatchGoalContext _goalCtx;
 
         private readonly TickPipeline _pipeline;
 
@@ -43,12 +59,26 @@ namespace Wassup.BattleCore
             var chasePool = new ChaseFieldPool(definition.Map.CellCount);
 
             _clock = new MatchClock();
-            _commands = new CommandPhase(_world, _clock, _def, _map);
             _seams = new SeamHooks();
 
-            // 틱 순서. 남은 빈 자리(사망 수렴 · 효과/투사체 · 전투 · 담당자 단계)는 unit 3~4 가
-            // **이 배열에 끼운다**. 순서를 바꾸는 것은 규칙을 바꾸는 것이므로 그때 같은 커밋에서
-            // 근거를 남긴다.
+            // ⚠ **만드는 순서가 구독 순서의 동률 tie-break 다**(`EventBus`: 같은 order 면 구독한
+            // 차례). `HeartMeter` 를 `WaveScheduler` 보다 먼저 만드는 것은 처치 사건에서 둘이
+            // 같은 order 를 쓰는데 보너스 제안이 **그 틱의 회복을 반영한 스트레스**를 봐야 하기
+            // 때문이다(X2). 순서를 바꾸면 문턱 근처에서 판정이 한 틱 묵는다.
+            _cost = new CostLedger(_bus, _clock);
+            _score = new ScoreLedger(_bus);
+            _heart = new HeartMeter(_bus, _world, _clock, _def);
+            _waves = new WaveScheduler(_bus, _world, _clock, _def, _map, _heart);
+            _placement = new PlacementService(_bus, _world, _clock, _def, _map, _cost);
+            _hand = new HandDeck(_bus, _world, _def);
+            _gimmick = new GimmickHost(_bus, _def);
+
+            _goal = MatchGoals.Create(_def.Mode.Goal);
+            _goalCtx = new MatchGoalContext(_clock, _score, _waves, _heart, in _def.Mode);
+
+            _commands = new CommandPhase(_world, _clock, _def, _map, _placement, _cost, _waves, _hand);
+
+            // 틱 순서. **순서를 바꾸는 것은 규칙을 바꾸는 것**이므로 그때 같은 커밋에서 근거를 남긴다.
             _pipeline = new TickPipeline(new ITickPhase[]
             {
                 _commands,                              // phase 0 — Immediate seam
@@ -56,12 +86,18 @@ namespace Wassup.BattleCore
                 new AiMovePhase(_map, chasePool),       // unit 2 — 상태·도발·거점·감지·이동·분리
                 new TickProjectilePhase(_map),          // unit 3 — 발사 요청·궤적·착탄
                 new CombatPhase(_map),                  // unit 3 — 공격·피해·사망·도약
-                // unit 4: OwnerSteps (WaveScheduler · CostLedger · PlacementService ·
-                //         HeartMeter · GimmickHost · IMatchGoal)
+                // ── unit 4: 담당자 단계 ──
+                // 배치 활성화가 **맨 앞**인 이유: 이번 틱에 활성화된 유닛이 다음 틱의 전투에
+                // 들어가고, 그 한 틱의 차이가 배치 페이즈 길이의 정의다.
+                _placement,                             // 재배치 대기 · 배치 활성화
+                _cost,                                  // 코스트 재생
+                _waves,                                 // 웨이브 예약 · 스폰
+                _hand,                                  // 액티브 재사용 대기
+                new GoalPhase(_goal, _goalCtx),         // 「끝났나」 — 담당자들이 다 돈 뒤
                 // ⚠ UML §4 의 `DeathConvergePhase` 는 **따로 만들지 않았다.** 그것이 들고 있던
                 // 두 일이 각자 주인을 찾았기 때문이다: 사망 표시 수렴은 `CombatPhase` 의 피해
                 // 단계(표시)와 소멸 단계(한 틱 뒤 제거)로 나뉘었고, 배치 활성화는 `PlacementService`
-                // (unit 4)의 것이다. 빈 단계를 남기면 다음 사람이 「여기 뭘 넣어야 하나」를 묻는다.
+                // 의 것이다. 빈 단계를 남기면 다음 사람이 「여기 뭘 넣어야 하나」를 묻는다.
                 _clock,         // 시계·종료 통로
                 new FlushPhase(),
             });
@@ -77,6 +113,9 @@ namespace Wassup.BattleCore
                 Tick = 0,
                 Seams = _seams,
             };
+            // 커맨드는 틱 밖에서 들어오는데 스폰 조립이 문맥을 요구한다. 판당 한 벌이라
+            // 한 번 묶으면 끝이다(매 틱 다시 묶으면 「언제 묶였나」가 규칙이 된다).
+            _commands.Bind(_ctx);
         }
 
         // 그 판에 나올 수 있는 유닛들의 통행 층. 0(미저작)은 기본 마스크로 접힌다.
@@ -106,15 +145,42 @@ namespace Wassup.BattleCore
         public System.Action<string> Report
         {
             get => _ctx.Report;
-            set => _ctx.Report = value;
+            set
+            {
+                _ctx.Report = value;
+                // 담당자도 같은 통로로 말한다. 각자 로거를 갖게 두면 「어디로 갔는지」가 갈린다.
+                _placement.Report = value;
+                _hand.Report = value;
+            }
         }
 
         public MatchDefinition Definition => _def;
         public BattleWorld World => _world;
         public EventBus Bus => _bus;
         public RngStreams Rng => _rng;
-        public MatchClock Clock => _clock;
         public TickPipeline Pipeline => _pipeline;
+
+        // ── 담당자 읽기 모델 ──
+        public MatchClock Clock => _clock;
+        public CostLedger Cost => _cost;
+        public ScoreLedger Score => _score;
+        public HeartMeter Heart => _heart;
+        public WaveScheduler Waves => _waves;
+        public PlacementService Placement => _placement;
+        public HandDeck Hand => _hand;
+        public GimmickHost Gimmick => _gimmick;
+
+        /// <summary>이 판의 목표. 「끝났나 / 몇 점인가」 두 판정만 갖는다.</summary>
+        public IMatchGoal Goal => _goal;
+
+        /// <summary>HUD·결과 화면이 읽는 진행값.</summary>
+        public GoalReadModel GoalRead => _goal.Read(_goalCtx);
+
+        /// <summary>
+        /// 판이 끝난 시점의 성적. **조립 지점은 여기 하나**다 — 예전엔 종료 경로 다섯이
+        /// 각자 조립해 한 곳만 빠뜨려도 조용히 어긋났다(Y10).
+        /// </summary>
+        public MatchOutcome Outcome => _goal.BuildOutcome(_goalCtx);
 
         /// <summary>배달까지 끝난 이벤트. Unity 층이 틱 뒤에 드레인하고 `ClearEvents()` 한다.</summary>
         public IReadOnlyList<CoreEvent> Events => _bus.Outbox;
@@ -123,11 +189,30 @@ namespace Wassup.BattleCore
 
         public void Begin()
         {
-            _clock.Begin(_def.Mode, _bus, Dt);
             _ctx.Tick = 0;
-            _bus.Publish(CoreEvent.MatchStartedAt(0));
+
             // 시작 사건은 **첫 틱을 기다리지 않는다** — 뷰가 판을 세우는 신호라 틱 0 의
-            // 스폰보다 먼저 배달돼야 한다.
+            // 스폰보다 먼저 배달돼야 한다. 그래서 담당자들의 판 경계보다도 앞에 발행한다.
+            _bus.Publish(CoreEvent.MatchStartedAt(0));
+
+            // 판 경계는 **담당자마다 자기 `Begin`** 이다. 「판 경계」를 부르는 한 함수를 만들지
+            // 않는 것이 중복 7 의 처방이고, 여기 나열된 호출은 조립이지 규칙이 아니다.
+            ref var mode = ref _def.Mode;
+            _clock.Begin(in mode, _bus, Dt);
+            _cost.Begin(in mode.Cost, _def.CostRateMultiplier, regenStartsNow: !mode.HasPlacementPhase);
+            _score.Begin();
+            _heart.Begin(in _def.Heart);
+            _placement.Begin(_def.Roster, mode.PlacementInputEnabled, mode.RetireEnabled,
+                             mode.BoardCap, _def.EffectTileCount,
+                             Wassup.Core.MatchSeed.DeriveMapSeed(_def.Seed));
+            _waves.Begin(in _def.WaveDeck, in _def.WavePlan,
+                         mode.WaveSource == WaveSourceKind.AuthoredPlan,
+                         _def.Enemies, _def.Seed,
+                         System.Math.Max(1, _def.Map.Spawns.Length), _ctx.Report);
+            _hand.Begin(null, _def.Seed, in mode.Awakening, mode.HandSize, mode.AttachCap);
+            _gimmick.Begin(mode.GimmickEnabled, _def.Seed);
+            _goal.OnBegin(_goalCtx);
+
             _bus.Flush();
         }
 

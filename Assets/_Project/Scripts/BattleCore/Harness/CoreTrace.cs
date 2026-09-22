@@ -44,6 +44,24 @@ namespace Wassup.BattleCore
         Knockup = 16,
         LeapAscend = 17,
         LeapDescend = 18,
+        // ── unit 4 (매치 담당자) ──
+        WaveQueued = 19,
+        WaveStarted = 20,
+        BonusOffered = 21,
+        BonusPulled = 22,
+        CostChanged = 23,
+        Placed = 24,
+        Retired = 25,
+        PlacementRejected = 26,
+        DefenderActivated = 27,
+        HeartChanged = 28,
+        HeartCollapsed = 29,
+        GimmickAssigned = 30,
+        PlacementPhaseChanged = 31,
+        // ⚠ `ScoreChanged` 는 **채널이 없다.** 처치 사건과 1:1 이라 새 정보가 0 이고
+        // (`UnitSlain` + 진영으로 정확히 재구성된다) 총점은 아래 `finalScore` 가 증언한다.
+        // 「전부 기록」을 강제하지 않는 이유가 이것이다 — 같은 사실의 두 번째 기록은
+        // 골든을 부풀리기만 하고, 부푼 골든은 아무도 diff 하지 않는다.
     }
 
     public struct CoreTraceEvent
@@ -127,6 +145,20 @@ namespace Wassup.BattleCore
                 case CoreEventKind.Knockup: channel = CoreTraceChannel.Knockup; return true;
                 case CoreEventKind.LeapAscend: channel = CoreTraceChannel.LeapAscend; return true;
                 case CoreEventKind.LeapDescend: channel = CoreTraceChannel.LeapDescend; return true;
+                // ── unit 4 ──
+                case CoreEventKind.WaveQueued: channel = CoreTraceChannel.WaveQueued; return true;
+                case CoreEventKind.WaveStarted: channel = CoreTraceChannel.WaveStarted; return true;
+                case CoreEventKind.BonusOffered: channel = CoreTraceChannel.BonusOffered; return true;
+                case CoreEventKind.BonusPulled: channel = CoreTraceChannel.BonusPulled; return true;
+                case CoreEventKind.CostChanged: channel = CoreTraceChannel.CostChanged; return true;
+                case CoreEventKind.Placed: channel = CoreTraceChannel.Placed; return true;
+                case CoreEventKind.Retired: channel = CoreTraceChannel.Retired; return true;
+                case CoreEventKind.PlacementRejected: channel = CoreTraceChannel.PlacementRejected; return true;
+                case CoreEventKind.DefenderActivated: channel = CoreTraceChannel.DefenderActivated; return true;
+                case CoreEventKind.HeartChanged: channel = CoreTraceChannel.HeartChanged; return true;
+                case CoreEventKind.HeartCollapsed: channel = CoreTraceChannel.HeartCollapsed; return true;
+                case CoreEventKind.GimmickAssigned: channel = CoreTraceChannel.GimmickAssigned; return true;
+                case CoreEventKind.PlacementPhaseChanged: channel = CoreTraceChannel.PlacementPhaseChanged; return true;
                 default: channel = default; return false;
             }
         }

@@ -1,7 +1,7 @@
 LTV0
 channels=core
 scenario=detect_and_chase
-configHash=f4cc635abdcbfed9
+configHash=78625707a0b13f7b
 matchSeed=2003
 stepDt=0.016666668
 tickCount=1200

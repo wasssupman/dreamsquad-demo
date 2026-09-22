@@ -71,6 +71,17 @@ namespace Wassup.BattleCore
 
         public int Count => _units.Count;
 
+        /// <summary>
+        /// unit 4 — 스폰 순번. 측면 분산의 레인 배정이 이 값을 쓴다(RNG 없음).
+        ///
+        /// ⚠ **가변 상태다**(X25 보류). 「N번째 스폰이 어디냐」를 알려면 앞의 N−1 을 재생해야
+        /// 한다는 뜻이고, 스냅샷 부분 재시뮬·리플레이 점프의 전제 조건이 그래서 아직 없다.
+        /// 현행 의미를 유지하는 것이 이 unit 의 결정이고, 순번 파생 전환은 후속 후보다.
+        /// 스폰 경로가 셋(디버그·웨이브·보너스)이라 카운터를 **한 곳**에 둔다 —
+        /// 각자 들면 같은 문에서 나온 적들이 서로 겹친다.
+        /// </summary>
+        public int SpawnOrdinal;
+
         public BattleWorld(EventBus bus, int capacity)
         {
             _bus = bus;

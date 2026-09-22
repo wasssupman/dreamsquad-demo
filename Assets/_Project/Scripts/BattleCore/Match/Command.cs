@@ -24,6 +24,42 @@ namespace Wassup.BattleCore
         /// (「헤드리스로 3분 판 완주」)에 답할 수 없다.
         /// </summary>
         DebugSpawnDefender = 7,
+
+        // ── unit 4 ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 뷰가 「배치 비행이 끝났다」고 알린다. 비행은 **프레젠테이션 시간**이라 코어가
+        /// 길이를 모르고, 착지부터 배치 모션 길이를 다시 잰다.
+        /// </summary>
+        LandDefender = 8,
+
+        /// <summary>
+        /// 배치 창을 닫는다. **종료 경로가 하나**인 것이 계약이다 — 자동 시작(카운트다운
+        /// 만료)도 같은 함수로 합류한다. 두 번째 경로가 생기면 코스트 재생·국면 전이 중
+        /// 하나를 빠뜨린다.
+        /// </summary>
+        FinishPlacement = 9,
+
+        /// <summary>다음 웨이브를 당긴다. **규칙층** — 상한이 걸린다(전멸로만 회복).</summary>
+        PullWave = 10,
+
+        /// <summary>손패의 카드를 유닛에 붙인다. 효과는 unit 7 — 여기서는 자원만 움직인다.</summary>
+        AttachCard = 11,
+
+        /// <summary>액티브 카드를 시전한다. 효과는 unit 7.</summary>
+        CastActive = 12,
+
+        /// <summary>
+        /// 보너스 웨이브를 당긴다. **본류와 코드 경로를 공유하지 않는다** — 별도 큐·타임라인·
+        /// 포탈이고, 그래서 커맨드도 별개다(같은 버튼으로 접으면 둘 중 하나가 조용히 죽는다).
+        /// </summary>
+        PullBonus = 13,
+
+        /// <summary>
+        /// 다음 웨이브를 **기제층**으로 민다(상한 무시). 하네스가 판을 굴리는 동력이라
+        /// no-op 으로 만들면 통합 스모크가 타임아웃한다.
+        /// </summary>
+        DebugForceWave = 14,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -65,6 +101,24 @@ namespace Wassup.BattleCore
         NoSuchEntity,
         /// <summary>배선되지 않은 커맨드가 판정에 도달했다 = 통합 버그.</summary>
         UnknownCommand,
+
+        // ── unit 4 ────────────────────────────────────────────────────────────
+        /// <summary>그 종류의 재배치 대기가 안 끝났다.</summary>
+        OnCooldown,
+        /// <summary>당김 상한을 다 썼다. **전멸로만 회복된다**(상한 경과는 회복이 아니다).</summary>
+        PullCapReached,
+        /// <summary>더 밀 웨이브가 없다.</summary>
+        NoMoreWaves,
+        /// <summary>각성 게이지가 그 카드 값에 모자란다.</summary>
+        InsufficientAwakening,
+        /// <summary>그 카드가 손패에 없다.</summary>
+        CardNotInHand,
+        /// <summary>액티브는 부착 경로로 못 가고, 부착 카드는 시전 경로로 못 간다.</summary>
+        WrongCardKind,
+        /// <summary>그 액티브의 재사용 대기가 안 끝났다.</summary>
+        CardOnCooldown,
+        /// <summary>그 유닛의 부착 상한이 찼다.</summary>
+        AttachCapReached,
     }
 
     public struct Command
@@ -92,7 +146,10 @@ namespace Wassup.BattleCore
         /// <summary>`DebugSetObstacle` 의 켬/끔.</summary>
         public bool Flag;
 
-        // 카드·스킬 필드(`cardId` · `host` · `skill`)는 unit 7(트리거 레이어)에서 붙는다.
+        /// <summary>unit 4 — `MatchDefinition.Cards` 의 인덱스(`AttachCard` · `CastActive`). -1 = 해당 없음.</summary>
+        public int CardIndex;
+
+        // 스킬 파라미터(대상 자리·방향 등)는 unit 7(트리거 레이어)에서 붙는다.
 
         public static Command PlaceDefender(int defIndex, int2 cell, float2 facing = default) => new Command
         {
@@ -102,6 +159,7 @@ namespace Wassup.BattleCore
             Facing = facing,
             Target = SimEntityId.None,
             Lane = -1,
+            CardIndex = -1,
         };
 
         public static Command Retire(SimEntityId target) => new Command
@@ -110,6 +168,7 @@ namespace Wassup.BattleCore
             DefIndex = -1,
             Target = target,
             Lane = -1,
+            CardIndex = -1,
         };
 
         public static Command Submit() => new Command
@@ -118,6 +177,7 @@ namespace Wassup.BattleCore
             DefIndex = -1,
             Target = SimEntityId.None,
             Lane = -1,
+            CardIndex = -1,
         };
 
         /// <summary>칸 지정 스폰(맵 없는 픽스처용). 레인은 쓰지 않는다.</summary>
@@ -128,6 +188,7 @@ namespace Wassup.BattleCore
             Cell = cell,
             Target = SimEntityId.None,
             Lane = -1,
+            CardIndex = -1,
         };
 
         /// <summary>레인 지정 스폰. 입구 칸·기본 경로·측면 분산 레인이 전부 이 번호에서 나온다.</summary>
@@ -138,6 +199,7 @@ namespace Wassup.BattleCore
             Cell = int2.zero,
             Target = SimEntityId.None,
             Lane = lane,
+            CardIndex = -1,
         };
 
         public static Command DebugDestroy(SimEntityId target) => new Command
@@ -146,6 +208,7 @@ namespace Wassup.BattleCore
             DefIndex = -1,
             Target = target,
             Lane = -1,
+            CardIndex = -1,
         };
 
         /// <summary>판정 없이 방어유닛을 세운다(하네스·골든 전용).</summary>
@@ -157,6 +220,7 @@ namespace Wassup.BattleCore
             Facing = facing,
             Target = SimEntityId.None,
             Lane = -1,
+            CardIndex = -1,
         };
 
         /// <summary>길목을 막았다 푼다. 흐름장은 **막힌 틱에** 다시 구워진다(장애물 시그니처).</summary>
@@ -167,7 +231,81 @@ namespace Wassup.BattleCore
             Cell = cell,
             Target = SimEntityId.None,
             Lane = -1,
+            CardIndex = -1,
             Flag = on,
+        };
+
+        // ── unit 4 ────────────────────────────────────────────────────────────
+
+        /// <summary>배치 비행이 끝났다(뷰가 알린다). 여기서부터 배치 모션 길이를 잰다.</summary>
+        public static Command LandDefender(SimEntityId target) => new Command
+        {
+            Kind = CommandKind.LandDefender,
+            DefIndex = -1,
+            Target = target,
+            Lane = -1,
+            CardIndex = -1,
+        };
+
+        /// <summary>배치 창을 닫는다(플레이어 또는 카운트다운 만료).</summary>
+        public static Command FinishPlacement() => new Command
+        {
+            Kind = CommandKind.FinishPlacement,
+            DefIndex = -1,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+        };
+
+        /// <summary>다음 웨이브를 당긴다(규칙층 — 상한이 걸린다).</summary>
+        public static Command PullWave() => new Command
+        {
+            Kind = CommandKind.PullWave,
+            DefIndex = -1,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+        };
+
+        /// <summary>카드를 유닛에 붙인다.</summary>
+        public static Command AttachCard(int cardIndex, SimEntityId host) => new Command
+        {
+            Kind = CommandKind.AttachCard,
+            DefIndex = -1,
+            Target = host,
+            Lane = -1,
+            CardIndex = cardIndex,
+        };
+
+        /// <summary>액티브 카드를 시전한다. `cell` = 대상 자리(쓰는 카드만).</summary>
+        public static Command CastActive(int cardIndex, int2 cell = default) => new Command
+        {
+            Kind = CommandKind.CastActive,
+            DefIndex = -1,
+            Cell = cell,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = cardIndex,
+        };
+
+        /// <summary>보너스 웨이브를 당긴다(제안이 떠 있을 때만).</summary>
+        public static Command PullBonus() => new Command
+        {
+            Kind = CommandKind.PullBonus,
+            DefIndex = -1,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+        };
+
+        /// <summary>다음 웨이브를 기제층으로 민다(상한 무시 — 하네스 동력).</summary>
+        public static Command DebugForceWave() => new Command
+        {
+            Kind = CommandKind.DebugForceWave,
+            DefIndex = -1,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
         };
     }
 

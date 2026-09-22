@@ -1,7 +1,7 @@
 LTV0
 channels=core
 scenario=kill_race_basic
-configHash=9cbd6c43dd345fe2
+configHash=9d7e7891559f3384
 matchSeed=3001
 stepDt=0.016666668
 tickCount=10800
@@ -643,6 +643,6 @@ events=636
 8858 2 34 -1 2 -20000
 10800 3 0 -1 1 180000
 finalKills=30
-finalScore=0
+finalScore=30
 finalLeaks=0
 finalStateHash=FF2771F3D6B38FDB

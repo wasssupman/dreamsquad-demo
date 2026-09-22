@@ -1,7 +1,7 @@
 LTV0
 channels=core
 scenario=empty_board
-configHash=c1f9c2a8792e7fb2
+configHash=1e2706820e38f792
 matchSeed=1234
 stepDt=0.016666668
 tickCount=10800

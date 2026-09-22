@@ -25,6 +25,10 @@ namespace Wassup.Tests.EditMode.Core
         [TestCase("detour_obstacle")]
         [TestCase("detect_and_chase")]
         [TestCase("kill_race_basic")]
+        [TestCase("kill_race_3min")]
+        [TestCase("wave_clear_8")]
+        [TestCase("time_attack_8")]
+        [TestCase("heart_collapse")]
         public void 골든과_일치한다(string name)
         {
             var sc = CoreGoldenCorpus.ByName(name);

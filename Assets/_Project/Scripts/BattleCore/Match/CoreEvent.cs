@@ -57,6 +57,49 @@ namespace Wassup.BattleCore
         LeapAscend = 18,
         /// <summary>도약 강하. 일반 도약은 sim 이 이미 착지했고 뷰만 난다.</summary>
         LeapDescend = 19,
+
+        // ── unit 4 (매치 담당자) ──────────────────────────────────────────────
+        /// <summary>웨이브가 예약됐다. `Arg` = 웨이브 번호(1부터), `Amount` = 총 마리수.</summary>
+        WaveQueued = 20,
+        /// <summary>
+        /// 그 웨이브의 **첫 적이 실제로 나왔다.** `Arg` = 웨이브 번호, `Amount` = 보스 웨이브(1)/아님(0).
+        /// 보스 경보가 읽는 **유일한** 신호다 — 판별은 생성기 한 곳이고 여기서 재판정하지 않는다(X13).
+        /// </summary>
+        WaveStarted = 21,
+        /// <summary>보너스 당김이 제안됐다. **래치**라 한 번만 난다(문턱에서 떨리지 않는다).</summary>
+        BonusOffered = 22,
+        /// <summary>보너스를 당겼다. `Arg` = 이번에 나올 마리수.</summary>
+        BonusPulled = 23,
+        /// <summary>
+        /// 코스트가 **불연속으로** 움직였다(지불·환급·획득). `Arg` = 증감(정수), `Amount` = 현재값.
+        /// ⚠ 초당 재생은 여기 오지 않는다 — 연속값이라 뷰가 읽는 것이 맞고, 매 틱 쏘면 판당 만 건이다.
+        /// </summary>
+        CostChanged = 24,
+        /// <summary>배치가 성사됐다. `Arg` = 정의표 인덱스, `Amount` = 치른 코스트.</summary>
+        Placed = 25,
+        /// <summary>퇴근했다. `Arg` = 정의표 인덱스, `Amount` = 그 유닛에 걸린 재배치 대기(초).</summary>
+        Retired = 26,
+        /// <summary>
+        /// 배치가 거절됐다. **receipt 와 별개**다 — receipt 는 그 입력을 낸 쪽에게 가고,
+        /// 이것은 「누가 거절당했다」를 판 전체에 알린다(트레이·연출).
+        /// `Arg` = 거절 사유, `Amount` = 정의표 인덱스.
+        /// </summary>
+        PlacementRejected = 27,
+        /// <summary>배치 페이즈가 끝나 그 유닛이 **활성화**됐다. `Arg` = 정의표 인덱스.</summary>
+        DefenderActivated = 28,
+        /// <summary>마음이 움직였다. `Arg` = 남은 체력(정수), `Amount` = 스트레스(0~100).</summary>
+        HeartChanged = 29,
+        /// <summary>마음이 무너졌다. **첫 붕괴가 곧 판의 끝**이다.</summary>
+        HeartCollapsed = 30,
+        /// <summary>점수가 움직였다. `Arg` = 총점.</summary>
+        ScoreChanged = 31,
+        /// <summary>이번 판의 기믹이 정해졌다. `Arg` = 기믹 인덱스(-1 = 없음).</summary>
+        GimmickAssigned = 32,
+        /// <summary>
+        /// 배치 창이 열렸다/닫혔다. `Arg` = 열림(1)/닫힘(0), `Amount` = 창의 길이(초).
+        /// **길이가 0 이어도 열림 신호는 난다** — 이 신호가 트레이를 만든다(census 계약 3).
+        /// </summary>
+        PlacementPhaseChanged = 33,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -291,5 +334,62 @@ namespace Wassup.BattleCore
                              new Site(u.Position, u.HitRadius),
                              new Site(landing, 0f),
                              u.Faction, ultimate ? 1 : 0, 0f);
+
+        // ── unit 4 ────────────────────────────────────────────────────────────
+        //
+        // 판 자신이 주체인 사건은 `A = SimEntityId.Match`(0) 다. 「누구의 사건도 아닌 사건」의
+        // host 가 판이라는 것이 unit 0 항목 9 의 센티널 계약이다.
+
+        private static CoreEvent Match(CoreEventKind kind, int tick, int arg, float amount)
+            => new CoreEvent(kind, tick, SimEntityId.Match, SimEntityId.None,
+                             Site.Nowhere, Site.Nowhere, Faction.None, arg, amount);
+
+        public static CoreEvent WaveQueued(int tick, int waveNumber, int totalCount)
+            => Match(CoreEventKind.WaveQueued, tick, waveNumber, totalCount);
+
+        public static CoreEvent WaveStarted(int tick, int waveNumber, bool boss)
+            => Match(CoreEventKind.WaveStarted, tick, waveNumber, boss ? 1f : 0f);
+
+        public static CoreEvent BonusOffered(int tick)
+            => Match(CoreEventKind.BonusOffered, tick, 1, 0f);
+
+        public static CoreEvent BonusPulled(int tick, int enemyCount)
+            => Match(CoreEventKind.BonusPulled, tick, enemyCount, 0f);
+
+        public static CoreEvent CostChanged(int tick, int delta, float current)
+            => Match(CoreEventKind.CostChanged, tick, delta, current);
+
+        public static CoreEvent Placed(int tick, Unit u, int defIndex, float cost)
+            => new CoreEvent(CoreEventKind.Placed, tick, u.Id, SimEntityId.None,
+                             new Site(u.Position, u.HitRadius), Site.Nowhere,
+                             u.Faction, defIndex, cost);
+
+        public static CoreEvent Retired(int tick, Unit u, int defIndex, float cooldown)
+            => new CoreEvent(CoreEventKind.Retired, tick, u.Id, SimEntityId.None,
+                             new Site(u.Position, u.HitRadius), Site.Nowhere,
+                             u.Faction, defIndex, cooldown);
+
+        public static CoreEvent PlacementRejected(int tick, RejectReason reason, int defIndex)
+            => Match(CoreEventKind.PlacementRejected, tick, (int)reason, defIndex);
+
+        public static CoreEvent DefenderActivated(int tick, Unit u, int defIndex)
+            => new CoreEvent(CoreEventKind.DefenderActivated, tick, u.Id, SimEntityId.None,
+                             new Site(u.Position, u.HitRadius), Site.Nowhere,
+                             u.Faction, defIndex, 0f);
+
+        public static CoreEvent HeartChanged(int tick, float health, float stress)
+            => Match(CoreEventKind.HeartChanged, tick, (int)health, stress);
+
+        public static CoreEvent HeartCollapsed(int tick)
+            => Match(CoreEventKind.HeartCollapsed, tick, 0, 0f);
+
+        public static CoreEvent ScoreChanged(int tick, int score)
+            => Match(CoreEventKind.ScoreChanged, tick, score, 0f);
+
+        public static CoreEvent GimmickAssigned(int tick, int gimmickIndex)
+            => Match(CoreEventKind.GimmickAssigned, tick, gimmickIndex, 0f);
+
+        public static CoreEvent PlacementPhaseChanged(int tick, bool open, float windowSeconds)
+            => Match(CoreEventKind.PlacementPhaseChanged, tick, open ? 1 : 0, windowSeconds);
     }
 }

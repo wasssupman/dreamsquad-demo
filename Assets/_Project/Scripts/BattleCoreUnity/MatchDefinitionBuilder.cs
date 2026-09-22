@@ -1,6 +1,8 @@
 using Unity.Mathematics;
+using UnityEngine;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Map;
+using Wassup.BattleCore.Wave;
 using Wassup.Data;
 
 namespace Wassup.BattleCoreUnity
@@ -20,6 +22,52 @@ namespace Wassup.BattleCoreUnity
     // 안 고치면 「스탯을 바꿨는데 해시가 그대로」라는 조용한 실패가 된다.
     public static class MatchDefinitionBuilder
     {
+        /// <summary>
+        /// **모드를 읽는 유일한 지점.** 판 밖의 저작(모드 SO · 덱 · 플랜 · 기믹 풀)을 한 번에
+        /// plain 정의표로 굽는다.
+        ///
+        /// 적 목록을 **여기서 모으는** 것이 핵심이다: 코어의 웨이브 저작은 SO 참조가 아니라
+        /// `MatchDefinition.Enemies` 의 **인덱스**라서, 표를 만드는 쪽과 인덱스를 매기는 쪽이
+        /// 갈리면 웨이브가 엉뚱한 적을 부른다.
+        /// </summary>
+        public static MatchDefinition Build(MatchModeData mode,
+                                            DefenderUnitData[] defenders,
+                                            AttackDeck deck,
+                                            WavePlanAsset plan,
+                                            BonusWaveData bonus,
+                                            int seed,
+                                            float costRateMultiplier = 1f,
+                                            in GeneratedMap map = default,
+                                            float tileSize = 1f)
+        {
+            var enemies = CollectEnemies(deck, plan, bonus);
+            var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize);
+
+            def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
+            def.WaveDeck = ToDeckDef(deck, enemies);
+            def.WavePlan = ToPlanDef(plan, enemies);
+            def.Bonus = ToBonusDef(bonus, enemies);
+            def.Heart = ToHeartConfig(deck);
+            def.Gimmicks = ToGimmickDefs(mode);
+            def.Roster = RosterOf(defenders);
+
+            // ⚠ 정의표가 다 찬 **뒤에** 굽는다. 먼저 구우면 「덱을 바꿨는데 해시가 그대로」가 된다.
+            def.ConfigHash = def.ComputeConfigHash();
+            return def;
+        }
+
+        /// <summary>
+        /// 모드 선택 3단: **테스트 모드 강제 &gt; 로비/서버 지정 &gt; 기본 모드**.
+        /// 한 줄짜리 규칙이지만 호출처가 셋(스쿼드·테스트·토너먼트)이라 여기 한 곳에 둔다 —
+        /// 세 곳에 두면 언젠가 하나가 다른 순서를 쓴다.
+        /// </summary>
+        public static MatchModeData ResolveMode(MatchModeData testOverride,
+                                                MatchModeData lobbyOrServer,
+                                                MatchModeData fallback)
+            => testOverride != null ? testOverride
+             : lobbyOrServer != null ? lobbyOrServer
+             : fallback;
+
         public static MatchDefinition Build(DefenderUnitData[] defenders,
                                             AttackUnitData[] enemies,
                                             int seed,
@@ -150,6 +198,276 @@ namespace Wassup.BattleCoreUnity
                 TargetFactions = (int)d.targetFactions,
                 MoveSpeed = d.moveSpeed,
             };
+        }
+
+        // ── unit 4: 모드·덱·플랜·기믹 → plain ────────────────────────────────
+
+        public static ModeDef ToModeDef(MatchModeData m)
+        {
+            if (m == null) return ModeDef.Default();
+            return new ModeDef
+            {
+                ModeId = m.modeId,
+                Goal = m.goalKind,
+                TargetWaves = m.targetWaves,
+                Clock = m.clockKind,
+                MatchSeconds = m.durationSec,
+                SubmitUnlockSeconds = m.submitUnlockSec,
+                AllowSubmit = m.allowSubmit,
+                WaveSource = m.waveSourceKind,
+                GimmickEnabled = m.gimmickEnabled,
+                PlacementInputEnabled = m.placementPhaseEnabled,
+                PlacementSeconds = m.PlacementSeconds,
+                SquadSlots = m.squadSlots,
+                BoardCap = m.boardCap,
+                RetireEnabled = m.retireEnabled,
+                Cost = new CostDef
+                {
+                    Start = m.CostStart,
+                    Max = m.CostMax,
+                    RegenPerSec = m.CostRegenPerSec,
+                },
+                DeckSize = m.DeckSize,
+                PublicActiveCount = m.publicActiveCount,
+                HandSize = m.HandSize,
+                AttachCap = m.AttachCap,
+                Awakening = new AwakeningDef { Start = m.AwakeningStart, Max = m.AwakeningMax },
+                SubmitsReport = m.submitsReport,
+                LeaderboardId = m.leaderboardId,
+            };
+        }
+
+        /// <summary>
+        /// 그 판에 나올 수 있는 적 **전부**를 순서대로 모은다(중복 제거). 이 순서가 곧
+        /// 정의표 인덱스이고, 웨이브·보스·보너스가 그 번호로 서로를 가리킨다.
+        /// </summary>
+        public static AttackUnitData[] CollectEnemies(AttackDeck deck, WavePlanAsset plan, BonusWaveData bonus)
+        {
+            var list = new System.Collections.Generic.List<AttackUnitData>(24);
+            if (deck != null)
+            {
+                Add(list, deck.ResolveAttackUnitPool());
+                Add(list, deck.bossPool);
+                Add(list, deck.bossUnit);
+            }
+            if (plan != null && plan.waves != null)
+                for (int i = 0; i < plan.waves.Count; i++)
+                {
+                    var w = plan.waves[i];
+                    if (w == null || w.groups == null) continue;
+                    for (int g = 0; g < w.groups.Count; g++)
+                        Add(list, w.groups[g] != null ? w.groups[g].unit : null);
+                }
+            if (bonus != null) Add(list, bonus.enemyUnit);
+            return list.ToArray();
+
+            void Add(System.Collections.Generic.List<AttackUnitData> into, params AttackUnitData[] units)
+            {
+                if (units == null) return;
+                for (int i = 0; i < units.Length; i++)
+                {
+                    var u = units[i];
+                    if (u == null || into.Contains(u)) continue;
+                    into.Add(u);
+                }
+            }
+        }
+
+        private static int IndexOf(AttackUnitData[] enemies, AttackUnitData unit)
+        {
+            if (unit == null || enemies == null) return -1;
+            for (int i = 0; i < enemies.Length; i++) if (enemies[i] == unit) return i;
+            return -1;
+        }
+
+        private static int[] IndicesOf(AttackUnitData[] enemies, System.Collections.Generic.IReadOnlyList<AttackUnitData> units)
+        {
+            if (units == null) return System.Array.Empty<int>();
+            var list = new System.Collections.Generic.List<int>(units.Count);
+            for (int i = 0; i < units.Count; i++)
+            {
+                int at = IndexOf(enemies, units[i]);
+                if (at >= 0 && !list.Contains(at)) list.Add(at);
+            }
+            return list.ToArray();
+        }
+
+        public static WaveDeckDef ToDeckDef(AttackDeck deck, AttackUnitData[] enemies)
+        {
+            if (deck == null) return WaveDeckDef.Empty();
+
+            // 보스 폴백(풀이 비면 `bossUnit` 단일)은 **여기서** 접는다. 옛 구현은 생성기가
+            // 그 폴백을 소유했는데, 코어의 덱 정의표에는 단일 보스 칸이 아예 없다 —
+            // 「두 표현 중 하나」가 사라졌으므로 접는 자리도 SO 를 아는 쪽으로 옮겼다.
+            var bossList = new System.Collections.Generic.List<AttackUnitData>(4);
+            if (deck.bossPool != null)
+                for (int i = 0; i < deck.bossPool.Length; i++)
+                    if (deck.bossPool[i] != null && !bossList.Contains(deck.bossPool[i]))
+                        bossList.Add(deck.bossPool[i]);
+            if (bossList.Count == 0 && deck.bossUnit != null) bossList.Add(deck.bossUnit);
+
+            return new WaveDeckDef
+            {
+                GeneratorVersion = deck.waveGeneratorVersion,
+                WaveSeed = deck.waveSeed,
+                TimerDurationSec = deck.timerDurationSec,
+                MinWaveCount = deck.minWaveCount,
+                MaxWaveCount = deck.maxWaveCount,
+                MinUnitsPerWave = deck.minUnitsPerWave,
+                MaxUnitsPerWave = deck.maxUnitsPerWave,
+                WaveCountJitter = deck.waveCountJitter,
+                IntraWaveSpacingSec = deck.intraWaveSpacingSec,
+                MaxWaveIntervalSec = deck.maxWaveIntervalSec,
+                SpawnLeadInSec = deck.waveSpawnLeadInSec,
+                UnitGrowthPerWave = deck.unitGrowthPerWave,
+                MaxPullsPerClear = deck.maxPullsPerClear,
+                BossWaveInterval = deck.bossWaveInterval,
+                BossEscortMin = deck.bossEscortMin,
+                BossEscortMax = deck.bossEscortMax,
+                EnemyPool = IndicesOf(enemies, deck.ResolveAttackUnitPool()),
+                BossPool = IndicesOf(enemies, bossList),
+                Concepts = ToConceptDefs(deck.waveConceptPool),
+                ConceptHoldWaves = deck.conceptHoldWaves,
+                RampBreakWave = deck.waveRampBreakWave,
+                RampBreakUnits = deck.waveRampBreakUnits,
+            };
+        }
+
+        private static WaveConceptDef[] ToConceptDefs(WaveConceptData[] pool)
+        {
+            if (pool == null) return System.Array.Empty<WaveConceptDef>();
+            var list = new System.Collections.Generic.List<WaveConceptDef>(pool.Length);
+            for (int i = 0; i < pool.Length; i++)
+            {
+                var c = pool[i];
+                if (c == null) continue;
+                list.Add(new WaveConceptDef
+                {
+                    Id = c.id,
+                    DisplayName = c.displayName,
+                    Weight = c.weight,
+                    MinWaveNumber = c.minWaveNumber,
+                    CountMul = c.countMul,
+                    Slots = ToSlotDefs(c.slots),
+                    VariantSlots = ToSlotDefs(c.variantSlots),
+                });
+            }
+            return list.ToArray();
+        }
+
+        private static WaveSlotDef[] ToSlotDefs(WaveConceptSlot[] slots)
+        {
+            if (slots == null) return System.Array.Empty<WaveSlotDef>();
+            var list = new System.Collections.Generic.List<WaveSlotDef>(slots.Length);
+            for (int i = 0; i < slots.Length; i++)
+            {
+                var s = slots[i];
+                if (s == null) continue;
+                list.Add(new WaveSlotDef
+                {
+                    ClassFilter = (int)s.classFilter,
+                    Altitude = s.altitude == Wassup.Data.SlotAltitude.Air
+                        ? Wassup.BattleCore.Wave.SlotAltitude.Air
+                        : Wassup.BattleCore.Wave.SlotAltitude.Ground,
+                    LaneGroup = s.laneGroup,
+                    PathIndex = s.pathIndex,
+                });
+            }
+            return list.ToArray();
+        }
+
+        public static WavePlanDef ToPlanDef(WavePlanAsset plan, AttackUnitData[] enemies)
+        {
+            if (plan == null || plan.waves == null) return default;
+            var waves = new AuthoredWaveDef[plan.waves.Count];
+            for (int i = 0; i < waves.Length; i++)
+            {
+                var w = plan.waves[i];
+                var groups = System.Array.Empty<AuthoredGroupDef>();
+                if (w != null && w.groups != null)
+                {
+                    var list = new System.Collections.Generic.List<AuthoredGroupDef>(w.groups.Count);
+                    for (int g = 0; g < w.groups.Count; g++)
+                    {
+                        var grp = w.groups[g];
+                        if (grp == null || grp.unit == null || grp.count <= 0) continue;
+                        list.Add(new AuthoredGroupDef
+                        {
+                            TriggerTimeSec = grp.triggerTimeSec,
+                            EnemyIndex = IndexOf(enemies, grp.unit),
+                            Count = grp.count,
+                            LaneIndex = grp.laneIndex,
+                            PathIndex = -1,
+                        });
+                    }
+                    groups = list.ToArray();
+                }
+                waves[i] = new AuthoredWaveDef
+                {
+                    DurationSec = w != null ? w.durationSec : 0f,
+                    IntervalSec = w != null ? w.intervalSec : 0f,
+                    Groups = groups,
+                };
+            }
+            return new WavePlanDef
+            {
+                DisplayName = plan.displayName,
+                TimerDurationSec = plan.timerDurationSec,
+                Waves = waves,
+            };
+        }
+
+        public static BonusWaveDef ToBonusDef(BonusWaveData bonus, AttackUnitData[] enemies)
+        {
+            if (bonus == null || bonus.enemyUnit == null) return BonusWaveDef.None();
+            return new BonusWaveDef
+            {
+                EnemyIndex = IndexOf(enemies, bonus.enemyUnit),
+                EnemyCount = bonus.enemyCount,
+                PortalAppearDelaySec = bonus.portalAppearDelaySec,
+                FirstSpawnDelaySec = bonus.firstSpawnDelaySec,
+                SpawnIntervalSec = bonus.spawnIntervalSec,
+                KillThreshold = bonus.killThreshold,
+                MaxStressToOffer = bonus.maxStressToOffer,
+            };
+        }
+
+        /// <summary>
+        /// 마음의 저작. 덱 SO 에 살지만 주인은 `HeartMeter` 라 **담당자 이름으로** 넘긴다 —
+        /// 웨이브 정의표 안에 두면 「웨이브 저작」을 읽으러 온 사람이 거기서 마음 체력을 만난다.
+        /// </summary>
+        public static HeartDef ToHeartConfig(AttackDeck deck)
+            => deck == null
+                ? HeartDef.Default()
+                : new HeartDef
+                {
+                    MaxHealth = deck.goalStabilityMax,
+                    KillHealPerAwakening = deck.killHealPerAwakening,
+                };
+
+        private static GimmickDef[] ToGimmickDefs(MatchModeData mode)
+        {
+            if (mode == null || !mode.gimmickEnabled || mode.gimmickPool == null)
+                return System.Array.Empty<GimmickDef>();
+            var list = new System.Collections.Generic.List<GimmickDef>(mode.gimmickPool.Length);
+            for (int i = 0; i < mode.gimmickPool.Length; i++)
+            {
+                var g = mode.gimmickPool[i];
+                if (g == null) continue;
+                list.Add(new GimmickDef { Id = g.gimmickId });
+            }
+            return list.ToArray();
+        }
+
+        // 놓을 수 있는 유닛 = 반입한 스쿼드 **그대로**다. 전투 빌더가 나중에 카탈로그 밖
+        // 에셋(순찰 소환물)을 표에 편입하므로, 그 전에 찍어 둔 이 번호들이 로스터가 된다.
+        private static int[] RosterOf(DefenderUnitData[] defenders)
+        {
+            if (defenders == null) return System.Array.Empty<int>();
+            var list = new System.Collections.Generic.List<int>(defenders.Length);
+            for (int i = 0; i < defenders.Length; i++)
+                if (defenders[i] != null) list.Add(i);
+            return list.ToArray();
         }
 
         private static EnemyDef[] BuildEnemies(AttackUnitData[] src)
