@@ -3,7 +3,7 @@ channels=core
 scenario=march_to_goal
 configHash=5296ef62fbdd49c7
 matchSeed=2001
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=1800
 events=13
 0 0 0 -1 0 0

@@ -3,7 +3,7 @@ channels=core
 scenario=time_attack_8
 configHash=b26875d141d2a3ee
 matchSeed=8081
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=20000
 events=666
 0 0 0 -1 0 0

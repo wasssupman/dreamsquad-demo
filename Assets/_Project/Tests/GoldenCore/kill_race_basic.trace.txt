@@ -3,7 +3,7 @@ channels=core
 scenario=kill_race_basic
 configHash=86de96713a12926a
 matchSeed=3001
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=10800
 events=636
 0 0 0 -1 0 0

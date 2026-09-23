@@ -3,7 +3,7 @@ channels=core
 scenario=heart_collapse
 configHash=acdbfe735bb644eb
 matchSeed=9090
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=6000
 events=28
 0 0 0 -1 0 0

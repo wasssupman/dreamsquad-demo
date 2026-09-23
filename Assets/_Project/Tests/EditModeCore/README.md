@@ -11,7 +11,9 @@
 
 - **Unity EditMode** — 정본 lane. 에디터가 열려 있을 때.
 - **헤드리스 `dotnet test`** — `Tools/battle-core-rebuild/headless/BattleCore.Tests.csproj`.
-  에디터 없이 도는 반복 lane.
+  에디터 없이 도는 반복 lane. **골든 대조(`[Category("Golden")]`)는 뺀다** — Unity 의 Mono 는
+  float 식을 확장 정밀도로 평가해 .NET 9 와 1 ulp 부터 갈리고(약 300틱), 긴 판은 이벤트
+  순서까지 갈린다(`kill_race_3min` 9,887틱). 골든은 Unity 에서 굽고 Unity 에서 대조한다.
 
 그래서 테스트 소스는 **`NUnit.Framework` 와 코어 타입만** 쓴다.
 `UnityEngine.Debug` · `Application.dataPath` · `[UnityTest]` 를 쓰면 헤드리스에서 깨진다.

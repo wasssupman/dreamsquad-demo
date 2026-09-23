@@ -172,7 +172,9 @@ namespace Wassup.BattleCore
             sb.Append("scenario=").Append(scenario).Append('\n');
             sb.Append("configHash=").Append(configHash).Append('\n');
             sb.Append("matchSeed=").Append(matchSeed.ToString(inv)).Append('\n');
-            sb.Append("stepDt=").Append(stepDt.ToString("R", inv)).Append('\n');
+            // "R" 은 런타임마다 자릿수가 다르다(.NET 9 = 최단 왕복 8자리, Mono = 9자리) —
+            // 같은 float 이 다른 문자열로 저장돼 골든 diff 에 헤더 잡음이 낀다. G9 는 둘 다 같다.
+            sb.Append("stepDt=").Append(stepDt.ToString("G9", inv)).Append('\n');
             sb.Append("tickCount=").Append(tickCount.ToString(inv)).Append('\n');
             sb.Append("events=").Append(events.Count.ToString(inv)).Append('\n');
             for (int n = 0; n < events.Count; n++)

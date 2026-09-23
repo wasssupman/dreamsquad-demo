@@ -3,7 +3,7 @@ channels=core
 scenario=wave_clear_8
 configHash=a0b2734329c22de1
 matchSeed=8080
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=20000
 events=666
 0 0 0 -1 0 0

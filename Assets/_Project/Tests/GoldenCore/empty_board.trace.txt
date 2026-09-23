@@ -3,7 +3,7 @@ channels=core
 scenario=empty_board
 configHash=d32a566e23a215c3
 matchSeed=1234
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=10800
 events=2
 0 0 0 -1 0 0

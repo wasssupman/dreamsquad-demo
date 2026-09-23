@@ -3,7 +3,7 @@ channels=core
 scenario=detour_obstacle
 configHash=66415fd78ccb20ae
 matchSeed=2002
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=1800
 events=8
 0 0 0 -1 0 0

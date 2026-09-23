@@ -3,7 +3,7 @@ channels=core
 scenario=spawn_destroy
 configHash=d32a566e23a215c3
 matchSeed=4321
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=300
 events=7
 0 0 0 -1 0 0

@@ -3,7 +3,7 @@ channels=core
 scenario=detect_and_chase
 configHash=5994552440849ab9
 matchSeed=2003
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=1200
 events=41
 0 0 0 -1 0 0

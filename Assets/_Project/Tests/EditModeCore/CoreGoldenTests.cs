@@ -19,6 +19,13 @@ namespace Wassup.Tests.EditMode.Core
                 "골든 폴더를 못 찾으면 아래 테스트들은 «통과하지만 아무것도 증언하지 않는다»");
         }
 
+        // ⚠ **골든의 정본 런타임은 Unity EditMode 다.** Unity 의 Mono 는 float 식을 확장 정밀도로
+        // 평가한다(`a*a-1` 이 .NET 9 에선 2⁻¹¹, Mono 에선 2⁻¹¹+2⁻²⁴ · 곱 연쇄도 1 ulp 갈린다).
+        // 그래서 같은 코드가 헤드리스 dotnet 에서는 ~300틱 뒤 1 ulp 부터 갈리고, 긴 판
+        // (`kill_race_3min`) 은 9,887틱에서 이벤트 순서까지 갈린다. 결정론 계약은 **같은
+        // 런타임 안**의 것이고(계약 5), 골든은 Unity 에서 굽는다(`Wassup/BattleCore/Golden`).
+        // 헤드리스 lane 은 이 카테고리를 뺀다(`BattleCore.Tests.csproj` 의 VSTestTestCaseFilter).
+        [Category("Golden")]
         [TestCase("empty_board")]
         [TestCase("spawn_destroy")]
         [TestCase("march_to_goal")]

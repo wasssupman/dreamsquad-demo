@@ -3,7 +3,7 @@ channels=core
 scenario=siege_instinct_fall
 configHash=b841ff7c6b8d8fc8
 matchSeed=9191
-stepDt=0.016666668
+stepDt=0.0166666675
 tickCount=6000
 events=199
 0 0 0 -1 0 0
