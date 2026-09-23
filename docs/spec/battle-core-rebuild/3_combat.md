@@ -65,6 +65,12 @@
 | `MoveState.Ai` → `Unit.Ai.Enemy` | spec 구현 12 —「결정은 UnitAi, 저장은 `Unit.Ai`」. 이동과 공격이 같은 자리를 봐야 「락은 있는데 Marching」 데드락이 안 난다 |
 | `UnitDef.AttackShape`/`EnemyDef.AttackShape`(int) 제거 | `MatchDefinitionBuilder` 가 `(int)d.attackShape` 로 **struct 를 캐스트**하고 있어 Unity 어셈블리가 컴파일되지 않았다(헤드리스 lane 은 이 파일을 안 컴파일해 드러나지 않았다). bake 된 삼각비가 `AttackDef` 에 들어오면서 중복이기도 했다 |
 
+### 나중에 **고친** 것
+
+| 언제 | 무엇 | 왜 |
+|---|---|---|
+| 2026-09-24 (6a 감사) | 코어 `PatternSelectionRule` 번호를 **옛 저작과 같게** 되돌리고, 빌더의 통짜 캐스트를 **이름 기반 매핑**(`CombatDefinitionBuilder.ToCoreSelection`)으로 바꿨다 | unit 3 이 이 enum 을 「읽기 좋게」 재배열(`None = 0`)해 두고 주석에는 「번호는 옛과 같다」고 적었는데 **거짓**이었다. 저작 값은 이미 구워진 `ProjectilePatternData` 에셋에 들어 있어서 **12개 저작 중 11개가 다른 규칙으로 읽혔다** — 0(캐논·나이트메어 탄막 = 순회 폭격)이 「선택 안 함」이 되고, 2(샷거너·머신거너·관통·저격·마크스맨 = 방향 발사)가 「무작위 저격」이 됐다. ⚠ 골든은 안 바뀐다 — 코퍼스는 SO 를 안 읽어 발사 명세 줄이 **0개**다(그래서 이 결함이 골든에 안 잡혔다). 그물은 `PatternSelectionRulePinTests`(assets lane — 두 어휘를 동시에 보는 유일한 자리) |
+
 ## 규칙 → 증언 매핑 (전투 판정 「필수」 18)
 
 | # | 규칙 | 증언 |

@@ -337,6 +337,34 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
+        /// <summary>
+        /// 저작 선정 규칙 → 코어 어휘. **이름으로 옮긴다.**
+        ///
+        /// ⚠ 통짜 캐스트(`(int)p.selection`)로 옮기던 시절, 코어 enum 이 번호를 재배열해
+        /// 두어서 **12개 저작 중 11개가 다른 규칙으로 읽혔다**(순회 폭격 → 선택 안 함,
+        /// 방향 발사 → 무작위 저격). 번호가 지금은 같아도 캐스트로 되돌리지 말 것 —
+        /// 한쪽이 append 하는 날 같은 일이 조용히 다시 난다.
+        /// </summary>
+        public static Wassup.BattleCore.Combat.Emission.PatternSelectionRule ToCoreSelection(
+            PatternSelectionRule authored)
+        {
+            switch (authored)
+            {
+                case PatternSelectionRule.RoundRobin:
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin;
+                case PatternSelectionRule.DeterministicShuffle:
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.DeterministicShuffle;
+                case PatternSelectionRule.None:
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.None;
+                case PatternSelectionRule.Nearest:
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.Nearest;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 선정 규칙({authored}) — 순회로 접는다.");
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin;
+            }
+        }
+
         private static PatternDef ToDef(ProjectilePatternData p, List<ProjectileData> projectiles)
         {
             var d = new PatternDef
@@ -344,7 +372,7 @@ namespace Wassup.BattleCoreUnity
                 Id = p.id,
                 BarrelProjectileDefIndex = IndexOf(projectiles, p.barrel),
                 Damage = p.damage,
-                Selection = (int)p.selection,
+                Selection = (int)ToCoreSelection(p.selection),
                 MinAngleDeg = p.minAngleDeg,
                 MaxAngleDeg = p.maxAngleDeg,
                 RandomizeShotsPerTrigger = p.randomizeShotsPerTrigger,

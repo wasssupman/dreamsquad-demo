@@ -8,12 +8,21 @@ using Unity.Mathematics;
 
 namespace Wassup.BattleCore.Combat.Emission
 {
-    /// <summary>후보 선정 규칙. 저작 축이고 번호는 옛 `PatternSelectionRule` 과 같다.</summary>
+    /// <summary>
+    /// 후보 선정 규칙. **번호는 옛 저작(`Wassup.Data.PatternSelectionRule`)과 같다** —
+    /// 그 값이 이미 구워진 `ProjectilePatternData` 에셋에 직렬화돼 있기 때문이다.
+    ///
+    /// ⚠ 초판이 이 순서를 「읽기 좋게」 재배열해 `None = 0` 으로 두었고, 빌더가 통짜
+    /// 캐스트로 옮기는 바람에 **12개 저작 중 11개가 다른 규칙으로 읽혔다** —
+    /// 저작 0(순회 폭격)이 「선택 안 함」이 되고 2(방향 발사)가 「무작위 저격」이 됐다.
+    /// 번호는 append-only 계약이다. 보기 좋은 순서가 필요하면 그건 저작 쪽에서 한다.
+    /// `PatternSelectionRulePinTests` 가 두 enum 의 이름↔값 일치를 고정한다.
+    /// </summary>
     public enum PatternSelectionRule : byte
     {
-        None = 0,
-        RoundRobin = 1,
-        DeterministicShuffle = 2,
+        RoundRobin = 0,
+        DeterministicShuffle = 1,
+        None = 2,
         Nearest = 3,
     }
 
