@@ -91,26 +91,6 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
-        public void 자석_스냅은_row_major_첫_합격을_준다()
-        {
-            var match = CoreMatchFixtures.BeginBattle(CoreMatchFixtures.Definition());
-            match.Apply(Command.PlaceDefender(0, new int2(5, 2)));   // 원하는 자리를 막아 둔다
-
-            Assert.IsTrue(match.Placement.TrySnapAnchor(0, new int2(5, 2), 1, out var snapped));
-            // 반경 1 테두리를 row-major 로 훑으면 (4,1) 이 첫 합격이다.
-            Assert.AreEqual(new int2(4, 1), snapped,
-                "동률을 거리로 풀면 짝수 변 footprint 에서 부동소수가 자리를 정한다");
-        }
-
-        [Test]
-        public void 자석_스냅은_원하는_자리가_되면_그대로_둔다()
-        {
-            var match = CoreMatchFixtures.BeginBattle(CoreMatchFixtures.Definition());
-            Assert.IsTrue(match.Placement.TrySnapAnchor(0, new int2(5, 2), 1, out var snapped));
-            Assert.AreEqual(new int2(5, 2), snapped);
-        }
-
-        [Test]
         public void 판_상한은_유닛_저작과_모드_상한을_둘_다_본다()
         {
             var def = CoreMatchFixtures.Definition();

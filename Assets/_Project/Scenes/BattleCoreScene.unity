@@ -1315,7 +1315,6 @@ MonoBehaviour:
   _stickMargin: 0.28
   _snapIntervalSec: 0.08
   _outsideToleranceCells: 1
-  _magnetRadiusCells: 1
   _deployFlight: {fileID: 2098208960}
 --- !u!4 &341322859
 Transform:

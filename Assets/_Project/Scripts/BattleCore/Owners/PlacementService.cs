@@ -301,30 +301,6 @@ namespace Wassup.BattleCore
             return RejectReason.None;
         }
 
-        /// <summary>
-        /// 자석 스냅. 원하는 자리가 안 되면 그 둘레에서 **row-major 첫 합격**을 준다.
-        ///
-        /// 판정과 **같은 함수**(`Judge`)를 쓰는 것이 계약이다 — 프리뷰가 자기 자를 따로 가지면
-        /// 「고스트는 초록인데 놓으면 거절」이 난다. row-major first-win 인 이유는 동률을
-        /// 거리로 풀면 짝수 변 footprint 에서 동점이 생기고 그 동점을 부동소수가 가르기 때문이다.
-        /// </summary>
-        public bool TrySnapAnchor(int defIndex, int2 desired, int radius, out int2 anchor)
-        {
-            anchor = desired;
-            if (Judge(defIndex, desired) == RejectReason.None) return true;
-            for (int r = 1; r <= math.max(0, radius); r++)
-                for (int y = desired.y - r; y <= desired.y + r; y++)
-                for (int x = desired.x - r; x <= desired.x + r; x++)
-                {
-                    if (math.abs(x - desired.x) != r && math.abs(y - desired.y) != r) continue; // 테두리만
-                    var c = new int2(x, y);
-                    if (Judge(defIndex, c) != RejectReason.None) continue;
-                    anchor = c;
-                    return true;
-                }
-            return false;
-        }
-
         // ── 착지·활성화 ──────────────────────────────────────────────────────
 
         /// <summary>

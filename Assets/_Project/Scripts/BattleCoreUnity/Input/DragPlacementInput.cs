@@ -21,7 +21,9 @@ namespace Wassup.BattleCoreUnity.Input
     //
     // 이 파일이 하는 일 정확히 넷:
     //   ① 손가락을 칸으로 옮긴다(`PlacementCellSnap` · `PlacementSnapDebounce` — 순수 함수 재사용)
-    //   ② 그 칸이 놓을 수 있는지 **코어에 묻는다**(`Judge` · `TrySnapAnchor`) — 재판정 아님
+    //   ② 그 칸이 놓을 수 있는지 **코어에 묻는다**(`Judge`) — 재판정 아님. **보정은 없다**:
+    //      손끝이 가리킨 칸이 곧 결과이고, 못 놓는 칸이면 고스트가 빨강으로 머문다
+    //      (자석 스냅은 사용자 결정 2026-09-23 으로 은퇴 — `TryResolveAnchor` 헤더)
     //   ③ 놓는다(`Command.PlaceDefender`) 그리고 receipt 를 **표시한다**
     //   ④ 비행을 **띄워 보낸다**(`CoreDeployFlightPresenter.Launch`). 비행이 뜨면 「착지했다」
     //      (`Command.LandDefender`)는 **끝을 아는 그쪽**이 낸다 — 비행은 프레젠테이션 시간이라
@@ -55,8 +57,6 @@ namespace Wassup.BattleCoreUnity.Input
         [SerializeField, Min(0f)] private float _snapIntervalSec = 0.08f;
         [Tooltip("격자 밖 이 칸 수까지는 테두리 칸에 붙인다. 더 나가면 「아무 칸도 아니다」 = 취소.")]
         [SerializeField, Min(0)] private int _outsideToleranceCells = 1;
-        [Tooltip("못 놓는 칸일 때 둘레 몇 칸까지 자석으로 당기나. 0 = 자석 없음.")]
-        [SerializeField, Min(0)] private int _magnetRadiusCells = 1;
 
         [Header("착지")]
         // ⚠ **자기 타이머를 갖지 않는다.** 5b 는 「드롭 → n초 뒤 착지」를 여기 한 칸으로 뒀는데,
@@ -157,27 +157,11 @@ namespace Wassup.BattleCoreUnity.Input
             var director = EnsureDirector();
             if (director != null) director.SetDragFocus(screen);
 
-            if (!TryResolveCell(judged, out var cell)) { _anchorValid = false; HideGhost(); return; }
-            _cell = cell;
-
-            var def = _driver.Definition;
-            if (_defIndex < 0 || _defIndex >= def.Units.Length) return;
-            ref var unit = ref def.Units[_defIndex];
-            var size = new Vector2Int(math.max(1, unit.FootprintWidth), math.max(1, unit.FootprintHeight));
-
-            // 손끝 규약: 손가락 칸 = footprint **하단 행의 가로 중앙**. 유닛은 손가락 위로 자란다.
-            var anchorV = FootprintMath.AnchorFromBottomCenter(cell, size);
-            var anchor = new int2(anchorV.x, anchorV.y);
-
-            var placement = _driver.Match.Placement;
-            bool valid = placement.Judge(_defIndex, anchor) == RejectReason.None;
-            if (!valid && _magnetRadiusCells > 0
-                && placement.TrySnapAnchor(_defIndex, anchor, _magnetRadiusCells, out var snapped))
+            if (!TryResolveAnchor(judged, _defIndex, sticky: true, out var anchor, out bool valid))
             {
-                // **자석도 코어의 것이다.** 프리뷰가 자기 자를 따로 가지면
-                // 「고스트는 초록인데 놓으면 거절」이 난다.
-                anchor = snapped;
-                valid = true;
+                _anchorValid = false;
+                HideGhost();
+                return;
             }
 
             _anchor = anchor;
@@ -185,9 +169,45 @@ namespace Wassup.BattleCoreUnity.Input
             if (_overlay != null) _overlay.ShowPlacement(_defIndex, anchor, valid);
         }
 
+        /// <summary>
+        /// 화면 한 점 → **그 유닛을 세울 앵커**와 그 자리의 유효성. 드래그와 armed 보드 제스처가
+        /// **같은 함수**를 쓴다 — 둘이 각자 손끝 규약을 가지면 같은 손동작이 한쪽은 배치,
+        /// 한쪽은 취소가 된다.
+        ///
+        /// ⚠ **보정(자석)이 없다**(사용자 결정 2026-09-23). 예전에는 못 놓는 칸이면 둘레에서
+        /// 합격 앵커를 찾아 **거기로 옮겼는데**, 불가 칸이 겹친 자리나 포인터 미세 이동에서
+        /// 손끝과 결과가 크게 갈렸다 — 화면이 「여기 놓인다」고 말한 적이 없는 칸에 유닛이 섰다.
+        /// 지금은 손끝이 가리킨 칸이 곧 결과이고, 못 놓는 칸이면 **고스트가 빨강으로 그 자리에
+        /// 머물고** 드롭은 거절된다.
+        ///
+        /// `sticky` = 칸 경계 히스테리시스·시간 스로틀을 태운다(드래그는 켜고, 탭은 끈다 —
+        /// 탭은 피드백 루프를 볼 시간 없이 커밋되므로 밴드가 오히려 누른 칸을 배신한다).
+        /// </summary>
+        public bool TryResolveAnchor(Vector2 screen, int defIndex, bool sticky,
+                                     out int2 anchor, out bool valid)
+        {
+            anchor = default;
+            valid = false;
+            if (_driver == null || !_driver.Running) return false;
+
+            var def = _driver.Definition;
+            if (defIndex < 0 || defIndex >= def.Units.Length) return false;
+            if (!TryResolveCell(screen, sticky, out var cell)) return false;
+            if (sticky) _cell = cell;
+
+            var size = new Vector2Int(math.max(1, def.Units[defIndex].FootprintWidth),
+                                      math.max(1, def.Units[defIndex].FootprintHeight));
+            // 손끝 규약: 손가락 칸 = footprint **하단 행의 가로 중앙**. 유닛은 손가락 위로 자란다.
+            var anchorV = FootprintMath.AnchorFromBottomCenter(cell, size);
+            anchor = new int2(anchorV.x, anchorV.y);
+            var placement = _driver.Match.Placement;
+            valid = placement.Judge(defIndex, anchor) == RejectReason.None;
+            return true;
+        }
+
         // 화면 좌표 → 칸. 「아무 칸도 아니다」(격자 밖 관용 초과)는 **null** 이고 그것이
         // 「보드 밖 = 취소」를 성립시킨다 — 무조건 격자로 clamp 하면 그 경로가 도달 불가해진다.
-        private bool TryResolveCell(Vector2 screen, out Vector2Int cell)
+        private bool TryResolveCell(Vector2 screen, bool sticky, out Vector2Int cell)
         {
             cell = default;
             if (!BoardSpace.IsConfigured) return false;
@@ -204,9 +224,15 @@ namespace Wassup.BattleCoreUnity.Input
             var frac = new Vector2(sim.x / ts, sim.z / ts);
 
             var grid = _driver.GridSize;
-            var resolved = PlacementCellSnap.Resolve(_cell, frac, _stickMargin,
-                                                     new Vector2Int(grid.x, grid.y), _outsideToleranceCells);
+            // 격자 밖 관용은 **두 경로가 같이 쓴다** — armed 탭만 관용 0 이면 같은 손동작이
+            // 한쪽은 배치, 한쪽은 취소가 된다(옛 `TryResolveArmedCell` 헤더의 계약).
+            var resolved = PlacementCellSnap.Resolve(sticky ? _cell : null, frac,
+                                                     sticky ? _stickMargin : 0f,
+                                                     new Vector2Int(grid.x, grid.y),
+                                                     _outsideToleranceCells);
             if (!resolved.HasValue) return false;
+
+            if (!sticky) { cell = resolved.Value; return true; }
 
             // 공간 히스테리시스 **위에** 시간 스로틀. 둘을 겹치는 이유: 공간만으로는 경계를
             // 넘는 순간 즉시 따라가 이동 중에 칸이 휙휙 바뀌고, 시간만으로는 정지 중에도

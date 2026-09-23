@@ -86,6 +86,11 @@ namespace Wassup.Tests.PlayMode.Core
             // 입력에서 물으면 그 물음이 두 번째 자다.
             StringAssert.DoesNotContain("CanAfford", src);
             StringAssert.DoesNotContain("OnBoard", src);
+
+            // 사용자 결정 2026-09-23 — **보정(자석)은 은퇴했다.** 손끝이 가리킨 칸이 곧
+            // 결과다. 되살아나면 「화면이 여기라고 말한 적 없는 칸에 유닛이 서는」 증상이
+            // 그대로 돌아온다. 값이 아니라 **형태**라 런타임 단언만으로는 잘 안 잡힌다.
+            StringAssert.DoesNotContain("TrySnapAnchor", src);
         }
 #endif
 
