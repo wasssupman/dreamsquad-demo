@@ -12,9 +12,9 @@
 |---|---|---|
 | `Wassup.Tests.EditMode` | 고속 코어. 순수 계산 + 합성 픽스처 ECS/UI. **실제 프로젝트 에셋을 로드하지 않는다** | ~2,230개 · **~26초** |
 | `Wassup.Tests.EditMode.Assets` | 실에셋(SO·맵·덱·카탈로그·프리팹) 저작 검증 | ~160개 · **~5초** |
-| `Wassup.Tests.EditMode.Core` | **새 전투 코어**(`Wassup.BattleCore`)의 규칙. 엔진을 안 쓰고 씬도 안 연다 | ~360개 · **~10초** |
+| `Wassup.Tests.EditMode.Core` | **새 전투 코어**(`Wassup.BattleCore`)의 규칙. 엔진을 안 쓰고 씬도 안 연다 | ~370개 · **~10초** |
 | `Wassup.Tests.PlayMode` | 씬 부팅 E2E·스모크 (67파일 중 59개가 씬 로드) — **옛 전투**. unit 9 에서 은퇴 | ~144개 · **~8분** |
-| `Wassup.Tests.PlayMode.Core` | 새 씬(`BattleCoreScene`) 부팅 스모크 · 뷰 방출 순서 · 틱 발행률 | 5개 · **~1분** |
+| `Wassup.Tests.PlayMode.Core` | 새 씬(`BattleCoreScene`) 부팅 스모크 · 뷰 방출 순서 · 틱 발행률 · 배치 사슬 · 씬 배선 · 뷰가 자를 새로 만들지 않았나 | ~16개 · **~1분** |
 
 `Wassup.DepthParallax.Tests`(6개)는 모듈 로컬이라 전체 실행 때만 따라온다.
 

@@ -29,11 +29,58 @@
 | `_defenderByTile` 등 브리지 등록부 11 | 코어 담당자 소유(`PlacementService` 등). 뷰는 `SimEntityId → 뷰` 사전만 | 필수 규칙의 소유 이전 |
 | `Controller` 이름 3종 | `*Input` 으로 | 계약 12 |
 | 드래그 컨트롤러 안의 배치 판정 복제 | 커맨드 receipt 하나 | 제거 |
+| **방향 지정 배치**(조준 화살표 · `facing`) | 저작된 방향 유닛만의 축이고 이 unit 의 질문(「배치가 도나」)에 답하지 않는다. 커맨드에 자리는 이미 있다(`Command.PlaceDefender(…, facing)`) — 그 축이 열릴 때 입력 한 줄이다 | 보류 · 콘텐츠 |
+| **배치 취소**(`TryCancelPendingDeployment` · 되돌리기 유예) | 판 위에 선 뒤의 되돌리기는 없다. 보드 밖 드롭은 **커맨드를 안 보내고**(그래서 코스트도 안 나간다), 이미 선 유닛의 복구는 **퇴근**이다 — 실수 복구 통로를 둘 두지 않는다 | 제거 |
+| 선택 패널(탭 → 실효 스탯 · 부착 카드 줄) | 부착·스택 사건이 코어에 없다(unit 6·7). 빈 슬롯을 먼저 만들면 **「이게 여기서 조절된다」고 광고**한다(5a 가 오버헤드 카드 줄을 뺀 것과 같은 이유). 퇴근은 그래서 **길게 누르기**로 먼저 열었다 | 보류 · unit 7 |
+| 예고선의 **광휘·스트릭 레이어**(4겹 중 2겹) | 절차적 텍스처 넷 + 가산 머티리얼 셋을 요구하고, 그 머티리얼이 전부 `Shader.Find` 로 서 있다 — 복사하면 모바일 stripping 에서 null 이다(추가 제약). 남긴 것은 **코어 실선 + 스폰 링** | 보류 · 룩 |
+| 트레이의 **쿨타임 액체 셰이더** | 코스트 물통과 공유하는 자산이고, 이 unit 의 질문에 답하는 데 필요하지 않다. 차오르는 덮개로 같은 사실을 말한다 | 보류 · 룩 |
+| 배치 **연출 VFX**(`PlayDeploymentRingPulse` · `PlayFallbackDeploymentPulse` · `FireOnPlaceCameraShake`) | 세기·프리팹이 전부 유닛 저작값이라 5b 가 지어낼 수 없다(하드코딩 금지). 배치 **모션**만 옮겼다(`DefenderActivated` → 뷰 풀). 카메라 흔들기의 주인은 `CameraDirector.Shake` 이고 호출부가 unit 6 이다 | 보류 · unit 6 |
+| **클릭 배치**(`PlacementInput` 의 탭 경로) | 옛 게임에서 이미 은퇴했다(2026-07-08 — 배치는 드래그 전용). 죽은 경로를 새 층에 되살리지 않는다 | 제거 |
+| 자동 시작 **카운트다운**(배치 페이즈 없는 모드의 3초 숫자) | 모드 진입 3단의 일부라 **5c** 다. 여기 두면 「판이 어떻게 시작하나」의 주인이 둘이 된다 | 보류 · 5c |
+| 결과 화면 · 나가기 버튼 | 판 종료 → 결과 → 제출 게이트는 **5c** 다. 메뉴에 「나가기」를 먼저 만들면 그 버튼이 무엇을 정리해야 하는지를 이 파일이 결정하게 된다 | 보류 · 5c |
+| 「소진 > 쿨타임 > 코스트」 **순서를 트레이가 드는 것** | 순서는 코어(`PlacementService.SlotBlock`)의 것이다. 뷰가 들면 드롭 거절과 답이 갈리고, 그 갈림은 「초록인데 거절」로만 보인다 | 제거(소유 이전) |
+
+## 고친 것 (기존 코어·Unity 층 변경)
+
+| 무엇 | 왜 |
+|---|---|
+| `PlacementService.SlotBlock(defIndex)` 신설 + `Judge` 가 그것을 부른다 | 트레이 도색과 드롭 거절이 **같은 함수**에서 나와야 한다. 옛 트레이는 「판 위에 몇이지 / 쿨이 남았나 / 살 수 있나」를 각자 세었고, 그래서 배치 판정과 답이 갈릴 수 있었다 |
+| **보드 상한이 재배치 대기보다 앞으로** (`Judge` ④⑤ 교환) | 둘 다 「구조」라 그 사이의 순서는 규칙이 아니라 «둘 다 걸렸을 때 무엇을 말해 주나» 이고, 옛 트레이가 그 답을 「소진 > 쿨타임」으로 이미 정해 두었다. 뒤에 두면 상한 1 짜리 유닛이 「재배치 대기 중」이라고 답해 **플레이어가 기다리면 된다고 배운다** — 거짓이다. 라이브 거동 변화 0(성공/실패는 그대로, 사유 문구만 바뀐다) |
+| `AiMovePhase.TryPickStructure` + `BattleMatch.AiMove` 노출 | M18 — 예고선이 **이동과 같은 후보 배열**로 물어야 한다. 배열을 빌려주지 않고 **답 하나**를 주는 이유: 빌려주면 부르는 쪽이 자기 필터를 한 줄 얹고, 그 한 줄이 곧 두 번째 자다(옛 브리지가 정확히 그렇게 갈렸다) |
+| `WaveScheduler.CollectForecast` 신설 | 옛 브리지는 큐잉 때 예보 배열을 **한 번 구워** 들고 있었다. 대기열이 이미 정본이라 굽지 않고 읽는다 — 구우면 당김·보너스가 대기열을 바꿨을 때 예보만 옛 값으로 남는다 |
+| `SpawnPathPreview`(코어 신설) | 예고선은 「적이 실제로 걸을 길」을 그린다고 약속한다. 뷰에 두면 그 약속을 지킬 자가 뷰가 되고, 이동이 평활화·통행층을 바꾸는 날 **라인만 옛 규칙으로 남는다**(옛 전투에서 두 번 났다) |
+| `CameraDirector.SetPhase` 신설(push) | 새 씬에는 `GameManager` 가 없다 — 매니저를 두지 않는 것이 코어의 절대 제약 1 이다. 구독이 성립하지 않으면 `_currentPhase` 가 `None` 에 굳어 **배치 레시피가 영영 안 걸린다.** `SetBoardBounds` 와 같은 단방향 계약이고 옛 씬 거동은 무변 |
+| `CoreCameraFeed`(`Scripts/Presentation/`) | 보드 bounds·포스트 볼륨·페이즈를 디렉터에 **민다.** ⚠ **5a 의 Play 에서 스테이지가 잘리고 회색 띠가 보인 원인이 이것이 없었다는 것**이다 — 디렉터는 bounds 가 없으면 레시피가 있어도 포즈를 **아예 안 쓴다.** 카메라 값을 새로 지어낼 문제가 아니었다. 이 파일만 `BattleCoreUnity/` 밖에 있는 이유는 검사 lane 배선 하나다(파일 헤더 참조) |
+| `BattleDriver.BoardGrid`·`StageRoot` 노출 | 카메라 피드가 판의 월드 bounds 와 스테이지의 포스트 볼륨을 찾는 두 창구. **읽기 전용**이고 값을 만들지 않는다(제약 12 의 판단 순서 ⓐ — 이미 소유한 곳을 가리킨다) |
+| 새 셰이더 `Wassup/BoardOverlay_Unlit` + `Resources/RuntimeMaterials/BoardOverlay.mat` | **`AddComponent<LineRenderer>()` 는 머티리얼을 안 준다** — 첫 Play 에서 격자와 예고선이 전부 마젠타였다. 기존 런타임 머티리얼 둘은 단색이라 정점색도 텍스처도 안 읽는다. `Shader.Find` 로 때우는 것은 추가 제약 위반이라 always-included 로 등록했다 |
+| 스프라이트 틴트를 `MaterialPropertyBlock` 으로 | ⚠ **`SpriteRenderer.color` 로는 색이 안 간다.** 스프라이트의 틴트는 정점색이 아니라 per-renderer 데이터(`_RendererColor`)로 흐르고 그건 내장 스프라이트 셰이더만 읽는다 — 우리 셰이더에 붙이면 **전부 흰색**이다(실측: 배치 가이드가 보드를 통째로 하얗게 덮었다). `LineRenderer` 는 start/end 색을 정점색에 **굽기** 때문에 그대로 통한다 |
+| PlayMode lane asmdef 에 `UnityEngine.UI` 참조 | HUD 가 uGUI 이고, 테스트가 `EventSystem` 유무를 묻는다(없으면 버튼이 **조용히** 안 눌린다) |
 
 ## 완료 기준
 
-- [ ] 드래그 배치 e2e 초록 · 거절 사유 순서 동일.
-- [ ] 예고선이 `StructureChoice` 만 호출(grep: 뷰에 최근접 거점 계산 0).
-- [ ] `bridge-methods.md` 미정 중 입력·HUD·오버레이·예고선 호출 몫 닫힘, 잔량을 상태 라인에.
-- [ ] 뷰·입력 코드에 판정 0 · `Unity.Entities` 0 · Controller 이름 0.
+- [x] 드래그 배치 e2e 초록 · 거절 사유 순서 동일.
+      `CorePlacementFlowTests` 3종(커맨드 → receipt → 뷰 스폰 · receipt ↔ `PlacementRejected` 사유 일치 ·
+      트레이 칸의 답 = 드롭 거절) + 코어 lane `PlacementSlotBlockTests` 5종(소진 > 쿨타임 > 코스트).
+      ⚠ **포인터 제스처 자체는 흉내 내지 않았다** — 손끝→칸 변환은 순수 함수 셋을 **재사용**했고
+      그 셋은 각자 테스트를 이미 갖고 있다. 여기서 증언하는 것은 사슬이다.
+- [x] 예고선이 `StructureChoice` 만 호출(grep: 뷰에 최근접 거점 계산 0).
+      `CoreViewYardstickTests` 가 **소스를 읽어** 못박는다(주석 제외). 막으려는 결함이 값이 아니라
+      **형태**라 런타임 단언으로는 동률·경계에서만 재현된다 — grep 을 테스트로 옮긴 것이다.
+- [x] `bridge-methods.md` 미정 중 입력·HUD·오버레이·예고선 호출 몫 닫힘, 잔량을 상태 라인에.
+      **98 → 64**(34행). `check_ledgers.py` exit 0.
+- [x] 뷰·입력 코드에 판정 0 · `Unity.Entities` 0 · Controller 이름 0.
+      (`grep -rn "Unity.Entities" Scripts/BattleCoreUnity` = 0건 · `class .*Controller` = 0건)
 - [ ] `core-reviewer` APPROVE.
+
+확인 2026-09-23 — Unity EditMode 코어 lane **371/371** · 새 PlayMode lane **16/16** · 콘솔 `error CS` 0 ·
+헤드리스 3종(build 0 · test 360 · Check build 0) · Play 육안(스테이지 프레이밍 · HUD 6 · 격자 · 배치 가이드).
+
+### 남은 것 (다음 세션이 이어받을 자리)
+
+1. **실제 손가락 드래그 확인.** MCP 로는 포인터를 흉내 낼 수 없어 배치를 커맨드로만 돌렸다.
+   사용자 플레이에서 「트레이에서 끌어 보드에 놓는」 손맛을 본다 — 특히 판정 포인터 오프셋(64px)과
+   스냅 주기(0.08초)가 손가락에 맞는지.
+2. **퇴근의 발견 가능성.** 길게 누르기(0.55초)는 배우기 전에는 안 보인다. 선택 패널이 서는
+   unit 7 에서 다시 본다.
+3. **예고선 룩.** 광휘·스트릭 2겹이 빠져 있어 옛 화면보다 얇다. 가산 머티리얼을
+   always-included 로 등록하면 되살릴 수 있다(이 unit 의 `BoardOverlay.mat` 이 그 선례).
