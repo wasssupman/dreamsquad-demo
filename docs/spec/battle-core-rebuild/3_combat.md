@@ -34,21 +34,91 @@
 
 ## 이식 제외
 
+**안 옮긴 것과 그 이유.** 플레이 중 이상하면 이 표부터 본다.
+
 | 안 옮긴 것 | 이유 | 등급 |
 |---|---|---|
-| `RequireForUpdate` 겸직(피해 그릇 0 이면 재생 정지) | 단계 실행 조건 명시로 분리 | 보류(C24) |
-| 캐스트 기계 일체 | 캐스터 제거 확정 | 제거 |
-| `ThreatTable.Leader` | 소비자 0 — 위협 누적만 남긴다(보스 위협 귀속) | 제거(C25) |
-| 요청 캐리어 엔티티·ECB 지연 | 요청 리스트 + 같은 phase 적용 | 보류 |
-| `_aliveAttackersQuery` 공유 쿼리 불변식 | 쿼리 없음. 전멸 판정은 unit 4 가 자기 술어로 | 보류 |
-| 선딜/공속 관계·폴백 사각 자·부채꼴 몸 0·슬램 형 데이터 | 현행 그대로, 플레이 후 재결정 | 보류(C19~C22) |
-| `FanOutToAllCandidates`·`FanOutStaggerSec`(후보 전량 확산) | 정의표·`configHash` 에는 들어가고 **판정은 미배선**(소비처 0). 방향 바인딩이 후보를 고르지 않아 라이브 소비처도 0. unit 7 배치 스킬에서 저작 축으로 남길지 재판정 | 보류(unit 7) |
+| 캐스트 기계 일체(`HazardCast*`·`CastEvents`·Cast seam·`castCountedHosts`) | 캐스터 제거 확정(README 계약 9). 「캐스트 = 공격 사건」도 같이 사라졌다 | 제거 |
+| `ThreatTable` · `ThreatHitEvents` · `Leader` | 보스 위협 귀속의 소비자가 unit 7(보스)이라 그때 세운다. `Leader` 는 소비자 0 이라 부활시키지 않는다 | 제거(C25) |
+| `RequireForUpdate` 겸직(피해 그릇 0 이면 재생 정지) | 단계 실행 조건을 명시로 썼다 — 재생은 `RegenPerSec > 0` 만 본다 | 분리(C24) |
+| 요청 캐리어 엔티티 + ECB | `BattleWorld.ProjectileRequests` 리스트로 충분하다. 나르던 규칙(한 틱에 같은 주체가 독립 발사 여럿)은 그대로 산다 | 보류 |
+| `_aliveAttackersQuery` 공유 쿼리 불변식 | 쿼리가 없다. 전멸 판정은 unit 4 가 자기 술어로 | 보류 |
+| `ProjectileState` 의 슬롯 겸직표(주석 40줄) | unmanaged struct 크기를 아끼려는 ECS 제약의 산물이지 규칙이 아니다. 새 코어는 **이름이 뜻을 말한다** | 제거 |
+| `BounceRetarget` 오버로드 3개(층 → 진영 → 몸) | 기존 producer 를 안 깨려고 층층이 쌓인 사슬이다. 새 코어는 producer 가 하나이고 셋을 전부 넘긴다 | 제거 |
+| `ShotOrder`/`PatternLogic` 타입 | 안에 든 것이 전부 발사기의 지역 변수다. ECS 가 `Entity` 를 순수 함수에 못 나르던 제약의 산물 | 제거 |
+| `FrontmostAttackLock`(별도 락 컴포넌트) | 그 락의 존재 이유는 **카드 배율 스냅샷**이었고 배율은 unit 7 의 것이다. 스윙 중 유지는 커밋이 같은 strict lapse 로 이미 한다 | 흡수 |
+| `NextAttackDoubleFire` 컴포넌트 | `ProgressiveStates.Charge` 로 접었다(개시 의도 다섯이 한 자리에 모인다) | 흡수 |
+| `DefenderDensity` 의 사각 자 | 보스 순간이동 착지 지점 선정 = unit 7. 그때 형부터 정하고 온다 | 보류 |
+| 폭탄맨 폴백 사각 자 · 부채꼴 몸 0 | **현행 그대로**(플레이 후 재결정). 원 자로 바꾸면 착지 칸·콘 판정이 조용히 달라진다 = 밸런스 변경 | 보류(C20·C21) |
+| 선딜/공속 관계(실주기 = max) | **현행 그대로.** 「실주기를 누가 소유하나」가 미정이고 수용 확정도 아니다 | 보류(C19) |
+| 착지 슬램의 형을 데이터로 싣기 | 저작이 하나뿐이라 코드가 `OriginBodyRadius = 0` 으로 선언한다. **그 전에 필드를 만들지 말 것** | 보류(C22) |
+| 스탯·스택 출력의 **적용** | 저작(`AttackOutputDef`)은 옮겼고 슬롯 적용은 unit 6 이다. 오늘은 인박스까지 | 이월(unit 6) |
+| `PatternDef.FanOutToAllCandidates` / `FanOutStaggerSec` | 정의표와 `configHash` 에는 있는데 `EmitPatternShot` 에 **소비자가 없다**(옛 `ProjectileEmitterSystem.cs:221` 은 true 면 반경 안 전원에게 한 발씩). 라이브 SO 에서 켠 곳 0건이라 오늘 거동은 같다. 발사 명세를 트리거 레이어가 소비할 때 배선하거나, 그때도 켠 곳이 0 이면 은퇴 판정 | 보류(unit 7) |
+| 군중 제어 슬롯 적용·감쇠·면역 병합 | 같은 이유. 이 unit 은 **부여 측**(누가 무엇을 얼마나)까지 | 이월(unit 6) |
+| 모디파이어 배율(`damageMul`·`attackSpeedMul`·`dmgTakenMul`) | 소비처는 이미 살아 있다(`Unit.DamageTakenMul`·`AttackState.Period(mul)`). 값을 넣는 것이 unit 6 | 이월(unit 6) |
+
+### unit 2 에서 **고친** 것
+
+| 무엇 | 왜 |
+|---|---|
+| `AiMovePhase.HysteresisTiles` 0.5 → `TargetPersistence.HysteresisTiles`(0.1) | 옛 전투의 감지도 `TargetPersistence.KeepsLock` 을 **재사용**했으므로 0.1 이 정본이다. 같은 종류의 진동을 막는 데 두 개의 자를 두지 않는다 |
+| `MoveState.Ai` → `Unit.Ai.Enemy` | spec 구현 12 —「결정은 UnitAi, 저장은 `Unit.Ai`」. 이동과 공격이 같은 자리를 봐야 「락은 있는데 Marching」 데드락이 안 난다 |
+| `UnitDef.AttackShape`/`EnemyDef.AttackShape`(int) 제거 | `MatchDefinitionBuilder` 가 `(int)d.attackShape` 로 **struct 를 캐스트**하고 있어 Unity 어셈블리가 컴파일되지 않았다(헤드리스 lane 은 이 파일을 안 컴파일해 드러나지 않았다). bake 된 삼각비가 `AttackDef` 에 들어오면서 중복이기도 했다 |
+
+## 규칙 → 증언 매핑 (전투 판정 「필수」 18)
+
+| # | 규칙 | 증언 |
+|---|---|---|
+| C1 | 폭탄맨은 던진 그 순간에만 쿨을 돌린다 | `CombatRulesTests.폭탄맨은_적이_없으면_쿨을_만료로_대기시킨다` · `CombatPhase.StepBomb` |
+| C2 | 소환사는 소환물이 살아 있어도 쿨을 돌린다 | `CombatRulesTests.소환사는_소환물이_살아있어도_쿨을_돌린다` · `UnitAiRulesTests.공격_시작은_대기와_유지중_둘이다` |
+| C3 | 폭탄맨·소환사는 대상을 고르기 전에 처리하고 빠져나간다 | `CombatRulesTests.폭탄맨은_근접_피해를_내지_않는다` · `CombatPhase.StepAttack` ⒟ |
+| C4 | 규칙이 발동했는데 실행할 팔이 없으면 경고 | `CombatRulesTests.팔이_없으면_조용히_넘어가지_않는다` · `TickContext.Warn` |
+| C5 | 바늘 캐리어 피해에는 공격력 배율이 안 붙는다 | **unit 7 이월** — 캐리어 자체가 트리거 레이어다(오늘 생산자 0) |
+| C6 | 가디언은 「실제로 때린 적」을 대표로 세운다 | `CombatRulesTests.가디언_대표는_실제로_때린_적이다` · `CombatPhase.Resolve` |
+| C7 | 피해 숫자의 체력 비율은 그 틱 최종값 | `CombatRulesTests.피해_사건은_그_틱_최종_체력_비율을_싣는다` |
+| C8 | 방향을 모르는 대상은 밀리지 않는다 | `CombatRulesTests.방향을_모르는_대상은_안_밀린다` |
+| C9 | 내 피해가 내 수면을 안 깨운다 | `CombatRulesTests.같은_틱에_건_수면은_내_피해가_안_깨운다` + `수면이_없는_피격은_기상_요청을_낸다` |
+| C10 | 칸 자는 순찰 이동 전용 | `AttackReach.InCellRange` 헤더 + 소비처 0(공격 루프는 `InReach`/`InReachShaped` 만) |
+| C11 | 어그로는 배타적이다 | `CombatRulesTests.끌려간_적은_가디언만_본다` · `UnitAiRulesTests.어그로는_사격_대상을_덮는다` |
+| C12 | 공중에서 죽는 일은 없다 | `CombatRulesTests.궁극기_이탈은_피해를_버린다` + `배치중_사망_궁극기이탈은_표적이_아니다` |
+| C13 | 행동 불능 중에는 락을 비우고 재잠금도 건너뛴다 | `CombatRulesTests.행동_불능이면_락을_비우고_다시_안_잠근다` |
+| C14 | 골을 지난 적도 유효 대상 | `CombatRulesTests.골을_지난_적도_때린다` |
+| C15 | 거점에 타입 기반 특별 취급이 없다 | `CombatRulesTests.거점은_거리로만_경쟁한다` |
+| C16 | 우선순위 표의 맨 위 두 칸은 「죽었다」와 「배치 중」 | `CombatRulesTests.배치중_사망_궁극기이탈은_표적이_아니다` · `Unit.IsTargetable` |
+| C17 | 피해·회복은 그 틱에 비우고 실드 부여만 다음 틱 | `CombatRulesTests.실드_부여는_다음_틱에_들어간다` + `피해와_회복은_그_틱에_비운다` |
+| C18 | 순서 어트리뷰트 4건은 명시 단계 목록으로 산다 | `CombatPhase.Run` 하위 단계 8 + `SeamHooks`(Attack·Death·Lifecycle·Threshold) · 사망 2단계는 `사망_표시_틱과_소멸_틱은_다르다` |
+
+**보류 4건의 자리**: C19 `CombatRulesTests.실주기는_간격과_선딜의_큰_쪽이다` · C20 `CombatPureMathTests.폭탄맨의_사각_자는_반경_0_이면_고르지_않는다` · C21 `SkillMath.SectorGate`(몸 0 그대로) · C22 `CombatPhase.StepLeap` 의 `OriginBodyRadius = 0` 선언 + `ProjectileBehaviorTests.궁극기_도약은_이탈_예고_강습_슬램이다`.
+**제거 1건**: C25 `ThreatTable` 미이식(위 표).
+
+## 거시 지표 대조 — 옛 `basic` ↔ 새 `kill_race_basic`
+
+**통과 조건이 아니다**(계약 3 — 옛 골든은 참고다). 두 판은 길이도 저작도 다르므로 **비율과 방향**만 본다.
+
+| 지표 | 옛 `basic` | 새 `kill_race_basic` |
+|---|---|---|
+| 판 길이 | 900틱(15초) | 10,800틱(180초) |
+| 적 스폰 | 트레이스에 스폰 채널이 없어 **미상** | 30 |
+| 처치 | 1 | 30 |
+| 유출(골 도달) | 0 | 0 |
+| 방어유닛 사망 | 0 | 0 |
+| 사건 수 | 76 | 636 |
+
+읽는 법: 옛 판은 15초 동안 적 한 기를 잡고 끝났고, 새 판은 3분 동안 30기를 전부 잡고 아무도 흘리지 않았다. **방향이 같다**(방어가 이기고 유출 0). 절대값 대조는 의미가 없다 — 옛 코퍼스에는 스폰 채널이 없어 분모를 모르고, 저작 값도 공유하지 않는다.
 
 ## 완료 기준
 
-- [ ] 헤드리스 `dotnet build/test` 초록. 복사한 순수 테스트 전부 통과(적응 목록 기록).
-- [ ] 골든 `kill_race_basic`: DebugSpawn 스케줄로 적 30기 vs 방어유닛 4기 3분 — 완주 · `UnitSlain` 수 > 0 · `UnitDestroyed` = 스폰 수 · 결정론 2회 동일.
-- [ ] 옛 코퍼스 `basic` 과의 **거시 지표 대조표**(킬 수·유출 수·생존 방어유닛)를 이 파일에 기록 — 통과 조건 아님, 참고(계약 3).
-- [ ] 규칙 분류표 전투 판정 「필수」 18 이 각각 테스트·골든·코드 포인터에 매핑(표를 하단에).
-- [ ] 소멸 경로 전수 = `BattleWorld.Destroy` 1곳(grep) · `UnitSlain` 은 피해 사망에서만.
+- [x] 헤드리스 `dotnet build/test` 초록. 복사한 순수 테스트 전부 통과(적응 목록은 「이식 제외」 위 표).
+- [x] 골든 `kill_race_basic`: DebugSpawn 스케줄로 적 30기 vs 방어유닛 4기 3분 — 완주 · `UnitSlain` 30 · `UnitDestroyed` = 스폰 수 · 결정론 2회 동일(`DeterminismTests.킬_레이스는_두_실행이_같다` · `킬_레이스가_완주한다`).
+- [x] 옛 코퍼스 `basic` 과의 거시 지표 대조표(위).
+- [x] 규칙 분류표 전투 판정 「필수」 18 이 각각 테스트·골든·코드 포인터에 매핑(위).
+- [x] 소멸 경로 전수 = `BattleWorld.Destroy` 1곳(grep: 호출부 4, 목록 제거는 그 함수 안 2줄뿐) · `UnitSlain` 은 피해 사망에서만(`처치_사건은_피해_사망에서만_난다` · `출처_없는_사망은_처치가_아니다`).
 - [ ] `core-reviewer` APPROVE.
+
+### 재기준선을 잡은 골든 5종
+
+`empty_board` · `spawn_destroy` · `march_to_goal` · `detour_obstacle` · `detect_and_chase` 를 다시 구웠다. 근거:
+
+1. **정의표가 커졌다** — `AttackDef`·`ProjectileDef`·`PatternDef` 가 들어오고 중복 `AttackShape` 가 빠져 `configHash` 가 전부 움직였다. 코드 회귀가 아니라 조건 드리프트다.
+2. **사건 흐름은 먼저 대조했다.** 새 채널을 열기 **전**에 다섯 시나리오의 이벤트 줄을 옛 골든과 diff 해 **완전 일치**를 확인했다(unit 2 동작 무변 — 히스테리시스 0.5→0.1 도 이 다섯에서는 결과를 안 바꿨다).
+3. 그 뒤 전투 채널 11개를 열자 `detour_obstacle`·`detect_and_chase` 에 **`AttackResolved` 만** 늘었다(피해 0 — 두 고정구는 공격 출력이 없다). 나머지 셋은 사건 수 무변.
