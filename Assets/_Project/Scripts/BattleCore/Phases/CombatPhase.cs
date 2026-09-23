@@ -733,38 +733,11 @@ namespace Wassup.BattleCore
             return count;
         }
 
-        // 한 공격이 내는 출력들. **때리는 쪽의 배율이 여기서 붙는다**(unit 6a).
-        private void ApplyOutputs(TickContext ctx, Unit u, AttackState atk, Unit victim)
-        {
-            var outputs = atk.Outputs;
-            float damageMul = DamageMulOf(u, victim);
-
-            for (int o = 0; o < outputs.Length; o++)
-            {
-                var def = outputs[o];
-                switch (def.Kind)
-                {
-                    case AttackOutputKind.Damage:
-                        if (def.Magnitude > 0f)
-                            victim.Inbox.Damage.Add(new DamageEntry
-                            {
-                                Amount = def.Magnitude * damageMul,
-                                Source = u.Id,
-                            });
-                        break;
-                    case AttackOutputKind.Heal:
-                        // 회복은 **배율 밖**이다(공격력 버프가 힐러를 키우지 않는다 — 현행).
-                        if (def.Magnitude > 0f) victim.Inbox.Heal.Add(def.Magnitude);
-                        break;
-                    case AttackOutputKind.ApplyStat:
-                        ApplyStatOutput(ctx, u, victim, in def);
-                        break;
-                    case AttackOutputKind.ApplyStack:
-                        ApplyStackOutput(ctx, u, victim, in def);
-                        break;
-                }
-            }
-        }
+        // 한 공격이 내는 출력들. **적용 자체는 코어의 공용 함수**(`EffectApply.Outputs`)가 한다 —
+        // 평타와 탄 착탄(unit 6a2)이 같은 산출물 표를 소비하므로 **다른 자를 쓰면 안 된다.**
+        // 여기 남는 것은 「누가 누구를 때렸고 배율이 얼마인가」뿐이다.
+        private static void ApplyOutputs(TickContext ctx, Unit u, AttackState atk, Unit victim)
+            => EffectApply.Outputs(ctx, u.Id, u, victim, atk.Outputs, EffectApply.DamageMul(u, victim));
 
         // ── 배율 ─────────────────────────────────────────────────────────────
 
@@ -773,72 +746,6 @@ namespace Wassup.BattleCore
         {
             float speed = u.Modifiers.Effective.AttackSpeedMul;
             return speed > 0f ? 1f / speed : 1f;
-        }
-
-        /// <summary>
-        /// 때리는 쪽의 피해 배율. **「군중 제어에 걸린 적」 추가 배율은 피해자별**이다 —
-        /// 잠든 적 옆의 깨어 있는 적은 기준값 그대로다.
-        ///
-        /// ⚠ 그 술어는 `Cc.Any || Dot.Any` 다. 옛 전투의 한 버퍼(기절·수면·넉백·지속 피해,
-        /// **감속 제외**)가 두 자리로 갈렸을 뿐이라 집합은 같다.
-        /// </summary>
-        private static float DamageMulOf(Unit attacker, Unit victim)
-        {
-            var eff = attacker.Modifiers.Effective;
-            float mul = eff.DamageMul;
-            if (eff.DamageVsCcMul != 1f && victim != null && (victim.Cc.Any || victim.Dot.Any))
-                mul *= eff.DamageVsCcMul;
-            return mul;
-        }
-
-        // ── 스탯·스택 산출물 ──────────────────────────────────────────────────
-        //
-        // ⚠ **출처는 때린 자**다(F30 의 올바른 쪽). 투사체를 경유하는 경로는 오늘 이 산출물을
-        // 나르지 않는다 — 탄은 `Damage` 스칼라 하나만 들고 간다. 그 경로가 열릴 때
-        // `ProjectileDebuffSourceIsProjectile` 한 줄이 출처를 고른다(아래).
-
-        /// <summary>
-        /// **F30 — 사용자 결정 대기.** 옛 전투는 투사체가 건 디버프의 출처로 **투사체 개체**를
-        /// 보내서, 발사마다 새 슬롯이 생겨 곱으로 누적됐다(킨들러류가 그 위에 서 있다).
-        /// 고치면 곱누적이 상시 배율이 되어 눈에 띄게 약해지므로 **수치 재조정과 한 묶음**이다.
-        ///
-        /// 답이 오기 전에는 **현행(투사체 출처)을 박제**한다. 뒤집는 것은 이 상수 하나다 —
-        /// 오늘 탄은 산출물을 안 나르므로 라이브 거동은 둘 다 같고, 탄이 산출물을 나르게
-        /// 되는 순간(unit 7) 이 값이 그 규칙을 정한다.
-        /// </summary>
-        internal const bool ProjectileDebuffSourceIsProjectile = true;
-
-        private static void ApplyStatOutput(TickContext ctx, Unit u, Unit victim, in AttackOutputDef def)
-        {
-            // 진입 가드는 **한 곳**이다 — 거점 전면 면역(F3).
-            if (!EffectEligibility.AcceptsModifier(victim)) return;
-
-            var stat = (StatKind)def.Stat;
-            var op = (CombineOp)def.Op;
-            var key = new ModifierKey(u.Id, stat, op, SlotTag.Default);
-            if (victim.Modifiers.Apply(in key, def.Magnitude, def.Duration, 0f, ModifierOrigin.OnHit))
-                ctx.Bus.Publish(CoreEvent.ModifierApplied(ctx.Tick, victim, u.Id, stat, def.Magnitude, u));
-        }
-
-        private static void ApplyStackOutput(TickContext ctx, Unit u, Unit victim, in AttackOutputDef def)
-        {
-            if (!EffectEligibility.AcceptsModifier(victim)) return;
-
-            var kind = (StackKind)def.StackKind;
-            if (kind == StackKind.None) return;
-
-            var rules = ctx.Def.StackRules;
-            int ruleIndex = StackRules.Resolve(rules, kind, -1);
-            // 저작 상한이 있으면 그것, 없으면 줄의 상한, 그것도 없으면 폴백 5(F14).
-            int maxStack = def.StackMaxStack > 0
-                ? def.StackMaxStack : StackRules.MaxStackOf(rules, ruleIndex);
-            float duration = StackRules.PerAppDurationOf(rules, ruleIndex);
-            if (duration <= 0f) duration = def.Duration;
-
-            int delta = def.Magnitude >= 1f ? (int)def.Magnitude : 1;
-            int count = victim.Stacks.Add(u.Id, kind, ruleIndex, delta, maxStack, duration);
-            if (count > 0)
-                ctx.Bus.Publish(CoreEvent.StackChanged(ctx.Tick, victim, u.Id, kind, count));
         }
 
         private void EmitProjectile(TickContext ctx, Unit u, AttackState atk,
@@ -853,7 +760,7 @@ namespace Wassup.BattleCore
 
             // 탄의 피해는 **발사 시점 스냅샷**이다 — 「군중 제어에 걸린 적」 배율도 그때의
             // 의도 대상을 본다(착탄 시점에 다시 재면 날아가는 동안 풀린 적이 배율을 잃는다).
-            float damageMul = DamageMulOf(u, ctx.World.Find(target));
+            float damageMul = EffectApply.DamageMul(u, ctx.World.Find(target));
             float damage = 0f;
             for (int o = 0; o < atk.Outputs.Length; o++)
                 if (atk.Outputs[o].Kind == AttackOutputKind.Damage)

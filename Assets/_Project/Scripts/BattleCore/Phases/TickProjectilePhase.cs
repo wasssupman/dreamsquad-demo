@@ -176,16 +176,13 @@ namespace Wassup.BattleCore
             switch (rule.Derived)
             {
                 case StackDerivedKind.ApplyDot:
-                {
                     // ⚠ 스택 파생 지속 피해는 **보스에게도 통한다** — 전용 파이프라인이라
                     // 행동불능 면역 술어를 지나지 않는다(옛 전투와 같다. 의도).
-                    var element = DotElementMap.FromStack(kind);
-                    if (u.Dot.Apply(DotOrigin.Stack, element, rule.Magnitude,
-                                    rule.TickInterval, rule.Duration))
-                        ctx.Bus.Publish(CoreEvent.DotApplied(ctx.Tick, u, SimEntityId.None,
-                                                             DotOrigin.Stack, element, rule.Magnitude));
+                    // 출처가 `None` 인 것도 의도다 — 스택이 터진 것이지 누가 때린 것이 아니다.
+                    EffectApply.Dot(ctx, SimEntityId.None, u, DotOrigin.Stack,
+                                    DotElementMap.FromStack(kind),
+                                    rule.Magnitude, rule.TickInterval, rule.Duration);
                     return;
-                }
 
                 case StackDerivedKind.ApplyStun:
                     // 기절은 행동불능이라 **보스 면역에 걸린다**(문이 `RequestCc` 하나다).
@@ -195,19 +192,14 @@ namespace Wassup.BattleCore
                     return;
 
                 case StackDerivedKind.ApplyStat:
-                {
-                    if (!EffectEligibility.AcceptsModifier(u)) return;
                     // ⚠ 출처가 **피해자 자신**이라 배치·스킬 감속과 4키가 전부 겹친다 —
                     // 그래서 칸을 종류별로 가른다(`SlotTag.OfStack`). 접으면 강한 배치
                     // 감속이 약한 스택 감속으로 깎이던 버그가 그대로 재현된다(F26).
-                    var stat = (StatKind)rule.Stat;
-                    var key = new ModifierKey(u.Id, stat, (CombineOp)rule.Op, SlotTag.OfStack(kind));
-                    var origin = kind == StackKind.Fatigue
-                        ? ModifierOrigin.Burnout : ModifierOrigin.Stack;
-                    if (u.Modifiers.Apply(in key, rule.Magnitude, rule.Duration, 0f, origin))
-                        ctx.Bus.Publish(CoreEvent.ModifierApplied(ctx.Tick, u, u.Id, stat, rule.Magnitude));
+                    EffectApply.Stat(ctx, u.Id, u, u, (StatKind)rule.Stat, (CombineOp)rule.Op,
+                                     rule.Magnitude, rule.Duration, SlotTag.OfStack(kind), 0f,
+                                     kind == StackKind.Fatigue
+                                         ? ModifierOrigin.Burnout : ModifierOrigin.Stack);
                     return;
-                }
             }
         }
 
