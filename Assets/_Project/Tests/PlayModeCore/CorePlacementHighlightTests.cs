@@ -51,29 +51,26 @@ namespace Wassup.Tests.PlayMode.Core
             yield return null;
             yield return null;                  // LateUpdate 두 번 — 칠하고 나서 틴트
 
-            // 「손가락 칸」이 정본이다(오버레이와 **같은 함수**로 앵커를 만든다 — 규칙의 두 번째
+            // 칠할 칸은 **칸의 상태**가 정한다 — 오버레이와 같은 함수에 묻는다(규칙의 두 번째
             // 사본을 세우지 않는다).
             var placement = driver.Match.Placement;
             var size = driver.GridSize;
-            var fp = new Vector2Int(math.max(1, driver.Definition.Units[defIndex].FootprintWidth),
-                                    math.max(1, driver.Definition.Units[defIndex].FootprintHeight));
             int2 freeCell = default, terrainCell = default, occupiedCell = default;
             bool hasFree = false, hasTerrain = false, hasOccupied = false;
             for (int y = 0; y < size.y; y++)
             for (int x = 0; x < size.x; x++)
             {
-                var a = FootprintMath.AnchorFromBottomCenter(new Vector2Int(x, y), fp);
-                switch (placement.SpaceBlock(defIndex, new int2(a.x, a.y)))
+                var c = new int2(x, y);
+                switch (placement.CellStateAt(c))
                 {
-                    case RejectReason.None:
-                        if (!hasFree) { freeCell = new int2(x, y); hasFree = true; }
+                    case PlacementService.CellState.Free:
+                        if (!hasFree) { freeCell = c; hasFree = true; }
                         break;
-                    case RejectReason.Occupied:
-                        if (!hasOccupied) { occupiedCell = new int2(x, y); hasOccupied = true; }
+                    case PlacementService.CellState.Occupied:
+                        if (!hasOccupied) { occupiedCell = c; hasOccupied = true; }
                         break;
-                    case RejectReason.NotBuildable:
-                    case RejectReason.OutOfBounds:
-                        if (!hasTerrain) { terrainCell = new int2(x, y); hasTerrain = true; }
+                    case PlacementService.CellState.Blocked:
+                        if (!hasTerrain) { terrainCell = c; hasTerrain = true; }
                         break;
                 }
             }
@@ -95,6 +92,45 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsTrue(TryFindCellTint(overlay, driver, tile, occupiedCell, out got),
                 "유닛이 막은 칸이 안 칠해졌다");
             AssertTint(set.occupiedColor, tile.color, got, "유닛 점유");
+
+            overlay.HidePlacement();
+        }
+
+        [UnityTest]
+        public IEnumerator 점유_칸은_끌고_있는_유닛의_크기만큼_부풀지_않는다()
+        {
+            BattleDriver driver = null;
+            yield return CoreSceneFixture.LoadAndBoot(d => driver = d);
+            Assert.IsNotNull(driver);
+            var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
+            Assert.IsNotNull(overlay);
+            Assert.IsNotNull(overlay.TileSet);
+            var tile = overlay.TileSet.blockedTile as UnityEngine.Tilemaps.Tile;
+            Assert.IsNotNull(tile);
+
+            driver.Apply(Command.FinishPlacement());
+            Assert.IsTrue(TryFindPlaceable(driver, out int placedIndex, out int2 anchor),
+                "로스터의 어떤 유닛도 이 판 어디에도 놓을 수 없다");
+            Assert.IsTrue(driver.Apply(Command.PlaceDefender(placedIndex, anchor)).Accepted);
+            yield return null;
+
+            var placedDef = driver.Definition.Units[placedIndex];
+            int w = math.max(1, placedDef.FootprintWidth);
+            int h = math.max(1, placedDef.FootprintHeight);
+
+            // **다른 유닛**을 끈다. 예전에는 가이드가 「이 유닛을 여기 두면 겹치나」를 물어서
+            // 점유가 끌고 있는 footprint 만큼 부풀었다(민코프스키 합) — 2×2 가 선 자리에
+            // 2×2 를 끌면 3×3 으로 보였다.
+            Assert.IsTrue(TryFindPlaceable(driver, out int dragIndex, out _, placedIndex),
+                "끌어 볼 두 번째 유닛이 없다 — 부풀림을 증언할 수 없다");
+            overlay.ShowPlacement(dragIndex, anchor, false);
+            yield return null;
+            yield return null;
+
+            int painted = CountCellsTinted(overlay, driver, tile, overlay.TileSet.occupiedColor, tile.color);
+            Assert.AreEqual(w * h, painted,
+                $"유닛이 먹은 칸은 {w}×{h} 인데 {painted} 칸이 점유색으로 칠해졌다 — "
+                + "끌고 있는 유닛의 크기만큼 부풀었다");
 
             overlay.HidePlacement();
         }
@@ -123,13 +159,34 @@ namespace Wassup.Tests.PlayMode.Core
 
             Assert.AreEqual(RejectReason.InsufficientCost, placement.SlotBlock(defIndex),
                 "잔액이 비었는데 슬롯이 「쓸 수 있다」고 답한다");
-            Assert.AreEqual(RejectReason.None, placement.SpaceBlock(defIndex, anchor),
-                "코스트가 모자란다고 «공간» 판정까지 막혔다 — 보드 전체가 칠해진다");
+            Assert.AreEqual(PlacementService.CellState.Free, placement.CellStateAt(anchor),
+                "코스트가 모자란다고 «칸의 상태»까지 바뀌었다 — 보드 전체가 칠해진다");
             Assert.AreEqual(RejectReason.InsufficientCost, placement.Judge(defIndex, anchor),
-                "고스트(전부 판정)는 여전히 「못 산다」고 답해야 한다");
+                "고스트(그 유닛을 그 앵커에)는 여전히 「못 산다」고 답해야 한다");
         }
 
         // ── 공용 ─────────────────────────────────────────────────────────────
+
+        // 그 색으로 칠해진 칸 수. 색은 저작 × 타일색이고 알파는 페이드가 곱해져 있어 RGB 만 본다.
+        private static int CountCellsTinted(CoreMapOverlay overlay, BattleDriver driver,
+                                            UnityEngine.Tilemaps.Tile tile, Color authored, Color tileColor)
+        {
+            var mpb = new MaterialPropertyBlock();
+            var renderers = overlay.GetComponentsInChildren<SpriteRenderer>(true);
+            int n = 0;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var sr = renderers[i];
+                if (!sr.enabled || sr.sprite != tile.sprite) continue;
+                sr.GetPropertyBlock(mpb);
+                var c = mpb.GetColor(Shader.PropertyToID("_BaseColor"));
+                if (Mathf.Abs(c.r - authored.r * tileColor.r) > 1e-3f) continue;
+                if (Mathf.Abs(c.g - authored.g * tileColor.g) > 1e-3f) continue;
+                if (Mathf.Abs(c.b - authored.b * tileColor.b) > 1e-3f) continue;
+                n++;
+            }
+            return n;
+        }
 
         private static void AssertTint(Color authored, Color tileColor, Color got, string who)
         {
@@ -164,13 +221,14 @@ namespace Wassup.Tests.PlayMode.Core
             return false;
         }
 
-        private static bool TryFindPlaceable(BattleDriver driver, out int defIndex, out int2 anchor)
+        private static bool TryFindPlaceable(BattleDriver driver, out int defIndex, out int2 anchor,
+                                             int skipIndex = -1)
         {
             var placement = driver.Match.Placement;
             var size = driver.GridSize;
             for (int i = 0; i < driver.Definition.Units.Length; i++)
             {
-                if (!placement.InRoster(i)) continue;
+                if (i == skipIndex || !placement.InRoster(i)) continue;
                 for (int y = 0; y < size.y; y++)
                 for (int x = 0; x < size.x; x++)
                 {

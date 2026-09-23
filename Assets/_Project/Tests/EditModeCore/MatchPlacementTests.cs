@@ -90,6 +90,71 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsFalse(match.Map.Occupancy.IsOccupied(new int2(3, 1)));
         }
 
+        // battle-core-rebuild 5b 수정 — 사용자 플레이 2차의 문장:
+        // **「다른 유닛 배치 시도 시 이미 배치된 유닛의 타일이 원래보다 크게 나옴」**.
+        //
+        // 원인은 화면이 「칸의 상태」가 아니라 **「이 유닛을 여기 두면 겹치나」**를 물은 것이다.
+        // 후자는 끌고 있는 footprint 만큼 답이 부푼다(민코프스키 합). 아래 테스트가 그 차이를
+        // **같은 판에서 숫자로** 못박는다 — 둘을 다시 섞으면 여기가 빨개진다.
+        [Test]
+        public void 칸의_상태는_끌고_있는_유닛의_크기를_모른다()
+        {
+            var def = CoreMatchFixtures.Definition();
+            def.Units[0].FootprintWidth = 2;
+            def.Units[0].FootprintHeight = 2;
+            def.Units[0].MaxOnBoard = 4;
+            var match = CoreMatchFixtures.BeginBattle(def);
+
+            var anchor = new int2(3, 1);
+            Assert.IsTrue(match.Apply(Command.PlaceDefender(0, anchor)).Accepted);
+
+            var placement = match.Placement;
+            var map = match.Map.Snapshot;
+
+            int viaCell = 0;
+            for (int y = 0; y < map.Height; y++)
+            for (int x = 0; x < map.Width; x++)
+                if (placement.CellStateAt(new int2(x, y)) == PlacementService.CellState.Occupied)
+                    viaCell++;
+
+            Assert.AreEqual(4, viaCell,
+                "2×2 유닛이 먹은 칸은 4 다 — 칸의 상태는 끌고 있는 유닛을 모른다");
+
+            // 같은 판을 **부푼 질문**으로 세어 본다: 손끝 칸마다 2×2 를 두면 겹치나.
+            // 이 수가 4 보다 크다는 것이 곧 「그 질문으로 칠하면 화면이 거짓말한다」의 증거다.
+            int viaFootprint = 0;
+            for (int y = 0; y < map.Height; y++)
+            for (int x = 0; x < map.Width; x++)
+            {
+                var fingerAnchor = new int2(x, y);
+                if (placement.Judge(0, fingerAnchor) == RejectReason.Occupied) viaFootprint++;
+            }
+            Assert.Greater(viaFootprint, viaCell,
+                "두 질문이 같은 답을 준다 — 이 테스트가 증언할 것이 없다");
+        }
+
+        [Test]
+        public void 칸의_상태는_지형과_유닛_점유를_가른다()
+        {
+            var match = CoreMatchFixtures.BeginBattle(CoreMatchFixtures.Definition());
+            var placement = match.Placement;
+
+            Assert.AreEqual(PlacementService.CellState.Blocked,
+                placement.CellStateAt(new int2(-1, 0)),
+                "판 밖은 막힌 칸이다");
+
+            var anchor = new int2(3, 1);
+            Assert.AreEqual(PlacementService.CellState.Free, placement.CellStateAt(anchor));
+
+            Assert.IsTrue(match.Apply(Command.PlaceDefender(0, anchor)).Accepted);
+            Assert.AreEqual(PlacementService.CellState.Occupied, placement.CellStateAt(anchor),
+                "유닛이 선 칸은 «점유»다 — 지형과 같은 색으로 접으면 「치우면 열린다」를 못 가르친다");
+
+            Assert.IsTrue(match.Apply(Command.Retire(CoreMatchFixtures.PlacedDefender(match))).Accepted);
+            Assert.AreEqual(PlacementService.CellState.Free, placement.CellStateAt(anchor),
+                "퇴근했는데 칸이 안 열렸다 — 점유와 주인이 쌍으로 안 풀렸다");
+        }
+
         [Test]
         public void 판_상한은_유닛_저작과_모드_상한을_둘_다_본다()
         {

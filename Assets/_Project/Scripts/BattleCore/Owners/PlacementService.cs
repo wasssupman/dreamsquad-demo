@@ -37,6 +37,13 @@ namespace Wassup.BattleCore
         /// <summary>재배치 대기를 건 **출처**. 옛 구현은 「건 순간의 길이」로 근사했다(L5).</summary>
         public enum CooldownSource : byte { None = 0, Place = 1, Death = 2, Retire = 3 }
 
+        /// <summary>
+        /// 한 **칸**의 상태. 유닛과 무관하다 — 화면의 배치 하이라이트가 이것을 읽는다.
+        /// 「막혔다」의 이유가 둘인 것이 요점이다: 지형·프랍은 내가 어떻게 할 수 없고,
+        /// 유닛 점유는 치우거나 기다리면 열린다. 플레이어가 배우는 것이 다르다.
+        /// </summary>
+        public enum CellState : byte { Free = 0, Blocked = 1, Occupied = 2 }
+
         // ⚠ 남은 시간은 **틱으로 센다**(초가 아니라). 초를 매 틱 빼면 float 누적 오차가 쌓여
         // 「1초짜리 배치 모션이 61틱 걸리는」 드리프트가 난다 — 실측이다. `MatchClock` 이
         // 「시간이 아니라 틱이 정본이다」로 같은 함정을 이미 닫아 두었고, 여기도 같은 자를 쓴다.
@@ -204,6 +211,27 @@ namespace Wassup.BattleCore
             return Receipt.Ok;
         }
 
+        /// <summary>
+        /// 「이 **칸**이 지금 어떤 상태인가」 — **유닛과 무관한 질문**이다(사용자 결정 2026-09-23:
+        /// 하이라이트가 말하는 것은 「칸의 상태」다).
+        ///
+        /// ⚠ 이것과 `SpaceBlock` 은 **다른 질문**이고, 섞으면 화면이 거짓말한다. 저쪽은
+        /// 「이 유닛의 footprint 를 여기 두면 겹치나」라서 끌고 있는 유닛의 크기만큼 답이
+        /// **부푼다**(민코프스키 합) — 2×2 가 선 자리에 2×2 를 끌면 점유가 3×3 으로 보인다.
+        /// 「그 유닛을 놓을 수 있나」는 여전히 `Judge` 가 답한다(고스트).
+        /// </summary>
+        public CellState CellStateAt(int2 cell)
+        {
+            var map = _map.Snapshot;
+            bool hasGrid = map.CellCount > 0;
+            if (hasGrid && !map.InBounds(cell)) return CellState.Blocked;
+            // 점유는 **배치 유닛만** 넣는다(거점은 안 넣는다 — 그쪽은 지형처럼 마스크가 닫는다).
+            if (_map.Occupancy.IsOccupied(cell)) return CellState.Occupied;
+            // 배치 마스크가 통째로 0 = 어떤 층도 못 서는 칸 = 지형·프랍이 막았다.
+            if (hasGrid && map.PlaceMask[map.Index(cell)] == 0) return CellState.Blocked;
+            return CellState.Free;
+        }
+
         /// <summary>판정만. 프리뷰(「여기 놓을 수 있나」)가 같은 자를 쓰게 하는 진입점이다.</summary>
         public RejectReason Judge(int defIndex, int2 anchor) => Judge(defIndex, anchor, out _, out _);
 
@@ -227,7 +255,7 @@ namespace Wassup.BattleCore
         /// 거짓말한다. 「밝은 칸인데 비용이 모자라 고스트는 빨강」이 정상이다
         /// (`placement-eligible-tile-highlight` 의 「의미 계약」).
         /// </summary>
-        public RejectReason SpaceBlock(int defIndex, int2 anchor) => SpaceBlock(defIndex, anchor, out _, out _);
+        private RejectReason SpaceBlock(int defIndex, int2 anchor) => SpaceBlock(defIndex, anchor, out _, out _);
 
         private RejectReason SpaceBlock(int defIndex, int2 anchor, out int w, out int h)
         {

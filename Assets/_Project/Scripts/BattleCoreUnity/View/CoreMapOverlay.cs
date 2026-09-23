@@ -21,10 +21,10 @@ namespace Wassup.BattleCoreUnity.View
     //   ④ 사거리 링 + 사정권 표식 — 「여기 놓으면 저기까지 닿는다」.
     //
     // ⚠ **판정을 한 줄도 갖지 않는다.**
-    //   · 「놓을 수 있나」 = `PlacementService` 호출. 고스트는 `Judge`(전부), 가이드는
-    //     `SpaceBlock`(공간) — **다른 질문이지 다른 자가 아니다**(둘 다 코어의 함수이고
-    //     `Judge` 가 `SpaceBlock` 을 부른다). 가이드에 자원을 섞으면 코스트 재생마다
-    //     보드가 깜빡이고, 못 사는 유닛을 끌 때 「놓을 곳이 없다」고 거짓말한다.
+    //   · 「놓을 수 있나」 = `PlacementService` 호출. 고스트는 `Judge`(그 유닛을 그 앵커에),
+    //     가이드는 `CellStateAt`(그 **칸**의 상태) — **다른 질문이지 다른 자가 아니다**.
+    //     가이드를 유닛으로 물으면 답이 끌고 있는 footprint 만큼 부풀고(민코프스키 합),
+    //     자원까지 섞이면 코스트 재생마다 보드가 통째로 깜빡인다.
     //   · 「닿나」 = `AttackReach.InReach` 호출. 제약 13 이 금지하는 것이 정확히 여기서
     //     이중 루프로 모양을 다시 그리는 것이다 — 그러면 「밝은 칸인데 안 때린다」가 되고,
     //     그건 가장 나쁜 종류의 버그다(화면이 규칙을 **틀리게** 가르친다).
@@ -148,15 +148,13 @@ namespace Wassup.BattleCoreUnity.View
         // 플레이어가 배우는 것이 다르기 때문에 색이 다르다. 놓을 수 있는 칸은 **안 칠한다** —
         // 빈 땅이 곧 「여기 된다」이고, 그래야 화면에서 움직이지 않는 면이 답이 된다.
         //
-        // ⚠ 「손가락 칸」으로 묻는다. 코어의 판정 단위는 footprint 의 **min 코너**(앵커)인데
-        // 플레이어가 보는 것은 손끝 칸이라, 입력과 **같은 함수**(`FootprintMath.
-        // AnchorFromBottomCenter`)로 옮긴 뒤 코어에 묻는다. 앵커 칸을 그대로 칠하면 2×2 유닛의
-        // 하이라이트가 손끝에서 한 칸 밀린다.
-        //
-        // ⚠ 묻는 것은 `SpaceBlock`(공간)이지 `Judge`(전부)가 아니다. 자원·쿨·상한이 섞이면
-        // 그 사유는 **모든 칸에 똑같이** 붙어 보드 전체가 칠해지고, 코스트 재생 경계마다
-        // 판이 통째로 깜빡인다. 「칸의 성질」이 아닌 사유는 아래 `default` 가 걸러 낸다.
-        // 그 답은 **여전히 코어의 것**이다 — 뷰는 사유를 읽기만 하고 재판정하지 않는다.
+        // ⚠ 묻는 것은 **칸의 상태**(`CellStateAt`)이지 「이 유닛을 여기 둘 수 있나」가 아니다.
+        // 후자로 물으면 답이 **끌고 있는 유닛의 footprint 만큼 부푼다**(민코프스키 합) —
+        // 2×2 가 선 자리에 2×2 를 끌면 점유가 3×3 으로 보이고, 화면이 「이미 배치된 유닛의
+        // 타일이 원래보다 크다」고 거짓말한다(사용자 플레이 2차). 자원·쿨·상한이 섞이지
+        // 않는 것도 같은 이유로 공짜다 — 칸의 상태는 그것들을 모른다.
+        // 그 답은 **여전히 코어의 것**이다 — 뷰는 상태를 읽기만 하고 판정하지 않는다.
+        // 「그 유닛을 여기 놓을 수 있나」는 고스트가 `Judge` 로 따로 묻는다.
         private void PaintGuide()
         {
             var tile = GuideTile();
@@ -178,34 +176,15 @@ namespace Wassup.BattleCoreUnity.View
         {
             var placement = _driver.Match.Placement;
             var size = _driver.GridSize;
-            var def = _driver.Definition;
-            if (_dragDefIndex >= def.Units.Length) { SetCount(_guideCells, 0); _guideUsed = 0; return; }
-
-            var fp = new Vector2Int(math.max(1, def.Units[_dragDefIndex].FootprintWidth),
-                                    math.max(1, def.Units[_dragDefIndex].FootprintHeight));
 
             _guideOccupied.Clear();
             int used = 0;
             for (int y = 0; y < size.y; y++)
             for (int x = 0; x < size.x; x++)
             {
-                var anchorV = FootprintMath.AnchorFromBottomCenter(new Vector2Int(x, y), fp);
-                var reason = placement.SpaceBlock(_dragDefIndex, new int2(anchorV.x, anchorV.y));
-
-                bool occupied;
-                switch (reason)
-                {
-                    case RejectReason.None:
-                        continue;                       // 놓을 수 있다 — 빈 땅이 답이다
-                    case RejectReason.Occupied:
-                        occupied = true; break;
-                    case RejectReason.OutOfBounds:
-                    case RejectReason.NotBuildable:
-                    case RejectReason.MissingMap:
-                        occupied = false; break;
-                    default:
-                        continue;                       // 페이즈·정의표 사유는 «칸의 성질»이 아니다
-                }
+                var state = placement.CellStateAt(new int2(x, y));
+                if (state == PlacementService.CellState.Free) continue;   // 빈 땅이 곧 「여기 된다」
+                bool occupied = state == PlacementService.CellState.Occupied;
 
                 var sr = Rent(_guideCells, used++, BoardSortOrder.PlacementHighlightOrder);
                 sr.sprite = sprite;
