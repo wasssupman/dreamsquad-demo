@@ -1079,6 +1079,101 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _driver: {fileID: 302}
   _blobShadow: {fileID: 11400000, guid: 057ae949d711494bbb80cd87c12155ef, type: 2}
+--- !u!1 &136373342
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 136373344}
+  - component: {fileID: 136373343}
+  m_Layer: 0
+  m_Name: ResultScreen
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &136373343
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 136373342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed3dc6e0fcfbf4a03aaed2b065179f3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.ResultScreen
+--- !u!224 &136373344
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 136373342}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &269632758
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 269632760}
+  - component: {fileID: 269632759}
+  m_Layer: 0
+  m_Name: MatchOutcome
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &269632759
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 269632758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce29cca5177e4af5a49eaf2e5a49bcc2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.CoreMatchOutcomePresenter
+  _driver: {fileID: 302}
+  _resultScreen: {fileID: 136373343}
+  _heartHud: {fileID: 11400000, guid: 1df5bd25f175423fa01bc16f433452e3, type: 2}
+--- !u!4 &269632760
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 269632758}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &276192660
 GameObject:
   m_ObjectHideFlags: 0
@@ -1392,6 +1487,126 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1575143364
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1575143366}
+  - component: {fileID: 1575143365}
+  m_Layer: 0
+  m_Name: SoundManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1575143365
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1575143364}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c01d18bdd639e4ab4b51841743ba090a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SoundManager
+  scoreTickClip: {fileID: 8300000, guid: 8b656e97eda9946f18e43b434b780a9e, type: 3}
+  scoreTickVolume: 0.6
+  projectileFireClip: {fileID: 8300000, guid: fc4cd59f881f84776b2dd2d22526b617, type: 3}
+  projectileFireVolume: 0.4
+  projectileFireMinInterval: 0.045
+  attackSfxVolume: 0.9
+  attackSfxMinInterval: 0.04
+  cardAbsorbClip: {fileID: 8300000, guid: 22a918ae7fbf14d83b339bfca418d8d6, type: 3}
+  cardAbsorbVolume: 0.7
+  cardDealClip: {fileID: 8300000, guid: 53f55f7b47d224fe8919f13cdc7d5470, type: 3}
+  cardDealVolume: 0.6
+  cardPickupClip: {fileID: 8300000, guid: 75332057c80074629a4751e470e7b27d, type: 3}
+  cardPickupVolume: 0.5
+  cardReturnClip: {fileID: 8300000, guid: 8bdfa4d91319c4c8f8df05c57860b084, type: 3}
+  cardReturnVolume: 0.5
+  uiTickClip: {fileID: 8300000, guid: 02e7adbdc761d49b4a8b48ba82010c41, type: 3}
+  uiTickVolume: 0.5
+  deployVoiceVolume: 0.8
+  deployPlaceClip: {fileID: 8300000, guid: 01de4e40acec1427db8ba5df5092067c, type: 3}
+  deployPlaceVolume: 0.4
+  bossWarningClip: {fileID: 8300000, guid: 5f9059c3c332247de8508eb246974095, type: 3}
+  bossWarningVolume: 0.85
+  gimmickRevealVolume: 0.8
+  costTickClip: {fileID: 8300000, guid: d92778876c5e4454d921af034f950f37, type: 3}
+  costTickVolume: 0.7
+  nextWaveClip: {fileID: 8300000, guid: 6d01ffc6bf2bb4fee8549cd0ce12d943, type: 3}
+  nextWaveVolume: 0.7
+  bgmClip: {fileID: 8300000, guid: 04401f422940e4420ae275533bf45065, type: 3}
+  bgmVolume: 0.35
+  bgmOnlyInBattle: 1
+  voiceCount: 6
+--- !u!4 &1575143366
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1575143364}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1978911361
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1978911363}
+  - component: {fileID: 1978911362}
+  m_Layer: 0
+  m_Name: BattleAudio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1978911362
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1978911361}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b4a9bf994f94a6bb0b6e561efefaed7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.CoreBattleAudio
+  _driver: {fileID: 302}
+--- !u!4 &1978911363
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1978911361}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1413,3 +1628,7 @@ SceneRoots:
   - {fileID: 1402320340}
   - {fileID: 599526117}
   - {fileID: 341322859}
+  - {fileID: 1575143366}
+  - {fileID: 136373344}
+  - {fileID: 269632760}
+  - {fileID: 1978911363}
