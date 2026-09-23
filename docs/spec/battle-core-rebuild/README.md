@@ -1,9 +1,9 @@
 # battle-core-rebuild — 전투를 ECS 에서 순수 C# 「전투 코어」로 옮긴다
 
 상태: **승인·진행 중 2026-09-23** — **조각 A 완료**(리뷰 전건 APPROVE): unit 0(main `4caee406`) · unit 1(`384e869b`·`dc0baa41`) · unit 2(`d5c16070` + 수정 `843b786a`) · unit 3(`0ae6b5cd`) · unit 4(`50ec0dae` + 수정 `0501630b`·`aedf3f7b`·`d12423bd` + 거점 스폰 `55688ef5` + 경로 방패 `7abfec27`) · 헤드리스 lane(`c74825be`).
-**조각 B 진행 중 — unit 5a·5b 완료**(5a `aa16ee9d`~`1b7e033b` · core-reviewer APPROVE. 5b — 드래그 배치·퇴근·제출 입력 · HUD 6 · 맵 오버레이 · 예고선 · 카메라 프레이밍). 이동 튜닝 정의표(`fae42944`)로 골든 11종 Unity 재굽기.
-검증: Unity EditMode 코어 lane **371/371** · 새 PlayMode lane **16/16** · 헤드리스 3종(build 0 · test 360 · Check build 0) · Play 육안.
-장부 잔량: `bridge-methods` 미정 **64**(128 → 98 → 64, 5b 몫 34행 닫힘) · `bridge-fields` **0**(91행 전부 분류). 브랜치 `rebuild/battle-core`. **다음 = 5c(판 종료 → 결과 화면 → 제출 게이트 · 전투 사운드 3).** 모든 커밋은 리드가 클린 export 로 build/test/Check 재실행해 검증한다.
+**조각 B 구현 완료 — unit 5a·5b·5c**(5a `aa16ee9d`~`1b7e033b` · core-reviewer APPROVE. 5b — 드래그 배치·퇴근·제출 입력 · HUD 6 · 맵 오버레이 · 예고선 · 카메라 프레이밍. 5c `ebf055f4`·`605f15a7` — 판 종료 → 결과 화면 → 제출 게이트 · 전투 사운드 3 · 모드 진입 3단 · dev 토글). 이동 튜닝 정의표(`fae42944`)로 골든 11종 Unity 재굽기.
+검증: Unity EditMode 코어 lane **371/371** · 새 PlayMode lane **21/21** · 헤드리스 3종(build 0 · test 360 · Check build 0) · Play 육안(결과 화면 · 사운드 3종 실계수 · 콘솔 에러 0).
+장부 잔량: `bridge-methods` 미정 **59**(128 → 98 → 64 → 59) · `bridge-fields` **0**(91행 전부 분류). 브랜치 `rebuild/battle-core`. **다음 = 사용자 플레이 1차**(질문 = 배치·이동·전투·점수·종료의 손맛 · 부재 목록은 `5c` 의 「아직 안 보이는 것」 표) → `core-reviewer` → **조각 B main 머지**. 모든 커밋은 리드가 클린 export 로 build/test/Check 재실행해 검증한다.
 
 설계 입력: [`docs/plans/2026-09-22-battle-core-rebuild-census/`](../../plans/2026-09-22-battle-core-rebuild-census/) — 6영역 census(약 395행) · 종합(`00`) · 상호 리뷰(`01`·`03`) · 트리거→발동 rev 3(`04`) · 매치 모드 연구(`05`) · **계획 완전성 리뷰(`06`, 13건 — 이 rev 2 의 근거)**. 핵심 클래스 UML 은 [`class-diagram.md`](class-diagram.md), 매치 모드는 [`match-mode-design.md`](match-mode-design.md).
 선행 spec 처리: `battle-sim-extraction` **M0 완료·M1+ 폐기**(후계 = 이 spec) · `battlebridge-dissolution` **흡수** · `ecs-lifecycle-teardown` **은퇴**.
