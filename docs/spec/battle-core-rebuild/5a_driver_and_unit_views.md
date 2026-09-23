@@ -43,23 +43,78 @@
 
 | 안 옮긴 것 | 이유 | 등급 |
 |---|---|---|
-| 뷰의 `EntityManager.Exists` 매 프레임 폴링(3곳) | 이벤트 + 자가 치유 경고로 | 보류(계약 7) |
-| `LateUpdate` 순서 계약 | `ViewOrder` 상수로 | 보류(X3) |
+| 뷰의 `EntityManager.Exists` 매 프레임 폴링(3곳) | 이벤트 + 자가 치유 **경고**로. 유령이 잡히면 그것은 정상 경로가 아니라 「어떤 소멸 경로가 사건을 안 냈다」는 신호다 | 완료(계약 7) |
+| `LateUpdate` 순서 계약 | `ViewOrder` 상수로. 회귀 방지 = `CoreViewOrderTests` | 완료(X3) |
 | 뷰 스포너 null 이면 큐 `Clear()` | 이벤트는 뷰 유무와 무관(X5) | 제거 |
-| 피격 팝 0.15초 코드 상수(E27) | `CharacterViewConfig` 노브로 — 제약 6 | 보류 → 이 unit 에서 SO 로 |
+| 피격 팝 0.15초 코드 상수(E27) | `CharacterViewConfig.hitPopSeconds`·`hitPopOvershoot` | 완료 |
 | 상태 FX·빔·VFX·오라 풀 | 사건이 아직 없다 — unit 6·7 | 보류(빈 풀 금지) |
+| **일반 보스 도약의 아치** | `CoreLeapPresenter` 는 섰지만 **생산자가 없다.** 코어에서 `LeapAscend` 를 발행하는 곳이 0 이고(`LeapActive = true` 를 쓰는 줄도 0), 순간이동은 `Blinked` 로 나온다. ⚠ `Blinked` 를 아치로 쓰면 **포탈 텔레포트까지 날아간다** — 둘은 화면에서 다른 사건이다. 생산자는 unit 7(보스·궁극기) | 보류 |
+| 도약 착지 퍼프(`PlayLeapPuff`) | 사건이 `dataIndex` 를 안 나른다. 슬램이 있으면 착탄 VFX 가 이미 그 자리를 그리고, 없으면 퍼프를 고를 근거가 없다 | 제거 |
+| 슬램 투사체 발사(`ResolveLanding`) | **코어가 이미 낸다**(`CombatPhase.StepLeap`). 뷰가 전투 규칙의 생산자이던 자리 | 제거 |
+| 임팩트 소켓 높이(`ProjectileViewFrame.targetSocketHeight`·`Blend`) | 소비처(대상 몸통 착탄 VFX)가 unit 6 이고, 값을 만들려면 「대상이 누구인가」를 뷰가 알아야 한다. 프레임 필드는 **남겨 두고 0 으로 흘린다** | 보류 · unit 6 |
+| 투사체 **보드 깊이 소팅**(`boardSortOrder`) | 궤도구(유닛을 도는 탄)만 쓰던 축이고 그 콘텐츠가 unit 7 이다. 지금은 평평한 `ProjectileOffset` | 보류 · unit 7 |
+| 맵 **풀 선택**(서버 시드 % poolCount) | 5a 의 드라이버는 스테이지 프리팹을 직접 든다. 풀·덱 페어와 토너먼트 시드는 5c 의 모드 진입에서 | 보류 · 5c |
+| 타일맵 **바닥 페인팅·오버레이·범위 타일** | `CoreBoardPlane` 은 **평면 선언만** 한다. 바닥은 스테이지 프리팹(디오라마)이 이미 소유하고, 오버레이·범위·하이라이트는 5b | 보류 · 5b |
+| 카메라 bounds push · 스테이지 포스트 볼륨 | 카메라는 5b 에서 재사용한다 | 보류 · 5b |
+| 오버헤드 **부착 카드 줄** | 부착 사건이 코어에 없다(unit 7). 빈 카드 슬롯을 먼저 만들면 「카드가 안 뜬다」를 사건이 아니라 UI 에서 찾게 된다 | 보류 · unit 7 |
+| 오버헤드 **실드 비율·스택 아이콘** | 같은 이유 — 실드 부여·스택 사건이 unit 6 이다. 인자는 0/`null` 로 넘긴다 | 보류 · unit 6 |
+| `tileHealthGaugeLayer`(레거시 표시 모드) | 표시 모드가 `UnifiedOverhead` 로 고정 저작됐다. 레거시 경로의 처분은 5b | 보류 · 5b |
+
+## 고친 것 (기존 코어·Unity 층 변경)
+
+| 무엇 | 왜 |
+|---|---|
+| `CoreEvent.Spawned` 가 `DefIndex` 를 싣는다 | 안 실으면 뷰 풀이 스폰마다 코어에 개체를 **되물어야** 한다. 스폰은 그 되묻기가 성립하는 몇 안 되는 사건이지만, 예외를 허용하면 다음 사람이 소멸 사건에서도 같은 모양을 쓴다 — 계약 7 이 막는 것이 그 습관이다. 트레이스 포맷은 무변(`DefIndex` 는 실리지 않는다) |
+| `MatchDefinitionBuilder.Build` · `CombatDefinitionBuilder.Fill` 에 `MatchViewAssets` **선택 인자** 추가 | 정의표 줄 번호 → 저작 에셋(탄·거점 프리팹)을 뷰가 되찾으려면 **번호를 매긴 그 순회**의 목록이 필요하다. 뷰 쪽에서 다시 모으면 두 벌이 갈려 탄이 엉뚱한 프리팹으로 난다. 기본값 `null` 이라 기존 호출부(헤드리스·EditMode)는 무변 |
+| `BattleDriver._timeScale`·`SetTimeScale` 은퇴 | 전투 시간의 주인이 둘이 되면 카드 슬로모(0.3)가 이 판에만 안 걸린다. 발행률의 유일한 출처는 `TimeManager` Battle 도메인이다 |
+| 쿼드 폴백의 `Shader.Find` + `new Material` → `RuntimeMaterialFactory.CreateOpaqueTexture` | 옛 뷰의 그 줄은 CLAUDE.md 추가 제약 위반이다(모바일 shader stripping 으로 null 이 돌아와 렌더가 깨진다). 복사하면서 같이 옮길 이유가 없다 |
+| `BlobShadowConfig(4행)`·`HeartHudConfig(9행)` — spec 초안의 「6·7」과 수가 다르다 | 초안의 수는 어림이었고, 실제 91행을 분류해 보니 블롭은 4(스프라이트·색·리프트·실그림자), 마음은 6 + 코어버스트 2 + 골 오버헤드 1 = 9 였다. 장부가 정본이다 |
+| 새 뷰 `CoreStructurePropLayer`(spec 목록 밖) | 거점 프랍은 **맵 수명**이라 유닛 뷰 풀이 들 수 없다(판이 시작되기 전부터 서 있다). 옛 전투도 같은 판단이었다(`SpawnStructureViews` 가 맵 빌드 소유). 「빈 풀 금지」와 무관하다 — 이 뷰는 구독할 사건이 없는 것이 아니라 **사건이 필요 없다** |
+| 새 뷰 `CoreBoardPlane`(spec 목록 밖) | 뷰는 전부 `BoardSpace.ToView` 로 화면에 놓이고 그 변환의 권위는 격자다. 옛 전투는 타일맵 뷰가 그 일을 겸했는데(바닥+오버레이+평면 선언) 셋 중 **평면 선언만** 이 unit 에 필요하다 |
+| Check lane csproj 에 `Data/BattleView/**` 글롭 + `UnityEngine.UI.dll` 참조 | 새 타입이라 stale `Wassup.Runtime.dll` 에 없고, 오버헤드 바가 uGUI 를 쓴다 |
+
+## 규칙 장부 매핑 (unit 5 귀속 5행)
+
+| 행 | 코드 포인터 |
+|---|---|
+| E27 (피격 팝) | `CharacterViewConfig.hitPopSeconds`·`hitPopOvershoot` → `CoreUnitViewPool.OnCoreEvent` 의 `ProjectileHit` 분기 |
+| M9 (감지 네 박자) | 코어 상수(unit 2). 5a 의 몫은 **계측**이다 — `Editor/BattleCore/CoreDetectionProbeMenu.cs` 가 네 박자를 전부 찍는다 |
+| C7 (피해 숫자 비율) | `CoreEvent.DamageApplied` 의 `SiteTarget.OriginBody` → `CoreEnemyHitBarSpawner`·`CoreDamageNumberSpawner`. **두 소비처 어디에도 체력 나눗셈이 없다** |
+| X3 (도약 → 뷰 순서) | `BattleCoreUnity/ViewOrder.cs`(Leap 10 &lt; Unit 20) → `BattleDriver.Subscribe` · `CoreUnitViewPool.SyncViews` 의 `TryGetFlightOverride`. 테스트 = `CoreViewOrderTests` |
+| X16 (`GamePhase` append-only) | `CoreGamePhaseTests`(새 PlayMode lane) — 정수 7개 + `CameraDirectionConfig.breathPhases` 대조 |
 
 ## 완료 기준
 
 - [ ] 새 PlayMode lane 초록(부팅 스모크 · `ViewOrder` 순서 · 발행률). 옛 lane 기준선 무변(59 실패 그대로).
+      ⚠ **2026-09-23 미실행** — 워크트리 에디터의 MCP 브리지가 세션을 잃어(「Server no longer
+      running; ending orphaned session」) 러너를 못 띄웠다. 대신 **헤드리스로 컴파일까지** 확인했다:
+      Editor 도구 2 + 새 lane 5파일 + `BattleCoreUnity/**` 를 에디터 어셈블리에 대고 컴파일 → 0 오류.
+      **컴파일은 「테스트가 초록이다」가 아니다** — 브리지가 돌아오면 그때 돌린다.
 - [ ] **발행률**: `TimeManager.Request(Battle, 0.3)` 중 60프레임에 코어 틱 18±1회, `Request(Battle, 0)` 중 0회.
-- [ ] `BattleCoreScene` 부팅 콘솔 에러 0, 3분 완주, 뷰 수 = 코어 유닛 수(매 초 검사), **스테이지 저작 거점 수 = `World` 의 Structure 유닛 수**.
-- [ ] `ledgers/bridge-fields.md` 91행 전부 4분류 중 하나로 「새 주인」 채움, 씬 값 대조표 일치.
-- [ ] `ledgers/bridge-methods.md` 미정 128 중 **뷰·카메라·거점 스폰·유닛 뷰 호출 몫이 「새 주인」 또는 「삭제」** 로 닫힘. 종료 시 잔량을 README 상태 라인에 숫자로 적는다.
-- [ ] `ledgers/rules.md` 의 unit 5 귀속 5행(E27·M9·C7·X3·X16)이 코드 포인터로 매핑.
-- [ ] `GamePhase` 정수값이 안 밀렸다(`CameraDirectionConfig.breathPhases` 대조 1행, X16).
-- [ ] `ledgers/tools.md` 5·8행 닫힘(감지 프로브 · 장애물 디버그).
+      테스트는 섰다(`CoreTickRateTests`). ⚠ 기대값을 프레임 수가 아니라 **흐른 시간**에서 만든다 —
+      러너의 프레임 간격이 기기마다 달라 60프레임 ≠ 1초다.
+- [ ] `BattleCoreScene` 부팅 콘솔 에러 0, 3분 완주, 뷰 수 = 코어 유닛 수(매 초 검사),
+      **스테이지 저작 거점 수 = `World` 의 Structure 유닛 수**. 테스트는 섰다(`CoreSceneBootTests`).
+      ⚠ 거점 대조에서 **방어 마음은 뺀다** — 그것은 골(`Goals`)이 정본이고 세우는 자가 `HeartMeter` 라
+      같은 수로 세면 항상 어긋난다.
+- [x] `ledgers/bridge-fields.md` 91행 전부 4분류 중 하나로 「새 주인」 채움, 씬 값 대조표 일치
+      (코어 정의표 7 · 코어 상수 5 · 뷰 설정 SO 53 · 씬 배선 참조 21 · 삭제 5).
+- [x] `ledgers/bridge-methods.md` 미정 **128 → 98**. 뷰·카메라·거점 스폰·유닛 뷰·드라이버 몫 30행이
+      「새 주인」 또는 「삭제」로 닫혔다.
+- [x] `ledgers/rules.md` 의 unit 5 귀속 5행(E27·M9·C7·X3·X16)이 코드 포인터로 매핑.
+- [x] `GamePhase` 정수값이 안 밀렸다 — `CoreGamePhaseTests`(X16).
+- [x] `ledgers/tools.md` 5·8행 닫힘(감지 프로브 · 장애물 디버그).
 - [x] **`rule-holders.md` 미정 2행 닫힘(사용자 답 2026-09-23)**: 판 안 재시작 **없음** · 쿨다운은 **판의 시계**(감속·정지에 같이 느려진다). 기본값 구현과 일치. C7·S6·K5 의 「재시작」 전제는 unit 7 이식 제외 표로.
-- [ ] 새 lane 의 골든·상태 해시 대조는 **Unity 에서 구운 골든**과만(계약 5).
-- [ ] 뷰 코드에 `Unity.Entities` 0, 판정 코드 0.
+- [ ] 새 lane 의 골든·상태 해시 대조는 **Unity 에서 구운 골든**과만(계약 5). — 5a 는 골든을 안 만든다(뷰 unit 이다).
+- [x] 뷰 코드에 `Unity.Entities` 0, 판정 코드 0. (`grep -rn "Unity.Entities" Scripts/BattleCoreUnity` = 0건)
 - [ ] `core-reviewer` APPROVE(Unity 층 포함: 매니저/컨트롤러 이름 0 · 판정 이전 0).
+
+### 남은 것 (다음 세션이 이어받을 자리)
+
+1. **새 PlayMode lane 실행.** 워크트리 에디터에서 MCP 브리지를 되살린 뒤
+   `run_tests mode=PlayMode assembly_names=["Wassup.Tests.PlayMode.Core"]`.
+   ⚠ 새 `.cs`·`.asset` 을 손으로 만들었으므로(브리지가 없어 `.meta` 도 직접 썼다) **실행 전
+   `refresh_unity(scope=all)`** — `scope=scripts` 로는 어셈블리에서 통째로 빠진다.
+2. **씬 배선 육안 확인.** YAML 로 직접 배선했다(에디터를 못 써서). 인스펙터에서 슬롯 9개가
+   비어 있지 않은지 본다 — 특히 `BattleDriver._stagePrefab`(MapStage_Duel)과 `_boardPlane`.
+3. **Unity EditMode 코어 lane 360/360** 재확인(`CoreEvent.Spawned` 시그니처가 바뀌었다).

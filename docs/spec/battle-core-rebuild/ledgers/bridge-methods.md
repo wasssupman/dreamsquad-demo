@@ -24,11 +24,11 @@
 |---|---|---|---|
 | 1 | `TryGetEnemyViewOverride/3` | 뷰 풀 |  |
 | 2 | `CreateBossLeapChannel/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 3 | `DisposeBossLeapChannel/0` | 미정 |  |
+| 3 | `DisposeBossLeapChannel/0` | 삭제 | 채널이 없다 — 도약은 `LeapAscend`/`LeapDescend` 사건이고 수명은 구독이다 |
 | 4 | `DrainBossLeapVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
-| 5 | `RunBossLeap/1` | 미정 |  |
-| 6 | `ResolveLanding/2` | 미정 |  |
-| 7 | `PlayLeapPuff/2` | 미정 |  |
+| 5 | `RunBossLeap/1` | CoreLeapPresenter | 뷰 비행 코루틴. 슬램 발사는 **안 옮긴다** — 코어가 이미 낸다 |
+| 6 | `ResolveLanding/2` | 삭제 | 착지 슬램은 코어(`CombatPhase.StepLeap`)의 것이다. 뷰가 투사체를 쏘던 자리 |
+| 7 | `PlayLeapPuff/2` | 삭제 | 사건이 `dataIndex` 를 안 나른다. 슬램이 있으면 착탄 VFX 가 이미 그 자리를 그린다 — 5a 이식 제외 참조 |
 
 ## BattleBridge.Dreamcatcher.cs (22)
 
@@ -84,11 +84,11 @@
 | # | 메서드 | 새 주인 | 비고 |
 |---|---|---|---|
 | 1 | `CreateUltimateLeapChannel/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 2 | `DisposeUltimateLeapChannel/0` | 미정 |  |
-| 3 | `ShowLandingTelegraph/1` | 미정 |  |
+| 2 | `DisposeUltimateLeapChannel/0` | 삭제 | 위와 같다 — 채널이 없다 |
+| 3 | `ShowLandingTelegraph/1` | 5b(맵 오버레이) | 착지 예고 링은 보드에 그리는 것이라 오버레이의 몫이다 |
 | 4 | `DrainUltimateLeapVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
-| 5 | `RunUltimateLeapAscend/2` | 미정 |  |
-| 6 | `RunUltimateLeapDescend/3` | 미정 |  |
+| 5 | `RunUltimateLeapAscend/2` | CoreLeapPresenter | 이탈 — 올라가서 **머무른다**(예고 시간은 코어가 소유) |
+| 6 | `RunUltimateLeapDescend/3` | CoreLeapPresenter | 강하 — `LeapDescend` 를 받아 내려온다 |
 
 ## BattleBridge.UnitStats.cs (1)
 
@@ -100,7 +100,7 @@
 
 | # | 메서드 | 새 주인 | 비고 |
 |---|---|---|---|
-| 1 | `SetEnemiesDimmed/1` | 미정 |  |
+| 1 | `SetEnemiesDimmed/1` | CoreUnitViewPool | 유닛 뷰 `SetDimmed` fan-out. 구동은 5b 의 드래그 입력 |
 | 2 | `SetPlacementHighlightAboveUnits/1` | PlacementService |  |
 | 3 | `CreateAliveAttackerQueries/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 4 | `MirrorLiftKnobs/0` | 뷰 풀 |  |
@@ -109,7 +109,7 @@
 | 7 | `SetAssignedGimmick/1` | GimmickHost |  |
 | 8 | `Awake/0` | 미정 |  |
 | 9 | `OnValidate/0` | 미정 |  |
-| 10 | `ApplyUnitHealthPresentationMode/0` | 미정 |  |
+| 10 | `ApplyUnitHealthPresentationMode/0` | CharacterViewConfig | 표시 모드는 저작 값이 됐다 — 런타임에 미는 함수가 없다 |
 | 11 | `EnterPlacementOrIntro/0` | PlacementService |  |
 | 12 | `OnRestartRequested/0` | 미정 |  |
 | 13 | `ReLogSkillLoadoutForNewSession/1` | BindingRegistry / TriggerDispatcher |  |
@@ -125,7 +125,7 @@
 | 23 | `BuildPickupSpawnState/0` | GimmickHost |  |
 | 24 | `TeardownPickupSpawnState/0` | MatchClock |  |
 | 25 | `ComputeSpawnLateralOffset/1` | 미정 |  |
-| 26 | `BuildStageMarkerRegistry/0` | 미정 |  |
+| 26 | `BuildStageMarkerRegistry/0` | BattleDriver | 스테이지 스캔 → 거점 목록. `Build(…, structures:)` 의 입력 |
 | 27 | `TryGetGoalVisualAnchor/1` | HeartMeter |  |
 | 28 | `TryGetSpawnVisualAnchor/2` | 뷰 풀 |  |
 | 29 | `CellCenterView/1` | MapRuntime (코어) |  |
@@ -159,8 +159,8 @@
 | 57 | `CastSkillAtTile/3` | MapRuntime (코어) |  |
 | 58 | `CastPortal/4` | BindingRegistry / TriggerDispatcher |  |
 | 59 | `CollectAlliesInRange/3` | MatchDefinitionBuilder |  |
-| 60 | `GridToWorldCenter/2` | 미정 |  |
-| 61 | `GridToWorldCenterVector/2` | 미정 |  |
+| 60 | `GridToWorldCenter/2` | MapRuntime.CenterOf | 코어가 이미 갖고 있다 — 뷰는 그것을 부르고 `BoardSpace.ToView` 로 옮긴다 |
+| 61 | `GridToWorldCenterVector/2` | MapRuntime.CenterOf | 위와 같은 함수의 Vector3 오버로드 |
 | 62 | `InTileRange/3` | MapRuntime (코어) |  |
 | 63 | `DebugWorldToCell/1` | MapRuntime (코어) |  |
 | 64 | `DebugWorldToCellFractional/1` | MapRuntime (코어) |  |
@@ -172,27 +172,27 @@
 | 70 | `CastActiveSkillAtTile/9` | MapRuntime (코어) |  |
 | 71 | `CountAlliesInTileRange/2` | MapRuntime (코어) |  |
 | 72 | `CountEnemiesInTileRange/2` | MapRuntime (코어) |  |
-| 73 | `Update/0` | 미정 |  |
-| 74 | `TickBattleFrame/0` | 미정 |  |
+| 73 | `Update/0` | BattleDriver | 누산 + 틱 발행 |
+| 74 | `TickBattleFrame/0` | BattleDriver | 같은 자리 |
 | 75 | `ReadFinalTally/3` | ScoreLedger |  |
-| 76 | `SimIdOf/1` | 미정 |  |
+| 76 | `SimIdOf/1` | 삭제 | `SimEntityId` 가 곧 그 id 다 — 변환할 것이 없다 |
 | 77 | `CollectMatchConfig/0` | MatchDefinitionBuilder |  |
-| 78 | `StepOneTick/0` | 미정 |  |
-| 79 | `ResolveBattleSimGroup/0` | 미정 |  |
-| 80 | `LateUpdate/0` | 미정 |  |
+| 78 | `StepOneTick/0` | BattleDriver | `BattleMatch.Tick()` 한 번 |
+| 79 | `ResolveBattleSimGroup/0` | 삭제 | ECS 시스템 그룹이 없다 — 순서는 `TickPipeline` 나열이다 |
+| 80 | `LateUpdate/0` | 뷰 풀(각자) | 뷰 동기는 풀마다 자기 `LateUpdate` 다(계약 12 — 통합 뷰 없음) |
 | 81 | `SyncProjectileViews/0` | 뷰 풀 |  |
 | 82 | `ReconcileStatusFx/0` | 미정 |  |
 | 83 | `ReconcilePickupViews/0` | GimmickHost |  |
 | 84 | `ClearPickupVisuals/0` | GimmickHost |  |
 | 85 | `ReconcileResignationViews/0` | GimmickHost |  |
 | 86 | `ClearResignationVisuals/0` | GimmickHost |  |
-| 87 | `PushBattleTimeScaleToEcs/0` | 미정 |  |
+| 87 | `PushBattleTimeScaleToEcs/0` | 삭제 | 코어는 배율을 모른다 — 느려지는 것은 **틱 발행률**이다(계약 5) |
 | 88 | `SyncMonoUnitViews/0` | 뷰 풀 |  |
 | 89 | `SyncPatrolViews/3` | 뷰 풀 |  |
 | 90 | `ShieldRatioOf/2` | 미정 |  |
 | 91 | `GatherOverheadStacks/1` | 미정 |  |
 | 92 | `TryMapOverheadStackKind/2` | MapRuntime (코어) |  |
-| 93 | `EvaluateEnemyHealthTint/1` | 미정 |  |
+| 93 | `EvaluateEnemyHealthTint/1` | CoreUnitViewPool | 저체력 틴트. 값은 `CharacterViewConfig.healthDisplayStyle` |
 | 94 | `SyncSummonerAnimationState/3` | 뷰 풀 |  |
 | 95 | `TraceDefenderAiTransition/1` | 디버그/로그 (도구 처분표) |  |
 | 96 | `FindSummonPatrolAbility/1` | 미정 |  |
@@ -216,16 +216,16 @@
 | 114 | `FindDefenderData/1` | 미정 |  |
 | 115 | `DrainAttackOutputLogEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 116 | `TrySpawnCastVfx/2` | BindingRegistry / TriggerDispatcher |  |
-| 117 | `PushStagePostVolume/0` | 미정 |  |
-| 118 | `EnsureCameraDirector/0` | 미정 |  |
-| 119 | `ImpactSocketHeightOf/1` | 미정 |  |
+| 117 | `PushStagePostVolume/0` | 5b(스테이지 뷰) | 스테이지 포스트 볼륨은 카메라 쪽 배선이다 |
+| 118 | `EnsureCameraDirector/0` | 5b(카메라) | `CameraDirector` 는 재사용한다 — 배선 지점만 옮긴다 |
+| 119 | `ImpactSocketHeightOf/1` | CoreUnitViewPool | 뷰 앵커 조회. 5a 는 소비처가 없어 열지 않았다(이식 제외) |
 | 120 | `DrainProjectileHitEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 121 | `DrainHealAppliedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 122 | `DrainShieldGrantedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 123 | `DrainDetectionEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 124 | `DrainDamageNumberEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 125 | `ResolveUnitViewTransform/1` | 뷰 풀 |  |
-| 126 | `TryGetUnitScreenAnchor/3` | 미정 |  |
+| 126 | `TryGetUnitScreenAnchor/3` | CoreUnitOverheadUiLayer | 화면 앵커는 오버헤드가 직접 뷰에 묻는다 |
 | 127 | `ProjectTileScreenWidth/1` | MapRuntime (코어) |  |
 | 128 | `TryGetGoalViewAnchor/1` | HeartMeter |  |
 | 129 | `TryGetUnitViewAnchor/2` | 뷰 풀 |  |
@@ -250,10 +250,10 @@
 | 148 | `TryScreenToBoardFrac/3` | 미정 |  |
 | 149 | `TryPickNearestEnemy/4` | 미정 |  |
 | 150 | `TryGetDefenderAt/2` | 미정 |  |
-| 151 | `SetDefenderHoverHighlight/3` | 미정 |  |
+| 151 | `SetDefenderHoverHighlight/3` | CoreUnitViewPool | 유닛 뷰 `SetHoverHighlight` fan-out. 구동은 5b |
 | 152 | `TryPickDefenderAtScreen/7` | 미정 |  |
 | 153 | `ScreenDistanceToRect/2` | 미정 |  |
-| 154 | `TryGetUnitScreenRect/3` | 미정 |  |
+| 154 | `TryGetUnitScreenRect/3` | CoreUnitView.TryGetScreenRect | 뷰가 이미 갖고 있다 — 중개가 필요 없다 |
 | 155 | `TryGetDefenderData/2` | 미정 |  |
 | 156 | `SetDreamstones/1` | 미정 |  |
 | 157 | `ApplyPendingDreamstones/0` | 미정 |  |
@@ -263,10 +263,10 @@
 | 161 | `EffectiveLeakLimit/0` | 미정 |  |
 | 162 | `ResetGoalStability/0` | HeartMeter |  |
 | 163 | `BakeProjectileRef/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 164 | `SpawnStructureEntities/0` | 미정 |  |
+| 164 | `SpawnStructureEntities/0` | FieldPrepPhase.Begin | 코어가 저작 거점을 세운다 — 드라이버는 목록만 넘긴다 |
 | 165 | `SpawnStructureViews/0` | 뷰 풀 |  |
 | 166 | `ClearStructureViews/0` | 뷰 풀 |  |
-| 167 | `DestroyStructureEntities/0` | 미정 |  |
+| 167 | `DestroyStructureEntities/0` | 삭제 | 판이 끝나면 월드가 통째로 사라진다 — 개별 파괴 경로가 없다 |
 | 168 | `RemainingLeakAllowance/0` | 미정 |  |
 | 169 | `TryPayLeakAllowance/1` | 미정 |  |
 | 170 | `DrainGoalEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
@@ -391,7 +391,7 @@
 | 289 | `OnDestroy/0` | 미정 |  |
 | 290 | `EnsureMonoViewPools/0` | 뷰 풀 |  |
 | 291 | `CreateViewPool/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 292 | `ResolveUnitMaterial/2` | 미정 |  |
+| 292 | `ResolveUnitMaterial/2` | CoreUnitViewPool | 쿼드 폴백 머티리얼. `RuntimeMaterialFactory` 경유로 바뀌었다 |
 | 293 | `InstallSkillLayer/0` | BindingRegistry / TriggerDispatcher |  |
 | 294 | `RunImmediateSkills/0` | BindingRegistry / TriggerDispatcher |  |
 | 295 | `RoutingProbe/2` | 미정 |  |
