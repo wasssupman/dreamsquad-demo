@@ -1264,7 +1264,7 @@ GameObject:
   m_Component:
   - component: {fileID: 341322859}
   - component: {fileID: 341322858}
-  - component: {fileID: 341322857}
+  - component: {fileID: 341322860}
   m_Layer: 0
   m_Name: BattleInput
   m_TagString: Untagged
@@ -1272,27 +1272,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &341322857
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 341322856}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d82b6b004d7e42658505abe06996ce9a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Input.RetireInput
-  _driver: {fileID: 302}
-  _tray: {fileID: 402}
-  _boardCamera: {fileID: 102}
-  _holdSeconds: 0.55
-  _moveCancelPx: 24
-  _fillColor: {r: 1, g: 0.72, b: 0.25, a: 0.85}
-  _fillWidth: 0.08
-  _fillSegments: 48
-  _surfaceOffset: 0.06
 --- !u!114 &341322858
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1331,6 +1310,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &341322860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 341322856}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f8841272c894544a1bcc0a1eea224f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Input.SelectionInput
+  _driver: {fileID: 302}
+  _panel: {fileID: 1375787158}
+  _tray: {fileID: 402}
+  _placement: {fileID: 341322858}
+  _boardCamera: {fileID: 102}
+  _moveCancelPx: 24
+  _ringColor: {r: 1, g: 0.97, b: 0.9, a: 0.9}
+  _ringWidth: 0.06
+  _ringSegments: 48
+  _surfaceOffset: 0.06
 --- !u!1 &599526115
 GameObject:
   m_ObjectHideFlags: 0
@@ -1422,6 +1423,53 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1159201331}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1375787157
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1375787159}
+  - component: {fileID: 1375787158}
+  m_Layer: 0
+  m_Name: SelectionPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1375787158
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1375787157}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 46753f57d2dd4812bd9935d5d9fd0aa8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreSelectionPanel
+  _driver: {fileID: 302}
+  _width: 320
+  _anchoredPos: {x: 24, y: 0}
+--- !u!4 &1375787159
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1375787157}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -1682,3 +1730,4 @@ SceneRoots:
   - {fileID: 269632760}
   - {fileID: 1978911363}
   - {fileID: 2098208961}
+  - {fileID: 1375787159}

@@ -110,7 +110,8 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsNotNull(Object.FindAnyObjectByType<CorePlacementPhaseView>(), "배치 창");
             Assert.IsNotNull(Object.FindAnyObjectByType<CoreMenuPopup>(), "메뉴");
             Assert.IsNotNull(Object.FindAnyObjectByType<DragPlacementInput>(), "드래그 배치");
-            Assert.IsNotNull(Object.FindAnyObjectByType<RetireInput>(), "퇴근");
+            Assert.IsNotNull(Object.FindAnyObjectByType<SelectionInput>(), "선택");
+            Assert.IsNotNull(Object.FindAnyObjectByType<CoreSelectionPanel>(), "선택 패널(퇴근 버튼이 여기 산다)");
             Assert.IsNotNull(Object.FindAnyObjectByType<SubmitInput>(), "제출");
             Assert.IsNotNull(Object.FindAnyObjectByType<CoreMapOverlay>(), "맵 오버레이");
             Assert.IsNotNull(Object.FindAnyObjectByType<CoreSpawnAlertPresenter>(), "예고선");
