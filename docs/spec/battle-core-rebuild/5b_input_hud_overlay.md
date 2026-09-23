@@ -70,7 +70,7 @@
       **98 → 64**(34행). `check_ledgers.py` exit 0.
 - [x] 뷰·입력 코드에 판정 0 · `Unity.Entities` 0 · Controller 이름 0.
       (`grep -rn "Unity.Entities" Scripts/BattleCoreUnity` = 0건 · `class .*Controller` = 0건)
-- [ ] `core-reviewer` APPROVE.
+- [x] `core-reviewer` APPROVE(2026-09-23 · 위반 0 · MEDIUM 1 = 오버레이가 footprint 치수를 정의표에서 직접 읽음 → 후속 후보). 리드 Unity 재실행 EditMode 371/371 · PlayMode 16/16 · Play 육안(스테이지 프레이밍·격자·예고 링·콘솔 에러 0). 손맛(드래그 스냅 64px/0.08s·예고선 경로 일치·퇴근 길게 누르기)은 사용자 플레이 1차에서.
 
 확인 2026-09-23 — Unity EditMode 코어 lane **371/371** · 새 PlayMode lane **16/16** · 콘솔 `error CS` 0 ·
 헤드리스 3종(build 0 · test 360 · Check build 0) · Play 육안(스테이지 프레이밍 · HUD 6 · 격자 · 배치 가이드).

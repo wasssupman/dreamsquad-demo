@@ -16,7 +16,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <RepoRoot>$(MSBuildThisFileDirectory)..\..\..\</RepoRoot>
-    <UnityScriptAssemblies Condition="'$(UnityScriptAssemblies)' == ''">/Users/sy/dev/wassup/Library/ScriptAssemblies</UnityScriptAssemblies>
+    <UnityScriptAssemblies Condition="'$(UnityScriptAssemblies)' == ''">/Users/sy/dev/wassup-core/Library/ScriptAssemblies</UnityScriptAssemblies>
     <!--
       골든 대조는 이 lane 에서 돌리지 않는다. Unity 의 Mono 는 float 식을 확장 정밀도로 평가해
       같은 코드가 .NET 9 와 1 ulp 부터 갈리고, 긴 판은 이벤트 순서까지 갈린다(kill_race_3min,

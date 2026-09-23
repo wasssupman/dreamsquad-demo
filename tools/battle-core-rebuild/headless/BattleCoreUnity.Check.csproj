@@ -23,7 +23,7 @@
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <NoWarn>$(NoWarn);CS1701;CS1702</NoWarn>
     <RepoRoot>$(MSBuildThisFileDirectory)..\..\..\</RepoRoot>
-    <UnityScriptAssemblies Condition="'$(UnityScriptAssemblies)' == ''">/Users/sy/dev/wassup/Library/ScriptAssemblies</UnityScriptAssemblies>
+    <UnityScriptAssemblies Condition="'$(UnityScriptAssemblies)' == ''">/Users/sy/dev/wassup-core/Library/ScriptAssemblies</UnityScriptAssemblies>
     <UnityEngineDir Condition="'$(UnityEngineDir)' == ''">/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/Scripting/Managed/UnityEngine</UnityEngineDir>
   </PropertyGroup>
 
