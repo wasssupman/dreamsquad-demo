@@ -1,0 +1,685 @@
+using System.Collections;
+using System.Collections.Generic;
+using Wassup.BattleCore;
+using Unity.Mathematics;
+using UnityEngine;
+using Wassup.BattleCore.Combat.Projectile;
+using Wassup.Presentation;
+using Wassup.Data;
+
+namespace Wassup.BattleCoreUnity.View
+{
+    // BattleBridge가 ECS 상태를 Presentation 값으로 번역한 프레임 스냅샷.
+    // CoreProjectileViewPool은 EntityManager/Component에 직접 접근하지 않는다.
+    public struct CoreProjectileViewFrame
+    {
+        public float3 simPosition;
+        public bool hasState;
+        public MovementKind movement;
+        public float flightTime;
+        public float elapsed;
+        public float arcHeight;
+        // dreamcatcher-content-4 — **보드 깊이 소팅**(0 = 미사용). 투사체는 기본적으로
+        // `ProjectileOffset`(+1000) 플랫 오프셋이라 깊이와 무관하게 항상 유닛 위에 그려진다.
+        // 대부분의 탄(날아가서 사라짐)은 그게 맞지만, **유닛을 도는 궤도구**는 뒤로 갔을 때
+        // 몸에 가려야 «돈다» 로 읽힌다. 그 경우에만 브리지가 셀 기준 order 를 계산해 싣고,
+        // 뷰는 그대로 적용한다 — 보드 좌표(gridSize/tileSize) 지식은 브리지가 소유한다는
+        // 이 struct 의 원래 계약 그대로다.
+        public int boardSortOrder;
+        // unit 16 — 임팩트 소켓(뷰 전용). height = 대상 저작 소켓 높이(월드), blend = 접근
+        // 구간 가중(0 = 미사용). 브리지가 대상·거리 지식을 갖고 여기엔 값만 싣는다.
+        public float targetSocketHeight;
+        public float targetSocketBlend;
+    }
+
+    // Attached once to each instantiated view — caches component arrays so ApplyMpb,
+    // ReturnToPool, and ResetVfx never call GetComponentsInChildren on hot paths.
+    public class CoreViewRendererCache : MonoBehaviour
+    {
+        public Renderer[] renderers;
+        // 프리팹이 저작한 **원래** sortingOrder (플랫 오프셋을 더하기 전). 깊이 소팅으로
+        // 매 프레임 절대값을 다시 쓰는 경로가 렌더러 간 상대 순서(mesh/trail/flare)를
+        // 보존하려면 기준점이 필요하다 — 이미 오프셋이 더해진 값에서 되돌릴 수는 없다.
+        public int[] baseSortingOrders;
+        public TrailRenderer[] trails;
+        // Top-level particle systems only. Play(true) cascades to children/subemitters,
+        // so restarting only roots preserves authored trigger relationships.
+        public ParticleSystem[] rootParticles;
+        // directional-attack-shape unit 7 — 루트의 메시 파티클 렌더러(renderMode Mesh 일 때만, 아니면 null).
+        // `PlayHit(meshOverride)` 가 재생 직전 메시를 갈아끼우는 자리. 풀 재사용마다 GetComponent 를 안 부르려고 캐시.
+        public ParticleSystemRenderer rootMeshRenderer;
+        // 프리팹이 저작한 원본 메시 — 오버라이드 없는 재생이 **직전 재생의 메시**를 물려받지 않게 되돌리는 기준(리뷰 M-1).
+        public Mesh rootMeshOriginal;
+    }
+
+    public class CoreProjectileViewPool : MonoBehaviour
+    {
+        // ── battle-core-rebuild unit 5a — 코어 구동부 ─────────────────────────
+        //
+        // 옛 풀은 브리지가 밀어 주는 프레임 스냅샷을 **받기만** 했다. 새 풀은 자기 사건을
+        // 직접 구독하고(계약 12) 프레임 값을 코어 읽기 모델에서 스스로 만든다 — 그 사이에
+        // 값을 옮겨 적는 중개자가 없으므로 「번역이 낡는」 자리가 없다.
+        [SerializeField] private BattleDriver _driver;
+
+        [Tooltip("발사 앵커(손·총구)를 물어볼 유닛 뷰 풀. 비어 있으면 몸 중심에서 나간다.")]
+        [SerializeField] private CoreUnitViewPool _units;
+
+        private void OnEnable()
+        {
+            if (_driver != null) _driver.Subscribe(ViewOrder.Projectile, OnCoreEvent);
+        }
+
+        private void OnDisable()
+        {
+            if (_driver != null) _driver.Unsubscribe(OnCoreEvent);
+        }
+
+        private void OnCoreEvent(CoreEvent e)
+        {
+            switch (e.Kind)
+            {
+                case CoreEventKind.ProjectileSpawned: SpawnFromEvent(e); break;
+
+                // 모든 소멸은 소멸 사건을 낸다(계약 7) — 매 프레임 생존 폴링이 없는 이유다.
+                case CoreEventKind.ProjectileDespawned: Despawn(e.A); break;
+
+                case CoreEventKind.ProjectileHit: PlayHitFromEvent(e); break;
+            }
+        }
+
+        private ProjectileData DataOf(int defIndex)
+            => _driver != null ? _driver.ViewAssets.Projectile(defIndex) : null;
+
+        private void SpawnFromEvent(CoreEvent e)
+        {
+            var proj = _driver != null ? _driver.Match?.World.FindProjectile(e.A) : null;
+            var data = DataOf(proj != null ? proj.DefIndex : -1);
+            if (data == null || data.projectilePrefab == null) return;
+
+            var movement = (MovementKind)e.Arg;
+            // 하늘에서 내려오는 탄은 **첫 프레임부터 하늘에서** 시작해야 풀링 트레일이
+            // 지면→하늘 스트릭을 긋지 않는다.
+            bool fallsFromSky = movement == MovementKind.SkyFall
+                                || movement == MovementKind.SkyFallOnEntity;
+            float initialDrop = fallsFromSky ? data.dropHeight : 0f;
+
+            // 발사 앵커는 **쏜 유닛의 손**이다. 하늘에서 내려오는 탄은 유닛 발사가 아니라
+            // 착탄 칸에서 내려오므로 앵커를 적용하지 않는다.
+            bool hasLaunchAnchor = false;
+            Vector3 launchAnchor = default;
+            if (!fallsFromSky && _units != null && !e.B.IsNone)
+                hasLaunchAnchor = _units.TryResolveProjectileLaunchAnchor(e.B, out launchAnchor);
+
+            Spawn(e.A, data, e.SiteFired.Pos, initialDrop, hasLaunchAnchor, launchAnchor);
+        }
+
+        private void PlayHitFromEvent(CoreEvent e)
+        {
+            var proj = _driver != null ? _driver.Match?.World.FindProjectile(e.A) : null;
+            var data = DataOf(proj != null ? proj.DefIndex : -1);
+            if (data == null || data.hitPrefab == null) return;
+            PlayHit(data.hitPrefab, e.SiteFired.Pos, data.hitVfxLifetime,
+                    data.visualHeightOffset, data.hitVfxScale);
+        }
+
+        // 매 프레임 동기. 위치는 **코어 읽기 모델**에서 바로 읽는다 — 중개 스냅샷이 없다.
+        private void LateUpdate()
+        {
+            if (_driver == null || !_driver.Running) return;
+            var live = _driver.Projectiles;
+            for (int i = 0; i < live.Count; i++)
+            {
+                var p = live[i];
+                var frame = new CoreProjectileViewFrame
+                {
+                    simPosition = p.Position,
+                    hasState = true,
+                    movement = p.Movement,
+                    flightTime = p.FlightTime,
+                    elapsed = p.Elapsed,
+                    arcHeight = p.ArcHeight,
+                };
+                SyncTransform(p.Id, frame);
+            }
+        }
+
+        private struct CoreProjectileViewState
+        {
+            public GameObject view;
+            public GameObject prefab;
+            public ProjectileFacing facing;
+            public float spinSpeed;
+            // bomb-thrower-defender unit 5 — GrenadeToCell 퓨즈 점멸 스케일 펄스의 기준값.
+            public float baseScale;
+            // static body height를 제외한 카메라 평면 투영 궤적. AlongVelocity가 arc/drop을 따른다.
+            public float3 lastPosition;
+            // 순수 BoardSpace 위치. RollAlongPath의 구름 축에 bounce 높이가 섞이지 않게 한다.
+            public float3 lastGroundPosition;
+            public float heightOffset;   // 카메라 평면 up 렌더 오프셋 (ECS/velocity 엔 미반영)
+            // unit 9 — SkyFall 낙하 압축(뷰 전용): 낙하가 비행 후반 이 비율에 압축된다.
+            // 1 = 전체 구간 등속. ECS state 를 늘리지 않고 view 딕셔너리에 태운다.
+            public float fallPortion;
+            // unit 5 — spawn 직후 같은 프레임의 Bridge sync가 weapon/body anchor를
+            // 덮지 않도록 딱 한 번 위치 갱신을 보류한다.
+            public bool holdLaunchAnchorForFirstSync;
+            // unit 16 — 마지막 sync 가 남긴 소켓 높이. sim 엔티티가 파괴된 프레임에도
+            // 히트 드레인이 이 값을 읽어 임팩트 VFX 를 몸통에서 터뜨린다.
+            public float lastSocketHeight;
+        }
+
+        private static readonly int PropBaseColor    = Shader.PropertyToID("_BaseColor");
+        private static readonly int PropColor        = Shader.PropertyToID("_Color");
+        private static readonly int PropEmissionColor = Shader.PropertyToID("_EmissionColor");
+        private static readonly int PropBaseMap      = Shader.PropertyToID("_BaseMap");
+        private static readonly int PropMainTex      = Shader.PropertyToID("_MainTex");
+
+        private readonly Dictionary<SimEntityId, CoreProjectileViewState> _active = new();
+        private readonly Dictionary<GameObject, Stack<GameObject>> _pool = new();
+        private readonly Dictionary<ProjectileData, int> _spawnCounters = new();
+        // directional-attack-shape unit 7 — 참격 자국 메시 **캐시**(풀 아님). 판정 도형 조합(kind·각/반폭·길이·cellSize)마다
+        // 한 장을 `ShapeMeshBuilder` 로 만들어 재사용한다 — 저작 조합은 한 손에 꼽힌다(오늘 3종). 수명 = 이 풀(OnDestroy).
+        private readonly Dictionary<ShapeMarkSpec, Mesh> _shapeMarkMeshes = new();
+        private readonly HashSet<GameObject> _meshOverrideWarned = new();   // 프리팹당 1회 경고 게이트(리뷰 M-3)
+        private MaterialPropertyBlock _mpb;
+        private System.Random _visualRng;
+        private Camera _projectionCamera;
+
+        private void Awake()
+        {
+            _mpb = new MaterialPropertyBlock();
+            _visualRng = new System.Random();
+        }
+
+        // Call at battle-start with the session seed so visual jitter is reproducible.
+        // Falls back to Awake's time-based seed when not called.
+        public void Initialize(int seed)
+        {
+            _visualRng = new System.Random(seed);
+            _spawnCounters.Clear();
+        }
+
+        public int ActiveCount => _active.Count;
+
+        // unit 16 — 히트 드레인용. 드레인(DrainProjectileHitEvents)이 sync/despawn 보다
+        // 먼저 돌아 파괴 프레임에도 뷰 상태가 살아 있다 — 그 창을 이용한다.
+        public bool TryGetImpactSocketHeight(SimEntityId entity, out float height)
+        {
+            if (_active.TryGetValue(entity, out var s) && s.lastSocketHeight > 0f)
+            {
+                height = s.lastSocketHeight;
+                return true;
+            }
+            height = 0f;
+            return false;
+        }
+
+        // Fix 1: initialPosition prevents first-frame wrong-direction rotation for AlongVelocity.
+        // initialDropOffset (unit 9, SkyFall): 첫 프레임 뷰를 낙하 시작 높이에서 시작시킨다 —
+        // 지면에 스폰 후 첫 Sync 에서 하늘로 점프하면 풀링 TrailRenderer 가 스트릭을 긋는다.
+        public void Spawn(SimEntityId entity, ProjectileData data, float3 initialPosition,
+                          float initialDropOffset = 0f,
+                          bool hasLaunchAnchor = false,
+                          Vector3 launchAnchor = default)
+        {
+            var view = GetOrCreate(data.projectilePrefab);
+            view.SetActive(true);
+
+            float scaleMul = 1f + (float)(_visualRng.NextDouble() * 2 - 1) * data.scaleJitter;
+            view.transform.localScale = Vector3.one * (data.visualScale * scaleMul);
+
+            float hueShift = (float)(_visualRng.NextDouble() * 2 - 1) * data.hueJitter;
+            float rollDeg  = (float)(_visualRng.NextDouble() * 2 - 1) * data.rotationJitter;
+
+            // ga-reskin unit 1: preserveVfxColors 면 데이터 recolor(tint/emission/texture)를 건너뛰고
+            // 프리팹 머티리얼 고유 색을 그대로 쓴다. GA 처럼 _Color(HDR 밝기)·_EmissionColor 가 이미
+            // authored 된 VFX 는 MPB 흰색 덮어쓰기로 밝기/색이 죽으므로 as-is 재현에 필수.
+            // RNG draw 수는 위에서 항상 동일하게 소비 → 시각 결정성 유지.
+            if (!data.preserveVfxColors)
+            {
+                Color finalTint = ApplyHueShift(data.tintColor, hueShift);
+                ApplyMpb(view, finalTint, data.emissionMultiplier, SelectTexture(data));
+            }
+
+            // Fix 2: reset to prefab rotation before applying roll — no accumulation across pool reuse.
+            view.transform.localRotation = data.projectilePrefab.transform.localRotation
+                * Quaternion.Euler(0f, 0f, rollDeg);
+
+            // ga-reskin unit 1: 첫 SyncTransform 전에 스폰 위치를 즉시 세팅하고 trail/particle 을
+            // 리셋한다. 안 그러면 풀 재사용 시 이전 사망 위치 → 새 스폰 위치로 world-space 파티클/
+            // TrailRenderer 가 streak(줄) 을 그린다.
+            float3 spawnGroundView = Wassup.Core.BoardSpace.ToView(initialPosition);
+            // 낙하 오프셋은 SyncTransforms 와 같은 카메라 평면 up 축에 선반영 —
+            // lastPosition 에도 포함해야 첫 프레임 velocity 가 ≈0 이 되어(지면→하늘
+            // 오차분이 안 섞여) 잘못된 위쪽 페이싱 플래시가 없다.
+            float3 spawnView = ProjectHeight(spawnGroundView, initialDropOffset);
+            view.transform.position = hasLaunchAnchor
+                ? launchAnchor
+                : ProjectHeight(spawnGroundView, initialDropOffset + data.visualHeightOffset);
+            ResetVfx(view);
+
+            _active[entity] = new CoreProjectileViewState
+            {
+                view = view,
+                prefab = data.projectilePrefab,
+                facing = data.facing,
+                spinSpeed = data.spinSpeed,
+                baseScale = data.visualScale * scaleMul,
+                // tilemap-view-backend unit 3 — lastPosition 은 view 좌표로 보존(velocity 를 view 공간에서 계산).
+                lastPosition = spawnView,   // Fix 1 (heightOffset 미포함 = 순수 위치, velocity 정확)
+                lastGroundPosition = spawnGroundView,
+                heightOffset = data.visualHeightOffset,
+                fallPortion = data.fallPortion,
+                holdLaunchAnchorForFirstSync = hasLaunchAnchor,
+            };
+        }
+
+        public void CopyActiveEntities(List<SimEntityId> destination)
+        {
+            destination.Clear();
+            foreach (var entity in _active.Keys)
+                destination.Add(entity);
+        }
+
+        public void Despawn(SimEntityId entity) => Return(entity);
+
+        public void SyncTransform(SimEntityId entity, CoreProjectileViewFrame frame)
+        {
+            if (!_active.TryGetValue(entity, out var state)) return;
+
+            if (state.holdLaunchAnchorForFirstSync)
+            {
+                state.holdLaunchAnchorForFirstSync = false;
+                _active[entity] = state;
+                return;
+            }
+
+            // sim→view 1회. 위치·속도·LookRotation 전부 view 공간끼리 (lastPosition 도 view).
+            float3 groundPos = Wassup.Core.BoardSpace.ToView(frame.simPosition);
+            float presentationHeight = 0f;
+
+            // Ballistic arc height is a presentation concern: BoardSpace.ToView drops
+            // sim Y on the flat board, so the visible parabola is added here in the
+            // camera plane. Folding it into `pos` (before velocity) also pitches the shell
+            // along the arc for AlongVelocity facing.
+            if (frame.hasState)
+            {
+                if (frame.movement == MovementKind.BallisticArcToPoint && frame.flightTime > 0f)
+                    presentationHeight += BallisticArc.ArcHeight(
+                        frame.arcHeight, math.saturate(frame.elapsed / frame.flightTime));
+                // projectile-emission-pattern unit 1 — 베지어 호밍의 3축 중 Y.
+                // sim 은 XZ 곡선만 굴리므로(BoardSpace 가 sim-Y 를 drop) 높이는
+                // 여기서만 생긴다. ArcHeight 재사용 = 신규 수학 0줄, pos 에 접혀
+                // AlongVelocity 페이싱이 곡선을 따라 피칭한다.
+                else if (frame.movement == MovementKind.BezierHomingToEntity && frame.flightTime > 0f)
+                    presentationHeight += BallisticArc.ArcHeight(
+                        frame.arcHeight, math.saturate(frame.elapsed / frame.flightTime));
+                // unit 9 — SkyFall 낙하: arcHeight 슬롯 = 낙하 시작 높이. sim 은 착탄 셀에
+                // 고정이므로 화면 낙하는 전부 여기 camera-up 으로 표현된다. pos 에 접혀
+                // AlongVelocity 페이싱이 아래를 향하고 트레일이 위로 남는다.
+                // fallPortion < 1 이면 낙하를 비행 후반에 압축하고, 대기(pre-fall)
+                // 구간엔 뷰를 숨긴다 — 상공 호버가 화면에 보이는 어색함 제거. 낙하
+                // 시작 프레임에 시작 높이에서 등장(transform 이 그 높이를 유지하고
+                // 있어 트레일 스트릭 없음, 파티클은 활성화 시점에 신선 재생).
+                // 텔레그래프(flightTime·데미지 타이밍)는 불변, 시각만 바뀐다.
+                // on-place-skill-rework unit 10 — 적 조준 낙하탄(`SkyFallOnEntity`)도 같은 낙하
+                // 연출을 쓴다. sim 이 XZ 를 임자에게 붙여 주므로 뷰는 «높이만» 담당한다는 이 arm
+                // 의 계약이 그대로 성립한다 — 화면에서는 미사일이 적을 따라 내려온다.
+                else if (frame.movement == MovementKind.SkyFall
+                         || frame.movement == MovementKind.SkyFallOnEntity)
+                {
+                    float p = SkyFall.Progress(frame.elapsed, frame.flightTime);
+                    float fp = state.fallPortion;
+                    bool falling = fp >= 1f || p >= 1f - fp;
+                    if (state.view.activeSelf != falling)
+                    {
+                        state.view.SetActive(falling);
+                        // reveal 시 파티클/트레일 명시 재생 — prefab 의 playOnAwake
+                        // 에 암묵 의존하지 않는다(리뷰 M1). 위치는 대기 내내 시작
+                        // 높이에 고정돼 있어 트레일 스트릭 없음.
+                        if (falling) ResetVfx(state.view);
+                    }
+                    presentationHeight += frame.arcHeight * (1f - SkyFall.FallProgress(p, fp));
+                }
+                // bomb-thrower-defender unit 5 — 구르기 arc(travel 낮은 arc; 퓨즈엔 t=1
+                // → ArcHeight 0 = 지면 정지) + 착지 후 폭발 예고 스케일 점멸.
+                else if (frame.movement == MovementKind.GrenadeToCell)
+                {
+                    float gt = frame.flightTime > 0f
+                        ? math.saturate(frame.elapsed / frame.flightTime)
+                        : 1f;
+                    // 통통 튀기며 굴러감: 감쇠하는 다중 바운스(착지점 gt=1 에서 0 → 지면).
+                    // arcHeight = 첫 바운스 최대 높이(SO), BounceHops = 이동 중 튀는 횟수.
+                    const float BounceHops = 3f;
+                    presentationHeight += frame.arcHeight
+                        * math.abs(math.sin(math.PI * gt * BounceHops)) * (1f - gt);
+                    if (frame.elapsed >= frame.flightTime)
+                    {
+                        float fuseT = frame.elapsed - frame.flightTime;
+                        float pulse = 1f + 0.18f * math.sin(fuseT * 18f);
+                        state.view.transform.localScale = Vector3.one * (state.baseScale * pulse);
+                    }
+                }
+            }
+
+            // unit 16 — 임팩트 소켓: 접근 구간(blend>0)에서 뷰 높이를 대상 몸통으로 흡수.
+            // 판정·sim 궤적 무변 — heightOffset 까지 합친 총 높이를 소켓으로 lerp 한 뒤
+            // heightOffset 몫을 되돌려 두 사용처(facing용 pos·실제 position)가 같이 따라온다.
+            if (frame.targetSocketBlend > 0f && frame.targetSocketHeight > 0f)
+            {
+                float cur = presentationHeight + state.heightOffset;
+                presentationHeight =
+                    math.lerp(cur, frame.targetSocketHeight, frame.targetSocketBlend)
+                    - state.heightOffset;
+                // 리뷰 L3 — 여기서 _active 에 쓰지 않는다: 메서드 끝의 단일 쓰기가
+                // lastSocketHeight 까지 같이 영속한다(중간 return 없음).
+                state.lastSocketHeight = frame.targetSocketHeight;
+            }
+
+            // projectile-shot-sequence unit 3 — 월드 +Y는 원근 카메라에서 view depth까지
+            // 바꿔 외곽 탄환을 화면 바깥으로 민다. 높이·arc·drop은 카메라 평면 up으로
+            // 투영하고, groundPos(ECS ToView 결과)는 그대로 둔다.
+            float3 pos = ProjectHeight(groundPos, presentationHeight);
+            var view = state.view;
+            view.transform.position = ProjectHeight(
+                groundPos, presentationHeight + state.heightOffset);
+
+            // dreamcatcher-content-4 — 보드 깊이 소팅(궤도구). 0 = 미사용이라 기존 탄은
+            // 스폰 시 한 번 더해진 플랫 오프셋(+1000)을 그대로 쓴다 — 이 분기에 안 들어온다.
+            // 켜진 경우 프리팹 원래 order 를 기준으로 절대값을 다시 써서, 유닛 뒤로 돌면
+            // 몸에 가리고 앞으로 오면 덮는다. 렌더러 간 상대 순서는 base 로 보존된다.
+            if (frame.boardSortOrder != 0
+                && view.TryGetComponent<CoreViewRendererCache>(out var sortCache)
+                && sortCache.baseSortingOrders != null)
+            {
+                var rs = sortCache.renderers;
+                for (int i = 0; i < rs.Length; i++)
+                {
+                    if (rs[i] == null) continue;
+                    rs[i].sortingOrder = sortCache.baseSortingOrders[i] + frame.boardSortOrder;
+                }
+            }
+
+            switch (state.facing)
+            {
+                case ProjectileFacing.AlongVelocity:
+                    var vel = pos - state.lastPosition;
+                    if (math.lengthsq(vel) > 0.0001f)
+                        view.transform.rotation = Quaternion.LookRotation(
+                            new Vector3(vel.x, vel.y, vel.z), Vector3.up);
+                    break;
+                case ProjectileFacing.SpinAroundUp:
+                    view.transform.Rotate(0f, state.spinSpeed * Time.deltaTime, 0f);
+                    break;
+                case ProjectileFacing.RollAlongPath:
+                {
+                    // bomb-thrower-defender unit 5 — 데굴데굴: 진행방향 수직 수평축 기준
+                    // tumble. 이동 중일 때만(퓨즈/착지 시 vel≈0 → 정지). spinSpeed = 굴림 속도.
+                    // unit 3 — 카메라 평면 bounce는 world Z 성분도 가지므로 투영 궤적을
+                    // 쓰면 구름 축에 높이가 섞인다. 순수 ground delta로 기존 동작을 보존.
+                    var rvel = groundPos - state.lastGroundPosition;
+                    var rflat = new Vector3(rvel.x, 0f, rvel.z);
+                    if (rflat.sqrMagnitude > 0.0001f)
+                        view.transform.Rotate(
+                            Vector3.Cross(Vector3.up, rflat.normalized),
+                            state.spinSpeed * Time.deltaTime, Space.World);
+                    break;
+                }
+                case ProjectileFacing.FixedUp:
+                default:
+                    break;
+            }
+
+            state.lastPosition = pos;
+            state.lastGroundPosition = groundPos;
+            _active[entity] = state;
+        }
+
+        private Vector3 ProjectHeight(float3 basePosition, float height)
+        {
+            if (_projectionCamera == null)
+                _projectionCamera = Camera.main;
+            return HeadAnchor.Lift((Vector3)basePosition, Vector3.up * height, _projectionCamera);
+        }
+
+        // directional-attack-shape unit 7 — 판정 도형에서 만든 참격 메시. 브리지가 `AttackState.shape` + 사거리 + 내 몸으로
+        // spec 을 짓고 여기서 메시를 받아 `PlayHit(meshOverride)` 로 넘긴다. 같은 spec 은 같은 Mesh 인스턴스(캐시).
+        public Mesh GetShapeMarkMesh(in ShapeMarkSpec spec)
+        {
+            if (_shapeMarkMeshes.TryGetValue(spec, out var mesh) && mesh != null) return mesh;
+            mesh = new Mesh { name = $"SlashMark_{(spec.kind == AttackShapeBaked.BandKind ? "Band" : "Sector")}_{spec.lengthTiles:0.##}" };
+            ShapeMeshBuilder.BuildMark(mesh, in spec);
+            _shapeMarkMeshes[spec] = mesh;
+            return mesh;
+        }
+
+        private void OnDestroy()
+        {
+            foreach (var m in _shapeMarkMeshes.Values)
+                if (m != null) Destroy(m);
+            _shapeMarkMeshes.Clear();
+        }
+
+        // Fix 5: hitVfxLifetime > 0 overrides auto-detect.
+        // facingViewDir: 타격 방향(**view 공간**). 지정하면 VFX 가 그 방향으로 회전한다
+        // (말파이트 흙 폭발처럼 방향성이 있는 히트용). 기본 default = 회전 없음(기존 동작).
+        // meshOverride: 루트 메시 파티클의 메시를 이 재생에 한해 교체(참격 자국 — 판정 도형에서 실시간 생성). null = 프리팹 원본 메시로
+        //   **되돌린다** — 풀 인스턴스엔 직전 메시가 남아 있어, 되돌리지 않으면 공격자가 드레인 전에 죽어 메시를 못 지은 재생이나 reflex 저작이
+        //   Omni 로 접힌 재생이 남의 참격 모양을 물려받는다(리뷰 M-1).
+        public void PlayHit(GameObject hitPrefab, float3 position, float hitVfxLifetime = 0f,
+                            float heightOffset = 0f, float scale = 1f, Vector3 facingViewDir = default,
+                            Vector3 eulerOffset = default, Mesh meshOverride = null)
+        {
+            var view = GetOrCreate(hitPrefab);
+            view.SetActive(true);
+            if (view.TryGetComponent<CoreViewRendererCache>(out var rcache))
+            {
+                if (rcache.rootMeshRenderer != null)
+                    rcache.rootMeshRenderer.mesh = meshOverride != null ? meshOverride : rcache.rootMeshOriginal;
+                else if (meshOverride != null && _meshOverrideWarned.Add(hitPrefab))
+                    // 루트가 메시 파티클이 아닌 프리팹에 참격 메시를 넘겼다 — 조용히 옛 그림이 뜨면 이 unit 이 없애려던 거짓말의 재발이다.
+                    // 프리팹당 1회(머티리얼 팩토리 실패 게이트와 같은 규약).
+                    Debug.LogWarning($"[CoreProjectileViewPool] '{hitPrefab.name}' 루트가 Mesh 렌더 모드 파티클이 아니라 meshOverride 를 적용할 수 없다 — 참격 프리팹 저작을 확인할 것.", hitPrefab);
+            }
+            view.transform.localScale = Vector3.one * scale;   // 원본이 작으면 키움
+            // ⚠ 위 줄이 프리팹 스케일을 **덮는다** — 크기 조절은 프리팹이 아니라 이 인자로.
+            if (facingViewDir.sqrMagnitude > 0.0001f)
+            {
+                // ⚠ 방향을 그대로 forward 로 주면 안 된다. LookRotation 은 up 을 "가능한 한"
+                // 맞출 뿐이라, 방향이 up 쪽 성분을 가지면 이펙트가 통째로 기운다 — 근접 유닛은
+                // 대상이 화면상 위아래로 붙는 일이 많아 폭발이 바닥을 뚫고 들어갔다(제보).
+                //
+                // 그래서 **up 축을 고정**하고 방향은 그 축 둘레의 회전(yaw)만 담당하게 한다:
+                // 방향을 up 에 수직인 평면으로 투영하면 up 이 정확히 보존된다.
+                // 지면형 폭발이므로 up = 월드 up(위로 솟는다). 카메라 pitch 는 알아서 비춘다.
+                Vector3 upRef = Vector3.up;
+                Vector3 planar = Vector3.ProjectOnPlane(facingViewDir, upRef);
+                if (planar.sqrMagnitude > 1e-6f)
+                    view.transform.rotation = Quaternion.LookRotation(planar, upRef);
+                // 완전히 수직인 방향(투영이 0)이면 회전을 건드리지 않는다 — 프리팹 기본 자세 유지.
+            }
+            float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
+            // heightOffset: projectile body와 같은 카메라 평면 up으로 띄워 착탄 순간
+            // 월드 +Y 왜곡/위치 점프가 생기지 않게 한다.
+            view.transform.position = ProjectHeight(hitView, heightOffset);
+            // 기본 자세 보정. 계산된 회전 **뒤에** 곱해 로컬 축 기준으로 돈다.
+            // facing 을 안 쓰는 이펙트도 이 값만으로 자세를 잡을 수 있다.
+            if (eulerOffset != Vector3.zero)
+                view.transform.rotation = view.transform.rotation * Quaternion.Euler(eulerOffset);
+
+            ResetVfx(view);   // ga-reskin unit 1: 풀 재사용 시 파티클 재생 신선도
+            float lifetime = hitVfxLifetime > 0f ? hitVfxLifetime : GetParticleLifetime(view);
+            StartCoroutine(DespawnAfter(view, hitPrefab, lifetime));
+        }
+
+        public void PlayCast(GameObject castPrefab, Vector3 position, Vector3 facingDir, float lifetime = 0f)
+        {
+            var view = GetOrCreate(castPrefab);
+            view.SetActive(true);
+            view.transform.position = position;
+            if (facingDir.sqrMagnitude > 0.0001f)
+                view.transform.rotation = Quaternion.LookRotation(facingDir, Vector3.up);
+            ResetVfx(view);   // ga-reskin unit 1: 풀 재사용 시 파티클 재생 신선도
+            float life = lifetime > 0f ? lifetime : GetParticleLifetime(view);
+            StartCoroutine(DespawnAfter(view, castPrefab, life));
+        }
+
+        public void DespawnAll()
+        {
+            foreach (var (_, state) in _active)
+                ReturnToPool(state.view, state.prefab);
+            _active.Clear();
+        }
+
+        private Texture2D SelectTexture(ProjectileData data)
+        {
+            if (data.textureVariants == null || data.textureVariants.Length == 0) return null;
+            int idx = data.selectMode switch
+            {
+                TextureSelectMode.Sequential => GetAndIncrementCounter(data) % data.textureVariants.Length,
+                TextureSelectMode.First => 0,
+                _ => _visualRng.Next(data.textureVariants.Length),
+            };
+            return data.textureVariants[idx];
+        }
+
+        private int GetAndIncrementCounter(ProjectileData data)
+        {
+            _spawnCounters.TryGetValue(data, out int count);
+            _spawnCounters[data] = count + 1;
+            return count;
+        }
+
+        private void ApplyMpb(GameObject view, Color tint, float emissionMul, Texture2D texOverride = null)
+        {
+            Color emission = tint * emissionMul;
+            // Fix 4: use cached renderers to avoid GC alloc on hot path.
+            var renderers = view.TryGetComponent<CoreViewRendererCache>(out var cache)
+                ? cache.renderers
+                : view.GetComponentsInChildren<Renderer>(includeInactive: false);
+            foreach (var r in renderers)
+            {
+                _mpb.Clear();
+                _mpb.SetColor(PropBaseColor, tint);
+                _mpb.SetColor(PropColor, tint);
+                _mpb.SetColor(PropEmissionColor, emission);
+                if (texOverride != null)
+                {
+                    _mpb.SetTexture(PropBaseMap, texOverride);
+                    _mpb.SetTexture(PropMainTex, texOverride);
+                }
+                r.SetPropertyBlock(_mpb);
+            }
+        }
+
+        public static Color ApplyHueShift(Color c, float hueShift)
+        {
+            Color.RGBToHSV(c, out float h, out float s, out float v);
+            h = Mathf.Repeat(h + hueShift, 1f);
+            var result = Color.HSVToRGB(h, s, v);
+            result.a = c.a;
+            return result;
+        }
+
+        private static float GetParticleLifetime(GameObject view)
+        {
+            float max = 0f;
+            foreach (var ps in view.GetComponentsInChildren<ParticleSystem>())
+            {
+                var main = ps.main;
+                float candidate = main.duration + main.startLifetime.constantMax;
+                if (candidate > max) max = candidate;
+            }
+            return max > 0f ? max : 1.5f;
+        }
+
+        private IEnumerator DespawnAfter(GameObject view, GameObject prefab, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            ReturnToPool(view, prefab);
+        }
+
+        // Fix 4: attach CoreViewRendererCache on first Instantiate; pool reuse skips this.
+        private GameObject GetOrCreate(GameObject prefab)
+        {
+            if (_pool.TryGetValue(prefab, out var stack) && stack.Count > 0)
+                return stack.Pop();
+            var view = Instantiate(prefab, transform);
+            var rc = view.AddComponent<CoreViewRendererCache>();
+            rc.renderers = view.GetComponentsInChildren<Renderer>(includeInactive: true);
+            rc.trails = view.GetComponentsInChildren<TrailRenderer>(includeInactive: true);
+            rc.rootParticles = ComputeRootParticles(
+                view.transform, view.GetComponentsInChildren<ParticleSystem>(includeInactive: true));
+            // unit 7 — 루트가 메시 파티클이면 그 렌더러를 잡아 둔다(참격 메시 오버라이드 자리). 빌보드 루트면 null.
+            var rootPsr = view.GetComponent<ParticleSystemRenderer>();
+            rc.rootMeshRenderer = rootPsr != null && rootPsr.renderMode == ParticleSystemRenderMode.Mesh ? rootPsr : null;
+            rc.rootMeshOriginal = rc.rootMeshRenderer != null ? rc.rootMeshRenderer.mesh : null;
+            // 투사체/hit/cast VFX 를 유닛 스프라이트 위로. Instantiate 당 1회만(풀 재사용은
+            // stack.Pop 으로 빠져 스킵) → 누적 없음. 렌더러 간 상대 순서(mesh/trail/flare)는 보존.
+            // 깊이 소팅 경로가 기준으로 쓸 원래 값을 **더하기 전에** 저장한다.
+            rc.baseSortingOrders = new int[rc.renderers.Length];
+            for (int i = 0; i < rc.renderers.Length; i++)
+            {
+                rc.baseSortingOrders[i] = rc.renderers[i].sortingOrder;
+                rc.renderers[i].sortingOrder += BoardSortOrder.ProjectileOffset;
+            }
+            return view;
+        }
+
+        // ga-reskin unit 1: 풀 재사용 시 잔상 제거 + 파티클 신선 재생.
+        // 캐시된 배열만 순회하므로 핫패스 GetComponentsInChildren 없음.
+        // 가정: top-level PS 는 스폰 시 재생돼야 하는 시스템(현재 GA 투사체/hit/muzzle 은 모두
+        // "play now"). playOnAwake=false 로 지연 트리거되는 루트 시스템을 쓰는 프리팹이 생기면
+        // 이 강제 Play(true) 가 authored 타이밍을 깨므로 그때 재검토.
+        private static void ResetVfx(GameObject view)
+        {
+            if (!view.TryGetComponent<CoreViewRendererCache>(out var cache)) return;
+            if (cache.trails != null)
+                foreach (var t in cache.trails)
+                    if (t != null) t.Clear();
+            if (cache.rootParticles != null)
+                foreach (var p in cache.rootParticles)
+                    if (p != null) { p.Clear(true); p.Play(true); }
+        }
+
+        // 조상에 ParticleSystem 이 없는 top-level PS 만 추림. Play(true) 가 자식/서브에미터로
+        // cascade 되므로, 루트만 재시작하면 authored 트리거 관계를 깨지 않는다.
+        // 탐색은 프리팹 내부로 한정(viewRoot 위 풀 계층까지 올라가지 않음).
+        private static ParticleSystem[] ComputeRootParticles(Transform viewRoot, ParticleSystem[] all)
+        {
+            var stopAt = viewRoot.parent; // 풀 컨테이너 — 여기 도달 전까지만 조상 검사.
+            var roots = new List<ParticleSystem>(all.Length);
+            foreach (var p in all)
+            {
+                bool nested = false;
+                for (var t = p.transform.parent; t != null && t != stopAt; t = t.parent)
+                {
+                    if (t.GetComponent<ParticleSystem>() != null) { nested = true; break; }
+                }
+                if (!nested) roots.Add(p);
+            }
+            return roots.ToArray();
+        }
+
+        private void Return(SimEntityId entity)
+        {
+            if (!_active.TryGetValue(entity, out var state)) return;
+            ReturnToPool(state.view, state.prefab);
+            _active.Remove(entity);
+        }
+
+        private void ReturnToPool(GameObject view, GameObject prefab)
+        {
+            // Fix 4: use cached renderers. Guard null — renderer may be destroyed
+            // if coroutine fires after scene teardown (DespawnAfter timing).
+            var renderers = view != null && view.TryGetComponent<CoreViewRendererCache>(out var cache)
+                ? cache.renderers
+                : (view != null ? view.GetComponentsInChildren<Renderer>(includeInactive: false) : System.Array.Empty<Renderer>());
+            foreach (var r in renderers)
+                if (r != null) r.SetPropertyBlock(null);
+            if (view == null) return;
+            view.SetActive(false);
+            if (!_pool.ContainsKey(prefab)) _pool[prefab] = new Stack<GameObject>();
+            _pool[prefab].Push(view);
+        }
+    }
+}

@@ -1,0 +1,26 @@
+{
+    "name": "Wassup.Tests.PlayMode.Core",
+    "rootNamespace": "Wassup.Tests.PlayMode.Core",
+    "references": [
+        "Wassup.BattleCore",
+        "Wassup.Runtime",
+        "Wassup.Skills",
+        "Wassup.UnitAi",
+        "Unity.Mathematics",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
