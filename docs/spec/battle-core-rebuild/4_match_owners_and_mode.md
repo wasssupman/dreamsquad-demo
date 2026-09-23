@@ -57,6 +57,8 @@
 | 효과 타일의 **효과** | 뽑기·1회 소비 가드만 이식(`PlacementService`). 적용은 unit 6 | unit 6 |
 | 코드 기본값을 「기획」으로 읽기 | **기준은 라이브 에셋이다.** 골든과 모드 SO 는 `BattleConfig.asset`(배치 입력 off · 카운트다운 3) · `DefaultCostConfig.asset`(10/10/0.35/창 30) · `AwakeningConfig.asset`(게이지 20/100 · 손패 **4** · 부착 3) · `DeckRuleConfig_Default.asset`(덱 10 · Squad **무제한**)에서 값을 가져온다. C# 필드 기본값(손패 5 · Squad ≤2 · 코스트 30/15/20)과 **다르다** | 정정 |
 | `MatchModeData.squadCardMax` | 안 만들었다 — 덱 규칙은 `DeckRuleConfig` 가 이미 소유하고 라이브가 **무제한**이다. 모드가 그 값을 복제하면 두 곳이 갈린다 | 소유 이전 |
+| 방패 걸린 마음의 **광역 부수 피해 제외** | 옛 `CoreShielded` 소비처 6 중 조준 2·도달 1·경로 1 은 이식됨(`IsTargetable`·`RefreshStructureLiveness`·`HeartMeter.OnGoalReached`), 예고 1 은 5b, **부수 피해 1 은 광역 생산자가 오는 unit 6 에서 `EffectEligibility` 가 소비** | 보류(unit 6) |
+| 미답 2건(판 안 재시작 · 액티브 쿨다운 시계) | 기본값(없음 · 판의 시계)으로 구현. `rule-holders.md` 미정 1·2 는 **5a 완료 기준에서 사용자 답으로 닫는다** | 보류(사용자) |
 
 ## 완료 기준
 

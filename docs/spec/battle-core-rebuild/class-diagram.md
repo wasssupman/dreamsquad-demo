@@ -209,9 +209,14 @@ classDiagram
 
 ## 6. Unity 층 상세 — 통합 뷰 없음
 
+> 2026-09-23 리뷰 반영: 조각 B 는 5a(드라이버·유닛/투사체 뷰)·5b(입력·HUD·예고선)·5c(결과·제출·사운드)로 나뉜다. 상태 FX·빔·VFX·오라 풀은 그 사건이 열리는 unit 6·7 에서 만든다(이 그림의 해당 풀은 그때의 모습).
+
 ```mermaid
 classDiagram
     class BattleDriver { -BattleMatch match -float acc -float rate +Update() «acc += dt*rate; while acc ≥ 1/60: match.Tick(); 이벤트 방출» +Pause() +SetTimeScale() }
+    class ViewOrder { «상수 · 풀별 방출 순서(도약 → 유닛 동기 → 오버헤드/오라) · 씬 컴포넌트 순서에 기대지 않는다» }
+    class CoreMatchOutcomePresenter { +OnMatchEnded(MatchOutcome) «ResultScreen 표시 · submitsReport && allowSubmit 일 때만 ReportResult» }
+    class CoreBattleAudio { +OnAttackResolved() +OnProjectileSpawned() +OnPlaced() «SoundManager 호출 · 클립은 뷰 데이터 SO» }
     class EventBus { «코어 소유 · Unity 층은 구독만» }
     class UnitViewPool { -Dictionary~SimEntityId, UnitView~ +OnSpawn/OnDeath/OnMove «자기 등록부만» }
     class UnitView { <<abstract · 기존>> +Id SimEntityId }
@@ -227,6 +232,9 @@ classDiagram
     class BattleInput { +DragPlacement +CardDrag +ActiveAim «→ Command → Receipt 로 손패 복귀 등 결정» }
     class HudViews { «ScoreHud · Timer · Tray · CostWell · Hand — 담당자 읽기 모델 + 이벤트 구독» }
     BattleDriver --> EventBus : 틱 뒤 방출
+    BattleDriver ..> ViewOrder : 정렬해 방출
+    EventBus --> CoreMatchOutcomePresenter : MatchEnded
+    EventBus --> CoreBattleAudio : AttackResolved · ProjectileSpawned · Placed
     EventBus --> UnitViewPool
     EventBus --> ProjectileViewPool
     EventBus --> HazardViewPool

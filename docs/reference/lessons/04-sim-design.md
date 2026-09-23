@@ -95,3 +95,24 @@ public void OnUpdate(ref SystemState state)
 「되는지 확인하고 안 되면 바꾼다」는 매번 EditMode 전건이 빨개진 뒤에야 알게 된다.
 
 출처: `distance-based-range` unit 4a · `HazardCastSystem`(unit 1) · `PatrolFieldSystem`.
+
+## 런타임이 다르면 float 이 다르다 — Unity Mono 는 확장 정밀도로 평가한다
+
+`battle-core-rebuild` 조각 A(2026-09-23): 같은 커밋·같은 시나리오가 헤드리스 dotnet(.NET 9)
+에서는 골든과 일치하고 Unity EditMode 에서는 `kill_race_3min` 이 9,887틱에서 갈렸다.
+틱마다 상태를 **비트 단위**로 찍어 보니 첫 갈림은 **301틱**(적의 첫 이동 방향 `normalize`
+결과 1~2 ulp). 설계 입력으로 확정: `float a = 1 + 2⁻¹²; a*a - 1` 이 .NET 9 는 `2⁻¹¹`,
+Unity Mono 는 `2⁻¹¹ + 2⁻²⁴`. 덧셈 없는 `q⁸` 곱 연쇄도 1 ulp 갈린다 — FMA 가 아니라
+**중간값을 double 로 들고 가는** 평가다(C# 스펙이 허용하는 「더 높은 정밀도」). IL2CPP(clang)
+는 또 다르다.
+
+- **결정론은 같은 런타임 안의 계약**이다. 런타임 간 비트 동일을 약속하지 말고, 그걸 위해
+  식마다 `(float)` 캐스트를 박지도 말 것(코드가 흉해지고 IL2CPP 에서 다시 깨진다).
+- **골든은 게임이 실제로 도는 런타임(Unity)에서 굽고 대조한다.** 헤드리스 dotnet lane 은
+  컴파일 + 규칙 테스트만(`[Category("Golden")]` 제외, csproj `VSTestTestCaseFilter`).
+- 트레이스 헤더의 float 은 `"R"` 로 쓰지 말 것 — 런타임마다 자릿수가 다르다(.NET 9 최단 왕복
+  vs Mono 9자리). `G9` 는 같다.
+- 「같은데 갈린다」를 잡는 계측은 **비트 다이제스트**다. 1e-3 양자화 해시(`StateHash`)는
+  이벤트 임계를 넘기 전까지 수천 틱을 초록으로 보여 준다.
+
+출처: `docs/spec/battle-core-rebuild/README.md` 계약 5 · `CoreGoldenTests` 주석.

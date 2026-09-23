@@ -1,6 +1,6 @@
 # battle-core-rebuild — 전투를 ECS 에서 순수 C# 「전투 코어」로 옮긴다
 
-상태: **구현 중 · rev 2 · 2026-09-23** — 조각 A(units 0~4) 구현 완료, 코어 lane 초록. units 5~10 미착수.
+상태: **승인·진행 중 2026-09-23** — **조각 A 완료**(리뷰 전건 APPROVE): unit 0(main `4caee406`) · unit 1(`384e869b`·`dc0baa41`) · unit 2(`d5c16070` + 수정 `843b786a`) · unit 3(`0ae6b5cd`) · unit 4(`50ec0dae` + 수정 `0501630b`·`aedf3f7b`·`d12423bd` + 거점 스폰 `55688ef5` + 경로 방패 `7abfec27`) · 헤드리스 lane(`c74825be`: Skills/UnitAi dll 참조 + Unity 층 컴파일 검사). 브랜치 `rebuild/battle-core` HEAD `e734f33e` · **Unity EditMode 코어 lane 360/360**(워크트리 `wassup-core` 를 Unity 로 열어 asmdef 컴파일·`MatchMode_KillScore3Min.asset` 역직렬화·`BattleCoreScene` 부팅 확인) · 헤드리스 349/349(골든 제외) · Unity 층 검사 0 오류 · 장부 정합. **다음 = 조각 B(unit 5)**. 모든 커밋은 리드가 클린 export 로 build/test/Check 재실행해 검증한다.
 
 설계 입력: [`docs/plans/2026-09-22-battle-core-rebuild-census/`](../../plans/2026-09-22-battle-core-rebuild-census/) — 6영역 census(약 395행) · 종합(`00`) · 상호 리뷰(`01`·`03`) · 트리거→발동 rev 3(`04`) · 매치 모드 연구(`05`) · **계획 완전성 리뷰(`06`, 13건 — 이 rev 2 의 근거)**. 핵심 클래스 UML 은 [`class-diagram.md`](class-diagram.md), 매치 모드는 [`match-mode-design.md`](match-mode-design.md).
 선행 spec 처리: `battle-sim-extraction` **M0 완료·M1+ 폐기**(후계 = 이 spec) · `battlebridge-dissolution` **흡수** · `ecs-lifecycle-teardown` **은퇴**.
@@ -28,15 +28,17 @@
 | | `2_map_and_movement.md` | 맵·이동 | `MapSnapshot` 수신 · 흐름장 슬롯 · 통행층별 NavGrid · 장애물 재빌드 · 이동 결정 순서 · 평활화·충돌·분리 · 감지·어그로·도발 이동 · 골 도달 · 순찰 |
 | | `3_combat.md` | 전투 판정 | 공격 루프(START/RESOLVE) · 도달 산식(제약 13) · 타겟팅·락·히스테리시스 · 방향 도형 · 투사체 궤적×페이로드 · 발사 명세 · 피해·실드·킬 귀속 · 사망 2단계 · UnitAi 상태 · `AttackMod` 축 |
 | | `4_match_owners_and_mode.md` | 매치 담당자 + 모드 | 담당자 8(`MatchClock`·`WaveScheduler`·`CostLedger`·`PlacementService`·`HeartMeter`·`ScoreLedger`·`HandDeck`·`GimmickHost`) 각자 상태+규칙+틱 단계+이벤트 · `MatchModeData` SO → `ModeDef` · `IMatchGoal` + concrete 3 · **완료 기준에 포함**: `enemy-wave-integration` 스킬 갱신(같은 커밋 의무) · 모드 유효성 테스트(`EditModeAssets` lane) · 덱 타이머 이관은 「모드가 이기고 덱 값 폴백」으로 **조각 E 머지까지** 유지 후 unit 9 에서 제거 |
-| **B 첫 플레이** | `5_driver_view_input.md` | Unity 층 1차 | `BattleDriver` · 뷰 풀 각자 구독 · 입력→커맨드 · HUD 읽기 모델 · **새 PlayMode lane `Wassup.Tests.PlayMode.Core`**(새 씬 부팅 스모크 + 뷰 구독 순서 테스트; 옛 lane 은 unit 9 까지 유지) · **직렬화 필드 91 의 새 주인**(담당자별 SO/컴포넌트로 묶어 새 씬에 배선, 값 대조표) → **카드 없이 판이 돈다** — 사용자 플레이 1차 |
-| **C 효과** | `6_effects_and_status.md` | 효과·스탯 | 모디파이어·CC·DoT·실드·스택·해저드·필드·픽업·사직서·열기/피로 · **디버그 도구 재작성**(해저드) |
-| **D 트리거** | `7_trigger_layer.md` | 트리거→발동 | rev 3 바인딩 · concrete 33 · 카드·손패 · 배치 스킬 · 기믹 4 · 보스 · 분열 · 인수인계 · 표식 · **디버그 도구 재작성**(순찰·재배치) → 사용자 플레이 2차 |
+| **B 첫 플레이** | `5a_driver_and_unit_views.md` | Unity 층 1/3 | `BattleDriver`(**`Build(…, structures:)` 필수** · `TimeManager` 리스 → 틱 발행률) · `ViewOrder` 상수로 정렬 방출 · 유닛/투사체/피해숫자/히트바/오버헤드/도약 뷰 풀 각자 구독 · **직렬화 필드 91 의 새 주인 4분류**(코어 정의표 / 뷰 설정 SO 7 / 씬 배선 참조 / 삭제) · 디버그 도구 2(감지 프로브·장애물) · **새 PlayMode lane `Wassup.Tests.PlayMode.Core`** · 파이프라인 커버리지(유닛·투사체). 상태 FX·빔·VFX·오라 풀은 **사건이 열리는 unit 6·7 에서** |
+| | `5b_input_hud_overlay.md` | Unity 층 2/3 | 드래그 배치 입력 → 커맨드+receipt(판정 0) · 퇴근·제출 입력 · HUD 5(읽기 모델) · 맵 오버레이(`AttackReach.InReach` 호출만) · **예고선 = `StructureChoice` 호출만**(M18) · 카메라 재사용 |
+| | `5c_match_outcome_and_audio.md` | Unity 층 3/3 | **판 종료 → 결과 화면 → 제출 게이트**(`submitsReport && allowSubmit`, `ReportResult` 시그니처 무변 — 지금은 브리지 안에만 있다) · **전투 사운드 3종**(브리지 안 호출 3건의 새 주인, 클립은 뷰 데이터 SO) · 모드 진입 3단 · 「아직 안 보이는 것」 표 → **카드 없이 판이 돈다 — 사용자 플레이 1차**(질문 = 배치·이동·전투·점수·종료의 손맛) → main 머지 |
+| **C 효과** | `6_effects_and_status.md` | 효과·스탯 | 모디파이어·CC·DoT·실드·스택·해저드·필드·픽업·사직서·열기/피로 · **디버그 도구 재작성**(해저드·피로) · **새 사건 종류**(CC·DoT·부착·실드 부여)와 **그 뷰 풀**(상태 FX·빔·VFX·오라)을 같은 unit 에서 · 방패 걸린 마음의 **부수 피해 제외 소비처**(`EffectEligibility`, unit 4 보류) · `DeterminismTests` 에 「쿨다운·스택 여러 개가 걸린 두 판이 같다」(Dictionary 키 스냅샷 순회 3곳의 주석 주장을 테스트로) · 장부 보류 배정: E6(`[Periodic]` seam)·F27(회수 모델)·M3(MapRuntime/FlowFieldSet 분리) · 미정 잔량 기록 |
+| **D 트리거** | `7_trigger_layer.md` | 트리거→발동 | **정본 = [`04_trigger_layer_rev3.md`](../../plans/2026-09-22-battle-core-rebuild-census/04_trigger_layer_rev3.md) — rev 2→3 정정 9건(Squad 수명=호스트 · 기믹 per-unit 타이머 · PlacementAura 2바인딩 · SplitOnDeath=OnSlain · fireCap≠lifetime · BFS 직접 재진입만 · AreaBlast 병합 · skillId 은퇴 범위 · 사망 seam 스냅샷)은 unit 7 spec 의 첫 표** · rev 3 바인딩 · concrete 33 · 카드·손패 · 배치 스킬(**`FanOutToAllCandidates` 축 재판정** — unit 3 보류) · 기믹 4 · 보스 · 분열 · 인수인계 · 표식 · **디버그 도구 재작성**(순찰·재배치) · 장부: 브리지 파셜 파일 22행(Relocation 8·Dreamcatcher 6·UltimateLeap 4·BossLeap 4) + S20(IntentApplier) 전부 여기서 닫아 **미정 0** · 미답 2건이 「재시작 없음」이면 C7·S6·K5 이식 제외 → 사용자 플레이 2차 |
 | **E 전환** | `8_view_migration.md` | 뷰·규칙 보유자 이전 | Entities 누수 **28** 파일(Presentation 15·UI 8·Data 3·Core 1·Skills 1·Installer 1) → `SimEntityId` — **키 치환이 아닌 3곳**(`SpineUnitPool`·`QuadUnitViewPool`·`DcAuraVisualPool` 의 매 프레임 생존 폴링) 은 계약 「모든 소멸은 소멸 이벤트를 낸다」 + 코어 `IsAlive` 노출(자가 치유 + 경고 로그) 둘 다로 · 브리지 밖 규칙 보유자 10 → 담당자로 · 브리지 소멸(귀속표 대조 스크립트 = 남는 선언 0) · `object-pipeline-map.md` 재작성 |
 | | `9_ecs_removal.md` | ECS 제거 | asmdef diff 명시(`Wassup.Runtime` + 테스트 3 의 `Unity.Entities`·`Entities.Graphics`·**`Unity.Transforms`** 제거) · 패키지 제거(전이 의존 `serialization`·`scriptablebuildpipeline` 확인) · `Battle/`·`Bridge/` 삭제 · 테스트 148 파일 정리(옛 PlayMode lane 은퇴) · 도구·리뷰 도구 은퇴(`ecs-reviewer`·`two-track-review`·훅 2) · **문서 목록**: `battle-core-architecture.md` §2~§10 · `test-procedure.md` · `enemy-movement-algorithm.md` · `map-wave-balancing.md` · `score-formula.md` · `lessons/01·04` · 스킬 3(`unity-vfx-integration`·`unity-feature-wiring`·`enemy-wave-integration`) · CLAUDE.md 옛 절 삭제 + 코어 절 승격 · `ingame-flow.md` 1축 문면(모드별) |
 | | `10_handoff_summary.md` | 인계 | — |
 
-**조각의 「초록」 정의**: 조각 A·C = EditMode core+assets lane 초록. 조각 B·D = + 새 PlayMode lane 스모크 + 사용자 플레이 확인. 조각 E = 옛 lane 은퇴 후 새 lane 만으로 초록 + Entities 0건.
-**진행 규칙**: 조각 안의 unit 은 전부 구현한 뒤 한 번에 테스트한다. 각 unit 문서 하단에 **「이식 제외」 표**(일부러 안 옮긴 것 + 이유). 플레이 중 이상하면 그 표부터 본다.
+**조각의 「초록」 정의**: 조각 A·C = EditMode core+assets lane 초록. 조각 B·D = + 새 PlayMode lane 스모크 + 사용자 플레이 확인(질문은 그 조각의 「아직 안 보이는 것」 표를 뺀 범위로 — 5c). 조각 E = 옛 lane 은퇴 후 새 lane 만으로 초록 + Entities 0건.
+**진행 규칙**: 조각 안의 unit 은 전부 구현한 뒤 한 번에 테스트한다. 각 unit 문서 하단에 **「이식 제외」 표**(일부러 안 옮긴 것 + 이유). 플레이 중 이상하면 그 표부터 본다. **장부 소진**: `bridge-methods.md` 미정 128 은 조각 E 에서 한꺼번에 재분류하지 않는다 — 5a·5b·5c·6·7 각 완료 기준이 자기 몫(뷰·입력·HUD·결과·사운드 / 효과·해저드 / 카드·기믹·보스·도약·재배치)을 「새 주인」 또는 「삭제」로 닫고, unit 종료 시 `check_ledgers.py` 의 잔량을 상태 라인에 숫자로 적는다. unit 7 뒤 = 0(조각 E 진입 조건). `rules.md` 보류 51 은 전부 unit 번호 또는 「후속 후보」를 단다.
 
 ## Feature-wide 계약
 
@@ -44,7 +46,7 @@
 2. **땜빵·우연은 의도만 옮긴다.** unit 0 분류표가 정본. ⚠ 없으면 조용히 망가지는 세부(처치 드레인→전멸 판정 순서 · 분열 자식 셀 양자화 · 어그로 배타성 등)는 「필수」다.
 3. **검증 = 의도 규칙의 EditMode 테스트 + 사용자 플레이.** 옛 골든은 참고. 새 코어는 자기 골든(unit 1 의 러너)을 갖고, 옛 러너와 **병존**하는 동안만 A/B 비교가 가능하다.
 4. **전투 코어는 엔진을 모른다.** `noEngineReferences`, 참조는 `Unity.Mathematics`·`Wassup.Skills`·`Wassup.UnitAi`(둘 다 이미 같은 형태 — 실현 가능 검증됨). salvage 시 `NativeArray` → 배열.
-5. **결정론**: 고정 틱 1/60 · 단일 스레드 · `SimEntityId` 오름차순. 슬로모·정지 = 틱 발행률. 종료 후 틱 0.
+5. **결정론**: 고정 틱 1/60 · 단일 스레드 · `SimEntityId` 오름차순. 슬로모·정지 = 틱 발행률. 종료 후 틱 0. **같은 런타임 안의 계약이다** — 런타임 간 비트 동일은 약속하지 않는다(2026-09-23 실측: Unity Mono 는 float 식을 확장 정밀도로 평가해 .NET 9 헤드리스와 약 300틱부터 1 ulp, `kill_race_3min` 은 9,887틱에서 이벤트 순서까지 갈렸다. IL2CPP 는 또 다르다). 골든의 정본 런타임 = Unity EditMode, 헤드리스 lane 은 골든 제외.
 6. **값의 정본은 판 밖.** 시트→SO→`MatchDefinitionBuilder`→`MatchDefinition`(plain, `configHash` 소유). 시트 파이프라인은 브리지·Entities 참조 0 — 무변.
 7. **커맨드 ≠ 이벤트.** 커맨드 = 동기 + receipt. 이벤트 = 값 스냅샷, `SimEntityId` 키. **모든 소멸 경로는 소멸 이벤트를 낸다**(뷰 폴링의 후계).
 8. **트리거→발동은 rev 3.** 정적 (트리거,페이로드)→(concrete,형) 표 유지 · 세대 BFS 는 직접 재진입만 · `AttackMod` 축 5종 · 매치 핵심 규칙은 바인딩 밖.
@@ -56,12 +58,13 @@
 
 ## 파이프라인 커버리지
 
-모든 플레이 오브젝트의 생성→렌더 경로가 바뀐다. `object-pipeline-map.md` 는 unit 8 에서 코어 기준으로 전면 재작성. 그 전 unit 은 「이 unit 이 여는 정거장」만 적는다.
+모든 플레이 오브젝트의 생성→렌더 경로가 바뀐다. `object-pipeline-map.md` 는 unit 8 에서 코어 기준으로 전면 재작성. 그 전 unit 은 「이 unit 이 여는 정거장」만 적는다. **예외: 5a 는 유닛·투사체 아키타입 표를 자기 문서에 둔다** — 뷰 풀을 신설하는 unit 이라 CLAUDE.md 규칙상 필수.
 
 ## 후속 후보 (범위 밖)
 
 - **서버 API 확장**(modeId·sortDirection·leaderboardId) — 서버는 이 저장소 밖. v1 은 단일 제출 모드.
 - 마음 N개 공유 체력(`heart-stress-axis/12`) — 새 코어 unit 4 위에서(`HeartMeter` 가 체력을 들어 이사 비용 0).
 - 규칙 분류표 「보류」 재결정 — 사용자 플레이 뒤.
+- 스폰 측면 오프셋의 순번 파생(X25 — 지금은 가변 상태) · 슬로모 느낌 재확인(X26, 틱 발행률로 바뀐 뒤 플레이로) · 희귀도 축(E21 — 소비처 0, 아웃게임 UI 몫).
 - 결정론 등급 상향(리플레이·스냅샷) · 틱 30Hz 실측 · 트리거 연쇄 깊이 근거 · 마메모 웨이브 훅 위치 확인.
 - `docs/spec` 1,157건의 옛 포인터는 역사서라 두고, `docs/reference` 14건만 unit 9 에서 고친다.
