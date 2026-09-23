@@ -31,7 +31,7 @@ namespace Wassup.BattleCoreUnity
     public sealed class BattleDriver : MonoBehaviour
     {
         [Header("판 저작 (판 밖 → 정의표)")]
-        [Tooltip("매치 모드 SO. 비우면 판을 짓지 않는다 — 모드는 «어느 저작 자산을 쓸지» 고르는 축이다(계약 5).")]
+        [Tooltip("기본 매치 모드 SO — 모드 선택 3단의 **셋째 칸**. 아무도 안 고르면 이것으로 짓는다.")]
         [SerializeField] private MatchModeData _mode;
 
         [SerializeField] private DefenderUnitData[] _defenders = Array.Empty<DefenderUnitData>();
@@ -192,20 +192,33 @@ namespace Wassup.BattleCoreUnity
         {
             // 테스트·다른 진입점이 `Begin(definition)` 으로 이미 판을 걸었으면 저작 진입은 건너뛴다 —
             // 안 그러면 `_mode` 없는 드라이버가 매 부팅마다 에러 로그를 낸다.
-            if (_beginOnStart && !Running) Begin();
+            //
+            // unit 5c — 씬 경계를 넘어온 선택을 **여기서 한 번 소비한다.** 이 자리가 유일한
+            // 소비처라 「어느 판이 그 선택을 먹었나」를 물을 일이 없다.
+            if (_beginOnStart && !Running) Begin(MatchEntryContext.Consume());
         }
+
+        /// <summary>저작 그대로 짓는다(선택 없음 = 기본 모드 SO).</summary>
+        public void Begin() => Begin(ModeSelection.None);
 
         /// <summary>
         /// 저작을 읽어 판을 짓고 건다. 스테이지가 없으면 **조용히 지나가지 않는다** —
         /// 맵 없는 판은 적이 갈 곳이 없어 콘솔 에러 0 으로 아무 일도 일어나지 않는다.
+        ///
+        /// unit 5c — **모드 선택 3단**: 테스트 모드 강제 &gt; 로비/서버 지정 &gt; 기본 모드 SO.
+        /// 서열을 아는 함수는 `MatchDefinitionBuilder.ResolveMode` 하나이고 여기는 그것을
+        /// 부르기만 한다 — 세 칸을 여기서 다시 비교하면 그것이 두 번째 자다.
         /// </summary>
-        public void Begin()
+        public void Begin(ModeSelection selection)
         {
-            if (_mode == null)
+            var mode = MatchDefinitionBuilder.ResolveMode(selection.TestMode, selection.Lobby, _mode);
+            if (mode == null)
             {
                 Debug.LogError("[BattleDriver] 매치 모드 SO 가 비었다 — 판을 짓지 않는다.", this);
                 return;
             }
+            // 시드 0 은 「아무도 안 골랐다」다 — 저작 시드로 떨어진다(`ModeSelection.Seed` 주석).
+            int seed = selection.Seed != 0 ? selection.Seed : _seed;
             if (!BuildStage()) return;
 
             // ⚠ **거점 목록을 반드시 넘긴다**(`55688ef5`). 격자 투영에는 셀과 진영밖에 없어
@@ -217,7 +230,7 @@ namespace Wassup.BattleCoreUnity
                            ?? Array.Empty<AttackUnitData>();
 
             var def = MatchDefinitionBuilder.Build(
-                _mode, _defenders, _deck, _plan, _bonus, _seed,
+                mode, _defenders, _deck, _plan, _bonus, seed,
                 costRateMultiplier: 1f, map: in _map, tileSize: _tileSize,
                 structures: _stageStructures, viewAssets: _viewAssets,
                 movement: _movementTuning);

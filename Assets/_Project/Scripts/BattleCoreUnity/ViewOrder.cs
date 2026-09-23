@@ -34,7 +34,20 @@ namespace Wassup.BattleCoreUnity
         /// <summary>피해 숫자·히트바. 유닛 뷰가 선 뒤라야 앵커가 있다.</summary>
         public const int Damage = 40;
 
-        /// <summary>오버헤드 UI·오라. 맨 뒤 — 위의 결과를 읽어 화면에 얹는다.</summary>
+        /// <summary>오버헤드 UI·오라. 위의 결과를 읽어 화면에 얹는다.</summary>
         public const int Overhead = 50;
+
+        /// <summary>
+        /// 전투 사운드(unit 5c). **그림이 선 뒤에 소리**다 — 같은 프레임 안이라 귀로는
+        /// 구분되지 않지만, 순서가 정해져 있어야 「소리는 나는데 그림이 없다」가 생겼을 때
+        /// 어느 쪽이 먼저였나를 묻지 않아도 된다.
+        /// </summary>
+        public const int Audio = 60;
+
+        /// <summary>
+        /// 판 종료 → 결과 화면(unit 5c). **맨 뒤** — 이번 틱을 모든 뷰가 반영한 뒤에
+        /// 화면을 덮는다. 먼저 덮으면 마지막 킬의 숫자·죽는 모션이 결과 화면 밑에 깔린다.
+        /// </summary>
+        public const int Outcome = 70;
     }
 }

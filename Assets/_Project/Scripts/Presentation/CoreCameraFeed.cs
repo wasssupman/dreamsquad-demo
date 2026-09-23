@@ -84,12 +84,19 @@ namespace Wassup.Presentation
             _pushed = true;
         }
 
-        // 코어의 국면(배치/전투) → 카메라 페이즈. **판 밖 국면(결과·집계)은 코어에 없다**(G2) —
-        // 그쪽이 열리는 것은 5c 이고, 그때 이 함수에 한 줄이 붙는다.
+        // 코어의 국면(배치/전투) → 카메라 페이즈. **판 밖 국면(결과·집계)은 코어에 없다**(G2).
+        //
+        // unit 5c — 코어가 아는 것은 「끝났다」 하나이고, 그 뒤가 무슨 화면인지는 Unity 층이
+        // 정한다. 집계(`Tally`)는 은퇴했으므로(X19) 종료 = 곧 `Result` 다.
+        // ⚠ 디렉터는 `Result` 를 전투 상태로 접는다(`ResolveState` — 결과는 전면 UI 라 별도
+        // 그림이 필요 없다). 그래서 **오늘 화면은 안 바뀐다** — 그래도 미는 이유는 밀지 않으면
+        // 디렉터가 전투 중이라고 믿게 되고, 결과 레시피가 생기는 날 그 거짓이 버그가 되기 때문이다.
         private void PushPhase(CameraDirector director)
         {
             var clock = _driver.Match.Clock;
-            var phase = clock.Phase == MatchPhase.Placement ? GamePhase.Placement : GamePhase.Battle;
+            var phase = clock.Ended ? GamePhase.Result
+                      : clock.Phase == MatchPhase.Placement ? GamePhase.Placement
+                      : GamePhase.Battle;
             if (phase == _lastPhase) return;
             _lastPhase = phase;
             director.SetPhase(phase);
