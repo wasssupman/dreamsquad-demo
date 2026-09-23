@@ -5,6 +5,7 @@ using Wassup.Battle.Units;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat;
 using Wassup.Core;
+using Wassup.Data;
 using Wassup.Presentation;
 
 namespace Wassup.BattleCoreUnity.View
@@ -20,7 +21,10 @@ namespace Wassup.BattleCoreUnity.View
     //   ④ 사거리 링 + 사정권 표식 — 「여기 놓으면 저기까지 닿는다」.
     //
     // ⚠ **판정을 한 줄도 갖지 않는다.**
-    //   · 「놓을 수 있나」 = `PlacementService.Judge` 호출.
+    //   · 「놓을 수 있나」 = `PlacementService` 호출. 고스트는 `Judge`(전부), 가이드는
+    //     `SpaceBlock`(공간) — **다른 질문이지 다른 자가 아니다**(둘 다 코어의 함수이고
+    //     `Judge` 가 `SpaceBlock` 을 부른다). 가이드에 자원을 섞으면 코스트 재생마다
+    //     보드가 깜빡이고, 못 사는 유닛을 끌 때 「놓을 곳이 없다」고 거짓말한다.
     //   · 「닿나」 = `AttackReach.InReach` 호출. 제약 13 이 금지하는 것이 정확히 여기서
     //     이중 루프로 모양을 다시 그리는 것이다 — 그러면 「밝은 칸인데 안 때린다」가 되고,
     //     그건 가장 나쁜 종류의 버그다(화면이 규칙을 **틀리게** 가르친다).
@@ -36,7 +40,12 @@ namespace Wassup.BattleCoreUnity.View
         [SerializeField, Min(0.002f)] private float _gridWidth = 0.02f;
 
         [Header("배치 가이드")]
-        [SerializeField] private Color _guideColor = new Color(0.45f, 0.92f, 0.5f, 0.16f);
+        // ⚠ **룩을 여기서 지어내지 않는다.** 배치 가능 칸의 그림·색·페이드는 전부 이 타일셋이
+        // 정본이다(`placement-eligible-tile-highlight`): 슬랩 스프라이트(안쪽 옅은 fill +
+        // 가장자리 밝은 림 = 「플랫폼」) · 시안 틴트 · 정적(펄스 없음) · 집는 순간 페이드인.
+        // 비어 있으면 가이드를 **안 그린다** — 임시 색을 코드에 두면 그게 다음 사람의 정본이 된다.
+        [Tooltip("배치 가능 칸의 타일·색·페이드 저작. 비면 가이드를 그리지 않는다.")]
+        [SerializeField] private TileSetData _tileSet;
         [SerializeField] private Color _ghostOkColor = new Color(0.45f, 0.92f, 0.5f, 0.55f);
         [SerializeField] private Color _ghostBadColor = new Color(0.95f, 0.32f, 0.3f, 0.5f);
         [Tooltip("가이드를 다시 칠하는 주기(초). 0 = 매 프레임.")]
@@ -69,6 +78,11 @@ namespace Wassup.BattleCoreUnity.View
         private bool _gridBuilt;
         private float _nextGuideRepaint;
         private int _guideDefIndex = -1;
+        private int _guideUsed;
+        // 페이드인 기준 시각(unscaledTime). 집는 **순간** 잡고 드롭까지 안 건드린다 —
+        // 가이드를 다시 칠할 때(코스트·쿨 변화) 리셋하면 판이 주기적으로 깜빡인다.
+        private float _guideShownAt = -1f;
+        private readonly HashSet<int> _guideCellKeys = new HashSet<int>();
 
         // ── 배치 입력이 미는 것 ───────────────────────────────────────────────
         //
@@ -79,10 +93,14 @@ namespace Wassup.BattleCoreUnity.View
         private bool _dragValid;
         private bool _hasDrag;
 
+        /// <summary>배치 가능 칸의 룩 저작. 테스트가 「옛 룩인가」를 묻는 창구이기도 하다.</summary>
+        public TileSetData TileSet => _tileSet;
+
         /// <summary>드래그 중인 유닛과 그 앵커를 알린다. 매 프레임 불러도 된다.</summary>
         public void ShowPlacement(int defIndex, int2 anchor, bool valid)
         {
             if (defIndex != _dragDefIndex) _nextGuideRepaint = 0f;   // 유닛이 바뀌면 가이드를 즉시 다시 칠한다
+            if (!_hasDrag) _guideShownAt = Time.unscaledTime;        // 집는 순간 = 페이드 시작
             _dragDefIndex = defIndex;
             _dragAnchor = anchor;
             _dragValid = valid;
@@ -94,6 +112,7 @@ namespace Wassup.BattleCoreUnity.View
         {
             _hasDrag = false;
             _dragDefIndex = -1;
+            _guideShownAt = -1f;
         }
 
         private void LateUpdate()
@@ -106,6 +125,7 @@ namespace Wassup.BattleCoreUnity.View
             if (!_hasDrag || _dragDefIndex < 0)
             {
                 SetCount(_guideCells, 0);
+                _guideUsed = 0;
                 SetCount(_ghostCells, 0);
                 SetCount(_marks, 0);
                 if (_ring != null) _ring.enabled = false;
@@ -120,33 +140,88 @@ namespace Wassup.BattleCoreUnity.View
 
         // ── ② 배치 가이드 ────────────────────────────────────────────────────
         //
-        // 「놓을 수 있는 칸」을 코어에 **칸마다 묻는다.** 비싸 보이지만 이것이 계약이다 —
+        // 「이 유닛이 설 수 있는 칸」을 코어에 **칸마다 묻는다.** 비싸 보이지만 이것이 계약이다 —
         // 싸게 하려고 「지형만 보면 되겠지」로 줄이면 그 순간 화면과 판정이 갈린다.
-        // 대신 **주기를 늦춘다**: 답이 바뀌는 사건(코스트 재생·쿨 만료)은 초 단위라
-        // 매 프레임 물을 이유가 없다.
+        // 대신 **주기를 늦춘다**: 답이 바뀌는 사건(점유 변화)은 초 단위라 매 프레임 물을 이유가 없다.
+        //
+        // ⚠ 묻는 것은 `SpaceBlock`(공간)이지 `Judge`(전부)가 아니다. 하이라이트는 «공간 조건»을
+        // 말하는 표시라 자원을 섞으면 **코스트 재생 경계마다 보드 전체가 깜빡이고**, 못 사는
+        // 유닛을 끌 때 「놓을 곳이 한 칸도 없다」고 거짓말한다. 「밝은 칸인데 비용이 모자라
+        // 고스트는 빨강」이 정상이다. 그 답은 **여전히 코어의 것**이다(자를 새로 만들지 않았다).
+        //
+        // ⚠ 칸은 **중복 없이** 한 번만 칠한다. 다칸 유닛은 이웃한 합격 앵커들의 footprint 가
+        // 겹치는데, 겹친 만큼 반투명 슬랩이 포개지면 같은 칸이 서너 배 밝아져 「여기가 더 좋은
+        // 자리」라고 거짓말한다(옛 타일맵은 칸당 타일 하나라 이 문제가 없었다).
         private void PaintGuide()
         {
-            if (_guideDefIndex == _dragDefIndex && Time.unscaledTime < _nextGuideRepaint) return;
-            _guideDefIndex = _dragDefIndex;
-            _nextGuideRepaint = Time.unscaledTime + _guideRepaintSeconds;
+            var tile = GuideTile();
+            if (tile == null) { SetCount(_guideCells, 0); _guideUsed = 0; return; }
 
+            if (_guideDefIndex != _dragDefIndex || Time.unscaledTime >= _nextGuideRepaint)
+            {
+                _guideDefIndex = _dragDefIndex;
+                _nextGuideRepaint = Time.unscaledTime + _guideRepaintSeconds;
+                RebuildGuideCells(tile.sprite);
+            }
+
+            // 색·알파는 **매 프레임** 민다 — 페이드인이 돌아야 하고(정적이지만 등장은 페이드),
+            // Play 중 저작 튜닝도 그대로 보여야 한다.
+            ApplyGuideTint(tile);
+        }
+
+        private void RebuildGuideCells(Sprite sprite)
+        {
             var placement = _driver.Match.Placement;
             var size = _driver.GridSize;
             var def = _driver.Definition;
-            if (_dragDefIndex >= def.Units.Length) return;
+            if (_dragDefIndex >= def.Units.Length) { SetCount(_guideCells, 0); _guideUsed = 0; return; }
 
             int w = math.max(1, def.Units[_dragDefIndex].FootprintWidth);
             int h = math.max(1, def.Units[_dragDefIndex].FootprintHeight);
 
+            _guideCellKeys.Clear();
             int used = 0;
             for (int y = 0; y < size.y; y++)
             for (int x = 0; x < size.x; x++)
             {
-                var anchor = new int2(x, y);
-                if (placement.Judge(_dragDefIndex, anchor) != RejectReason.None) continue;
-                used = PaintFootprint(_guideCells, used, anchor, w, h, _guideColor);
+                if (placement.SpaceBlock(_dragDefIndex, new int2(x, y)) != RejectReason.None) continue;
+                for (int dy = 0; dy < h; dy++)
+                for (int dx = 0; dx < w; dx++)
+                {
+                    var cell = new int2(x + dx, y + dy);
+                    if (!_guideCellKeys.Add(cell.y * size.x + cell.x)) continue;
+                    var sr = Rent(_guideCells, used++, BoardSortOrder.PlacementHighlightOrder);
+                    sr.sprite = sprite;
+                    sr.transform.position = ViewOf(CellCenterSim(cell));
+                    sr.transform.rotation = PlaneRotation();
+                    sr.transform.localScale = Vector3.one * _driver.TileSize;
+                }
             }
             SetCount(_guideCells, used);
+            _guideUsed = used;
+        }
+
+        // 최종 색 = 저작 틴트 × **타일 자신의 색**. 슬랩은 자체 `m_Color` 가 회색(0.80)이라
+        // 그걸 빼면 옛 타일맵보다 밝게 뜬다(타일맵은 타일 색 × 타일맵 색을 정점색에 굽는다).
+        private void ApplyGuideTint(UnityEngine.Tilemaps.Tile tile)
+        {
+            if (_guideUsed <= 0) return;
+            float fade = _tileSet.placeableFadeInDuration > 0f && _guideShownAt >= 0f
+                ? Mathf.Clamp01((Time.unscaledTime - _guideShownAt) / _tileSet.placeableFadeInDuration)
+                : 1f;
+            var c = _tileSet.placeableColor;
+            var t = tile.color;
+            var tint = new Color(c.r * t.r, c.g * t.g, c.b * t.b, c.a * t.a * fade);
+            for (int i = 0; i < _guideUsed && i < _guideCells.Count; i++) Tint(_guideCells[i], tint);
+        }
+
+        // 저작이 없거나 `Tile` 이 아니면 **안 그린다.** `TileBase` 는 스프라이트를 직접 노출하지
+        // 않고(타일맵만 물어볼 수 있다), 폴백으로 절차적 사각을 깔면 그게 다음 사람의 정본이 된다.
+        private UnityEngine.Tilemaps.Tile GuideTile()
+        {
+            if (_tileSet == null) return null;
+            var tile = _tileSet.placeableTile as UnityEngine.Tilemaps.Tile;
+            return tile != null && tile.sprite != null ? tile : null;
         }
 
         // ── ③ 고스트 ─────────────────────────────────────────────────────────

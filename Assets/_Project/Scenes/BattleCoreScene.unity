@@ -1464,7 +1464,7 @@ MonoBehaviour:
   _showGrid: 1
   _gridColor: {r: 1, g: 1, b: 1, a: 0.09}
   _gridWidth: 0.02
-  _guideColor: {r: 0.45, g: 0.92, b: 0.5, a: 0.16}
+  _tileSet: {fileID: 11400000, guid: d780c834df42b40c18b728204ba621fb, type: 2}
   _ghostOkColor: {r: 0.45, g: 0.92, b: 0.5, a: 0.55}
   _ghostBadColor: {r: 0.95, g: 0.32, b: 0.3, a: 0.5}
   _guideRepaintSeconds: 0.15

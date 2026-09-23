@@ -209,6 +209,28 @@ namespace Wassup.BattleCore
 
         private RejectReason Judge(int defIndex, int2 anchor, out int w, out int h)
         {
+            var space = SpaceBlock(defIndex, anchor, out w, out h);
+            if (space != RejectReason.None) return space;
+
+            // ③~⑥ 은 자리를 묻지 않는다 — 트레이 도색이 같은 답을 받아야 해서
+            // **한 함수**로 뽑아 뒀다(`SlotBlock`).
+            return SlotBlock(defIndex);
+        }
+
+        /// <summary>
+        /// 「이 자리에 이 유닛이 **설 수 있나**」 — 자원 없이 묻는 판정(①②). `SlotBlock` 의 짝이다:
+        /// 저쪽이 자리 없이 슬롯을 묻는다면 이쪽은 슬롯 없이 자리를 묻는다.
+        ///
+        /// **배치 가능 칸 하이라이트가 이것을 읽는다.** `Judge`(전부)를 읽으면 안 되는 이유는
+        /// 하이라이트가 «공간 조건»을 말하는 표시이기 때문이다 — 코스트를 섞으면 **코스트 재생
+        /// 경계마다 보드 전체가 깜빡이고**, 못 사는 유닛을 끌 때 「놓을 곳이 한 칸도 없다」고
+        /// 거짓말한다. 「밝은 칸인데 비용이 모자라 고스트는 빨강」이 정상이다
+        /// (`placement-eligible-tile-highlight` 의 「의미 계약」).
+        /// </summary>
+        public RejectReason SpaceBlock(int defIndex, int2 anchor) => SpaceBlock(defIndex, anchor, out _, out _);
+
+        private RejectReason SpaceBlock(int defIndex, int2 anchor, out int w, out int h)
+        {
             w = 1;
             h = 1;
 
@@ -238,9 +260,7 @@ namespace Wassup.BattleCore
             }
             if (!_map.Occupancy.IsFree(anchor, w, h)) return RejectReason.Occupied;
 
-            // ③~⑥ 은 자리를 묻지 않는다 — 트레이 도색이 같은 답을 받아야 해서
-            // **한 함수**로 뽑아 뒀다(`SlotBlock`).
-            return SlotBlock(defIndex);
+            return RejectReason.None;
         }
 
         /// <summary>
