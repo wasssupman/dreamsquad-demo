@@ -8,6 +8,7 @@
         "Wassup.UnitAi",
         "Unity.Mathematics",
         "UnityEngine.UI",
+        "Unity.TextMeshPro",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

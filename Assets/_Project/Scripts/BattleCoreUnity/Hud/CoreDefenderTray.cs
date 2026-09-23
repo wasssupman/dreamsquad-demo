@@ -37,6 +37,7 @@ namespace Wassup.BattleCoreUnity.Hud
             public Image Frame;
             public Image Portrait;
             public Image CooldownFill;
+            public TextMeshProUGUI CooldownText;
             public TextMeshProUGUI Cost;
             public TextMeshProUGUI Name;
             public TextMeshProUGUI Block;
@@ -154,6 +155,17 @@ namespace Wassup.BattleCoreUnity.Hud
             slot.CooldownFill.fillOrigin = (int)Image.OriginVertical.Bottom;
             slot.CooldownFill.fillAmount = 0f;
 
+            // 덮개만으로는 **얼마나 남았는지**를 못 읽는다(사용자 플레이 2차). 옛 트레이
+            // (`defender-placement-cooldown` 2)와 같이 남은 초를 숫자로 얹는다 — 덮개는
+            // 「얼마나 찼나」, 숫자는 「몇 초 뒤」다. 덮개 **뒤에** 만들어야 그 위에 그려진다.
+            // 자리는 거절 문구(`Block`)와 같다 — 대기 중에는 그쪽이 빈 문자열이라(덮개가 이미
+            // 말한다) 둘이 겹치는 프레임이 없다.
+            slot.CooldownText = CoreHudUi.Label("CooldownText",
+                CoreHudUi.Rect("CooldownRow", root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                               Vector2.zero, new Vector2(_slotSize, 34f)),
+                "", 28f, CoreHudUi.Ink);
+            slot.CooldownText.enabled = false;
+
             slot.Name = CoreHudUi.Label("Name",
                 CoreHudUi.Rect("NameRow", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
                                new Vector2(0f, 4f), new Vector2(_slotSize, 26f)),
@@ -193,6 +205,17 @@ namespace Wassup.BattleCoreUnity.Hud
 
                 slot.Frame.color = FrameColorOf(block, slot.DefIndex == _draggingDefIndex);
                 slot.CooldownFill.fillAmount = placement.CooldownFraction(slot.DefIndex);
+
+                // 남은 초. **코어가 세고 화면은 옮겨 적기만 한다** — 뷰가 자기 타이머를 들면
+                // 슬로모·정지에서 숫자와 판정이 갈린다. 올림이라 「1」이 뜬 동안은 아직 못 놓는다.
+                float remain = placement.CooldownRemaining(slot.DefIndex);
+                bool onCooldown = remain > 0f;
+                slot.CooldownText.enabled = onCooldown;
+                if (onCooldown)
+                {
+                    string secs = Mathf.CeilToInt(remain).ToString();
+                    if (slot.CooldownText.text != secs) slot.CooldownText.text = secs;
+                }
 
                 string text = ShortTextOf(block);
                 slot.Block.text = text;
