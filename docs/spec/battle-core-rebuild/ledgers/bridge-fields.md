@@ -6,13 +6,28 @@
 
 | 분류 | 수 | 뜻 |
 |---|---|---|
-| 코어 정의표 | 7 | `MatchDefinitionBuilder` 의 입력. 값이 판 안으로 들어간다 |
+| 코어 정의표 | 8 | `MatchDefinitionBuilder` 의 입력. 값이 판 안으로 들어간다 |
 | 코어(상수) | 5 | 옮기는 과정에서 **코드 상수가 된 것**. ⚠ 셋은 씬 값과 다르다(40·41·42) — unit 2 가 고른 값이고 되볼 자리는 플레이다 |
 | 뷰 설정 SO | 53 | 새 자산 7종(`Data/BattleView/`). 값은 옛 씬 블록에서 그대로 복사했다. 그중 한 행(59 `tileSet`)은 **5b 의 맵 뷰가 가져간다** |
 | 씬 배선 참조 | 21 | **값이 아니다** — 프리팹·컴포넌트 슬롯이라 정의표에 실을 것이 없다. 각 행이 그 이유를 한 줄로 댄다 |
-| 삭제 | 5 | 소비처가 0 이거나(26·73) 새 층에 자리가 없다(21·34·35) |
+| 삭제 | 4 | 소비처가 0 이거나(26·73) 새 층에 자리가 없다(34·35) |
 
-값 대조: 7종 자산의 모든 수치는 `BattleScene.unity` 의 브리지 블록에서 복사했고, **코드 기본값과 다른 행**(`tilemapCharacterScale` 0.42→0.504 · `bossLeapArcMinHeight` 3.5→6 · `blobShadowColor` 0.45→0.75 알파 · `propDistanceTiltFactor` 미설정→0.78)은 **씬 쪽을 정본으로 삼았다** — 그것이 사람이 눈으로 튜닝한 값이다.
+값 대조: 7종 자산의 모든 수치는 `BattleScene.unity` 의 브리지 블록에서 복사했다. 91행 중
+**씬 값이 C# 선언 기본값과 다른 행은 다섯**이고, 전부 **씬 쪽을 정본으로** 삼았다 — 그것이
+사람이 눈으로 튜닝한 값이다:
+
+| # | 필드 | 코드 기본값 | 씬 값 | 새 주인 |
+|---|---|---|---|---|
+| 6 | `bossLeapArcMinHeight` | 3.5 | **6** | `LeapVisualConfig` |
+| 20 | `fixedMapSeed` | 20260719 | **0** | 코어 정의표(드라이버 `_seed`) |
+| 51 | `unitHealthPresentationMode` | `Legacy` | **`UnifiedOverhead`** | `CharacterViewConfig` |
+| 60 | `tilemapCharacterScale` | 0.42 | **0.504** | `CharacterViewConfig` |
+| 66 | `blobShadowColor` | (0,0,0,**0.45**) | (0,0,**0.08**,**0.75**) | `BlobShadowConfig` |
+
+⚠ 20·51 은 **자산으로 옮기면서 뜻이 바뀐다**: `fixedMapSeed` 0 은 옛 전투에서 「고정 안 함」
+이었고 새 드라이버의 `_seed` 는 **언제나 쓰이는 값**이라 0 을 그대로 옮기면 안 된다(씬에는
+20260923 을 넣었다). `unitHealthPresentationMode` 는 씬이 이미 `UnifiedOverhead` 라 SO 기본값도
+그쪽으로 맞췄다 — 코드 기본값(`Legacy`)을 따랐으면 새 씬에서 오버헤드 바가 통째로 안 떴다.
 
 코드 선언 91 · 씬 블록 키 91
 
@@ -38,7 +53,7 @@
 | 18 | `bonusWaveData` | BattleBridge.cs | ○ | 코어 정의표 | `Build(bonus:)` → `BonusWaveDef` |
 | 19 | `mapPool` | BattleBridge.cs | ○ | 코어 정의표 | 맵 선택. **5a 는 스테이지 프리팹 직접 지정**이고 풀 선택(서버 시드 %)은 5c 에서 — 「이식 제외」 참조 |
 | 20 | `fixedMapSeed` | BattleBridge.cs | ○ | 코어 정의표 | **배선이 아니라 규칙 값이다** — 재현의 두 축 중 하나(`MatchDefinition.Seed`). 드라이버의 `_seed` |
-| 21 | `seasonRegistry` | BattleBridge.cs | ○ | 삭제 | 기믹 풀의 새 주인은 `MatchModeData.gimmickPool` 이다(계약 5 — 모드가 «어느 저작 자산을 쓸지» 고른다). 시즌 레지스트리는 그 축의 전신이라 남길 것이 없다 |
+| 21 | `seasonRegistry` | BattleBridge.cs | ○ | 코어 정의표 | ⚠ **기믹 풀만** `MatchModeData.gimmickPool` 로 옮겨졌다(계약 5) — 시즌 자산 전체가 은퇴한 것이 아니다. 살아 있는 소비가 둘 더 있다: `SeasonRuntime.Bind` 가 싣는 **맵 테마**가 `effectTiles`·`effectTileCount`(코어 `MatchDefinition.EffectTileCount`)와 `tileSet` 오버라이드(5b 의 타일 오버레이)를 준다. 5a 의 드라이버는 아직 안 읽는다 |
 | 22 | `tileSize` | BattleBridge.cs | ○ | 코어 정의표 | `Build(tileSize:)` → `MapSnapshot.TileSize`. 뷰의 타일↔월드 환산도 여기서 **파생**한다(저작 2벌 금지) |
 | 23 | `spawnHeight` | BattleBridge.cs | ○ | 뷰 설정 SO | `UnitLiftKnobs.spawnHeight` |
 | 24 | `agentRadiusTiles` | BattleBridge.cs | ○ | 코어(상수) | `EnemySpawn.AgentRadiusTiles = 0.25` — 씬 값과 같다(드리프트 0). 저작값으로 되돌리는 것은 unit 2 의 결정이라 여기서 바꾸지 않는다 |
