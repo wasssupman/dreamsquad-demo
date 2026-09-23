@@ -154,6 +154,36 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
+        public void 방패_걸린_마음은_더_가까워도_목적지가_아니다()
+        {
+            var def = Armed();
+            // 본능을 스폰 쪽에, 적을 마음 바로 앞에 — 거리로만 고르면 마음이 이긴다.
+            CoreMatchFixtures.AddStructure(def, new int2(3, 2), Faction.DefenderInstinct, health: 1000f);
+            var match = Begin(def);
+            Assert.IsTrue(match.Heart.CoreShielded);
+
+            match.Apply(Command.DebugSpawnEnemy(0, new int2(10, 2)));
+            var enemy = FirstOf(match, Faction.EnemyUnit);
+            match.Tick();
+
+            Assert.IsTrue(enemy.Move.HasStructureDest);
+            Assert.AreEqual(new int2(3, 2), enemy.Move.StructureDest,
+                "방패가 서 있는 동안 적은 마음이 아니라 본능을 향한다 — 조준만 빼고 경로를 남기면 " +
+                "적이 방패 걸린 마음 앞에서 때리지도 못하고 서 있는다");
+
+            var instinct = FirstOf(match, Faction.DefenderInstinct);
+            instinct.Inbox.Damage.Add(new DamageEntry { Amount = 9999f, Source = SimEntityId.Match });
+            for (int t = 0; t < 4; t++) match.Tick();
+
+            // 방패가 떨어지면 거점 목적지는 **비고** 골 흐름으로 돌아간다 — 마음은 골 자리에
+            // 서므로 「가장 가까운 마음」은 골 슬롯(N-소스 흐름장)이 이미 안다. 마음에 닿았는지는
+            // 마음이 깎이는 것으로 증언한다.
+            Assert.IsFalse(enemy.Move.HasStructureDest, "본능이 무너지면 갈 거점이 없다 — 골 흐름 폴백");
+            for (int t = 0; t < 60 * 5 && match.Heart.Health >= match.Heart.MaxHealth; t++) match.Tick();
+            Assert.Less(match.Heart.Health, match.Heart.MaxHealth, "방패가 떨어진 뒤 적이 마음에 닿아 깎는다");
+        }
+
+        [Test]
         public void 본능의_죽음은_보통_유닛의_죽음이다()
         {
             var def = Armed();

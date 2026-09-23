@@ -242,6 +242,13 @@ namespace Wassup.BattleCore
         ///
         /// 개체와 자리는 **칸으로** 맞춘다. 거점은 자기 칸 중앙에 서고 움직이지 않으므로
         /// 그 대응이 판 내내 유지된다(움직이는 거점이 생기면 이 가정부터 깨진다).
+        ///
+        /// **방패 걸린 마음(`Untargetable`)도 목적지가 아니다.** 「표적에서 뺀다」는 조준과
+        /// 경로 둘 다다 — 조준만 빼면 적이 방패 걸린 마음 앞에 도착해 **때리지도 못하고
+        /// 서 있는다.** 옛 `StructureDestinationSystem` 의 `.WithNone&lt;CoreShielded&gt;()` 이 이것이다.
+        /// 단, 마음 타워는 골 자리(`MapSnapshot.Goals`)에서 세워지고 이 후보 목록은 저작 거점
+        /// (`MapSnapshot.Structures`)에서 오므로, 저작이 골 칸에 마음 자리를 따로 두지 않는 한
+        /// 마음은 애초에 여기 없다 — 「가장 가까운 마음」은 골 흐름장이 안다(`pick &lt; 0` 폴백).
         /// </summary>
         private void RefreshStructureLiveness(TickContext ctx)
         {
@@ -251,7 +258,7 @@ namespace Wassup.BattleCore
             for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
-                if (u.Kind != UnitKind.Structure || u.Dead) continue;
+                if (u.Kind != UnitKind.Structure || u.Dead || u.Untargetable) continue;
                 var cell = _map.CellOf(u.Position);
                 for (int k = 0; k < _structCount; k++)
                 {
