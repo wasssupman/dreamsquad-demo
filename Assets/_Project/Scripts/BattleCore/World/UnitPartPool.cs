@@ -31,6 +31,7 @@ namespace Wassup.BattleCore
         private readonly Stack<Footprint> _footprint = new Stack<Footprint>(16);
         private readonly Stack<AttackState> _attack = new Stack<AttackState>(32);
         private readonly Stack<ProgressiveStates> _progressive = new Stack<ProgressiveStates>(8);
+        private readonly Stack<Effects.ProjectileImbueSet> _imbue = new Stack<Effects.ProjectileImbueSet>(8);
 
         public MoveState RentMove() => _move.Count > 0 ? _move.Pop() : new MoveState();
         public Detection RentDetection() => _detection.Count > 0 ? _detection.Pop() : new Detection();
@@ -40,6 +41,10 @@ namespace Wassup.BattleCore
         public AttackState RentAttack() => _attack.Count > 0 ? _attack.Pop() : new AttackState();
         public ProgressiveStates RentProgressive()
             => _progressive.Count > 0 ? _progressive.Pop() : new ProgressiveStates();
+
+        /// <summary>unit 6a2 — 탄 부여 슬롯. 부여받은 개체만 갖는다(부재가 뜻을 갖는다).</summary>
+        public Effects.ProjectileImbueSet RentImbue()
+            => _imbue.Count > 0 ? _imbue.Pop() : new Effects.ProjectileImbueSet();
 
         /// <summary>
         /// 개체가 들고 있던 부분을 전부 회수하고 필드를 비운다. **`Unit.Reset` 의 본체**다 —
@@ -59,6 +64,7 @@ namespace Wassup.BattleCore
                 _progressive.Push(u.Progressive);
                 u.Progressive = null;
             }
+            if (u.Imbue != null) { u.Imbue.Reset(); _imbue.Push(u.Imbue); u.Imbue = null; }
         }
     }
 }

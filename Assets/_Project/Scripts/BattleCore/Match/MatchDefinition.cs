@@ -64,6 +64,12 @@ namespace Wassup.BattleCore
         /// </summary>
         public StackRuleDef[] StackRules = System.Array.Empty<StackRuleDef>();
 
+        /// <summary>
+        /// unit 6a2 — 탄 부여의 **종류별 상한**(「한 발이 얼마까지 나르나」). 빈 표 = 이 판에
+        /// 부여가 없다는 뜻이고, 상한 줄이 없는 키의 부여는 **관문이 거절한다**(제약 6).
+        /// </summary>
+        public ImbueCapDef[] ImbueCaps = System.Array.Empty<ImbueCapDef>();
+
         /// <summary>시드 생성 덱. `Mode.WaveSource` 가 `GeneratedFromDeck` 일 때 읽힌다.</summary>
         public Wave.WaveDeckDef WaveDeck = Wave.WaveDeckDef.Empty();
 
@@ -228,6 +234,11 @@ namespace Wassup.BattleCore
             {
                 sb.Append("[stackrule").Append(i.ToString(inv)).Append("]\n");
                 StackRules[i].Canonicalize(sb, inv);
+            }
+            for (int i = 0; i < ImbueCaps.Length; i++)
+            {
+                sb.Append("[imbuecap").Append(i.ToString(inv)).Append("]\n");
+                ImbueCaps[i].Canonicalize(sb, inv);
             }
         }
 

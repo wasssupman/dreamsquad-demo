@@ -1,4 +1,5 @@
 using Unity.Mathematics;
+using Wassup.BattleCore.Combat.Projectile;
 using Wassup.BattleCore.Map;
 
 namespace Wassup.BattleCore
@@ -82,6 +83,8 @@ namespace Wassup.BattleCore
                 case CommandKind.DebugSpawnDefender: return DebugSpawnDefender(cmd, tick);
                 case CommandKind.DebugForceWave:
                     return _waves.ForceNext() ? Receipt.Ok : Receipt.Reject(RejectReason.NoMoreWaves);
+                case CommandKind.DebugFireProjectile: return DebugFire(cmd);
+                case CommandKind.DebugImbue: return DebugImbue(cmd);
 
                 default: return Receipt.Reject(RejectReason.UnknownCommand);
             }
@@ -130,6 +133,55 @@ namespace Wassup.BattleCore
             _world.Destroy(cmd.Target, tick);
             return Receipt.Ok;
         }
+
+        // unit 6a2 — **공격 루프 밖의 발사.** 요청 줄에 넣기만 한다(생산자는 자기가 무엇에
+        // 얹히는지 모른다). 접는 것은 관문 하나이고, 그 관문을 이 경로도 똑같이 지난다.
+        private Receipt DebugFire(in Command cmd)
+        {
+            if (cmd.ProjectileDefIndex < 0 || cmd.ProjectileDefIndex >= _def.Projectiles.Length)
+                return Receipt.Reject(RejectReason.InvalidUnit);
+            var caster = _world.Find(cmd.Target);
+            if (caster == null) return Receipt.Reject(RejectReason.NoSuchEntity);
+
+            ref var pd = ref _def.Projectiles[cmd.ProjectileDefIndex];
+            var req = ProjectileRequest.Empty;
+            req.DefIndex = cmd.ProjectileDefIndex;
+            req.Movement = (MovementKind)pd.Movement;
+            req.Payload = (PayloadKind)pd.Payload;
+            req.Owner = caster.Id;
+            req.OwnerFaction = caster.Faction;
+            req.TargetMask = caster.Attack != null ? caster.Attack.TargetMask : 0;
+            req.TargetLayers = caster.Attack != null ? caster.Attack.TargetLayers : (byte)0;
+            req.Origin = caster.Position;
+            req.Impact = _map != null ? _map.CenterOf(cmd.Cell)
+                                      : new float3(cmd.Cell.x, 0f, cmd.Cell.y);
+            req.Direction = math.normalizesafe((req.Impact - caster.Position).xz, new float2(0f, 1f));
+            req.Damage = cmd.Magnitude;
+            // 「자리에 떨어지는 것」이다 — 시전자가 **지정한 좌표**이지 그 몸이 아니다(제약 13).
+            req.OriginBodyRadius = 0f;
+            _world.ProjectileRequests.Add(req);
+            return Receipt.Ok;
+        }
+
+        // unit 6a2 — 부여의 생산자 자리. 진짜 생산자(카드·스킬)는 unit 7 이고, 그때도
+        // 이 함수가 아니라 **같은 관문**(`ImbueGate`)을 부른다.
+        private Receipt DebugImbue(in Command cmd)
+        {
+            var caster = _world.Find(cmd.Target);
+            if (caster == null) return Receipt.Reject(RejectReason.NoSuchEntity);
+
+            if (!cmd.Flag)
+            {
+                Effects.ImbueGate.Revoke(_ctx, caster, caster.Id, _revokedImbue);
+                return Receipt.Ok;
+            }
+            return Effects.ImbueGate.Grant(_ctx, caster, caster.Id, cmd.Key, cmd.Magnitude, cmd.Seconds)
+                ? Receipt.Ok : Receipt.Reject(RejectReason.Unclassified);
+        }
+
+        // 회수 사건의 순서를 순회 순서에 안 맡기려고 지운 슬롯을 받는 자리(6a 규율).
+        private readonly System.Collections.Generic.List<Effects.ImbueSlot> _revokedImbue
+            = new System.Collections.Generic.List<Effects.ImbueSlot>(4);
 
         private Receipt DebugObstacle(in Command cmd)
         {

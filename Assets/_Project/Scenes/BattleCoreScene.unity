@@ -433,6 +433,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: de365d3d90c04af19bb3fb09e3509249, type: 2}
   - {fileID: 11400000, guid: 9ef2f1f251f1c48ca88ace43e01b0a12, type: 2}
   - {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
+  _imbueCaps: {fileID: 11400000, guid: 40685669b5c6499d8a32841d4fbd0220, type: 2}
   _seed: 20260923
   _beginOnStart: 1
   _maxTicksPerFrame: 8

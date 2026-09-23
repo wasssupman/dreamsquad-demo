@@ -68,6 +68,8 @@ namespace Wassup.BattleCore
         DotApplied = 38,
         ShieldGranted = 39,
         DotCleared = 40,
+        // ── unit 6a2 (탄 부여) ──
+        ImbueChanged = 41,
         // ⚠ `ScoreChanged` 는 **채널이 없다.** 처치 사건과 1:1 이라 새 정보가 0 이고
         // (`UnitSlain` + 진영으로 정확히 재구성된다) 총점은 아래 `finalScore` 가 증언한다.
         // 「전부 기록」을 강제하지 않는 이유가 이것이다 — 같은 사실의 두 번째 기록은
@@ -179,6 +181,8 @@ namespace Wassup.BattleCore
                 case CoreEventKind.DotApplied: channel = CoreTraceChannel.DotApplied; return true;
                 case CoreEventKind.ShieldGranted: channel = CoreTraceChannel.ShieldGranted; return true;
                 case CoreEventKind.DotCleared: channel = CoreTraceChannel.DotCleared; return true;
+                // ── unit 6a2 ──
+                case CoreEventKind.ImbueChanged: channel = CoreTraceChannel.ImbueChanged; return true;
                 default: channel = default; return false;
             }
         }

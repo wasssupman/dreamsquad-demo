@@ -271,4 +271,35 @@ namespace Wassup.BattleCore
                 MatchDefinition.Put(sb, "pattern" + i.ToString(inv), PatternDefIndices[i], inv);
         }
     }
+
+    // battle-core-rebuild unit 6a2 — **한 발이 나를 수 있는 세기의 상한**(사용자 결정 ②).
+    //
+    // 스택 종류의 최대 중첩(`StackRuleDef.MaxStack`)과 **다른 축**이다: 저쪽은 「피해자에게
+    // 몇 개까지 쌓이나」이고 이쪽은 「한 발에 얼마까지 실리나」다. 카드 넷이 같은 불 부여를
+    // 걸면 합이 4가 되는데, 그 합을 막는 것이 여기이고 쌓인 뒤의 상한은 저쪽이다.
+    //
+    // ⚠ **값이 없으면 「상한 없음」이 아니라 부여 거절**이다(제약 6). 저작 없는 무한 부여가
+    // 조용히 성립하지 않게 하는 것이 이 표의 존재 이유다.
+    public struct ImbueCapDef
+    {
+        /// <summary>`Effects.ImbueKind` 의 int 값.</summary>
+        public int Kind;
+
+        /// <summary>`ApplyStat` = `StatKind` · `ApplyStack` = `StackKind` · `Cc` = `CcRequestKind`.</summary>
+        public int Target;
+
+        /// <summary>`ApplyStat` 전용 — `CombineOp` 의 int 값. 나머지 종류는 0.</summary>
+        public int Op;
+
+        /// <summary>한 발이 나르는 크기의 상한. 저작은 **양수**이고 빌더가 검증한다.</summary>
+        public float Cap;
+
+        internal void Canonicalize(StringBuilder sb, CultureInfo inv)
+        {
+            MatchDefinition.Put(sb, "kind", Kind, inv);
+            MatchDefinition.Put(sb, "target", Target, inv);
+            MatchDefinition.Put(sb, "op", Op, inv);
+            MatchDefinition.Put(sb, "cap", Cap, inv);
+        }
+    }
 }

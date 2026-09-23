@@ -83,8 +83,27 @@ namespace Wassup.BattleCore.Combat.Projectile
         // TileAoe
         public int ImpactTileRange;
         public int AoeTargetCap;
-        public CcRequestKind AoeCc;
-        public float AoeCcSeconds;
+
+        // ── 착탄 출력(unit 6a2) ──
+        //
+        // **발사 시점에 접힌 값 스냅샷**이다: 시전자의 저작 착탄 출력 + 부여 슬롯을 관문
+        // (`TickProjectilePhase.SpawnRequested`)이 한 번 접어 싣는다. 쏘고 나면 시전자가
+        // 죽어도, 부여가 회수돼도 이 탄이 나르는 것은 안 변한다 — 그것이 스냅샷의 뜻이다.
+        //
+        // ⚠ **`Damage` 줄은 여기 없다.** 피해는 발사 시점에 배율까지 접혀 `Damage` 필드로
+        // 이미 스냅샷됐다(두 벌로 실으면 두 번 들어간다).
+
+        /// <summary>풀에서 빌린 배열. **담긴 줄 수는 `OnHitCount`** 이고 길이가 아니다.</summary>
+        public AttackOutputDef[] OnHit = System.Array.Empty<AttackOutputDef>();
+        public int OnHitCount;
+
+        /// <summary>
+        /// 이 탄이 **맞은 놈에게 거는** 군중 제어. unit 6a2 에서 이름이 `AoeCc` → `OnHitCc`
+        /// 로 바뀌었다 — 칸 광역 전용이 아니라 **착탄 전부**(직격·비산·경로 스윕)가 건다.
+        /// 출력 표가 아니라 여기 있는 이유: 문이 `RequestCc` 하나라서다(면역 판정의 자리).
+        /// </summary>
+        public CcRequestKind OnHitCc;
+        public float OnHitCcSeconds;
 
         // SpawnBlocker — 세울 설치물의 체력·몸(탄 정의에서 스냅샷).
         public float BlockerHealth;
@@ -152,8 +171,11 @@ namespace Wassup.BattleCore.Combat.Projectile
             SplashDamageMul = 0f;
             ImpactTileRange = 0;
             AoeTargetCap = 0;
-            AoeCc = CcRequestKind.None;
-            AoeCcSeconds = 0f;
+            // ⚠ `OnHit` 배열은 **버리지 않는다** — 풀 대여가 통째로 다시 할당하지 않게
+            // 길이를 남기고 줄 수만 0 으로 되돌린다(`AttackState.PatternSlots` 와 같은 규율).
+            OnHitCount = 0;
+            OnHitCc = CcRequestKind.None;
+            OnHitCcSeconds = 0f;
             BlockerHealth = 0f;
             BlockerBodyRadius = 0f;
             PierceRemaining = 0;

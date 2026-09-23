@@ -90,6 +90,8 @@ namespace Wassup.BattleCore
             match.Bus.Subscribe(CoreEventKind.DotApplied, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.ShieldGranted, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.DotCleared, 0, trace.Record);
+            // unit 6a2 — 탄 부여. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.ImbueChanged, 0, trace.Record);
 
             int kills = 0;
             match.Bus.Subscribe(CoreEventKind.UnitSlain, 1, _ => kills++);

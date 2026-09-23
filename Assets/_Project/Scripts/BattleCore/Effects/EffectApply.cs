@@ -40,10 +40,21 @@ namespace Wassup.BattleCore.Effects
         /// </summary>
         public static void Outputs(TickContext ctx, SimEntityId sourceId, Unit sourceUnit,
                                    Unit victim, AttackOutputDef[] outputs, float damageMul)
+            => Outputs(ctx, sourceId, sourceUnit, victim, outputs,
+                       outputs != null ? outputs.Length : 0, damageMul);
+
+        /// <summary>
+        /// 같은 함수의 **길이 지정** 판. 탄이 나르는 표(`Projectile.OnHit`)는 풀에서 빌린
+        /// 배열이라 «담긴 줄 수»가 «배열 길이»보다 작다 — 발사마다 정확한 크기로 새로
+        /// 잡으면 그것이 틱 중 할당이 된다(계약 「틱 중 할당 0」).
+        /// </summary>
+        public static void Outputs(TickContext ctx, SimEntityId sourceId, Unit sourceUnit,
+                                   Unit victim, AttackOutputDef[] outputs, int count, float damageMul)
         {
             if (victim == null || outputs == null) return;
+            if (count > outputs.Length) count = outputs.Length;
 
-            for (int o = 0; o < outputs.Length; o++)
+            for (int o = 0; o < count; o++)
             {
                 var def = outputs[o];
                 switch (def.Kind)

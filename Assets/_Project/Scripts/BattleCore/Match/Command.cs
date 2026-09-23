@@ -60,6 +60,21 @@ namespace Wassup.BattleCore
         /// no-op 으로 만들면 통합 스모크가 타임아웃한다.
         /// </summary>
         DebugForceWave = 14,
+
+        // ── unit 6a2 ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// **공격 루프를 거치지 않고** 탄을 쏜다. 카드탄·배치 스킬탄·포물선탄의 생산자는
+        /// unit 7 인데, 그 생산자들이 관문을 똑같이 지나는지를 지금 물을 수 있어야 한다 —
+        /// 「모든 탄」이 이 unit 의 전부이고, 평타로만 검증하면 그 말을 증언하지 못한다.
+        /// </summary>
+        DebugFireProjectile = 15,
+
+        /// <summary>
+        /// 시전자의 탄에 얹히는 부여를 걸거나(`Flag = true`) 회수한다. 생산자(카드·스킬)는
+        /// unit 7 이므로 그때까지의 유일한 생산자다.
+        /// </summary>
+        DebugImbue = 16,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -148,6 +163,22 @@ namespace Wassup.BattleCore
 
         /// <summary>unit 4 — `MatchDefinition.Cards` 의 인덱스(`AttachCard` · `CastActive`). -1 = 해당 없음.</summary>
         public int CardIndex;
+
+        // ── unit 6a2 디버그 ──────────────────────────────────────────────────
+        // 아래 넷은 **디버그 커맨드 둘만** 읽는다. 다른 종류의 값은 쓰이지 않으므로 기본값
+        // 그대로 흘러가고, 그래서 기존 팩토리를 한 줄도 안 고친다.
+
+        /// <summary>`MatchDefinition.Projectiles` 의 인덱스(`DebugFireProjectile`). -1 = 없음.</summary>
+        public int ProjectileDefIndex;
+
+        /// <summary>`DebugImbue` 가 거는 부여의 키.</summary>
+        public Effects.ImbueKey Key;
+
+        /// <summary>`DebugFireProjectile` = 피해 · `DebugImbue` = 부여 크기.</summary>
+        public float Magnitude;
+
+        /// <summary>`DebugImbue` 가 거는 효과의 지속(초).</summary>
+        public float Seconds;
 
         // 스킬 파라미터(대상 자리·방향 등)는 unit 7(트리거 레이어)에서 붙는다.
 
@@ -306,6 +337,54 @@ namespace Wassup.BattleCore
             Target = SimEntityId.None,
             Lane = -1,
             CardIndex = -1,
+        };
+
+        // ── unit 6a2 ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 공격 루프 밖에서 탄 하나를 쏜다. `caster` 가 **발사자**(관문이 그의 착탄 출력과
+        /// 부여를 접는다)이고 조준은 `cell` 이다 — 카드탄·배치 스킬탄·포물선탄이 전부
+        /// 칸 바인딩이라 이 한 형태로 셋을 다 세울 수 있다.
+        /// </summary>
+        public static Command DebugFireProjectile(int projectileDefIndex, SimEntityId caster,
+                                                  int2 cell, float damage = 0f) => new Command
+        {
+            Kind = CommandKind.DebugFireProjectile,
+            DefIndex = -1,
+            ProjectileDefIndex = projectileDefIndex,
+            Cell = cell,
+            Target = caster,
+            Lane = -1,
+            CardIndex = -1,
+            Magnitude = damage,
+        };
+
+        /// <summary>시전자의 탄에 부여를 건다. 출처는 **시전자 자신**이다(디버그의 단순화).</summary>
+        public static Command DebugImbue(SimEntityId caster, in Effects.ImbueKey key,
+                                         float magnitude, float seconds) => new Command
+        {
+            Kind = CommandKind.DebugImbue,
+            DefIndex = -1,
+            ProjectileDefIndex = -1,
+            Target = caster,
+            Lane = -1,
+            CardIndex = -1,
+            Key = key,
+            Magnitude = magnitude,
+            Seconds = seconds,
+            Flag = true,
+        };
+
+        /// <summary>그 시전자에게 자기가 건 부여를 전부 회수한다.</summary>
+        public static Command DebugRevokeImbue(SimEntityId caster) => new Command
+        {
+            Kind = CommandKind.DebugImbue,
+            DefIndex = -1,
+            ProjectileDefIndex = -1,
+            Target = caster,
+            Lane = -1,
+            CardIndex = -1,
+            Flag = false,
         };
     }
 

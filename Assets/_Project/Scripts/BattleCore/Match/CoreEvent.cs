@@ -128,6 +128,15 @@ namespace Wassup.BattleCore
         /// 「언제 끄나」를 매 프레임 폴링으로 되묻게 되고, 그 폴링이 옛 뷰 풀 셋의 모양이다.
         /// </summary>
         DotCleared = 42,
+
+        // ── unit 6a2 (탄 부여) ────────────────────────────────────────────────
+        /// <summary>
+        /// **시전자의 탄이 나르는 것**이 바뀌었다(부여·회수). `A` = 건 쪽, `B` = 시전자,
+        /// `Arg` = `ImbueKey.Pack()`, `Amount` = 한 발이 실제로 나를 값(합을 상한으로 접은 것).
+        /// 회수는 **같은 종류에 줄어든 값**으로 온다 — 「부여가 사라졌다」는 별도 종류가 아니다
+        /// (슬롯이 하나도 안 남으면 0 이 온다).
+        /// </summary>
+        ImbueChanged = 43,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -522,5 +531,17 @@ namespace Wassup.BattleCore
                              Site.Nowhere,
                              new Site(target.Position, target.HitRadius),
                              target.Faction, 0, amount);
+
+        // ── unit 6a2 (탄 부여) ────────────────────────────────────────────────
+        //
+        // ⚠ `owner` 는 **맞는 쪽이 아니라 쏘는 쪽**이다. 그래서 `SiteTarget` 에 시전자의 몸이
+        // 실린다 — 이 사건이 가리키는 자리는 「부여가 얹힌 곳」이지 피격점이 아니다.
+        public static CoreEvent ImbueChanged(int tick, Unit owner, SimEntityId source,
+                                             Effects.ImbueKey key, float carried)
+            => new CoreEvent(CoreEventKind.ImbueChanged, tick,
+                             source, owner.Id,
+                             Site.Nowhere,
+                             new Site(owner.Position, owner.HitRadius),
+                             owner.Faction, key.Pack(), carried);
     }
 }

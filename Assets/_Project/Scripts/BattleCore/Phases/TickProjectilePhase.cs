@@ -42,6 +42,8 @@ namespace Wassup.BattleCore
         private Unit[] _victims = new Unit[64];
         private float[] _victimDistSq = new float[64];
         private int[] _victimPick = new int[64];
+        // unit 6a2 — 관문이 이번 발사에서 «이미 찬 칸»을 세는 자리. 발사마다 비운다.
+        private readonly List<ImbueKey> _foldKeys = new List<ImbueKey>(4);
 
         public TickProjectilePhase(MapRuntime map) => _map = map;
 
@@ -242,8 +244,8 @@ namespace Wassup.BattleCore
                 p.SplashDamageMul = d.SplashDamageMul;
                 p.ImpactTileRange = req.ImpactTileRange > 0 ? req.ImpactTileRange : d.ImpactTileRange;
                 p.AoeTargetCap = req.AoeTargetCap;
-                p.AoeCc = req.AoeCc;
-                p.AoeCcSeconds = req.AoeCcSeconds;
+                p.OnHitCc = req.OnHitCc;
+                p.OnHitCcSeconds = req.OnHitCcSeconds;
                 p.PierceRemaining = math.max(1, d.PierceCount);
                 p.RehitCooldown = d.RehitCooldownSec;
                 p.SweepKnockbackSpeed = d.KnockbackDuration > 0f
@@ -275,9 +277,93 @@ namespace Wassup.BattleCore
                                           d.BezierLateral, d.BezierForwardBias,
                                           out p.Control1, out p.Control2);
 
+                // unit 6a2 — **관문.** 요청이 탄이 되기 직전에 시전자의 (저작 착탄 출력 +
+                // 부여 슬롯)을 한 번 접어 싣는다. 생산자는 자기가 무엇에 얹히는지 모른다.
+                FoldOnHit(ctx, ctx.World.Find(req.Owner), in req, p);
+
                 ctx.Bus.Publish(CoreEvent.ProjectileSpawned(ctx.Tick, p));
             }
             reqs.Clear();
+        }
+
+        // ── 관문 — 「이 탄이 무엇을 나르나」(unit 6a2) ───────────────────────
+        //
+        // **시전자가 쏘는 모든 탄이 시전자의 착탄 효과를 싣는다**(사용자 결정 2026-09-24 ①).
+        // 접는 자리가 여기 하나인 것이 이 unit 의 전부다 — 평타 팔 안에서만 주입하던 옛
+        // 구조는 포물선탄·카드탄·배치 스킬탄을 원천 배제했고, 생산자마다 접으면 그 배제가
+        // 다른 모양으로 되돌아온다.
+        //
+        // **순서 = 정의표 → 요청 → 부여이고, 뒤에 오는 것이 앞의 것을 덮지 않는다.**
+        // 한 키에 한 값이다. 이 규율이 없으면 저작 감속과 부여 감속이 같은 4키 슬롯으로
+        // 가서 **나중 것이 먼저 것을 조용히 지운다**(6a `ModifierSet.Apply` 는 같은 키면
+        // 크기를 덮어쓴다). 「요청이 명시한 값은 부여가 덮지 않는다」가 그 규율의 이름이다.
+        //
+        // 겹치는 것은 **부여끼리**다: 같은 키에 여럿이 걸면 **합**이고 상한은 정의표가 준다
+        // (사용자 결정 ②). 상한 저작이 없는 키는 부여 시점에 이미 거절됐지만, 정의표가
+        // 중간에 바뀌는 경로는 없어도 여기서 한 번 더 확인한다 — 못 찾으면 **안 싣는다**.
+        private void FoldOnHit(TickContext ctx, Unit owner, in ProjectileRequest req, Projectile p)
+        {
+            p.OnHitCount = 0;
+            _foldKeys.Clear();
+
+            // ① 정의표 — 시전자가 저작한 착탄 출력. **피해는 뺀다**(요청이 이미 스냅샷했다).
+            var authored = owner != null && owner.Attack != null ? owner.Attack.Outputs : null;
+            if (authored != null)
+                for (int o = 0; o < authored.Length; o++)
+                {
+                    if (authored[o].Kind == AttackOutputKind.Damage) continue;
+                    var key = ImbueKey.OfOutput(in authored[o]);
+                    if (!key.IsNone && !Claim(in key)) continue;
+                    Carry(p, in authored[o]);
+                }
+
+            // ② 요청 — 오늘 요청이 «명시하는» 착탄 출력은 군중 제어 하나다. 값은 이미
+            //    `p.OnHitCc` 에 실렸으므로 여기서는 **칸만 잠근다.**
+            if (req.OnHitCc != CcRequestKind.None && req.OnHitCcSeconds > 0f)
+                Claim(ImbueKey.Cc(req.OnHitCc));
+
+            // ③ 부여 — 빈 칸에만 얹는다.
+            var imbue = owner != null ? owner.Imbue : null;
+            if (imbue == null || !imbue.Any) return;
+            for (int i = 0; i < imbue.Count; i++)
+            {
+                var key = imbue.Slots[i].Key;
+                // 같은 키의 둘째 슬롯은 여기서 걸러진다 — 합은 `SumOf` 가 이미 냈다.
+                if (!Claim(in key)) continue;
+                if (!ImbueGate.TryCapOf(ctx.Def.ImbueCaps, in key, out float cap))
+                {
+                    ctx.Warn("[Imbue] 상한 저작이 없는 부여가 탄에 실리려 했다 — 안 싣는다.");
+                    continue;
+                }
+                float magnitude = math.min(cap, imbue.SumOf(in key));
+                float seconds = imbue.SecondsOf(in key);
+                if (key.Kind == ImbueKind.Cc)
+                {
+                    p.OnHitCc = (CcRequestKind)key.Target;
+                    // 군중 제어의 «세기»는 곧 지속이다(`StackDerivedKind.ApplyStun` 과 같은 규약).
+                    p.OnHitCcSeconds = magnitude;
+                    continue;
+                }
+                var line = ImbueGate.ToOutput(in key, magnitude, seconds);
+                if (line.Kind != AttackOutputKind.Damage || line.Magnitude > 0f) Carry(p, in line);
+            }
+        }
+
+        /// <summary>이번 발사에서 그 칸을 처음 차지했나. 이미 찼으면 false(덮지 않는다).</summary>
+        private bool Claim(in ImbueKey key)
+        {
+            for (int i = 0; i < _foldKeys.Count; i++) if (_foldKeys[i] == key) return false;
+            _foldKeys.Add(key);
+            return true;
+        }
+
+        // 탄의 표에 한 줄 얹는다. 배열은 **탄이 들고 돌려쓴다** — 발사마다 정확한 크기로
+        // 새로 잡으면 그것이 틱 중 할당이 된다.
+        private static void Carry(Projectile p, in AttackOutputDef line)
+        {
+            if (p.OnHitCount >= p.OnHit.Length)
+                System.Array.Resize(ref p.OnHit, p.OnHit.Length == 0 ? 2 : p.OnHit.Length * 2);
+            p.OnHit[p.OnHitCount++] = line;
         }
 
         // 퇴화 저작(속도 0 · 거리 0)은 여기서 클램프하지 않는다 — 그러면 도착 조건이 영원히
@@ -478,7 +564,7 @@ namespace Wassup.BattleCore
 
             if (direct != null && direct.IsTargetable() && IsLegal(direct, p))
             {
-                Deal(ctx, direct, p.Owner, p.Damage);
+                Deal(ctx, p, direct, p.Damage);
                 // 착탄 넉백 — 유도탄은 **착탄까지 미룬다**(발사 시점에 밀면 빗나간 탄도 민다).
                 if (p.ImpactKnockbackDistance > 0f && p.ImpactKnockbackDuration > 0f)
                     PushAway(ctx, direct, p.ImpactKnockbackDistance, p.ImpactKnockbackDuration, p.Owner);
@@ -496,7 +582,7 @@ namespace Wassup.BattleCore
                     float dz = u.Position.z - p.Position.z;
                     float reach = p.SplashRadius + u.HitRadius * tileSize;
                     if (dx * dx + dz * dz > reach * reach) continue;
-                    Deal(ctx, u, p.Owner, p.Damage * p.SplashDamageMul);
+                    Deal(ctx, p, u, p.Damage * p.SplashDamageMul);
                     hits++;
                 }
             }
@@ -548,9 +634,9 @@ namespace Wassup.BattleCore
             for (int k = 0; k < take; k++)
             {
                 var u = _victims[_victimPick[k]];
-                Deal(ctx, u, p.Owner, p.Damage);
-                if (p.AoeCc != CcRequestKind.None && p.AoeCcSeconds > 0f)
-                    ctx.World.RequestCc(CcRequest.Of(u.Id, p.AoeCc, p.AoeCcSeconds, p.Owner));
+                // 군중 제어는 `Deal` 안에서 함께 나간다 — 칸 광역 전용이던 것이 unit 6a2 에서
+                // **착탄 전부**로 넓어졌고, 그 한 곳이 이제 이 함수다.
+                Deal(ctx, p, u, p.Damage);
             }
 
             ctx.Bus.Publish(CoreEvent.ProjectileHit(ctx.Tick, p, SimEntityId.None, take));
@@ -572,7 +658,7 @@ namespace Wassup.BattleCore
                 if (!SweepHitMath.SegmentHits(p.PrevPos.xz, p.Position.xz, u.Position.xz, reach)) continue;
                 if (!PathHits.CanHit(p.HitRecords, u.Id, p.Elapsed, p.RehitCooldown, out int slot)) continue;
 
-                Deal(ctx, u, p.Owner, p.Damage);
+                Deal(ctx, p, u, p.Damage);
                 hits++;
 
                 // 기록은 **창**이다. 슬롯을 제자리에 덮어쓴다 — 매 바퀴 append 하면 버퍼가 자란다.
@@ -636,10 +722,30 @@ namespace Wassup.BattleCore
             return LayerBits.CanTarget(p.TargetLayers, theirs);
         }
 
-        private static void Deal(TickContext ctx, Unit victim, SimEntityId source, float amount)
+        /// <summary>
+        /// 한 피해자에게 **이 착탄이 내는 것 전부**를 얹는다(unit 6a2).
+        ///
+        /// ⚠ 피해가 0 이어도 나머지는 든다 — 순수 디버프 탄이 그 모양이다(옛 구조는 피해가
+        /// 0 이면 착탄이 아무 일도 안 한 것과 같았다).
+        /// ⚠ 산출물은 **평타와 같은 함수**(`EffectApply.Outputs`)를 지난다. 평타와 탄이 다른
+        /// 자를 쓰면 언젠가 한쪽만 가드를 갖는다(거점 면역이 그 자리다).
+        /// ⚠ 출처는 **발사자**다(F30) — 탄 자신이 아니다. 탄으로 보내면 발사마다 새 슬롯이
+        /// 생겨 디버프가 곱으로 누적된다(라이브 결함이었다).
+        /// ⚠ 피해 배율은 **1** 이다. 배율은 발사 시점에 `Damage` 에 이미 접혔고, 이 표에는
+        /// 애초에 피해 줄이 없다(관문이 뺀다).
+        /// </summary>
+        private static void Deal(TickContext ctx, Projectile p, Unit victim, float amount)
         {
-            if (amount <= 0f) return;
-            victim.Inbox.Damage.Add(new DamageEntry { Amount = amount, Source = source });
+            if (amount > 0f)
+                victim.Inbox.Damage.Add(new DamageEntry { Amount = amount, Source = p.Owner });
+
+            if (p.OnHitCount > 0)
+                EffectApply.Outputs(ctx, p.Owner, ctx.World.Find(p.Owner), victim,
+                                    p.OnHit, p.OnHitCount, 1f);
+
+            // 군중 제어는 출력 표가 아니라 `RequestCc` 로 간다 — 면역 판정의 문이 거기 하나다.
+            if (p.OnHitCc != CcRequestKind.None && p.OnHitCcSeconds > 0f)
+                ctx.World.RequestCc(CcRequest.Of(victim.Id, p.OnHitCc, p.OnHitCcSeconds, p.Owner));
         }
 
         // **방향을 모르는 대상은 밀리지 않는다**(C8) — 스폰 직후·고정 구조물이 그렇다.

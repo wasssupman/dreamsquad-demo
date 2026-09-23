@@ -42,11 +42,12 @@ namespace Wassup.BattleCoreUnity
                                             System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
                                             MatchViewAssets viewAssets = null,
                                             MovementTuningConfig movement = null,
-                                            StackModifierSO[] stackModifiers = null)
+                                            StackModifierSO[] stackModifiers = null,
+                                            ImbueCapConfig imbueCaps = null)
         {
             var enemies = CollectEnemies(deck, plan, bonus);
             var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
-                            viewAssets, movement, stackModifiers);
+                            viewAssets, movement, stackModifiers, imbueCaps);
 
             def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
             def.WaveDeck = ToDeckDef(deck, enemies);
@@ -88,7 +89,8 @@ namespace Wassup.BattleCoreUnity
                                             System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
                                             MatchViewAssets viewAssets = null,
                                             MovementTuningConfig movement = null,
-                                            StackModifierSO[] stackModifiers = null)
+                                            StackModifierSO[] stackModifiers = null,
+                                            ImbueCapConfig imbueCaps = null)
         {
             var def = new MatchDefinition
             {
@@ -110,6 +112,10 @@ namespace Wassup.BattleCoreUnity
             // 쌓이기만 하고 **임계가 하나도 안 터진다** — 그 상태를 조용히 두지 않으려고
             // `ToStackRuleDefs` 가 잘못된 저작을 loud 하게 거절한다.
             def.StackRules = ToStackRuleDefs(stackModifiers);
+            // unit 6a2 — 탄 부여 상한. 같은 이유로 **해시를 굽기 전**이다. 안 넘기면 빈 표이고,
+            // 그러면 부여가 **하나도 안 걸린다**(관문이 상한 없는 키를 거절한다) — 「저작이
+            // 없다」가 「상한이 없다」로 읽히지 않게 하는 것이 그 거절의 뜻이다.
+            def.ImbueCaps = ToImbueCapDefs(imbueCaps);
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }
@@ -602,6 +608,53 @@ namespace Wassup.BattleCoreUnity
                     MaxStack = so.maxStack,
                     PerAppDuration = so.perAppDuration,
                     Thresholds = rows,
+                });
+            }
+            return list.ToArray();
+        }
+
+        /// <summary>
+        /// 부여 상한 SO → 정의표. **키 하나에 한 줄**이다.
+        ///
+        /// ⚠ 거절 둘 다 loud 하다(제약 6): ⑴ 상한이 **0 이하**인 줄 — 「값을 안 적었다」가
+        /// 「상한이 없다」로 읽히면 근거 없는 무한 부여가 조용히 성립한다. ⑵ **같은 키가 두 줄** —
+        /// 먼저 찾은 줄이 이기므로 저작자가 고친 줄이 안 먹는 침묵이 난다.
+        /// </summary>
+        public static ImbueCapDef[] ToImbueCapDefs(ImbueCapConfig src)
+        {
+            var rows = src != null ? src.Rows : System.Array.Empty<ImbueCapConfig.Row>();
+            if (rows.Length == 0) return System.Array.Empty<ImbueCapDef>();
+
+            var list = new System.Collections.Generic.List<ImbueCapDef>(rows.Length);
+            var seen = new System.Collections.Generic.List<Wassup.BattleCore.Effects.ImbueKey>(rows.Length);
+            for (int i = 0; i < rows.Length; i++)
+            {
+                var key = rows[i].Key();
+                if (key.IsNone)
+                {
+                    Debug.LogError($"[MatchDefinitionBuilder] 부여 상한 저작 '{src.name}' 의 {i}번 줄이 "
+                                   + "종류를 안 골랐다 — 이 줄을 버린다.", src);
+                    continue;
+                }
+                if (rows[i].cap <= 0f)
+                {
+                    Debug.LogError($"[MatchDefinitionBuilder] 부여 상한 저작 '{src.name}' 의 {i}번 줄에 "
+                                   + "상한 값이 없다 — 「상한 없음」이 아니라 오류다(이 줄을 버린다).", src);
+                    continue;
+                }
+                if (seen.Contains(key))
+                {
+                    Debug.LogError($"[MatchDefinitionBuilder] 부여 상한 저작 '{src.name}' 의 {i}번 줄이 "
+                                   + "앞줄과 같은 키다 — 뒤 줄은 영영 안 읽힌다(이 줄을 버린다).", src);
+                    continue;
+                }
+                seen.Add(key);
+                list.Add(new ImbueCapDef
+                {
+                    Kind = (int)key.Kind,
+                    Target = key.Target,
+                    Op = key.Op,
+                    Cap = rows[i].cap,
                 });
             }
             return list.ToArray();

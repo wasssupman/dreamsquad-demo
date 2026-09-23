@@ -35,6 +35,8 @@
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\BattleView\**\*.cs" />
     <!-- 5a 후속 — 이동 저작 SO. 같은 이유. -->
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\MovementTuningConfig.cs" />
+    <!-- 6a2 — 탄 부여 상한 SO. 같은 이유(에디터가 아직 컴파일한 적 없는 새 타입). -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\ImbueCapConfig.cs" />
   </ItemGroup>
 
   <ItemGroup>

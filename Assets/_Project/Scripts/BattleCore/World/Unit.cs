@@ -116,6 +116,15 @@ namespace Wassup.BattleCore
         /// <summary>진행형 상태(도약·치명 타이머·충전). 쓰는 개체만.</summary>
         public ProgressiveStates Progressive;
 
+        // ── unit 6a2 부분 ─────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 이 시전자가 쏘는 **모든 탄에 실리는 부여**. 부여받은 개체만 갖는다(null = 없다) —
+        /// 효과 슬롯 넷과 달리 부재가 뜻을 갖는다(「이 유닛의 공격에는 얹힌 것이 없다」).
+        /// 접는 자리는 관문 하나(`TickProjectilePhase.SpawnRequested`)다.
+        /// </summary>
+        public ProjectileImbueSet Imbue;
+
         /// <summary>
         /// 행동 상태. **결정은 `Wassup.UnitAi`, 저장은 여기**다 — 공격 루프와 이동이 같은
         /// 술어를 보게 만드는 자리다(둘이 갈리면 「락은 있는데 Marching」 데드락이 난다).
