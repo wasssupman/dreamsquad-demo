@@ -1,0 +1,19 @@
+LTV0
+channels=core
+scenario=spawn_destroy
+configHash=77642a70dabf1c3a
+matchSeed=4321
+stepDt=0.0166666675
+tickCount=300
+events=7
+0 0 0 -1 0 0
+10 1 1 -1 2 100000
+20 1 2 -1 2 100000
+30 1 3 -1 2 100000
+40 2 2 -1 2 100000
+61 4 1 -1 1 0
+81 4 3 -1 1 0
+finalKills=0
+finalScore=0
+finalLeaks=0
+finalStateHash=E7B9458EEB69C6D3

@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d184bdd7834345c199b6ccd0c5a71254, type: 3}
+  m_Name: MatchMode_KillScore3Min
+  m_EditorClassIdentifier: 
+  modeId: kill_score_timed
+  displayName: 3분 킬 레이스
+  goalKind: 0
+  targetWaves: 0
+  clockKind: 0
+  durationSec: 180
+  submitUnlockSec: 60
+  allowSubmit: 1
+  waveSourceKind: 0
+  deck: {fileID: 0}
+  plan: {fileID: 0}
+  mapPool: {fileID: 0}
+  gimmickEnabled: 0
+  gimmickPool:
+  - {fileID: 11400000, guid: 0356a9ea312ae944396422653318f410, type: 2}
+  - {fileID: 11400000, guid: cca8f90535af4a348b1105ec76cd9d6f, type: 2}
+  - {fileID: 11400000, guid: 86e4b7298c8358740a39ebdda2b762e3, type: 2}
+  - {fileID: 11400000, guid: 0f78b4158d94a0240bad81a0e037cdc7, type: 2}
+  costConfig: {fileID: 11400000, guid: 3ed67d5379b02406db1329b181fbee88, type: 2}
+  placementPhaseEnabled: 0
+  autoStartCountdownSec: 3
+  squadSlots: 7
+  boardCap: 0
+  retireEnabled: 1
+  deckRuleConfig: {fileID: 11400000, guid: 6466c645017304a0b99fde28e6a1f1da, type: 2}
+  awakeningConfig: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
+  publicActiveCount: 2
+  submitsReport: 1
+  leaderboardId: 

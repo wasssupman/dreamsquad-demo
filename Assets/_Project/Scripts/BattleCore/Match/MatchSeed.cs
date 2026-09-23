@@ -16,11 +16,17 @@ namespace Wassup.Core
         const uint MeteorSalt = 0xD6E8FEB8u;  // season-gimmick-clockout — 메테오 착탄 셀 stream
 
         /// <summary>
-        /// 미지정(0) 시 매 판 새 시드. 시간 + Unity RNG 혼합으로 같은 tick 충돌 회피.
+        /// 미지정(0) 시 매 판 새 시드. 시간 + 프로세스 고유값 혼합으로 같은 tick 충돌 회피.
         /// 결정론 함수가 아니다 — 매치 진입점에서 1회만 호출한다.
         /// </summary>
+        // battle-core-rebuild unit 1 — 이 파일이 `Wassup.BattleCore`(noEngineReferences)로
+        // 이사하면서 난수원을 `UnityEngine.Random.Range` 에서 `Guid` 로 바꿨다. 호출 계약은
+        // 그대로다(매 호출 다른 int, 같은 tick 에도 충돌 없음) — 이 함수는 **정의상 비결정론**
+        // 이라 난수원이 무엇인지가 규칙에 영향을 주지 않는 유일한 자리다.
+        // 시그니처를 유지하는 것이 중요하다: 호출처 둘(`GameManager` · 동결된 `BattleBridge`)이
+        // 이 이름을 그대로 부르고, 동결 경로는 고칠 수 없다.
         public static int GenerateRandom() => unchecked(
-            System.Environment.TickCount ^ UnityEngine.Random.Range(int.MinValue, int.MaxValue));
+            System.Environment.TickCount ^ System.Guid.NewGuid().GetHashCode());
 
         public static int DeriveMapSeed(int matchSeed)    => Mix((uint)matchSeed, MapSalt);
         public static int DeriveWaveSeed(int matchSeed)   => Mix((uint)matchSeed, WaveSalt);

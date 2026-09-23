@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4a53c47a2f843aca869af9a56dd9004, type: 3}
+  m_Name: CharacterViewConfig
+  m_EditorClassIdentifier: 
+  characterScale: 0.504
+  billboardTilt: 45
+  propDistanceTiltFactor: 0.78
+  propDistanceTiltMin: 28
+  propDistanceTiltMax: 62
+  healthDisplayStyle: {fileID: 11400000, guid: e5f5c0ef9295247f6a489dfa4d64df6a, type: 2}
+  healthPresentationMode: 1
+  walkAnimSpeedStyle: {fileID: 11400000, guid: 0edf5da9f35ba424e91340d1cccd1cce, type: 2}
+  enemyDragDimAlpha: 0.3
+  enemyDragDimFadeSpeed: 8
+  hitPopSeconds: 0.15
+  hitPopOvershoot: 0.2

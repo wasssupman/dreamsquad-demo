@@ -1,0 +1,14 @@
+LTV0
+channels=core
+scenario=empty_board
+configHash=77642a70dabf1c3a
+matchSeed=1234
+stepDt=0.0166666675
+tickCount=10800
+events=2
+0 0 0 -1 0 0
+10800 3 0 -1 1 180000
+finalKills=0
+finalScore=0
+finalLeaks=0
+finalStateHash=14650FB0739D0383

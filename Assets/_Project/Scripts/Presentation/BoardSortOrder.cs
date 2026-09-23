@@ -24,6 +24,14 @@ namespace Wassup.Presentation
         // placement-drag-preview-polish — 드래그 프리뷰 실루엣: 배치 중 배경 프랍/유닛/투사체 위로.
         // 프랍(prop.sortingOrder + Compute)·유닛(Compute+1)·투사체(+1000) 위, UI(Canvas) 아래.
         public const int DragPreviewOrder = 20000;
+
+        // placement-eligible-tile-highlight unit 1 — 배치 **가능 칸** 하이라이트(슬랩).
+        // 옛 타일맵 뷰가 드래그 중 쓰던 값 그대로다(`_placeableTilemap` 의 상승 대역):
+        // 유닛(양수 수백대) 위 = 밀집 전투 중 드래그에도 적 빌보드 밑에 안 깔린다,
+        // 고스트·드래그 프리뷰(20000) 아래 = 「지금 가리키는 칸」이 언제나 위에 얹힌다.
+        // ⚠ 고스트와 **같은 값을 주지 말 것** — 같은 order 안의 전후는 정해져 있지 않아
+        // 손끝 칸이 가이드에 먹히는 프레임이 생긴다.
+        public const int PlacementHighlightOrder = 9998;
         // placement-cell-snap unit 4 — 배치 확정 팝: 상승한 overlay 하이라이트(10002) 위, 드래그 프리뷰(20000) 아래.
         public const int PlacementCommitPopOrder = 12000;
         // distance-based-range unit 5 — 공격 사거리 **링**(윤곽). 바닥 대역이다.

@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    battle-core-rebuild unit 1 — 두 프로젝트가 한 폴더에 살기 위한 최소 설정.
+
+    `BattleCore.csproj` 와 `BattleCore.Tests.csproj` 가 같은 디렉터리에 있으면
+    기본 `obj/project.assets.json` 이 겹쳐 한쪽 복원이 다른 쪽을 덮는다
+    (증상: "자산 파일에 'netstandard2.1' 대상이 없습니다").
+    중간/출력 폴더를 프로젝트 이름으로 갈라 둔다.
+
+    이 파일이 `Directory.Build.props` 인 이유: `BaseIntermediateOutputPath` 는
+    SDK 의 props 가 읽히기 **전에** 정해져야 해서, csproj 안의 PropertyGroup 은 늦다.
+  -->
+
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)/bin/$(MSBuildProjectName)/</BaseOutputPath>
+  </PropertyGroup>
+
+</Project>

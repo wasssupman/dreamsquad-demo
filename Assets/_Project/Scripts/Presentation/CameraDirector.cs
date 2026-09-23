@@ -160,6 +160,13 @@ namespace Wassup.Presentation
             _currentPhase = phase;
         }
 
+        // battle-core-rebuild 5b — 페이즈 **push**. `SetBoardBounds` 와 같은 단방향 계약이다
+        // (Director 가 남의 상태를 당겨오지 않는다). 새 전투 코어의 씬에는 `GameManager` 가
+        // 없으므로 — 매니저를 두지 않는 것이 그쪽의 절대 제약이다 — 위 구독이 성립하지 않고,
+        // 그러면 `_currentPhase` 가 `None` 에 굳어 **배치 레시피가 영영 안 걸린다.**
+        // 두 입력이 공존해도 마지막에 민 쪽이 이기므로 옛 씬의 거동은 무변이다.
+        public void SetPhase(Wassup.Core.GamePhase phase) => OnPhaseChanged(phase);
+
         // unit 11 — 페이즈 7종을 카메라 상태 2종으로 접는다.
         // 기믹 리빌은 배치 직전 준비 구간이라 배치와 같은 그림으로 본다.
         // 집계·결과·드래프트·None 은 전투로 흡수된다 — 집계는 판을 계속 보여주는 구간이고
