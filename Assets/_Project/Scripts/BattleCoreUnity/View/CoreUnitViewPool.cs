@@ -39,6 +39,9 @@ namespace Wassup.BattleCoreUnity.View
         [Tooltip("비행 중 위치를 덮어쓰는 프리젠터. 비어 있으면 도약은 순간이동으로 보인다.")]
         [SerializeField] private CoreLeapPresenter _leap;
 
+        [Tooltip("배치 비행 프리젠터. 비어 있으면 놓은 유닛이 「툭」 생긴다.")]
+        [SerializeField] private CoreDeployFlightPresenter _deployFlight;
+
         [Header("개발용 폴백(쿼드)")]
         [Tooltip("스프라이트도 스켈레톤도 없는 저작이 나왔을 때 그리는 메시. 비우면 Unity 기본 Quad.")]
         [SerializeField] private Mesh _fallbackMesh;
@@ -262,6 +265,19 @@ namespace Wassup.BattleCoreUnity.View
             {
                 var u = units[i];
                 if (u.Kind == UnitKind.Structure) continue;
+
+                // 뷰 위치를 덮어쓰는 축은 **닫혀 있다 — 둘뿐**이다(도약 · 배치 비행). 둘은
+                // 좌표계가 달라 한 질문으로 접히지 않는다: 도약은 sim 좌표 + view 높이라
+                // 정상 피드를 그대로 타고, 배치 비행은 아치가 camUp 이라 **view 절대 좌표**다
+                // (sim 으로 접으면 `ToView` 가 높이를 버려 화면에서 옆으로 미끄러진다).
+                // 그래서 인터페이스 하나로 묶지 않고 각자에게 묻는다.
+                if (_deployFlight != null
+                    && _deployFlight.TryGetFlightView(u.Id, out var deployPos, out float deployLift, out var deployGround))
+                {
+                    if (_byId.TryGetValue(u.Id.Value, out var flying) && flying != null)
+                        flying.SetFlightView(deployPos, deployLift, deployGround);
+                    continue;
+                }
 
                 Unity.Mathematics.float3 pos;
                 float flightHeight = 0f;

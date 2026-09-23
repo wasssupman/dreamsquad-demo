@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,7 +6,6 @@ using Wassup.BattleCore;
 using Wassup.BattleCoreUnity.Hud;
 using Wassup.BattleCoreUnity.View;
 using Wassup.Core;
-using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.Presentation;
 using Wassup.UI;
@@ -25,8 +23,9 @@ namespace Wassup.BattleCoreUnity.Input
     //   ① 손가락을 칸으로 옮긴다(`PlacementCellSnap` · `PlacementSnapDebounce` — 순수 함수 재사용)
     //   ② 그 칸이 놓을 수 있는지 **코어에 묻는다**(`Judge` · `TrySnapAnchor`) — 재판정 아님
     //   ③ 놓는다(`Command.PlaceDefender`) 그리고 receipt 를 **표시한다**
-    //   ④ 「착지했다」를 알린다(`Command.LandDefender`) — 비행은 프레젠테이션 시간이라 코어가
-    //      길이를 모른다
+    //   ④ 비행을 **띄워 보낸다**(`CoreDeployFlightPresenter.Launch`). 비행이 뜨면 「착지했다」
+    //      (`Command.LandDefender`)는 **끝을 아는 그쪽**이 낸다 — 비행은 프레젠테이션 시간이라
+    //      코어가 길이를 모른다. 프리젠터가 없으면 그 자리에서 착지한다(헤드리스와 같다).
     //
     // ⚠ 이름이 `*Controller` 가 아닌 이유는 계약 12 다. 이 컴포넌트는 아무것도 «통제»하지
     // 않는다 — 포인터를 커맨드로 옮길 뿐이다.
@@ -60,16 +59,11 @@ namespace Wassup.BattleCoreUnity.Input
         [SerializeField, Min(0)] private int _magnetRadiusCells = 1;
 
         [Header("착지")]
-        [Tooltip("드롭 → 착지까지의 비행 시간(초). 0 = 즉시(헤드리스와 같다).")]
-        [SerializeField, Min(0f)] private float _deployFlightSeconds;
-
-        private struct PendingLand
-        {
-            public SimEntityId Id;
-            public float Left;
-        }
-
-        private readonly List<PendingLand> _landing = new List<PendingLand>(4);
+        // ⚠ **자기 타이머를 갖지 않는다.** 5b 는 「드롭 → n초 뒤 착지」를 여기 한 칸으로 뒀는데,
+        // 그러면 비행 길이의 주인이 둘(이 칸 · 드롭 하마 저작)이 되고 실제로 갈렸다 — 씬 값이
+        // 0 이라 **유닛이 툭 생겼다**(사용자 플레이 1차). 길이도 궤적도 프리젠터의 것이다.
+        [Tooltip("배치 비행 프리젠터. 비어 있으면 착지는 즉시다(헤드리스와 같다).")]
+        [SerializeField] private CoreDeployFlightPresenter _deployFlight;
 
         private int _defIndex = -1;
         private bool _pressing;
@@ -81,6 +75,9 @@ namespace Wassup.BattleCoreUnity.Input
         private int2 _anchor;
         private bool _anchorValid;
         private bool _awaitingPlaced;
+        // 비행의 **출발점**. 손가락이 집었던 자리(트레이 칸)이고, 드롭 순간에 얼려 둔다 —
+        // `EndDrag` 가 `_pressScreen` 을 치우기 전에 집어야 한다.
+        private Vector2 _launchScreen;
 
         public bool IsDragging => _pressing && _promoted;
 
@@ -101,15 +98,15 @@ namespace Wassup.BattleCoreUnity.Input
             // 비행 뒤 「착지했다」를 알리려면 그 id 가 필요하므로 여기서 집는다.
             if (e.Kind != CoreEventKind.Placed || !_awaitingPlaced) return;
             _awaitingPlaced = false;
-            if (_deployFlightSeconds <= 0f) { _driver.Apply(Command.LandDefender(e.A)); return; }
-            _landing.Add(new PendingLand { Id = e.A, Left = _deployFlightSeconds });
+            // 비행이 떴으면 **착지 신호는 비행의 것**이다 — 끝을 아는 쪽이 낸다. 프리젠터가
+            // 없거나(헤드리스·테스트) 날 수 없는 상황이면 지금까지처럼 그 자리에서 착지한다.
+            if (_deployFlight != null && _deployFlight.Launch(e.A, _launchScreen)) return;
+            _driver.Apply(Command.LandDefender(e.A));
         }
 
         private void Update()
         {
             if (_driver == null || !_driver.Running) return;
-
-            StepLanding();
 
             var pointer = Pointer.current;
             if (pointer == null) { EndDrag(); return; }
@@ -120,25 +117,6 @@ namespace Wassup.BattleCoreUnity.Input
             else if (_pressing && pointer.press.isPressed) StepDrag(screen);
 
             if (pointer.press.wasReleasedThisFrame && _pressing) Release(screen);
-        }
-
-        // ── 착지 ─────────────────────────────────────────────────────────────
-        //
-        // **판의 시계로 잰다.** 프레임 시간으로 재면 메뉴로 멈춘 동안에도 착지가 진행돼
-        // 「정지 중에 유닛이 활성화된다」가 난다.
-        private void StepLanding()
-        {
-            if (_landing.Count == 0) return;
-            float dt = TimeManager.Instance.DeltaTime(TimeDomain.Battle);
-            for (int i = _landing.Count - 1; i >= 0; i--)
-            {
-                var p = _landing[i];
-                p.Left -= dt;
-                if (p.Left > 0f) { _landing[i] = p; continue; }
-                _landing.RemoveAt(i);
-                // 이미 죽었거나 없는 개체면 코어가 거절한다 — 조용히 무시하지 않는다.
-                _driver.Apply(Command.LandDefender(p.Id));
-            }
         }
 
         // ── 집기 ─────────────────────────────────────────────────────────────
@@ -246,6 +224,9 @@ namespace Wassup.BattleCoreUnity.Input
             int defIndex = _defIndex;
             bool hasAnchor = _anchorValid;
             var anchor = _anchor;
+            // 비행의 출발점은 **집었던 자리**다(옛 컨트롤러의 `fromScreen` 그대로) — 실루엣
+            // 모드에는 손끝에 유닛이 없어서, 유닛이 실제로 있던 곳은 트레이다.
+            _launchScreen = _pressScreen;
             EndDrag();
 
             if (!promoted || !hasAnchor || defIndex < 0) return;

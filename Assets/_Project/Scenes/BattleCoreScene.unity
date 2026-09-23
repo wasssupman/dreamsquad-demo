@@ -716,6 +716,7 @@ MonoBehaviour:
   _blobShadow: {fileID: 11400000, guid: 057ae949d711494bbb80cd87c12155ef, type: 2}
   _liftKnobs: {fileID: 11400000, guid: aa29280f412d463780b5465d194994b9, type: 2}
   _leap: {fileID: 512}
+  _deployFlight: {fileID: 2098208960}
   _fallbackMesh: {fileID: 0}
   _fallbackMaterial: {fileID: 0}
 --- !u!1 &530
@@ -1315,7 +1316,7 @@ MonoBehaviour:
   _snapIntervalSec: 0.08
   _outsideToleranceCells: 1
   _magnetRadiusCells: 1
-  _deployFlightSeconds: 0
+  _deployFlight: {fileID: 2098208960}
 --- !u!4 &341322859
 Transform:
   m_ObjectHideFlags: 0
@@ -1607,6 +1608,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2098208959
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2098208961}
+  - component: {fileID: 2098208960}
+  m_Layer: 0
+  m_Name: DeployFlight
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2098208960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2098208959}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69cc7031b92d470f9295179e8518ad93, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreDeployFlightPresenter
+  _driver: {fileID: 302}
+  _units: {fileID: 522}
+  _config: {fileID: 11400000, guid: 680d35e2ba6a44815bf731006e75eddf, type: 2}
+  _boardCamera: {fileID: 102}
+  _startLift: 0.35
+--- !u!4 &2098208961
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2098208959}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1632,3 +1682,4 @@ SceneRoots:
   - {fileID: 136373344}
   - {fileID: 269632760}
   - {fileID: 1978911363}
+  - {fileID: 2098208961}
