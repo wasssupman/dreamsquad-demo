@@ -104,7 +104,7 @@
 | 2 | `SetPlacementHighlightAboveUnits/1` | PlacementService |  |
 | 3 | `CreateAliveAttackerQueries/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 4 | `MirrorLiftKnobs/0` | 뷰 풀 |  |
-| 5 | `SetMatchSeed/1` | 미정 |  |
+| 5 | `SetMatchSeed/1` | `ModeSelection.Seed` → BattleDriver | 재현의 둘째 축. 씬 경계를 넘어오는 값이라 진입 선택이 나른다(0 = 저작 시드) |
 | 6 | `BuildBriefingWavePlan/0` | WaveScheduler |  |
 | 7 | `SetAssignedGimmick/1` | GimmickHost |  |
 | 8 | `Awake/0` | 미정 |  |
@@ -210,10 +210,10 @@
 | 108 | `DrainShieldBreakEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 109 | `FactionOfEntity/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 110 | `HostBodyRadiusOf/1` | 미정 |  |
-| 111 | `DrainUnitAttackVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 111 | `DrainUnitAttackVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) | 이 드레인 안의 공격 SFX 는 `CoreBattleAudio`(`AttackResolved`) — 구독자가 둘이다 |
 | 112 | `TickPendingHitVfx/1` | 뷰 풀 |  |
 | 113 | `DotAuraKind/1` | 미정 |  |
-| 114 | `FindDefenderData/1` | 미정 |  |
+| 114 | `FindDefenderData/1` | BattleDriver.DefenderAssets | 엔티티→SO 조회가 **줄 번호 되찾기**로 바뀌었다. 사건이 `DefIndex` 를 값으로 나른다(5a·5c) |
 | 115 | `DrainAttackOutputLogEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 116 | `TrySpawnCastVfx/2` | BindingRegistry / TriggerDispatcher |  |
 | 117 | `PushStagePostVolume/0` | 5b(스테이지 뷰) | 스테이지 포스트 볼륨은 카메라 쪽 배선이다 |
@@ -236,7 +236,7 @@
 | 134 | `FootprintAnchorToFoot/1` | PlacementService |  |
 | 135 | `GridAnchorToViewCenter/2` | 뷰 풀 |  |
 | 136 | `DrainEnemyKilledEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
-| 137 | `DrainProjectileSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
+| 137 | `DrainProjectileSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) | 안의 발사 SFX 는 `CoreBattleAudio`(`ProjectileSpawned`, 방어유닛 탄만) |
 | 138 | `DrainMeteorBarrageRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 139 | `SpawnProjectile/2` | 미정 |  |
 | 140 | `CanDefenderTargetMover/2` | 미정 |  |
@@ -281,13 +281,13 @@
 | 179 | `SubmitMatch/0` | MatchClock |  |
 | 180 | `CheckTimer/0` | MatchClock |  |
 | 181 | `NoQueuedAttackersRemain/0` | 미정 |  |
-| 182 | `ReportMatchResult/1` | 미정 |  |
+| 182 | `ReportMatchResult/1` | CoreMatchOutcomePresenter | 게이트 = `submitsReport && allowSubmit`. `ReportResult` 시그니처 무변(계약 13) |
 | 183 | `EndMatch/1` | MatchClock |  |
-| 184 | `ShowResult/1` | 미정 |  |
-| 185 | `HoldThenShowResult/1` | 미정 |  |
-| 186 | `ReleaseCoreBurstHold/1` | PlacementService |  |
+| 184 | `ShowResult/1` | CoreMatchOutcomePresenter | `MatchOutcome` → `MatchTally` 어댑터 한 줄 + `ResultScreen.Show` |
+| 185 | `HoldThenShowResult/1` | CoreMatchOutcomePresenter | 박자 판정은 코어(`MatchClock.EndHasPresentationBeat`)가 이미 한다 |
+| 186 | `ReleaseCoreBurstHold/1` | CoreMatchOutcomePresenter | 접두사 휴리스틱 오귀속 정정(5c) — 배치와 무관한 **결과 박자**의 리스 정리다 |
 | 187 | `PlayCoreBurst/1` | HeartMeter |  |
-| 188 | `BuildTally/1` | ScoreLedger |  |
+| 188 | `BuildTally/1` | IMatchGoal.BuildOutcome | 정정(5c) — 조립 지점은 목표다. `ScoreLedger` 는 그 재료 하나(점수)만 갖는다 |
 | 189 | `PlaceDefender/2` | PlacementService.TryPlace | 커맨드 `PlaceDefender` → receipt |
 | 190 | `SpatialPlacementCheck/4` | PlacementService |  |
 | 191 | `SpatialFootprintCheck/7` | PlacementService |  |
@@ -310,7 +310,7 @@
 | 208 | `RefreshPlacementHighlightIfShown/0` | PlacementService |  |
 | 209 | `RepaintPlacementHighlight/0` | PlacementService |  |
 | 210 | `PlaceDefenderAs/3` | 삭제 | 유닛을 인자로 받던 두 번째 진입 — 커맨드 하나로 접힌다 |
-| 211 | `TryBeginDefenderDeployment/4` | PlacementService |  |
+| 211 | `TryBeginDefenderDeployment/4` | PlacementService | 안의 배치 보이스는 `CoreBattleAudio`(`Placed`) |
 | 212 | `LandDeployedDefender/1` | 커맨드 `LandDefender` (DragPlacementInput) | 비행은 프레젠테이션 시간이라 코어가 길이를 모른다 |
 | 213 | `ActivateDeployedDefender/2` | PlacementService.StepActivation |  |
 | 214 | `OnDefenderActivated/1` | `DefenderActivated` 사건 구독 | 뷰 풀이 배치 모션을 재생한다 |

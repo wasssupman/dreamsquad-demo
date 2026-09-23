@@ -61,8 +61,8 @@ spec 은 「코어로 가는 값은 `MatchDefinitionBuilder` 입력 → 정의�
 | 22 | `tileSize` | BattleBridge.cs | ○ | 코어 정의표 | `Build(tileSize:)` → `MapSnapshot.TileSize`. 뷰의 타일↔월드 환산도 여기서 **파생**한다(저작 2벌 금지) |
 | 23 | `spawnHeight` | BattleBridge.cs | ○ | 뷰 설정 SO | `UnitLiftKnobs.spawnHeight` |
 | 24 | `agentRadiusTiles` | BattleBridge.cs | ○ | 코어 정의표 | `MovementTuningDef.AgentRadiusTiles`(`MovementTuningConfig.asset` → 드라이버 → 빌더). **군집 통과로 검산한 값**이라 단독 통과는 검산이 아니다 |
-| 25 | `resultScreen` | BattleBridge.cs | ○ | 씬 배선 참조 | 결과 **화면 컴포넌트**다 — 값이 아니라 띄울 UI. 새 주인은 5c |
-| 26 | `scoreRules` | BattleBridge.cs | ○ | 삭제 | 소비처 0. 선언만 있고 읽는 줄이 없다(브리지 60행). 점수는 처치당 `killScore` 합이고 그 값은 적 SO 에 있다 |
+| 25 | `resultScreen` | BattleBridge.cs | ○ | 씬 배선 참조 | 결과 **화면 컴포넌트**다 — 값이 아니라 띄울 UI. 새 주인 = `CoreMatchOutcomePresenter._resultScreen`(5c, `BattleCoreScene` 배선) |
+| 26 | `scoreRules` | BattleBridge.cs | ○ | 삭제 | 소비처 0. 선언만 있고 읽는 줄이 없다(브리지 60행). 점수는 처치당 `killScore` 합이고 그 값은 적 SO 에 있다. **5c 확인** — 새 층의 점수는 `ScoreLedger` → `MatchOutcome` 이고 이 자산을 읽는 줄이 없다 |
 | 27 | `defenderPool` | BattleBridge.cs | ○ | 코어 정의표 | `Build(defenders:)` → `UnitDef[]`. 드라이버의 `_defenders` |
 | 28 | `draftController` | BattleBridge.cs | ○ | 씬 배선 참조 | 드래프트 **컨트롤러**다 — 판 밖 흐름이라 정의표에 실을 값이 없다. 새 주인은 5c 의 모드 진입 |
 | 29 | `skillRuntime` | BattleBridge.cs | ○ | 씬 배선 참조 | 스킬 런타임 **컴포넌트**. 발동은 unit 7 의 것이고 여기엔 값이 없다 |
