@@ -20,6 +20,7 @@ namespace Wassup.BattleCoreUnity.Input
     // 고치면 화면과 판정이 갈렸다. 여기서는 그 셋이 **receipt 하나**로 접힌다.
     //
     // 이 파일이 하는 일 정확히 넷:
+    //   ⓪ 트레이 칸을 **탭**하면 그 유닛을 집어 든다(armed) — 그 뒤 판 탭/드래그로 놓는다
     //   ① 손가락을 칸으로 옮긴다(`PlacementCellSnap` · `PlacementSnapDebounce` — 순수 함수 재사용)
     //   ② 그 칸이 놓을 수 있는지 **코어에 묻는다**(`Judge`) — 재판정 아님. **보정은 없다**:
     //      손끝이 가리킨 칸이 곧 결과이고, 못 놓는 칸이면 고스트가 빨강으로 머문다
@@ -75,11 +76,130 @@ namespace Wassup.BattleCoreUnity.Input
         private int2 _anchor;
         private bool _anchorValid;
         private bool _awaitingPlaced;
-        // 비행의 **출발점**. 손가락이 집었던 자리(트레이 칸)이고, 드롭 순간에 얼려 둔다 —
-        // `EndDrag` 가 `_pressScreen` 을 치우기 전에 집어야 한다.
+        // 비행의 **출발점**. 유닛이 실제로 있던 자리(트레이 칸)의 화면 좌표이고, `TryPlace` 가
+        // 커맨드를 걸기 직전에 얼린다 — 사건이 그 값을 나르지 않기 때문이다.
         private Vector2 _launchScreen;
 
         public bool IsDragging => _pressing && _promoted;
+
+        // ── 집어 든 상태(armed) ───────────────────────────────────────────────
+        //
+        // 트레이 칸을 **탭**하면(이동 없이 뗌) 그 유닛을 «집어 든다». 그 뒤 판을 탭하면 그 칸에
+        // 놓이고, 판에서 누르고 끌면 드래그 배치로 이어진다. 옛 `defender-tap-to-place` +
+        // `placement-armed-board-drag` 의 상태 전이를 그대로 옮겼다.
+        //
+        // ⚠ **릴리즈는 언제나 제스처를 끝낸다** — 손을 뗐는데 선택이 남아 있는 상태가 없다.
+        // 그 규칙이 없으면 「놓으려다 만 유닛」이 판 밖 탭에도 계속 붙어 다닌다.
+        private int _armedDefIndex = -1;
+        private Vector2 _armedFromScreen;
+        private bool _boardGesture;
+        private bool _boardDragging;
+        private Vector2 _boardDownScreen;
+
+        /// <summary>지금 집어 든 유닛. -1 = 없음.</summary>
+        public int ArmedDefIndex => _armedDefIndex;
+
+        public bool IsArmed => _armedDefIndex >= 0;
+
+        /// <summary>
+        /// 트레이 칸 탭. **같은 칸 재탭 = 해제, 다른 칸 탭 = 갈아타기**(옛 `ToggleArm` 그대로).
+        /// `fromScreen` 은 비행의 출발점이 될 그 칸의 화면 자리다.
+        /// </summary>
+        public void ToggleArm(int defIndex, Vector2 fromScreen)
+        {
+            if (_armedDefIndex == defIndex) { Disarm(); return; }
+            Disarm();
+            if (defIndex < 0) return;
+            _armedDefIndex = defIndex;
+            _armedFromScreen = fromScreen;
+            // 「이 칸이 내 손에 있다」는 드래그와 **같은 사실**이라 같은 강조를 쓴다.
+            if (_tray != null) _tray.DraggingDefIndex = defIndex;
+        }
+
+        public void Disarm()
+        {
+            if (_armedDefIndex < 0) return;
+            _armedDefIndex = -1;
+            _boardGesture = false;
+            _boardDragging = false;
+            _cell = null;
+            _snap = default;
+            if (_tray != null) _tray.DraggingDefIndex = -1;
+            HideGhost();
+        }
+
+        /// <summary>
+        /// 집어 든 채로 판에서 손을 뗐다. 탭이면 누른 칸 그대로(`sticky` false), 드래그면
+        /// 밴드를 태운 칸이다.
+        ///
+        /// 판정을 여기서 다시 하지 않는다 — 칸이 나오면 **커맨드를 보내고** 거절 사유는 코어가
+        /// 말한다. 칸이 아예 없으면(판 밖) 그건 거부가 아니라 **취소**라 커맨드를 안 보낸다
+        /// (드래그 배치의 보드 밖 드롭과 같은 규칙).
+        /// </summary>
+        public bool ReleaseArmedAt(Vector2 screen, bool sticky)
+        {
+            int defIndex = _armedDefIndex;
+            if (defIndex < 0) return false;
+            var from = _armedFromScreen;
+
+            bool resolved = TryResolveAnchor(screen, defIndex, sticky, out var anchor, out _);
+            Disarm();
+            return resolved && TryPlace(defIndex, anchor, from);
+        }
+
+        // ── 판 위 제스처(집어 든 뒤) ──────────────────────────────────────────
+
+        private void BeginBoardGesture(Vector2 screen)
+        {
+            // 버튼 위의 누름은 버튼의 것이다 — UI 탭이 선택을 풀지 않는다.
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+            _boardGesture = true;
+            _boardDragging = false;
+            _boardDownScreen = screen;
+            _travelPx = 0f;
+            _cell = null;
+            _snap = default;
+        }
+
+        private void StepBoardGesture(Vector2 screen)
+        {
+            _travelPx = Mathf.Max(_travelPx, Vector2.Distance(screen, _boardDownScreen));
+            if (!_boardDragging && _travelPx >= _dragThresholdPx) _boardDragging = true;
+            ShowArmedGhost(BoardJudgedPoint(screen), _boardDragging);
+        }
+
+        private void ReleaseBoardGesture(Vector2 screen)
+        {
+            bool dragged = _boardDragging;
+            // ⚠ 판정 좌표를 **상태를 내리기 전에** 뽑는다 — `BoardJudgedPoint` 가 승격 여부를
+            // 보기 때문이다. 먼저 내리면 드래그 릴리즈가 오프셋 없이 확정돼 스카우트가
+            // 비춘 칸과 결과가 갈린다.
+            var judged = BoardJudgedPoint(screen);
+            _boardGesture = false;
+            _boardDragging = false;
+            ReleaseArmedAt(judged, dragged);
+        }
+
+        // ⚠ **오프셋은 드래그로 승격된 뒤에만** 태운다. 탭은 피드백 루프를 볼 시간 없이
+        // 커밋되므로 판정 포인터가 손가락보다 위에 있으면 그 자체가 오배치로 읽힌다
+        // (옛 `placement-armed-board-drag` 의 확정 규칙).
+        private Vector2 BoardJudgedPoint(Vector2 screen)
+        {
+            if (!_boardDragging) return screen;
+            float ramp = PlacementPointerOffset.Ramp(_travelPx, _dragThresholdPx, _pointerRampPx);
+            return PlacementPointerOffset.Apply(screen, _pointerOffsetPx, ramp);
+        }
+
+        private void ShowArmedGhost(Vector2 screen, bool sticky)
+        {
+            if (_overlay == null || _armedDefIndex < 0) return;
+            if (!TryResolveAnchor(screen, _armedDefIndex, sticky, out var anchor, out bool valid))
+            {
+                HideGhost();
+                return;
+            }
+            _overlay.ShowPlacement(_armedDefIndex, anchor, valid);
+        }
 
         private void OnEnable()
         {
@@ -90,6 +210,7 @@ namespace Wassup.BattleCoreUnity.Input
         {
             if (_driver != null) _driver.Unsubscribe(OnCoreEvent);
             EndDrag();
+            Disarm();
         }
 
         private void OnCoreEvent(CoreEvent e)
@@ -109,23 +230,41 @@ namespace Wassup.BattleCoreUnity.Input
             if (_driver == null || !_driver.Running) return;
 
             var pointer = Pointer.current;
-            if (pointer == null) { EndDrag(); return; }
+            if (pointer == null) { EndDrag(); Disarm(); return; }
 
             Vector2 screen = pointer.position.ReadValue();
 
-            if (pointer.press.wasPressedThisFrame) TryBeginPress(screen);
-            else if (_pressing && pointer.press.isPressed) StepDrag(screen);
+            if (pointer.press.wasPressedThisFrame)
+            {
+                // 트레이 칸이 먼저다. 그 위가 아니고 집어 든 유닛이 있으면 **판 제스처**가 열린다.
+                if (!TryBeginPress(screen) && IsArmed) BeginBoardGesture(screen);
+            }
+            else if (pointer.press.isPressed)
+            {
+                if (_pressing) StepDrag(screen);
+                else if (_boardGesture) StepBoardGesture(screen);
+            }
 
-            if (pointer.press.wasReleasedThisFrame && _pressing) Release(screen);
+            if (pointer.press.wasReleasedThisFrame)
+            {
+                if (_pressing) Release(screen);
+                else if (_boardGesture) ReleaseBoardGesture(screen);
+            }
+
+            // 집어 든 채로 손가락이 놀고 있으면 고스트가 포인터를 따라간다(마우스 호버).
+            // 터치에는 호버가 없어 누르는 동안에만 갱신되지만, 그때는 위 제스처가 그린다.
+            if (IsArmed && !_boardGesture) ShowArmedGhost(screen, sticky: false);
         }
 
         // ── 집기 ─────────────────────────────────────────────────────────────
-        private void TryBeginPress(Vector2 screen)
+
+        /// <summary>트레이 칸을 눌렀으면 true. 그 밖이면 false — 호출자가 판 제스처로 넘긴다.</summary>
+        private bool TryBeginPress(Vector2 screen)
         {
-            if (_tray == null) return;
+            if (_tray == null) return false;
             // 버튼 위의 누름은 버튼의 것이다. 트레이 칸은 레이캐스트 대상이 아니라 여기 안 걸린다.
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-            if (!_tray.TryPickSlot(screen, null, out int defIndex)) return;
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
+            if (!_tray.TryPickSlot(screen, null, out int defIndex)) return false;
 
             _defIndex = defIndex;
             _pressing = true;
@@ -135,6 +274,7 @@ namespace Wassup.BattleCoreUnity.Input
             _cell = null;
             _snap = default;
             _anchorValid = false;
+            return true;
         }
 
         // ── 끌기 ─────────────────────────────────────────────────────────────
@@ -252,11 +392,18 @@ namespace Wassup.BattleCoreUnity.Input
             var anchor = _anchor;
             // 비행의 출발점은 **집었던 자리**다(옛 컨트롤러의 `fromScreen` 그대로) — 실루엣
             // 모드에는 손끝에 유닛이 없어서, 유닛이 실제로 있던 곳은 트레이다.
-            _launchScreen = _pressScreen;
+            var from = _pressScreen;
             EndDrag();
 
-            if (!promoted || !hasAnchor || defIndex < 0) return;
-            TryPlace(defIndex, anchor, _launchScreen);
+            if (defIndex < 0) return;
+
+            // 이동 없이 뗐다 = **탭**. 놓는 것이 아니라 «집어 드는» 것이다 — 그 뒤 판을 탭하면
+            // 거기 놓이고, 판에서 끌면 드래그 배치로 이어진다.
+            if (!promoted) { ToggleArm(defIndex, from); return; }
+
+            // 보드 밖 드롭 = 취소. **커맨드를 안 보낸다**(그래서 코스트도 안 나간다).
+            if (!hasAnchor) return;
+            TryPlace(defIndex, anchor, from);
         }
 
         /// <summary>
