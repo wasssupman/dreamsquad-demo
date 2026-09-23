@@ -1,6 +1,9 @@
 # battle-core-rebuild — 전투를 ECS 에서 순수 C# 「전투 코어」로 옮긴다
 
-상태: **승인·진행 중 2026-09-23** — **조각 A 완료**(리뷰 전건 APPROVE): unit 0(main `4caee406`) · unit 1(`384e869b`·`dc0baa41`) · unit 2(`d5c16070` + 수정 `843b786a`) · unit 3(`0ae6b5cd`) · unit 4(`50ec0dae` + 수정 `0501630b`·`aedf3f7b`·`d12423bd` + 거점 스폰 `55688ef5` + 경로 방패 `7abfec27`) · 헤드리스 lane(`c74825be`: Skills/UnitAi dll 참조 + Unity 층 컴파일 검사). 브랜치 `rebuild/battle-core` HEAD `e734f33e` · **Unity EditMode 코어 lane 360/360**(워크트리 `wassup-core` 를 Unity 로 열어 asmdef 컴파일·`MatchMode_KillScore3Min.asset` 역직렬화·`BattleCoreScene` 부팅 확인) · 헤드리스 349/349(골든 제외) · Unity 층 검사 0 오류 · 장부 정합. **다음 = 조각 B(unit 5)**. 모든 커밋은 리드가 클린 export 로 build/test/Check 재실행해 검증한다.
+상태: **승인·진행 중 2026-09-23** — **조각 A 완료**(리뷰 전건 APPROVE): unit 0(main `4caee406`) · unit 1(`384e869b`·`dc0baa41`) · unit 2(`d5c16070` + 수정 `843b786a`) · unit 3(`0ae6b5cd`) · unit 4(`50ec0dae` + 수정 `0501630b`·`aedf3f7b`·`d12423bd` + 거점 스폰 `55688ef5` + 경로 방패 `7abfec27`) · 헤드리스 lane(`c74825be`).
+**조각 B 진행 중 — unit 5a 구현 완료**(`aa16ee9d` 드라이버·뷰 설정 SO 7 · `a27b9d65` 뷰 풀·새 씬·새 PlayMode lane · 장부/도구/문서). 헤드리스 349/349 · Unity 층 검사 0 오류 · Editor 도구와 새 lane 컴파일 0 오류.
+⚠ **새 PlayMode lane 은 아직 안 돌았다** — 워크트리 에디터의 MCP 브리지가 세션을 잃어 러너를 못 띄웠다(5a 「남은 것」 참조). 브리지 복구 후 `Wassup.Tests.PlayMode.Core` 실행 + 씬 배선 육안 확인이 5a 의 마지막 두 칸이다.
+장부 잔량: `bridge-methods` 미정 **98**(128 → 98, 5a 몫 30행 닫힘) · `bridge-fields` **0**(91행 전부 분류). 브랜치 `rebuild/battle-core`. **다음 = 5b(입력·HUD·오버레이).** 모든 커밋은 리드가 클린 export 로 build/test/Check 재실행해 검증한다.
 
 설계 입력: [`docs/plans/2026-09-22-battle-core-rebuild-census/`](../../plans/2026-09-22-battle-core-rebuild-census/) — 6영역 census(약 395행) · 종합(`00`) · 상호 리뷰(`01`·`03`) · 트리거→발동 rev 3(`04`) · 매치 모드 연구(`05`) · **계획 완전성 리뷰(`06`, 13건 — 이 rev 2 의 근거)**. 핵심 클래스 UML 은 [`class-diagram.md`](class-diagram.md), 매치 모드는 [`match-mode-design.md`](match-mode-design.md).
 선행 spec 처리: `battle-sim-extraction` **M0 완료·M1+ 폐기**(후계 = 이 spec) · `battlebridge-dissolution` **흡수** · `ecs-lifecycle-teardown` **은퇴**.

@@ -3,7 +3,7 @@
 > 무엇을 언제 돌리고, 새 테스트를 어디에 둘지. 왜 이 구조인지의 진단과 이력은
 > [`docs/spec/test-suite-fast-lane/`](../spec/test-suite-fast-lane/README.md).
 
-## 세 개의 어셈블리
+## 다섯 개의 어셈블리
 
 `run_tests` 의 `test_names`/`group_names` 필터는 이 셋업에서 0-match 다.
 **동작하는 유일한 입도는 `assembly_names`** — 그래서 어셈블리가 곧 실행 단위다.
@@ -12,15 +12,28 @@
 |---|---|---|
 | `Wassup.Tests.EditMode` | 고속 코어. 순수 계산 + 합성 픽스처 ECS/UI. **실제 프로젝트 에셋을 로드하지 않는다** | ~2,230개 · **~26초** |
 | `Wassup.Tests.EditMode.Assets` | 실에셋(SO·맵·덱·카탈로그·프리팹) 저작 검증 | ~160개 · **~5초** |
-| `Wassup.Tests.PlayMode` | 씬 부팅 E2E·스모크 (67파일 중 59개가 씬 로드) | ~144개 · **~8분** |
+| `Wassup.Tests.EditMode.Core` | **새 전투 코어**(`Wassup.BattleCore`)의 규칙. 엔진을 안 쓰고 씬도 안 연다 | ~360개 · **~10초** |
+| `Wassup.Tests.PlayMode` | 씬 부팅 E2E·스모크 (67파일 중 59개가 씬 로드) — **옛 전투**. unit 9 에서 은퇴 | ~144개 · **~8분** |
+| `Wassup.Tests.PlayMode.Core` | 새 씬(`BattleCoreScene`) 부팅 스모크 · 뷰 방출 순서 · 틱 발행률 | 5개 · **~1분** |
 
 `Wassup.DepthParallax.Tests`(6개)는 모듈 로컬이라 전체 실행 때만 따라온다.
+
+**lane 판별 한 줄**: 바꾼 파일이 `Scripts/BattleCore/` 면 `EditMode.Core`,
+`Scripts/BattleCoreUnity/` 면 거기에 `PlayMode.Core` 를 더한다. `Scripts/Battle/`·`Bridge/` 는
+동결이라 평소에는 안 바뀌고, 바뀌었다면 옛 두 lane 이다.
+
+⚠ `PlayMode.Core` 는 **빌드 설정을 건드리지 않는다** — `BattleCoreScene` 은 아직 빌드에
+실리는 씬이 아니라 `EditorSceneManager.LoadSceneAsyncInPlayMode` 로 연다(unit 9 에서 교대).
+헤드리스 lane(`tools/battle-core-rebuild/headless/`)은 이 다섯과 **별개**다 — 코어를 .NET 로
+컴파일해 돌리는 빠른 확인이고, 골든은 제외한다(계약 5: 골든의 정본 런타임은 Unity).
 
 ## 언제 무엇을 돌리나
 
 | 상황 | 실행 | 시간 |
 |---|---|---|
 | 코드 변경 루프 중 | `assembly_names=["Wassup.Tests.EditMode"]` | ~26초 |
+| **새 전투 코어 변경 후** | `assembly_names=["Wassup.Tests.EditMode.Core"]` | ~10초 |
+| **새 Unity 층(드라이버·뷰 풀) 변경 후** | 위 + `mode="PlayMode" assembly_names=["Wassup.Tests.PlayMode.Core"]` | +~1분 |
 | **시트 임포트·에셋·맵·콘텐츠 편집 후** | 위 + `["Wassup.Tests.EditMode.Assets"]` | +~5초 |
 | 작업 단위 완료·커밋 전 | `assembly_names` 생략 = EditMode 전체 + 관련 PlayMode 파일 | 분 단위 |
 | spec 종료·머지 전 | `mode="PlayMode"` 전체 | ~8분 |
