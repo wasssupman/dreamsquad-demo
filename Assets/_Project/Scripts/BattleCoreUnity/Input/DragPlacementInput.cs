@@ -256,16 +256,38 @@ namespace Wassup.BattleCoreUnity.Input
             EndDrag();
 
             if (!promoted || !hasAnchor || defIndex < 0) return;
+            TryPlace(defIndex, anchor, _launchScreen);
+        }
 
-            // **판정은 여기 없다.** 코스트도 소진도 쿨타임도 묻지 않고 그냥 보낸다 —
-            // 미리 거르면 그 거름이 두 번째 자가 되고, 옛 컨트롤러가 그래서 갈렸다.
+        /// <summary>
+        /// **배치를 거는 단 하나의 자리.** 드래그 릴리즈와 armed 탭이 여기로 합류한다 —
+        /// 둘이 각자 커맨드를 보내면 비행·거절 표시 중 하나가 한쪽에만 붙는다.
+        ///
+        /// **판정은 여기 없다.** 코스트도 소진도 쿨타임도 묻지 않고 그냥 보낸다 — 미리
+        /// 거르면 그 거름이 두 번째 자가 되고, 옛 컨트롤러가 그래서 갈렸다.
+        ///
+        /// `fromScreen` = 비행의 출발점(유닛이 실제로 있던 트레이 칸의 화면 자리).
+        /// </summary>
+        public bool TryPlace(int defIndex, int2 anchor, Vector2 fromScreen)
+        {
+            if (_driver == null || !_driver.Running) return false;
+
+            _launchScreen = fromScreen;
+
+            // ⚠ **표식을 `Apply` 앞에서 켠다.** `BattleDriver.Apply` 는 커맨드를 건 **그 호출
+            // 안에서** 사건을 배달한다(계약 7 — 커맨드는 동기 + receipt). 뒤에서 켜면 이번
+            // 배치의 `Placed` 는 표식이 꺼진 채 지나가고, 다음 배치가 직전에 남은 표식을
+            // 주워 쓴다 — **한 판 늦은 걸쇠**다. 증상은 「첫 유닛만 안 난다」였다.
+            //
+            // 창은 이 호출 하나다: 배달이 끝난 뒤 반드시 내린다. 안 내리면 디버그·테스트가
+            // 건 배치까지 이 입력이 자기 것으로 착각해 남의 출발점에서 날려 보낸다.
+            _awaitingPlaced = true;
             var receipt = _driver.Apply(Command.PlaceDefender(defIndex, anchor));
-            if (receipt.Accepted)
-            {
-                _awaitingPlaced = true;
-                return;
-            }
+            _awaitingPlaced = false;
+
+            if (receipt.Accepted) return true;
             if (_tray != null) _tray.ShowReject(receipt.Reason);
+            return false;
         }
 
         private void EndDrag()
