@@ -14,7 +14,7 @@
 | Unity 층 | `Assets/_Project/Scripts/BattleCoreUnity/`(Runtime asm 안, asmdef 없음): `MatchDefinitionBuilder`(SO→정의표 + `configHash`) · `BattleDriver`(누산기·틱 발행률 — 최소형) |
 | 에디터 | `Assets/_Project/Editor/BattleCore/`: `CoreHarnessRunMenu` · `CoreGoldenMenu`(얇은 메뉴 — 몸통은 코어의 `CoreHarness`) |
 | 테스트 | `Assets/_Project/Tests/EditModeCore/Wassup.Tests.EditMode.Core.asmdef`(refs BattleCore·Skills·UnitAi·nunit — **Entities 0**) · 골든 `Assets/_Project/Tests/GoldenCore/*.trace.txt` |
-| 헤드리스 lane | `Tools/battle-core-rebuild/headless/BattleCore.csproj` + `BattleCore.Tests.csproj`(NUnit) — 같은 소스를 dotnet 으로 컴파일·실행. Unity 가 없을 때의 반복 lane. 정본 lane 은 Unity EditMode |
+| 헤드리스 lane | `Tools/battle-core-rebuild/headless/BattleCore.csproj` + `BattleCore.Tests.csproj`(NUnit) — 같은 소스를 dotnet 으로 컴파일·실행. Unity 가 없을 때의 반복 lane. 정본 lane 은 Unity EditMode — **골든은 Unity 에서만 굽고 대조한다**(Mono 확장 정밀도 → 런타임 간 1 ulp 드리프트, README 계약 5) |
 | 감지기 | `.claude/hooks/ecs-review-detector.mjs` 에 `Scripts/BattleCoreUnity/`·`Editor/BattleCore/`·`Tests/EditModeCore/` 경로 추가 |
 
 ## 구현
