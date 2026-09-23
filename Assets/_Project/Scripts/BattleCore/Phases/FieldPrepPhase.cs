@@ -27,6 +27,9 @@ namespace Wassup.BattleCore
         private readonly ChaseFieldPool _chasePool;
         private readonly PatrolScratch _patrol;
 
+        private readonly System.Collections.Generic.List<Effects.DotSlot> _dotGone =
+            new System.Collections.Generic.List<Effects.DotSlot>(4);
+
         private int2[] _defenderCells = new int2[16];
         private int2[] _enemyCells = new int2[32];
         private float3[] _enemyPositions = new float3[32];
@@ -115,7 +118,14 @@ namespace Wassup.BattleCore
                         u.Inbox.Damage.Add(new DamageEntry { Amount = perTick, Source = SimEntityId.None });
                 }
 
-                u.Dot.RemoveExpired();
+                // 계약 7 — **사라진 슬롯마다 사건 하나.** 뷰가 「언제 끄나」를 폴링으로
+                // 되묻지 않게 하는 것이 그 값이다. 제거는 뒤에서부터라(F8) 모인 순서가
+                // 역순이므로, **발행은 삽입 순서 오름차순**으로 되돌린다.
+                _dotGone.Clear();
+                if (u.Dot.RemoveExpired(_dotGone) == 0) continue;
+                for (int k = _dotGone.Count - 1; k >= 0; k--)
+                    ctx.Bus.Publish(CoreEvent.DotCleared(ctx.Tick, u,
+                                                         _dotGone[k].Origin, _dotGone[k].Element));
             }
         }
 

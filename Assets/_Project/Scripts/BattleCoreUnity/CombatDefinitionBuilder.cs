@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat.Projectile;
 using Wassup.Data;
+using CoreOp = Wassup.BattleCore.Effects.CombineOp;
+using CoreStack = Wassup.BattleCore.Effects.StackKind;
+using CoreStat = Wassup.BattleCore.Effects.StatKind;
 
 namespace Wassup.BattleCoreUnity
 {
@@ -267,12 +270,13 @@ namespace Wassup.BattleCoreUnity
             for (int i = 0; i < src.Length; i++)
                 outp[i] = new AttackOutputDef
                 {
-                    Kind = (Wassup.BattleCore.AttackOutputKind)(int)src[i].kind,
+                    // ⚠ 번호 캐스트 금지 — 이름으로 옮긴다(아래 매핑 넷의 이유).
+                    Kind = ToCoreOutputKind(src[i].kind),
                     Magnitude = src[i].magnitude,
                     Duration = src[i].duration,
-                    Stat = (int)src[i].stat,
-                    Op = (int)src[i].op,
-                    StackKind = (int)src[i].stackKind,
+                    Stat = (int)ToCoreStat(src[i].stat),
+                    Op = (int)ToCoreOp(src[i].op),
+                    StackKind = (int)ToCoreStackKind(src[i].stackKind),
                     StackMaxStack = src[i].stackMaxStack,
                 };
             return outp;
@@ -334,6 +338,82 @@ namespace Wassup.BattleCoreUnity
                     return (MovementKind.BallisticArcToPoint, PayloadKind.SpawnBlocker);
                 default:
                     return (MovementKind.HomingToEntity, PayloadKind.SingleSplash);
+            }
+        }
+
+        // ── 저작 어휘 → 코어 어휘 ────────────────────────────────────────────
+        //
+        // ⚠ **전부 이름으로 옮긴다.** 번호가 지금 같다는 사실에 기대지 않는 이유는
+        // `PatternSelectionRule` 이 이미 그 함정에 빠졌기 때문이다 — 코어가 번호를 재배열하고
+        // 빌더가 통짜 캐스트로 옮겨서 12개 저작 중 11개가 다른 규칙으로 읽혔다.
+        // 두 어휘는 **다른 어셈블리**라 컴파일러가 어긋남을 못 잡고, 저작 값은 이미 에셋에
+        // byte 로 구워져 있어 한쪽이 앞에 값을 끼우는 순간 조용히 밀린다.
+        // (리뷰가 든 시나리오: `ThresholdMode` 앞에 값이 끼면 `Consume` 이 `Edge` 로 읽혀
+        //  소비형 임계가 스택을 안 깎고 **무한 발화**한다.)
+        // `BuilderEnumPinTests` 가 일곱 쌍의 이름·개수 일치와 매핑의 이름 보존을 고정한다.
+
+        public static Wassup.BattleCore.AttackOutputKind ToCoreOutputKind(
+            Wassup.Data.AttackOutputKind authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Data.AttackOutputKind.Damage: return Wassup.BattleCore.AttackOutputKind.Damage;
+                case Wassup.Data.AttackOutputKind.Heal: return Wassup.BattleCore.AttackOutputKind.Heal;
+                case Wassup.Data.AttackOutputKind.ApplyStat: return Wassup.BattleCore.AttackOutputKind.ApplyStat;
+                case Wassup.Data.AttackOutputKind.ApplyStack: return Wassup.BattleCore.AttackOutputKind.ApplyStack;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 산출물 종류({authored}) — 피해로 접는다.");
+                    return Wassup.BattleCore.AttackOutputKind.Damage;
+            }
+        }
+
+        public static CoreStat ToCoreStat(Wassup.Battle.Effects.StatKind authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Battle.Effects.StatKind.DamageMul: return CoreStat.DamageMul;
+                case Wassup.Battle.Effects.StatKind.AttackSpeedMul: return CoreStat.AttackSpeedMul;
+                case Wassup.Battle.Effects.StatKind.DmgTakenMul: return CoreStat.DmgTakenMul;
+                case Wassup.Battle.Effects.StatKind.RegenPerSec: return CoreStat.RegenPerSec;
+                case Wassup.Battle.Effects.StatKind.MoveSpeedMul: return CoreStat.MoveSpeedMul;
+                case Wassup.Battle.Effects.StatKind.DamageVsCcMul: return CoreStat.DamageVsCcMul;
+                case Wassup.Battle.Effects.StatKind.MaxHealthMul: return CoreStat.MaxHealthMul;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 스탯({authored}) — 피해 배율로 접는다.");
+                    return CoreStat.DamageMul;
+            }
+        }
+
+        public static CoreOp ToCoreOp(Wassup.Battle.Effects.CombineOp authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Battle.Effects.CombineOp.Multiplicative: return CoreOp.Multiplicative;
+                case Wassup.Battle.Effects.CombineOp.Additive: return CoreOp.Additive;
+                case Wassup.Battle.Effects.CombineOp.Override: return CoreOp.Override;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 결합 연산자({authored}) — 곱셈으로 접는다.");
+                    return CoreOp.Multiplicative;
+            }
+        }
+
+        public static CoreStack ToCoreStackKind(Wassup.Battle.Effects.StackKind authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Battle.Effects.StackKind.None: return CoreStack.None;
+                case Wassup.Battle.Effects.StackKind.Fire: return CoreStack.Fire;
+                case Wassup.Battle.Effects.StackKind.Ice: return CoreStack.Ice;
+                case Wassup.Battle.Effects.StackKind.Bleed: return CoreStack.Bleed;
+                case Wassup.Battle.Effects.StackKind.Poison: return CoreStack.Poison;
+                case Wassup.Battle.Effects.StackKind.Fatigue: return CoreStack.Fatigue;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 스택 종류({authored}) — 없음으로 접는다.");
+                    return CoreStack.None;
             }
         }
 

@@ -137,6 +137,28 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
+        public void 만료된_슬롯은_어느_것이_사라졌는지_알린다()
+        {
+            // 계약 7 — 모든 소멸은 소멸 사건을 낸다. 그 사건을 만들려면 **지워진 슬롯의
+            // 값**(출처·원소)이 필요하므로 `RemoveExpired` 가 그것을 돌려준다.
+            var set = new DotSet();
+            set.Apply(DotOrigin.Stack, DotElement.Bleed, 1f, 1f, 30f);
+            set.Apply(DotOrigin.Zone, DotElement.Fire, 2f, 1f, 0.2f);
+
+            var gone = new System.Collections.Generic.List<DotSlot>();
+            for (int t = 0; t < 20; t++)
+            {
+                for (int i = 0; i < set.Count; i++) set.Step(i, Dt, out _, out _, out _);
+                set.RemoveExpired(gone);
+            }
+
+            Assert.AreEqual(1, gone.Count, "만료된 슬롯 하나당 한 건이다");
+            Assert.AreEqual(DotOrigin.Zone, gone[0].Origin);
+            Assert.AreEqual(DotElement.Fire, gone[0].Element);
+            Assert.AreEqual(1, set.Count, "출혈은 살아 있다");
+        }
+
+        [Test]
         public void 스택_종류는_원소로_접히고_기믹_스택은_그림이_없다()
         {
             Assert.AreEqual(DotElement.Bleed, DotElementMap.FromStack(StackKind.Bleed));

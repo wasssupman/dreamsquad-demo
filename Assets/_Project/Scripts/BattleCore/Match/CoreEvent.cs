@@ -122,6 +122,12 @@ namespace Wassup.BattleCore
         DotApplied = 40,
         /// <summary>실드가 부여됐다. `Amount` = 양. **헛발동은 안 난다**(F20).</summary>
         ShieldGranted = 41,
+        /// <summary>
+        /// 지속 피해 슬롯이 **사라졌다**(만료). `Arg` = (출처, 원소) 묶음.
+        /// 계약 7(「모든 소멸은 소멸 사건을 낸다」)의 이 축 이행 — 안 내면 오라를 켠 뷰가
+        /// 「언제 끄나」를 매 프레임 폴링으로 되묻게 되고, 그 폴링이 옛 뷰 풀 셋의 모양이다.
+        /// </summary>
+        DotCleared = 42,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -502,6 +508,13 @@ namespace Wassup.BattleCore
                              Site.Nowhere,
                              new Site(target.Position, target.HitRadius),
                              target.Faction, Effects.DotElementMap.PackArg(origin, element), scalar);
+
+        public static CoreEvent DotCleared(int tick, Unit target,
+                                           Effects.DotOrigin origin, Effects.DotElement element)
+            => new CoreEvent(CoreEventKind.DotCleared, tick,
+                             target.Id, SimEntityId.None,
+                             new Site(target.Position, target.HitRadius), Site.Nowhere,
+                             target.Faction, Effects.DotElementMap.PackArg(origin, element), 0f);
 
         public static CoreEvent ShieldGranted(int tick, Unit target, SimEntityId source, float amount)
             => new CoreEvent(CoreEventKind.ShieldGranted, tick,

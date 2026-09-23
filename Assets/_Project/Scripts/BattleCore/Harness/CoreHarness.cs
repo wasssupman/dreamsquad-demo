@@ -89,6 +89,7 @@ namespace Wassup.BattleCore
             match.Bus.Subscribe(CoreEventKind.CcCleared, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.DotApplied, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.ShieldGranted, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.DotCleared, 0, trace.Record);
 
             int kills = 0;
             match.Bus.Subscribe(CoreEventKind.UnitSlain, 1, _ => kills++);

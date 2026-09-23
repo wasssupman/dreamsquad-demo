@@ -518,6 +518,35 @@ namespace Wassup.BattleCoreUnity
         }
 
         /// <summary>
+        /// 저작 임계 모드 → 코어 어휘. **이름으로 옮긴다**(`CombatDefinitionBuilder` 의 매핑 넷과 같은 이유).
+        /// </summary>
+        public static StackThresholdMode ToCoreThresholdMode(ThresholdMode authored)
+        {
+            switch (authored)
+            {
+                case ThresholdMode.Edge: return StackThresholdMode.Edge;
+                case ThresholdMode.Consume: return StackThresholdMode.Consume;
+                default:
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 임계 모드({authored}) — Edge 로 접는다.");
+                    return StackThresholdMode.Edge;
+            }
+        }
+
+        /// <summary>저작 파생 효과 → 코어 어휘. **이름으로 옮긴다.**</summary>
+        public static StackDerivedKind ToCoreDerivedKind(DerivedEffectKind authored)
+        {
+            switch (authored)
+            {
+                case DerivedEffectKind.ApplyDot: return StackDerivedKind.ApplyDot;
+                case DerivedEffectKind.ApplyStun: return StackDerivedKind.ApplyStun;
+                case DerivedEffectKind.ApplyStat: return StackDerivedKind.ApplyStat;
+                default:
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 파생 효과({authored}) — 지속 피해로 접는다.");
+                    return StackDerivedKind.ApplyDot;
+            }
+        }
+
+        /// <summary>
         /// 스택 저작 SO → 정의표. **자산당 한 줄**이다(F31) — 옛 전투는 `StackKind` 당 전역
         /// 한 벌이라 드래곤과 킨들러가 불 스택 규칙을 물리적으로 공유했고, 한쪽을 올리면
         /// 다른 쪽이 같이 올라갔다. 줄이 갈리면 그 결합이 사라진다.
@@ -546,12 +575,14 @@ namespace Wassup.BattleCoreUnity
                     rows[t] = new StackThresholdDef
                     {
                         AtStack = a.atStack,
-                        Mode = (StackThresholdMode)(int)a.mode,
-                        Derived = (StackDerivedKind)(int)a.derivedKind,
+                        // ⚠ 번호 캐스트 금지 — 이름으로 옮긴다. 앞에 값이 끼면 `Consume` 이
+                        // `Edge` 로 읽혀 소비형 임계가 스택을 안 깎고 **무한 발화**한다.
+                        Mode = ToCoreThresholdMode(a.mode),
+                        Derived = ToCoreDerivedKind(a.derivedKind),
                         Magnitude = a.magnitude,
                         Duration = a.duration,
-                        Stat = (int)a.stat,
-                        Op = (int)a.op,
+                        Stat = (int)CombatDefinitionBuilder.ToCoreStat(a.stat),
+                        Op = (int)CombatDefinitionBuilder.ToCoreOp(a.op),
                         TickInterval = a.tickInterval,
                     };
                 }

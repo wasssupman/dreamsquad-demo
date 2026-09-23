@@ -113,6 +113,29 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsTrue(e.Cc.IsActive(CcSlotKind.Sleep), "다 막힌 피격은 기상 사유가 아니다");
         }
 
+        [Test]
+        public void 지속_피해가_꺼지면_판에_알린다()
+        {
+            // 계약 7 — 모든 소멸은 소멸 사건을 낸다. 없으면 오라를 켠 뷰가 「언제 끄나」를
+            // 매 프레임 폴링으로 되묻게 되고, 그 폴링이 옛 뷰 풀 셋의 모양이다.
+            var m = Match(Definition(enemyHealth: 10000f));
+            var cleared = new List<CoreEvent>();
+            m.Bus.Subscribe(CoreEventKind.DotCleared, 0, e => cleared.Add(e));
+
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(9, 1)));
+            var e2 = First(m, UnitKind.Enemy);
+            e2.Dot.Apply(DotOrigin.Zone, DotElement.Fire, 5f, 1f, 0.2f);
+
+            Tick(m, 30);
+            Assert.AreEqual(1, cleared.Count, "꺼진 슬롯 하나당 정확히 한 건이다");
+            Assert.AreEqual(e2.Id, cleared[0].A);
+            Assert.AreEqual(DotOrigin.Zone, DotElementMap.OriginOfArg(cleared[0].Arg));
+            Assert.AreEqual(DotElement.Fire, DotElementMap.ElementOfArg(cleared[0].Arg));
+
+            Tick(m, 60);
+            Assert.AreEqual(1, cleared.Count, "이미 사라진 슬롯이 다시 사건을 내지 않는다");
+        }
+
         // ── 잠금 ─────────────────────────────────────────────────────────────
 
         [Test]
