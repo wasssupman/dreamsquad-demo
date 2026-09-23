@@ -266,6 +266,11 @@ namespace Wassup.BattleCore
         /// 공격 성사. `SiteFired` = 공격자(몸 붙음 — 「몸에서 나오는 것」) ·
         /// `SiteTarget` = 주 대상 자리, `Amount` = 실주기(애니가 실발사보다 빨리 끝나지 않게).
         /// </summary>
+        // unit 5c — `DefIndex` 를 싣는다. 공격음은 **그 유닛의 저작**에서 오는데, 사건에
+        // 줄 번호가 없으면 소리를 내는 쪽이 코어에 개체를 되물어야 한다. 공격자는 이 시점에
+        // 살아 있어 되묻기가 «성립은» 하지만, 그 예외를 허용하면 다음 사람이 소멸 사건에도
+        // 같은 모양을 쓴다 — 계약 7 이 막는 것이 그 습관이다(`Spawned` 가 같은 이유로 싣는다).
+        // ⚠ 가리키는 표는 `Faction` 과 짝이다(적이면 적 표, 방어유닛이면 유닛 표).
         public static CoreEvent AttackResolved(int tick, Unit attacker, SimEntityId target,
                                                float3 targetPos, float targetBody,
                                                int hitCount, float period)
@@ -273,7 +278,7 @@ namespace Wassup.BattleCore
                              attacker.Id, target,
                              new Site(attacker.Position, attacker.HitRadius),
                              new Site(targetPos, targetBody),
-                             attacker.Faction, hitCount, period);
+                             attacker.Faction, hitCount, period, attacker.DefIndex);
 
         /// <summary>
         /// 탄 발사. `SiteFired.OriginBody` 가 **제약 13 의 원점 항**을 경계 너머로 나른다 —
