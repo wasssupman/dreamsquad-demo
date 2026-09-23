@@ -94,7 +94,7 @@
 
 | # | 메서드 | 새 주인 | 비고 |
 |---|---|---|---|
-| 1 | `TryGetUnitStatReadout/2` | 미정 |  |
+| 1 | `TryGetUnitStatReadout/2` | EffectiveStats (선택 패널 = 6c) | 실효 스탯 = `Unit.Modifiers.Effective`, 기본 = 정의표 줄. 델타 칩을 그리는 자는 5b 의 패널이고 배선은 6c |
 
 ## BattleBridge.cs (305)
 
@@ -189,8 +189,8 @@
 | 87 | `PushBattleTimeScaleToEcs/0` | 삭제 | 코어는 배율을 모른다 — 느려지는 것은 **틱 발행률**이다(계약 5) |
 | 88 | `SyncMonoUnitViews/0` | 뷰 풀 |  |
 | 89 | `SyncPatrolViews/3` | 뷰 풀 |  |
-| 90 | `ShieldRatioOf/2` | 미정 |  |
-| 91 | `GatherOverheadStacks/1` | 미정 |  |
+| 90 | `ShieldRatioOf/2` | ShieldMath.Sum (뷰 = 6c) | `ShieldMath.Sum(u.Shield.Slots) / u.MaxHealth`. 오버헤드 바가 읽는다 |
+| 91 | `GatherOverheadStacks/1` | StackSet.CountOf (뷰 = 6c) | 스택 아이콘 행. 열기(`HeatAccrual`)는 6b2 가 같은 자리에 합류한다 |
 | 92 | `TryMapOverheadStackKind/2` | MapRuntime (코어) |  |
 | 93 | `EvaluateEnemyHealthTint/1` | CoreUnitViewPool | 저체력 틴트. 값은 `CharacterViewConfig.healthDisplayStyle` |
 | 94 | `SyncSummonerAnimationState/3` | 뷰 풀 |  |
@@ -212,7 +212,7 @@
 | 110 | `HostBodyRadiusOf/1` | 미정 |  |
 | 111 | `DrainUnitAttackVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) | 이 드레인 안의 공격 SFX 는 `CoreBattleAudio`(`AttackResolved`) — 구독자가 둘이다 |
 | 112 | `TickPendingHitVfx/1` | 뷰 풀 |  |
-| 113 | `DotAuraKind/1` | 미정 |  |
+| 113 | `DotAuraKind/1` | DotSlot.Element (뷰 = 6c) | 오라가 읽는 축은 **원소**다(출처가 아니다) — `DotSet` 이 그 값을 슬롯에 들고 있다 |
 | 114 | `FindDefenderData/1` | BattleDriver.DefenderAssets | 엔티티→SO 조회가 **줄 번호 되찾기**로 바뀌었다. 사건이 `DefIndex` 를 값으로 나른다(5a·5c) |
 | 115 | `DrainAttackOutputLogEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 116 | `TrySpawnCastVfx/2` | BindingRegistry / TriggerDispatcher |  |
@@ -257,7 +257,7 @@
 | 155 | `TryGetDefenderData/2` | BattleDriver.DefenderAssets | 정의표 줄 번호 → 저작 에셋. 트레이 초상·이름이 읽는다 |
 | 156 | `SetDreamstones/1` | 미정 |  |
 | 157 | `ApplyPendingDreamstones/0` | 미정 |  |
-| 158 | `KnockbackOn/1` | 미정 |  |
+| 158 | `KnockbackOn/1` | 삭제 | 저작 술어(`거리>0 && 지속>0`)일 뿐이다. 넉백의 실체는 `CcState` 의 `Impulse` 슬롯이고, 「값이 있나」 판정은 부여 호출부에 이미 인라인돼 있다 |
 | 159 | `GetOrCreateSkillVfxIndex/1` | BindingRegistry / TriggerDispatcher |  |
 | 160 | `GetOrCreateProjectileDataIndex/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 161 | `EffectiveLeakLimit/0` | 미정 |  |
@@ -299,7 +299,7 @@
 | 197 | `CanPlaceDefenderAt/4` | PlacementService |  |
 | 198 | `DeployedCountOf/1` | PlacementService.OnBoard |  |
 | 199 | `TryGetDeployedEntity/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 200 | `TryQueueDeployedDefenderMaxHealthDamage/2` | 미정 |  |
+| 200 | `TryQueueDeployedDefenderMaxHealthDamage/2` | 삭제 | 첫 판 튜토리얼의 저체력 연출 훅. 튜토리얼 콘텐츠는 2026-09 에 전량 제거됐고(76038c26) 새 코어에 자리가 없다 |
 | 201 | `CloseCellLayers/1` | MapRuntime (코어) |  |
 | 202 | `ShowPlacementHighlight/2` | PlacementService |  |
 | 203 | `HidePlacementHighlight/0` | PlacementService |  |
@@ -382,9 +382,9 @@
 | 280 | `RecordBlockingHazardDestroyed/2` | 미정 |  |
 | 281 | `WorldToLogCell/1` | MapRuntime (코어) |  |
 | 282 | `BlockingHazardLogSide/1` | 디버그/로그 (도구 처분표) |  |
-| 283 | `BuildStackThresholdRegistry/0` | 미정 |  |
+| 283 | `BuildStackThresholdRegistry/0` | 삭제 (MatchDefinitionBuilder.ToStackRuleDefs) | 전역 사전(`StackKind` → 규칙)이 **자산당 한 줄**인 정의표로 바뀐다(F31). 등록 시점도 판 밖이다 |
 | 284 | `CreateGimmickConfigIfActive/0` | GimmickHost |  |
-| 285 | `GetStackThresholds/1` | 미정 |  |
+| 285 | `GetStackThresholds/1` | 삭제 (StackRules.Resolve) | 종류로 전역 한 벌을 찾던 조회가 **줄 번호 해석**으로 바뀐다 — 미지정이면 그 종류의 첫 줄 |
 | 286 | `ShapeToHazardVisualScale/3` | 뷰 풀 |  |
 | 287 | `DebugSpawnObstacleContext/0` | 디버그/로그 (도구 처분표) |  |
 | 288 | `LogPlacementReject/3` | PlacementService |  |

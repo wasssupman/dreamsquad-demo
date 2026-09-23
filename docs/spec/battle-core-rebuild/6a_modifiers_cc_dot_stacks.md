@@ -20,7 +20,7 @@
 | 부착 지점 | `World/Unit.cs` — `Modifiers`·`Cc`·`Dot`·`Stacks` **항상 있음**(UML §2 의 `*--`) · `Unit.ActionLocked` 에 CC 잠금 OR 합류 · **`Unit.BaseMaxHealth`(0 = 미캡처)** 추가 · `Unit.Reset` 에서 **0 으로 되돌린다**(풀 재사용 시 앞 점유자의 기준값이 물리면 최대체력 배율이 통째로 어긋난다, E11) · `UnitPartPool.Reclaim` 갱신 |
 | 틱 단계 | **새 phase 를 만들지 않는다**(UML §4 자리 그대로): `FieldPrepPhase` 끝(지속 피해 부여·틱 — 옛 `DotApplySystem` 캡처 위치 16 = **이동 앞**) · `TickProjectilePhase` 끝(스탯 만료 → 집계 → 최대체력 → 스택 만료/임계 — `3_combat.md` 변경 대상 표가 「스탯 만료/집계 자리는 unit 6」으로 예약해 둔 자리) · `CombatPhase.FlushCc` 안(군중 제어 슬롯 적용 · 기상 · 감쇠) |
 | 정의표 | `Match/MatchDefinition.cs` 에 `StackRuleDef[] StackRules` + canonicalize. `CombatDefs` 의 `AttackOutputDef.Stat/Op/StackKind` 소비 개통 |
-| 사건 | `Match/CoreEvent.cs` 34~40: `ModifierApplied`·`ModifierRevoked`·`StackChanged`·`StackThreshold`·`CcApplied`·`CcCleared`·`DotApplied`·`ShieldGranted` (append-only — `_Count` **앞**) |
+| 사건 | `Match/CoreEvent.cs` **34~41**(여덟 종류라 34~40 은 한 칸 모자랐다): `ModifierApplied`·`ModifierRevoked`·`StackChanged`·`StackThreshold`·`CcApplied`·`CcCleared`·`DotApplied`·`ShieldGranted` (append-only — `_Count` **앞**). 트레이스 채널 32~39 + `CoreHarness` 구독 8 도 같이 연다 |
 | 테스트 | `Tests/EditModeCore/`: `ModifierSetTests` · `StackRuleTests` · `CcStateTests` · `DotSetTests` · `ShieldMathTests` · `MaxHealthScaleTests` · **`CoreSkillEnumPinTests`**(`StatKind`·`CombineOp`·`CcRequestKind` ↔ `Wassup.Skills` 의 `Skill*` 미러가 **값·개수 모두 일치** — 어셈블리가 갈려 컴파일러가 못 잡는다. 옛 `SkillModifierKindPinTests` 는 unit 9 에서 죽으므로 그 그물을 여기서 다시 친다) + `DeterminismTests` 확장 |
 
 ## 구현
@@ -44,7 +44,7 @@
 13. **실드.** 같은 출처는 `max`(중첩 불가) · 다른 출처는 합산 · 소모는 **오래된 것부터**(삽입 순 FIFO, E10). 출처 키는 수명 링크가 아니다 — 건 사람이 죽어도 남는다(F24 — `SimEntityId` 미재사용이 그 근거). **이미 더 센 실드가 있으면 다시 걸지도 않고 사건도 안 낸다**(F20 — `ValueFromSource` 가 헛발동을 막는다). 피해 순서는 **받는 피해 배율 → 실드 흡수 → 체력**이고 **완전 흡수는 피격이 아니다**(기상·가시갑옷·피해 숫자·킬 귀속이 전부 그 분기로 갈린다).
     ⚠ **실드는 시간으로 사라지지 않는다.** 만료 경로가 **구조적으로 없는 것**이 파열 판정(합 > 0 → 0)의 전제다(`dreamcatcher-shield-break` 계약) — 수명을 열면 「아무도 안 때렸는데 파열이 터진다」.
 14. **최대 체력 배율은 Effects 가 정하고 체력은 한 곳만 쓴다.** `MaxHealthMul` 이 1 에서 벗어난 첫 틱에 `Unit.BaseMaxHealth` 를 캡처(lazy-attach)하고, 축소 시 현재값을 클램프하되 **복원에 무료 회복은 없다**(E11). 기준은 **항상 스폰 시점 원본**이다 — 현재 최대치에 곱하면 누적 오염이 난다. 바닥 1 HP.
-15. **투사체가 건 디버프의 출처는 발사자다**(F30 — 라이브 결함). 옛 `ProjectileHitSystem` 은 `source` 로 **투사체 개체**를 보내 발사마다 새 슬롯이 생겨 곱누적됐다. ⚠ **고칠지는 사용자 결정 대기**다(README 「사용자 결정 필요」) — 고치면 곱누적 → 상시 배율이라 킨들러류가 약해지고 **수치 재조정과 한 묶음**이 된다. 답이 오기 전에는 **현행(투사체 출처)을 박제**하고 이 행을 `rules.md` 에 「결정 대기」로 남긴다.
+15. **투사체가 건 디버프의 출처는 발사자다**(F30 — 라이브 결함). 옛 `ProjectileHitSystem` 은 `source` 로 **투사체 개체**를 보내 발사마다 새 슬롯이 생겨 곱누적됐다. ✅ **사용자 결정 (a) 고친다**(2026-09-23) — 출처는 **발사자**(`Projectile.Owner`)다. 곱누적 → 상시 배율이므로 킨들러류가 눈에 띄게 약해지고, **수치 재조정은 플레이 뒤 시트에서** 한다. 이행 지점은 `EffectApply` 가 **출처를 인자로 받는다**는 형태 하나다 — 부르는 쪽이 탄이면 탄 자신이 아니라 발사자를 넘긴다(그 호출부는 6a2).
 16. **제약 13.** 이 unit 이 새로 만드는 도달 판정은 없다 — 부여는 전부 unit 3 의 판정 결과를 받는다. 다만 사건의 `Site` 짝은 형을 지킨다: 부여 사건의 `SiteFired` 는 **건 쪽의 몸**(몸에서 나오는 것), `SiteTarget` 은 **맞은 쪽의 몸**이다. 값이 없으면 0 을 남긴다.
 
 ## 파이프라인 커버리지
@@ -76,18 +76,44 @@
 | 스택 임계 배열의 **무검증 오름차순** | fail-closed 로 승격(구현 7). 옛 fail-silent 는 옮기지 않는다 | 제거 · F13 |
 | 오라 판정(`ModifierAuraClassifier`) | 순수 함수라 salvage 는 싸지만 **소비처가 6c**(오라 풀)다. 여기서 만들면 부르는 곳이 없다 | 보류 · 6c |
 | 선택 패널의 **실효 스탯 델타 칩** | 값은 이 unit 에서 생기지만 그리는 자는 5b 의 패널이다 — `ReadoutOf` 한 함수만 바뀐다 | 보류 · 6c |
+| 군중 제어 슬롯의 **주기·타이머**(`tickInterval`/`tickTimer`) | 옛 `CcEffect` 가 지속 피해와 한 버퍼를 쓰던 시절의 필드다. `dot-effect-extraction` 이 지속 피해를 떼어내면서 **런타임 군중 제어에는 주기가 없다** — 넉백은 초당 속도, 기절·수면은 시간뿐이다. F6(진행률 비례 환산)은 `CcMerge.CarryTimer` 로 남고 소비자는 `DotSet` 하나다. ⚠ 그래서 완료 기준의 `CcStateTests` 「주기 비례 환산」 항목은 **그 함수**를 고정하고, 거동 단언은 `DotSetTests` 가 진다 | 제거(선행) |
+| **투사체가 공격 산출물을 나르는 경로** | 새 코어의 탄은 `Damage` 스칼라 하나만 들고 간다(unit 3 설계). 착탄에서 산출물을 푸는 것은 **unit 6a2** 의 몫이고, 이 unit 은 그 관문이 부를 **공용 함수**(`EffectApply.Outputs`)를 세워 둔다 — 평타와 탄이 다른 자를 쓰면 안 되기 때문이다. ⚠ 요청(`ProjectileRequest`)에 출력 필드를 **여기서 더하지 않는다** | 보류 · 6a2 |
+| 투사체 디버프의 **투사체 출처 박제** | **사용자 결정 (a) 2026-09-23 — 수치 재조정은 플레이 뒤 시트에서.** 출처는 발사자다. `EffectApply` 가 출처를 인자로 받는 형태가 그 이행이고, 탄 자신의 id 를 넘길 자리가 코드에 없다 | 제거 · F30 해소 |
+| 폭탄맨 피해에 **공격자 배율** 적용 | 옛 전투도 폭탄 피해는 `BombSpec.Damage` 를 그대로 썼다(`damageMul` 미적용). 현행 박제 — 바꾸면 밸런스 변경이다 | 보류 |
+| 회복 산출물에 **공격자 배율** 적용 | 같은 이유(공격력 버프가 힐러를 키우지 않는다 — 현행) | 보류 |
 
 ## 고친 것 (기존 코어·Unity 층 변경)
 
-*(구현 중 채운다.)*
+| 무엇 | 왜 |
+|---|---|
+| `BattleWorld.CcRequests`·`WakeRequests` 가 **영원히 안 비워지고 있었다** | 소비자가 없던 unit 3~5c 동안 두 줄이 판 내내 쌓였다. 라이브 영향은 0 이었지만(읽는 자는 `FlushCc` 의 같은 틱 수면 필터뿐), 그 필터가 **지난 틱의 수면 요청까지 보고** 기상을 억제하고 있었다 — 소비자가 생기는 순간 그것이 「맞아도 안 깨는 적」이 됐을 것이다. 이제 `ApplyCc`·`ApplyWake` 가 드레인하며 비운다 |
+| `CombatRulesTests` 의 군중 제어 단언 4건이 **요청 줄을 세고 있었다** | 요청이 같은 틱에 소비되면서 전부 0 이 된다. 세는 대상을 **슬롯**(`CountCc(m, CcSlotKind)`)으로 바꿨다 — 묻는 것이 규칙이면 답도 규칙이어야 한다. 「보스 면역」 단언은 그대로 두면 **무증언**이 되던 자리라 같이 고쳤다 |
+| `수면이_없는_피격은_기상_요청을_낸다` → `지난_틱에_걸린_잠은_피격이_깨운다` | 같은 이유. 요청 줄 대신 「잠이 풀렸다 + `CcCleared(WokeUp)` 가 났다」를 묻는다 |
+| `Unit.ActionLocked` 에 `Cc.IsLocked` OR 합류 + `Unit.MovementLocked` 신설 | `Move.Locked`(도약 비행)에 군중 제어를 같이 쓰면 **CC 가 풀리는 틱에 도약 잠금까지 같이 풀린다.** 소유자를 안 섞고 읽는 자리에서 합친다. `AiMovePhase` 의 `mv.Locked` 읽기 6곳이 이 술어로 바뀌었다 |
+| `AiMovePhase` 의 외력 합성이 **군중 제어 슬롯을 읽는다** | 넉백은 슬롯이 소유하고 이동은 소비만 한다. `MoveState.PendingImpulse` 는 슬롯을 안 쓰는 한 방짜리 외력의 자리로 남는다 |
+| `CombatPhase` 의 쿨다운·피해가 **배율을 읽기 시작했다** | `atk.Interval * (1/공속)` · 피해 × `DamageMul`(+ 대상이 CC 면 `DamageVsCcMul`). 소비처는 unit 3 이 이미 세워 뒀고(「값을 넣는 것이 unit 6」) 이 unit 이 값을 넣었다 |
+| `BattleWorld.GrantShield` 신설 | F20(헛발동 없음)의 집. 비교 대상은 **셋 다**다 — 슬롯 · 스테이징된 것 · 이번 틱에 쌓인 것. 부여가 한 틱 늦게 들어서 「걸었는데 아직 슬롯에 없는」 구간이 있고, 그 구간만 빼먹으면 약한 재부여가 그때만 통과한다(구현 중 실제로 그랬다) |
+| `BattleDriver._stackModifiers` + `MatchDefinitionBuilder(stackModifiers:)` | 장부 `bridge-fields` 74행(`stackModifierAuthoring`)이 「읽는 쪽이 unit 6 이라 빌더 입력은 그때 열린다」로 예약해 둔 자리 |
 
 ## 완료 기준
 
-- [ ] **EditMode 코어 lane 초록** + 새 테스트 7묶음: `ModifierSetTests`(병합 4축 · **`SlotTag` 판별자가 스택 종류·카드별로 슬롯을 가른다** · 상한 `(배율−1)×최대중첩` · 회수 삭제 · 만료 dirty) · `StackRuleTests`(Edge 는 올라가는 길에만 · Consume 기준 재조정 · 폴백 5 · 오름차순 거절 · **자산별 규칙**) · `CcStateTests`(슬롯 3종 · 시간은 긴 쪽 · 주기 비례 환산 · 잠금은 START 만 · 보스/거점 면역) · `DotSetTests`(2축 키 · 첫 틱 즉발 · 앞→주고 뒤→지움 · **장판 나가면 장판 요율이 멈춘다** · 다중 공격자 미합산) · `ShieldMathTests`(같은 출처 max · 다른 출처 합 · FIFO 소모 · 완전 흡수 ≠ 피격 · 헛발동 없음 · **시간 만료 경로 부재**) · `MaxHealthScaleTests`(바닥 1 · 축소 클램프 · 복원 무료 회복 없음 · **풀 재사용 후 `BaseMaxHealth` 가 0 에서 시작**) · `CoreSkillEnumPinTests`.
-- [ ] **증상 단언 3건**(규칙이 화면에서 보이는 형태로): ⑴ 감속을 건 적이 **같은 판에서 느리게 이동한다**(칸 수로) ⑵ 출혈 중인 적이 화염 장판을 밟았다 나오면 **불 피해가 멈춘다** ⑶ 실드가 다 막은 피격은 **수면을 안 깨운다**.
-- [ ] `DeterminismTests` 확장 — 「쿨다운·스택 여러 개가 걸린 두 판이 같다」. 키 스냅샷 순회 3곳의 **주석 주장을 테스트로** 바꾼다.
-- [ ] **골든 체크박스를 여기서 들지 않는다** — 정의표가 6b·6b2 에서 더 바뀌므로 재굽기는 **조각 C 의 마지막 코어 변경(6b2)에서 한 번**이다. 이 unit 의 의무는 **재굽기 전에 「값이 실제로 바뀐 시나리오」와 「해시만 바뀐 시나리오」를 구분해 기록**하는 것이다 — 안 하면 구현 2·15 의 체감 변동이 해시 변동에 묻힌다.
-- [ ] `ledgers/rules.md` **F2~F10 · F13·F14 · F20~F31** 이 코드 포인터로 매핑(F1 카드 핸들은 unit 7, F11·F12·F15~F19 는 6b, F32~F36 은 6b·6b2). 보류였던 F26·F27·F28 은 **결정 + 근거 한 줄**로 등급이 바뀌고, F29 는 **「변경 없음」(rev 3 §4)** 으로, F30 은 **「결정 대기」**로 닫힌다.
-- [ ] `ledgers/bridge-methods.md` 미정 **59 → 51**: `TryGetUnitStatReadout/2` · `ShieldRatioOf/2` · `GatherOverheadStacks/1` · `DotAuraKind/1` · `KnockbackOn/1` · `BuildStackThresholdRegistry/0` · `GetStackThresholds/1` · `TryQueueDeployedDefenderMaxHealthDamage/2` 가 「새 주인」 또는 「삭제」로 닫힌다.
+- [x] **EditMode 코어 lane 초록** + 새 테스트 7묶음: `ModifierSetTests`(병합 4축 · **`SlotTag` 판별자가 스택 종류·카드별로 슬롯을 가른다** · 상한 `(배율−1)×최대중첩` · 회수 삭제 · 만료 dirty) · `StackRuleTests`(Edge 는 올라가는 길에만 · Consume 기준 재조정 · 폴백 5 · 오름차순 거절 · **자산별 규칙**) · `CcStateTests`(슬롯 3종 · 시간은 긴 쪽 · 주기 비례 환산 · 잠금은 START 만 · 보스/거점 면역) · `DotSetTests`(2축 키 · 첫 틱 즉발 · 앞→주고 뒤→지움 · **장판 나가면 장판 요율이 멈춘다** · 다중 공격자 미합산) · `ShieldMathTests`(같은 출처 max · 다른 출처 합 · FIFO 소모 · 완전 흡수 ≠ 피격 · 헛발동 없음 · **시간 만료 경로 부재**) · `MaxHealthScaleTests`(바닥 1 · 축소 클램프 · 복원 무료 회복 없음 · **풀 재사용 후 `BaseMaxHealth` 가 0 에서 시작**) · `CoreSkillEnumPinTests`.
+- [x] **증상 단언 3건**(규칙이 화면에서 보이는 형태로): ⑴ 감속을 건 적이 **같은 판에서 느리게 이동한다**(칸 수로) ⑵ 출혈 중인 적이 화염 장판을 밟았다 나오면 **불 피해가 멈춘다** ⑶ 실드가 다 막은 피격은 **수면을 안 깨운다**.
+- [x] `DeterminismTests` 확장 — 「쿨다운·스택 여러 개가 걸린 두 판이 같다」. 키 스냅샷 순회 3곳의 **주석 주장을 테스트로** 바꾼다.
+- [x] **골든 체크박스를 여기서 들지 않는다** — 정의표가 6b·6b2 에서 더 바뀌므로 재굽기는 **조각 C 의 마지막 코어 변경(6b2)에서 한 번**이다. 이 unit 의 의무는 **재굽기 전에 「값이 실제로 바뀐 시나리오」와 「해시만 바뀐 시나리오」를 구분해 기록**하는 것이다.
+  **기록(2026-09-24): 둘 다 0 건이다.**
+  · **해시** — `StackRuleDef[]` 가 정의표에 늘었지만 canonicalize 는 **배열이 비면 한 줄도 안 적는다.** 코퍼스 11종 전부 저작이 없어 정본 텍스트가 안 바뀐다. 11종의 `configHash` 를 새로 구워 파일의 헤더와 대조했고 **전건 동일**이다.
+  · **값** — 이 unit 이 바꾼 거동은 전부 **저작이 있어야 켜진다**(배율·군중 제어·스택·지속 피해·실드). 코퍼스에는 넉백·수면·넉업·광역 CC·`ApplyStat`/`ApplyStack` 저작이 **한 줄도 없다**(`CoreGoldenCorpus` grep 0건). 배율이 전부 1 이므로 쿨다운·피해·이동 스텝의 식이 바뀌어도 값이 같다.
+  → **재굽기 전에 빨개지는 골든이 있으면 그것은 6b·6b2 의 변경이지 6a 가 아니다.**
+- [x] `ledgers/rules.md` **F2~F10 · F13·F14 · F20~F31** 이 코드 포인터로 매핑(F1 카드 핸들은 unit 7, F11·F12·F15~F19 는 6b, F32~F36 은 6b·6b2). 보류였던 F26·F27·F28 은 **결정 + 근거 한 줄**로 등급이 바뀌고, F29 는 **「변경 없음」(rev 3 §4)** 으로, F30 은 **「결정 대기」**로 닫힌다.
+- [x] `ledgers/bridge-methods.md` 미정 **59 → 51**: `TryGetUnitStatReadout/2` · `ShieldRatioOf/2` · `GatherOverheadStacks/1` · `DotAuraKind/1` · `KnockbackOn/1` · `BuildStackThresholdRegistry/0` · `GetStackThresholds/1` · `TryQueueDeployedDefenderMaxHealthDamage/2` 가 「새 주인」 또는 「삭제」로 닫힌다.
 - [ ] `core-reviewer` APPROVE — 특히 **매니저 0**(`EffectManager` 같은 이름이 없고, 효과 상태는 `Unit` 의 부분이다) · **하드코딩 0**(클램프 경계 4개는 상수로 남되 근거 주석 동반, 나머지 수치는 정의표) · `Unity.Entities` 0 · **틱 phase 수 무변**.
-- [ ] 6a 단독으로는 화면이 안 바뀌는 것이 정상이다(그림은 6c). **사용자 플레이는 6c 뒤 한 번**.
+- [x] 6a 단독으로는 화면이 안 바뀌는 것이 정상이다(그림은 6c). **사용자 플레이는 6c 뒤 한 번**.
+
+---
+
+**검증 기록 2026-09-24**(커밋 `ce8560a9`) — Unity EditMode `Wassup.Tests.EditMode.Core`
+**446/446**(371 → +75, 골든 11종 포함) · Unity PlayMode `Wassup.Tests.PlayMode.Core`
+**40/40** · `error CS` 0 · 클린 export 헤드리스 3종(BattleCore build 0 · test **435/435** ·
+BattleCoreUnity.Check build 0) · `check_ledgers.py` exit 0, 브리지 메서드 미정 **51**.
+남은 체크는 `core-reviewer` 하나다.
