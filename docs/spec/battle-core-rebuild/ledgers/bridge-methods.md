@@ -146,15 +146,15 @@
 | 44 | `ScheduledWaveTime/1` | WaveScheduler |  |
 | 45 | `QueueDueWaves/1` | WaveScheduler |  |
 | 46 | `RefreshTimerHud/0` | MatchClock |  |
-| 47 | `TryGetSpawnGuideForecast/2` | 미정 |  |
-| 48 | `LastSpawnSec/1` | 미정 |  |
-| 49 | `TryGetSpawnPathSim/4` | 미정 |  |
-| 50 | `TryResolveFirstStructureDestination/3` | 미정 |  |
-| 51 | `AppendSpawnPathSegment/8` | 미정 |  |
+| 47 | `TryGetSpawnGuideForecast/2` | WaveScheduler | `CollectForecast` — 대기열이 이미 정본이라 예보를 따로 굽지 않는다(구우면 당김·보너스 뒤에 옛 값이 남는다) |
+| 48 | `LastSpawnSec/1` | 삭제 | 구운 배열의 마지막 시각을 재던 보조 — 예보를 안 굽는다 |
+| 49 | `TryGetSpawnPathSim/4` | SpawnPathPreview (코어) | 이동과 **같은** 평활화·NavGrid·슬롯. 뷰에 두면 이동이 바뀌는 날 라인만 옛 규칙으로 남는다 |
+| 50 | `TryResolveFirstStructureDestination/3` | AiMovePhase.TryPickStructure | M18 — 고르는 자는 하나다. 후보를 다시 모으던 것이 「예고선은 마음, 적은 본능」의 원인 |
+| 51 | `AppendSpawnPathSegment/8` | SpawnPathPreview.Append (코어, private) |  |
 | 52 | `TryPullNextWave/0` | WaveScheduler |  |
 | 53 | `ForceNextWave/0` | WaveScheduler |  |
 | 54 | `QueueWave/4` | WaveScheduler |  |
-| 55 | `SetDefenderPool/1` | 미정 |  |
+| 55 | `SetDefenderPool/1` | 삭제 | 놓을 수 있는 목록은 정의표의 `Roster` 다(빌더가 판 밖에서 정한다) — 런타임에 미는 함수가 없다 |
 | 56 | `SetSkillLoadout/1` | BindingRegistry / TriggerDispatcher |  |
 | 57 | `CastSkillAtTile/3` | MapRuntime (코어) |  |
 | 58 | `CastPortal/4` | BindingRegistry / TriggerDispatcher |  |
@@ -199,10 +199,10 @@
 | 97 | `DrainDefenderDeathEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 98 | `OccupyDefenderFootprint/2` | PlacementService |  |
 | 99 | `ReleaseDefenderFootprint/1` | PlacementService |  |
-| 100 | `TryResolveDefenderKey/2` | 미정 |  |
-| 101 | `TryCancelPendingDeployment/1` | 미정 |  |
-| 102 | `IsDefenderPendingDeployment/1` | 미정 |  |
-| 103 | `RetireDefender/1` | 미정 |  |
+| 100 | `TryResolveDefenderKey/2` | 삭제 | 키는 `SimEntityId` 하나다 — 뷰·입력이 자기 등록부를 들지 않는다 |
+| 101 | `TryCancelPendingDeployment/1` | 삭제 | 배치 뒤 되돌리기는 없다 — 보드 밖 드롭은 커맨드를 **안 보내고**, 이미 선 유닛의 복구는 퇴근이다 |
+| 102 | `IsDefenderPendingDeployment/1` | PlacementService | `PendingActivations` · `Unit.Deploying` |
+| 103 | `RetireDefender/1` | PlacementService.Retire | 커맨드 `Retire`. 입력은 RetireInput(길게 누르기) |
 | 104 | `DrainDcTriggerFiredEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 105 | `ResolveBeamViewPos/3` | 뷰 풀 |  |
 | 106 | `EnsureBeamPresenter/0` | 뷰 풀 |  |
@@ -247,14 +247,14 @@
 | 145 | `EnqueueMoveSpeedMul/4` | 삭제 (코어 내부 호출) |  |
 | 146 | `TryScreenToCell/3` | MapRuntime (코어) |  |
 | 147 | `TryScreenToCellStrict/3` | MapRuntime (코어) |  |
-| 148 | `TryScreenToBoardFrac/3` | 미정 |  |
+| 148 | `TryScreenToBoardFrac/3` | DragPlacementInput.TryResolveCell | `BoardSpace.ToSim` + `PlacementCellSnap`(순수 재사용) |
 | 149 | `TryPickNearestEnemy/4` | 미정 |  |
-| 150 | `TryGetDefenderAt/2` | 미정 |  |
+| 150 | `TryGetDefenderAt/2` | PlacementOccupancy.OwnerAt | 칸의 주인은 배치 담당자가 점유와 **쌍으로** 관리한다(옛 `_defenderByTile` 을 안 옮긴 자리) |
 | 151 | `SetDefenderHoverHighlight/3` | CoreUnitViewPool | 유닛 뷰 `SetHoverHighlight` fan-out. 구동은 5b |
-| 152 | `TryPickDefenderAtScreen/7` | 미정 |  |
-| 153 | `ScreenDistanceToRect/2` | 미정 |  |
+| 152 | `TryPickDefenderAtScreen/7` | RetireInput.TryPickDefender | 화면 → 칸 → 점유 주인. 판정 없음 |
+| 153 | `ScreenDistanceToRect/2` | 삭제 | 화면 사각까지의 거리로 집던 보조 — 칸 점유로 집으면 필요 없다 |
 | 154 | `TryGetUnitScreenRect/3` | CoreUnitView.TryGetScreenRect | 뷰가 이미 갖고 있다 — 중개가 필요 없다 |
-| 155 | `TryGetDefenderData/2` | 미정 |  |
+| 155 | `TryGetDefenderData/2` | BattleDriver.DefenderAssets | 정의표 줄 번호 → 저작 에셋. 트레이 초상·이름이 읽는다 |
 | 156 | `SetDreamstones/1` | 미정 |  |
 | 157 | `ApplyPendingDreamstones/0` | 미정 |  |
 | 158 | `KnockbackOn/1` | 미정 |  |
@@ -288,16 +288,16 @@
 | 186 | `ReleaseCoreBurstHold/1` | PlacementService |  |
 | 187 | `PlayCoreBurst/1` | HeartMeter |  |
 | 188 | `BuildTally/1` | ScoreLedger |  |
-| 189 | `PlaceDefender/2` | 미정 |  |
+| 189 | `PlaceDefender/2` | PlacementService.TryPlace | 커맨드 `PlaceDefender` → receipt |
 | 190 | `SpatialPlacementCheck/4` | PlacementService |  |
 | 191 | `SpatialFootprintCheck/7` | PlacementService |  |
 | 192 | `GetPlacementCellReasons/4` | PlacementService |  |
-| 193 | `TryFindNearestPlaceableAnchor/4` | 미정 |  |
+| 193 | `TryFindNearestPlaceableAnchor/4` | PlacementService.TrySnapAnchor | 자석도 코어의 것이다 — 프리뷰가 자기 자를 가지면 「초록인데 거절」 |
 | 194 | `SetPlacementGhostCells/2` | PlacementService |  |
 | 195 | `IsPlacementRangeCell/1` | PlacementService |  |
 | 196 | `ClearPlacementGhostCells/0` | PlacementService |  |
 | 197 | `CanPlaceDefenderAt/4` | PlacementService |  |
-| 198 | `DeployedCountOf/1` | 미정 |  |
+| 198 | `DeployedCountOf/1` | PlacementService.OnBoard |  |
 | 199 | `TryGetDeployedEntity/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 200 | `TryQueueDeployedDefenderMaxHealthDamage/2` | 미정 |  |
 | 201 | `CloseCellLayers/1` | MapRuntime (코어) |  |
@@ -305,15 +305,15 @@
 | 203 | `HidePlacementHighlight/0` | PlacementService |  |
 | 204 | `AnyEnemyWithinTilesOfGoal/1` | HeartMeter |  |
 | 205 | `NearestGoalDistance/1` | HeartMeter |  |
-| 206 | `ShowBlockedHighlight/1` | 미정 |  |
-| 207 | `HideBlockedHighlight/0` | 미정 |  |
+| 206 | `ShowBlockedHighlight/1` | CoreMapOverlay.ShowPlacement | 고스트가 빨강으로 답한다 |
+| 207 | `HideBlockedHighlight/0` | CoreMapOverlay.HidePlacement |  |
 | 208 | `RefreshPlacementHighlightIfShown/0` | PlacementService |  |
 | 209 | `RepaintPlacementHighlight/0` | PlacementService |  |
-| 210 | `PlaceDefenderAs/3` | 미정 |  |
+| 210 | `PlaceDefenderAs/3` | 삭제 | 유닛을 인자로 받던 두 번째 진입 — 커맨드 하나로 접힌다 |
 | 211 | `TryBeginDefenderDeployment/4` | PlacementService |  |
-| 212 | `LandDeployedDefender/1` | 미정 |  |
-| 213 | `ActivateDeployedDefender/2` | 미정 |  |
-| 214 | `OnDefenderActivated/1` | 미정 |  |
+| 212 | `LandDeployedDefender/1` | 커맨드 `LandDefender` (DragPlacementInput) | 비행은 프레젠테이션 시간이라 코어가 길이를 모른다 |
+| 213 | `ActivateDeployedDefender/2` | PlacementService.StepActivation |  |
+| 214 | `OnDefenderActivated/1` | `DefenderActivated` 사건 구독 | 뷰 풀이 배치 모션을 재생한다 |
 | 215 | `DrainDefenderActivatedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 216 | `TriggerDeploymentOnPlaceSkill/2` | BindingRegistry / TriggerDispatcher |  |
 | 217 | `ApplyEnvironmentGating/0` | 미정 |  |
@@ -325,29 +325,29 @@
 | 223 | `ClearPlacementStretch/0` | PlacementService |  |
 | 224 | `ClearPlacementHover/1` | PlacementService |  |
 | 225 | `ClearPlacementHover/0` | PlacementService |  |
-| 226 | `SetRangeOwner/1` | 미정 |  |
+| 226 | `SetRangeOwner/1` | CoreMapOverlay.ShowPlacement | 링의 주인 = 지금 끌고 있는 유닛 |
 | 227 | `BakeAttackShape/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 228 | `SetPlacementRange/2` | PlacementService |  |
-| 229 | `RefreshRangeTargetMarks/3` | 미정 |  |
+| 229 | `RefreshRangeTargetMarks/3` | CoreMapOverlay.PaintRange | 표식 판정은 `AttackReach.InReach` **호출만**(제약 13) |
 | 230 | `ClearPlacementRange/0` | PlacementService |  |
 | 231 | `SetSkillAimRange/2` | BindingRegistry / TriggerDispatcher |  |
 | 232 | `ClearSkillAimRange/0` | BindingRegistry / TriggerDispatcher |  |
 | 233 | `TryGetTileScreenCenter/3` | MapRuntime (코어) |  |
 | 234 | `SetSkillAimCells/1` | MapRuntime (코어) |  |
 | 235 | `PinSkillTelegraph/2` | BindingRegistry / TriggerDispatcher |  |
-| 236 | `CenteredRingRadius/1` | 미정 |  |
-| 237 | `PinCenteredRange/3` | 미정 |  |
+| 236 | `CenteredRingRadius/1` | CoreMapOverlay.PaintRange | 반지름 = `사거리 + 내 몸`. **판정이 아니라 그 판정을 그리는 치수**다 |
+| 237 | `PinCenteredRange/3` | CoreMapOverlay.PaintRange |  |
 | 238 | `ClearSkillTelegraph/0` | BindingRegistry / TriggerDispatcher |  |
-| 239 | `ClearRange/1` | 미정 |  |
+| 239 | `ClearRange/1` | CoreMapOverlay.HidePlacement |  |
 | 240 | `SetAttachPreview/3` | HandDeck |  |
 | 241 | `CanDrawAttachPreviewFor/1` | HandDeck |  |
 | 242 | `ClearAttachPreview/0` | HandDeck |  |
 | 243 | `RedrawAttachPreview/0` | HandDeck |  |
 | 244 | `SetPlacementRangeValidity/1` | PlacementService |  |
 | 245 | `FlashPlacementReject/1` | PlacementService |  |
-| 246 | `PlayDeploymentPresentation/3` | 미정 |  |
-| 247 | `PlayFallbackDeploymentPulse/3` | 미정 |  |
-| 248 | `PlayDeploymentRingPulse/2` | 미정 |  |
+| 246 | `PlayDeploymentPresentation/3` | CoreUnitViewPool (`DefenderActivated` → PlayDeploy) | 모션만 옮겼다. 컷신 프레임은 저작 자산이고 그 소비처는 unit 6 의 VFX 풀 |
+| 247 | `PlayFallbackDeploymentPulse/3` | unit 6 VFX 풀 | 배치 펄스는 VFX 사건이 열리는 unit 6 의 것이다 |
+| 248 | `PlayDeploymentRingPulse/2` | unit 6 VFX 풀 | 같은 이유 |
 | 249 | `CreateDefenderEntity/3` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 250 | `CreatePatrolEntity/5` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 251 | `TryGetPatrolHomeCell/4` | MapRuntime (코어) |  |
@@ -358,8 +358,8 @@
 | 256 | `AddEffectTile/2` | MapRuntime (코어) |  |
 | 257 | `ApplyEffectTileIfAny/2` | MapRuntime (코어) |  |
 | 258 | `ApplyEffectTileOnce/2` | MapRuntime (코어) |  |
-| 259 | `FireOnPlaceCameraShake/1` | 미정 |  |
-| 260 | `MarkJustDeployedForRules/1` | 미정 |  |
+| 259 | `FireOnPlaceCameraShake/1` | CameraDirector.Shake | 호출부는 unit 6(배치 VFX) — 세기는 유닛 저작값이라 5b 가 지어낼 수 없다 |
+| 260 | `MarkJustDeployedForRules/1` | `DefenderActivated` 사건 | 표식 컴포넌트를 남기지 않는다 — 남으면 다음 배치 사건과 섞인다(E6) |
 | 261 | `DebugSpawnObstacleAt/2` | 디버그/로그 (도구 처분표) |  |
 | 262 | `SpawnHazardWithVisual/3` | 뷰 풀 |  |
 | 263 | `DebugSpawnHazardAt/2` | 디버그/로그 (도구 처분표) |  |
