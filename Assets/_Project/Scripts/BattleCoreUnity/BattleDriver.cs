@@ -181,7 +181,9 @@ namespace Wassup.BattleCoreUnity
 
         private void Start()
         {
-            if (_beginOnStart) Begin();
+            // 테스트·다른 진입점이 `Begin(definition)` 으로 이미 판을 걸었으면 저작 진입은 건너뛴다 —
+            // 안 그러면 `_mode` 없는 드라이버가 매 부팅마다 에러 로그를 낸다.
+            if (_beginOnStart && !Running) Begin();
         }
 
         /// <summary>
