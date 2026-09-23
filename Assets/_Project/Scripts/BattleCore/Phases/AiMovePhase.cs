@@ -396,7 +396,7 @@ namespace Wassup.BattleCore
                 // **플레이어가 CC 를 쓸수록 적이 사냥을 그만두는** 정반대 방향이다.
                 if (d.Hunting && !unlimited)
                 {
-                    bool blocked = !self.Move.Locked
+                    bool blocked = !self.MovementLocked
                                    && self.Ai.Enemy == AiState.Marching
                                    && self.Move.HoldingGround;
                     d.Stuck = blocked ? d.Stuck + dt : 0f;
@@ -527,7 +527,10 @@ namespace Wassup.BattleCore
                 // **외력 합성 단일 지점.** 예전엔 이 3줄이 7곳에 복붙돼 있었고 각 복사본이 서로
                 // 다른 힘 부분집합만 알았다 — 넉백이 나중에 추가되면서 교전·도발·순찰·고립
                 // 상태의 적이 통째로 넉백 면역이 됐다.
-                float3 impulse = mv.PendingImpulse;
+                // unit 6a — 넉백은 **군중 제어 슬롯이 소유**하고 이동은 소비만 한다.
+                // 슬롯은 초당 속도를 들고 있고 지속 동안 매 틱 이만큼을 민다.
+                // `PendingImpulse` 는 슬롯을 안 쓰는 한 방짜리 외력의 자리로 남는다.
+                float3 impulse = mv.PendingImpulse + u.Cc.ImpulseStep(dt);
                 mv.PendingImpulse = float3.zero;
                 bool hasImpulse = math.lengthsq(impulse) > 1e-8f;
 
@@ -611,8 +614,8 @@ namespace Wassup.BattleCore
                 if (u.Ai.Enemy == AiState.Engaging)
                 {
                     bool advance = mv.Engage == EngageMovement.Advance
-                                   || (mv.Engage == EngageMovement.Pulse && !mv.Locked);
-                    if (mv.Locked || !advance)
+                                   || (mv.Engage == EngageMovement.Pulse && !u.MovementLocked);
+                    if (u.MovementLocked || !advance)
                     {
                         if (hasPull || hasImpulse)
                             u.Position = Compose(current, float3.zero, pull + impulse, mv.Radius, in nav);
@@ -699,9 +702,9 @@ namespace Wassup.BattleCore
                 }
 
                 float2 stepDir = math.normalizesafe(dir);
-                float3 self = mv.Locked
+                float3 self = u.MovementLocked
                     ? float3.zero
-                    : new float3(stepDir.x, 0f, stepDir.y) * mv.Speed * dt;
+                    : new float3(stepDir.x, 0f, stepDir.y) * SpeedOf(u, mv) * dt;
 
                 if (math.lengthsq(self) > 1e-12f)
                 {
@@ -718,7 +721,7 @@ namespace Wassup.BattleCore
                                  float3 impulse, bool hasImpulse, float dt)
         {
             float3 current = u.Position;
-            if (mv.Locked)
+            if (u.MovementLocked)
             {
                 // 잠/스턴: 자기주도 이동만 정지. 외력은 그대로 받는다.
                 if (hasImpulse) u.Position = Compose(current, float3.zero, impulse, mv.Radius, in nav);
@@ -738,7 +741,7 @@ namespace Wassup.BattleCore
 
             if (math.lengthsq(dir) > 1e-6f)
             {
-                float3 step = new float3(dir.x, 0f, dir.y) * mv.Speed * dt;
+                float3 step = new float3(dir.x, 0f, dir.y) * SpeedOf(u, mv) * dt;
                 u.Position = Compose(current, step, impulse, mv.Radius, in nav);
                 mv.HoldingGround = false;
                 mv.LastMoveDir = math.normalize(dir);
@@ -751,7 +754,7 @@ namespace Wassup.BattleCore
             var guardian = ctx.World.Find(u.Aggro.Target);
             if (arrived && guardian != null)
             {
-                float2 taken = TryCloseIn(current, guardian.Position, mv.Speed * dt,
+                float2 taken = TryCloseIn(current, guardian.Position, SpeedOf(u, mv) * dt,
                                           chase.Dist, mv.Radius, in nav, impulse, out float3 next);
                 if (math.lengthsq(taken) > 1e-6f)
                 {
@@ -775,7 +778,7 @@ namespace Wassup.BattleCore
         private bool TryHuntCloseIn(TickContext ctx, Unit u, MoveState mv, in NavGrid nav,
                                     int[] routeDist, int idx, float3 external, float dt)
         {
-            if (mv.Locked || u.Ai.Enemy != AiState.Marching) return false;
+            if (u.MovementLocked || u.Ai.Enemy != AiState.Marching) return false;
             if (routeDist[idx] != 0) return false;
 
             float3 targetPos;
@@ -809,7 +812,7 @@ namespace Wassup.BattleCore
             // 원점(0,0,0)으로 기어가지 않도록 자리를 요구한다.
             if (!hasTarget) return false;
 
-            float2 taken = TryCloseIn(u.Position, targetPos, mv.Speed * dt, routeDist,
+            float2 taken = TryCloseIn(u.Position, targetPos, SpeedOf(u, mv) * dt, routeDist,
                                       mv.Radius, in nav, external, out float3 next);
             if (math.lengthsq(taken) <= 1e-6f) return false;
 
@@ -971,5 +974,14 @@ namespace Wassup.BattleCore
             System.Array.Copy(buffer, next, buffer.Length);
             buffer = next;
         }
+
+        /// <summary>
+        /// 이 유닛의 **실효 이동 속도.** 저작 속도 × 이동 배율이고, 배율의 바닥(0.15)은
+        /// `ModifierMath` 가 잡는다 — 그래서 감속으로 «완전 정지» 를 만들 수 없다
+        /// (전면 정지가 필요해지면 배율이 아니라 전용 잠금이다).
+        /// </summary>
+        private static float SpeedOf(Unit u, MoveState mv)
+            => mv.Speed * u.Modifiers.Effective.MoveSpeedMul;
+
     }
 }

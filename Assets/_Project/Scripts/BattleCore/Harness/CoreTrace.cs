@@ -58,6 +58,15 @@ namespace Wassup.BattleCore
         HeartCollapsed = 29,
         GimmickAssigned = 30,
         PlacementPhaseChanged = 31,
+        // ── unit 6a (효과 슬롯) ──
+        ModifierApplied = 32,
+        ModifierRevoked = 33,
+        StackChanged = 34,
+        StackThreshold = 35,
+        CcApplied = 36,
+        CcCleared = 37,
+        DotApplied = 38,
+        ShieldGranted = 39,
         // ⚠ `ScoreChanged` 는 **채널이 없다.** 처치 사건과 1:1 이라 새 정보가 0 이고
         // (`UnitSlain` + 진영으로 정확히 재구성된다) 총점은 아래 `finalScore` 가 증언한다.
         // 「전부 기록」을 강제하지 않는 이유가 이것이다 — 같은 사실의 두 번째 기록은
@@ -159,6 +168,15 @@ namespace Wassup.BattleCore
                 case CoreEventKind.HeartCollapsed: channel = CoreTraceChannel.HeartCollapsed; return true;
                 case CoreEventKind.GimmickAssigned: channel = CoreTraceChannel.GimmickAssigned; return true;
                 case CoreEventKind.PlacementPhaseChanged: channel = CoreTraceChannel.PlacementPhaseChanged; return true;
+                // ── unit 6a ──
+                case CoreEventKind.ModifierApplied: channel = CoreTraceChannel.ModifierApplied; return true;
+                case CoreEventKind.ModifierRevoked: channel = CoreTraceChannel.ModifierRevoked; return true;
+                case CoreEventKind.StackChanged: channel = CoreTraceChannel.StackChanged; return true;
+                case CoreEventKind.StackThreshold: channel = CoreTraceChannel.StackThreshold; return true;
+                case CoreEventKind.CcApplied: channel = CoreTraceChannel.CcApplied; return true;
+                case CoreEventKind.CcCleared: channel = CoreTraceChannel.CcCleared; return true;
+                case CoreEventKind.DotApplied: channel = CoreTraceChannel.DotApplied; return true;
+                case CoreEventKind.ShieldGranted: channel = CoreTraceChannel.ShieldGranted; return true;
                 default: channel = default; return false;
             }
         }

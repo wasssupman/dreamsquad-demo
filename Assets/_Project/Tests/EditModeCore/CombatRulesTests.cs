@@ -3,6 +3,7 @@ using Unity.Mathematics;
 using Wassup.Battle.Units;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat.Projectile;
+using Wassup.BattleCore.Effects;
 using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
 
 namespace Wassup.Tests.EditMode.Core
@@ -368,12 +369,11 @@ namespace Wassup.Tests.EditMode.Core
             e.Move.LastMoveDir = float2.zero;
 
             Tick(m, 1);
-            Assert.AreEqual(0, CountCc(m, CcRequestKind.Impulse));
+            Assert.AreEqual(0, CountCc(m, CcSlotKind.Impulse));
 
             e.Move.LastMoveDir = new float2(1f, 0f);
-            m.World.CcRequests.Clear();
-            Tick(m, 61);
-            Assert.AreEqual(1, CountCc(m, CcRequestKind.Impulse), "방향이 있으면 반대로 민다");
+            Tick(m, 61);   // 쿨 1초 뒤의 다음 공격
+            Assert.AreEqual(1, CountCc(m, CcSlotKind.Impulse), "방향이 있으면 반대로 민다");
         }
 
         // ── C9 · 내 피해가 내 수면을 안 깨운다 ──────────────────────────────
@@ -392,20 +392,30 @@ namespace Wassup.Tests.EditMode.Core
             m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
 
             Tick(m, 1);
-            Assert.AreEqual(1, CountCc(m, CcRequestKind.Sleep), "때린 틱에 잠이 걸린다");
-            Assert.AreEqual(0, m.World.WakeRequests.Count,
-                "같은 틱에 건 수면은 그 피해로 깨우지 않는다");
+            // unit 6a — 요청 줄은 이제 같은 틱에 소비된다. 그래서 「줄에 뭐가 남았나」가
+            // 아니라 **「그 적이 실제로 자고 있나」**를 묻는다. 가드가 깨지면 같은 틱의
+            // 피해가 방금 건 잠을 도로 풀어 여기서 0 이 된다.
+            Assert.AreEqual(1, CountCc(m, CcSlotKind.Sleep), "때린 틱에 걸린 잠이 살아남는다");
         }
 
         [Test]
-        public void 수면이_없는_피격은_기상_요청을_낸다()
+        public void 지난_틱에_걸린_잠은_피격이_깨운다()
         {
-            var m = Match(Definition(defenderDamage: 5f));
+            // 같은 틱 가드의 반대편. 이것까지 막으면 잠든 적이 한 대 더 맞고도 안 깬다(F25).
+            var m = Match(Definition(defenderDamage: 5f, defenderCooldown: 0.2f));
             m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
             m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var e = First(m, UnitKind.Enemy);
 
+            m.World.RequestCc(CcRequest.Of(e.Id, CcRequestKind.Sleep, 10f, SimEntityId.None));
             Tick(m, 1);
-            Assert.AreEqual(1, m.World.WakeRequests.Count);
+            Assert.IsTrue(e.Cc.IsActive(CcSlotKind.Sleep));
+
+            var cleared = Listen(m, CoreEventKind.CcCleared);
+            Tick(m, 30);
+            Assert.IsFalse(e.Cc.IsActive(CcSlotKind.Sleep), "맞으면 깬다");
+            Assert.AreEqual(1, cleared.Count);
+            Assert.AreEqual((int)CcClearReason.WokeUp, (int)cleared[0].Amount);
         }
 
         // ── C14 · 골을 지난 적도 유효 대상 ──────────────────────────────────
@@ -601,7 +611,7 @@ namespace Wassup.Tests.EditMode.Core
 
             Tick(m, 1);
             Assert.AreEqual(2, knockups.Count, "넉업은 전원");
-            Assert.AreEqual(1, CountCc(m, CcRequestKind.Sleep), "수면은 주 대상 1체");
+            Assert.AreEqual(1, CountCc(m, CcSlotKind.Sleep), "수면은 주 대상 1체");
         }
 
         [Test]
@@ -618,7 +628,8 @@ namespace Wassup.Tests.EditMode.Core
             m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
 
             Tick(m, 1);
-            Assert.AreEqual(0, m.World.CcRequests.Count, "출처를 묻지 않는다 — 면역은 대상의 성질이다");
+            Assert.AreEqual(0, CountCc(m, CcSlotKind.Sleep) + CountCc(m, CcSlotKind.Stun),
+                "출처를 묻지 않는다 — 면역은 대상의 성질이다");
         }
 
         // ── 히트 구동 어그로 ────────────────────────────────────────────────
@@ -656,11 +667,14 @@ namespace Wassup.Tests.EditMode.Core
             return n;
         }
 
-        private static int CountCc(BattleMatch m, CcRequestKind kind)
+        // unit 6a — 요청 줄은 **같은 틱에 소비된다**(`CombatPhase.FlushCc`). 그래서 이 헬퍼는
+        // 「줄에 몇 건이 남았나」가 아니라 **「그 슬롯이 실제로 걸렸나」**를 센다. 요청을 세던
+        // 시절의 단언은 소비자가 생긴 순간 전부 0 이 되고, 그 0 은 규칙을 증언하지 않는다.
+        private static int CountCc(BattleMatch m, CcSlotKind kind)
         {
             int n = 0;
-            var reqs = m.World.CcRequests;
-            for (int i = 0; i < reqs.Count; i++) if (reqs[i].Kind == kind) n++;
+            var units = m.World.Units;
+            for (int i = 0; i < units.Count; i++) if (units[i].Cc.IsActive(kind)) n++;
             return n;
         }
     }

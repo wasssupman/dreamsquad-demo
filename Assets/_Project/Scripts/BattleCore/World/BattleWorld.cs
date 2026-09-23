@@ -83,6 +83,45 @@ namespace Wassup.BattleCore
         private readonly List<WakeRequest> _wakeRequests = new List<WakeRequest>(8);
         public List<WakeRequest> WakeRequests => _wakeRequests;
 
+        /// <summary>
+        /// 실드를 건다. 반환 = **실제로 걸렸나.**
+        ///
+        /// ⚠ **이미 더 센 실드가 있으면 다시 걸지도 않고 사건도 안 낸다**(F20). 병합이
+        /// 최댓값이라 그 경우 무동작인데, 연출만 나가면 화면에서 헛발동으로 보인다.
+        /// 비교 대상은 **셋 다**다: 이미 든 슬롯 · 스테이징된 것(다음 틱 드레인 대기) ·
+        /// 이번 틱에 쌓인 것. 부여가 한 틱 늦게 들어서 «걸었는데 아직 슬롯에 없는» 구간이
+        /// 있고, 그 구간만 빼먹으면 약한 재부여가 그때만 통과해 헛발동이 난다.
+        ///
+        /// ⚠ **실드는 시간으로 사라지지 않는다.** 만료 경로가 «구조적으로 없는 것»이
+        /// 파열 판정(합 &gt; 0 → 0)의 전제다 — 수명을 열면 「아무도 안 때렸는데 파열이
+        /// 터진다」가 된다. 그래서 이 함수에 지속 인자가 없다.
+        ///
+        /// ⚠ 부여는 **한 틱 늦게** 든다(C17 · unit 3 결정). `ShieldPending` 에 쌓이고
+        /// 틱 끝에서 `Shield` 로 옮겨진다 — 그 비대칭을 만드는 자리는 `Inbox.StageShield` 다.
+        /// </summary>
+        public bool GrantShield(SimEntityId target, SimEntityId source, float amount, int tick)
+        {
+            if (amount <= 0f) return false;
+            var u = Find(target);
+            if (u == null || u.Dead) return false;
+
+            float already = Combat.ShieldMath.ValueFromSource(u.Shield.Slots, source);
+            already = Highest(u.Inbox.Shield, source, already);
+            already = Highest(u.Inbox.ShieldPending, source, already);
+            if (amount <= already) return false;
+
+            u.Inbox.ShieldPending.Add(new ShieldGrant { Source = source, Amount = amount });
+            _bus.Publish(CoreEvent.ShieldGranted(tick, u, source, amount));
+            return true;
+        }
+
+        private static float Highest(List<ShieldGrant> grants, SimEntityId source, float best)
+        {
+            for (int i = 0; i < grants.Count; i++)
+                if (grants[i].Source == source && grants[i].Amount > best) best = grants[i].Amount;
+            return best;
+        }
+
         public int Count => _units.Count;
 
         /// <summary>

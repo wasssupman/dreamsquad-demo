@@ -80,6 +80,15 @@ namespace Wassup.BattleCore
             match.Bus.Subscribe(CoreEventKind.HeartCollapsed, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.GimmickAssigned, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.PlacementPhaseChanged, 0, trace.Record);
+            // unit 6a — 효과 슬롯의 사건. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.ModifierApplied, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ModifierRevoked, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.StackChanged, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.StackThreshold, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CcApplied, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CcCleared, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.DotApplied, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ShieldGranted, 0, trace.Record);
 
             int kills = 0;
             match.Bus.Subscribe(CoreEventKind.UnitSlain, 1, _ => kills++);

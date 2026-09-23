@@ -50,6 +50,9 @@ namespace Wassup.BattleCoreUnity
         [Tooltip("적이 어떻게 서고 어떻게 퍼지나. 비우면 코어 기본값(= 옛 씬 값)이 쓰인다.")]
         [SerializeField] private MovementTuningConfig _movementTuning;
 
+        [Tooltip("스택 저작(불·얼음·출혈·피로도). 비우면 스택은 쌓이기만 하고 임계가 안 터진다.")]
+        [SerializeField] private StackModifierSO[] _stackModifiers = Array.Empty<StackModifierSO>();
+
         [Tooltip("재현의 두 축 중 하나(나머지는 modeId). 같은 값이면 같은 판이다.")]
         [SerializeField] private int _seed = 1;
 
@@ -233,7 +236,7 @@ namespace Wassup.BattleCoreUnity
                 mode, _defenders, _deck, _plan, _bonus, seed,
                 costRateMultiplier: 1f, map: in _map, tileSize: _tileSize,
                 structures: _stageStructures, viewAssets: _viewAssets,
-                movement: _movementTuning);
+                movement: _movementTuning, stackModifiers: _stackModifiers);
 
             Begin(def);
         }

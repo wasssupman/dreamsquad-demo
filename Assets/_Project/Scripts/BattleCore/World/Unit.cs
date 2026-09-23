@@ -1,5 +1,6 @@
 using Unity.Mathematics;
 using Wassup.Battle.Units;
+using Wassup.BattleCore.Effects;
 
 namespace Wassup.BattleCore
 {
@@ -32,9 +33,19 @@ namespace Wassup.BattleCore
         public float Health;
         public float MaxHealth;
 
+        /// <summary>
+        /// 스폰 시점 원본 최대 체력. **0 = 아직 안 잡혔다**(lazy-attach) — 최대 체력 배율이
+        /// 1 에서 벗어난 첫 틱에 `TickProjectilePhase` 가 잡는다.
+        ///
+        /// ⚠ `Reset` 이 **0 으로 되돌린다**(E11). 풀 재사용 시 앞 점유자의 기준값이 물리면
+        /// 최대 체력 배율이 통째로 어긋난다 — 그 유닛의 체력이 남의 체격을 따라간다.
+        /// </summary>
+        public float BaseMaxHealth;
+
         // ── 모디파이어가 결정하는 값 ──────────────────────────────────────────
-        // unit 6 의 모디파이어 집계가 이 둘을 쓴다. 지금은 기본값에 머무르고, **소비처는
-        // 이미 살아 있다** — 그래야 unit 6 이 값을 넣는 순간 규칙이 저절로 선다.
+        // unit 6a 의 집계(`TickProjectilePhase` 끝)가 이 둘에 **접힌 값을 밀어 넣는다.**
+        // 미러를 두는 이유: 피해 단계가 개체 하나당 슬롯 목록을 다시 접지 않게 하려는 것이고,
+        // 그래서 「값을 만든 자」와 「값을 쓰는 자」가 갈려도 규칙은 한 곳(`ModifierSet`)이다.
         // ⚠ 재생은 **피해 인박스 유무와 무관하다**(C24). 옛 전투는 한 단계가 성격이 다른
         // 일을 겸직해 「피해 그릇이 하나도 없으면 재생도 멈추는」 결합이 있었다.
 
@@ -117,6 +128,23 @@ namespace Wassup.BattleCore
         /// <summary>출처별 실드 슬롯. 같은 출처는 max, 다른 출처는 합, 소모는 FIFO.</summary>
         public readonly ShieldSlots Shield = new ShieldSlots();
 
+        // ── unit 6a 부분(**항상 있다** — UML §2 의 `*--`) ─────────────────────
+        // 「있나 없나」가 뜻을 갖지 않는 것들이다(모든 개체가 효과를 받을 수 있다). 그래서
+        // `UnitPartPool` 이 아니라 개체가 한 개씩 들고 `Reset` 이 **비우기만** 한다 —
+        // `ShieldSlots`·`Inbox` 와 같은 규율이다.
+
+        /// <summary>스탯 슬롯. 병합 키 4축이고 접기는 **읽는 자리에서 늦게** 한다.</summary>
+        public readonly ModifierSet Modifiers = new ModifierSet();
+
+        /// <summary>군중 제어 슬롯 셋(넉백·기절·수면). 감속·지속 피해는 여기 없다.</summary>
+        public readonly CcState Cc = new CcState();
+
+        /// <summary>지속 피해 슬롯. 병합 키는 (출처, 원소) 2축이다.</summary>
+        public readonly DotSet Dot = new DotSet();
+
+        /// <summary>스택 슬롯. 병합 키는 (출처, 종류) 2축이고 **꼬리표를 안 싣는다**(F2).</summary>
+        public readonly StackSet Stacks = new StackSet();
+
         /// <summary>이번 틱에 들어온 피해·회복·실드. 비우는 시점이 셋이 같지 않다(C17).</summary>
         public readonly Inbox Inbox = new Inbox();
 
@@ -137,6 +165,7 @@ namespace Wassup.BattleCore
             MaxHealth = 0f;
             RegenPerSec = 0f;
             DamageTakenMul = 1f;
+            BaseMaxHealth = 0f;
             Dead = false;
             DeathTick = -1;
             Deploying = false;
@@ -148,6 +177,10 @@ namespace Wassup.BattleCore
             Ai.Reset();
             Shield.Reset();
             Inbox.Reset();
+            Modifiers.Reset();
+            Cc.Reset();
+            Dot.Reset();
+            Stacks.Reset();
         }
 
         /// <summary>
@@ -166,9 +199,22 @@ namespace Wassup.BattleCore
 
         /// <summary>
         /// 행동을 시작할 수 있나의 **잠금 축**(START 만 막는다 — 이미 시작한 스윙은 완료된다).
-        /// 오늘의 출처는 도약 비행뿐이다. 군중 제어 잠금은 unit 6 이 여기에 OR 로 합류한다.
+        /// 출처 둘: 도약 비행 · 군중 제어(기절·수면).
+        /// ⚠ **쿨다운은 잠긴 동안에도 돈다** — 풀리는 즉시 때리는 근거다.
+        /// ⚠ 넉백은 잠금이 아니다(밀리는 중에도 때린다).
         /// </summary>
         public bool ActionLocked
-            => (Progressive != null && Progressive.LeapActive) || (Move != null && Move.Locked);
+            => (Progressive != null && Progressive.LeapActive)
+               || (Move != null && Move.Locked)
+               || Cc.IsLocked;
+
+        /// <summary>
+        /// **자기주도 이동**이 멈추나. 외력(넉백·당김)은 이 게이트 밖이다.
+        ///
+        /// `Move.Locked`(도약 비행)와 군중 제어를 나눠 두는 이유: 둘 다 같은 불린에 쓰면
+        /// 군중 제어가 풀리는 틱에 도약 잠금까지 같이 풀린다. 소유자를 안 섞고 **읽는 자리에서**
+        /// 합친다.
+        /// </summary>
+        public bool MovementLocked => (Move != null && Move.Locked) || Cc.IsLocked;
     }
 }

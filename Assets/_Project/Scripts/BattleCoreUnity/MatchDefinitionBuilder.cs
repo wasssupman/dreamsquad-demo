@@ -41,11 +41,12 @@ namespace Wassup.BattleCoreUnity
                                             float tileSize = 1f,
                                             System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
                                             MatchViewAssets viewAssets = null,
-                                            MovementTuningConfig movement = null)
+                                            MovementTuningConfig movement = null,
+                                            StackModifierSO[] stackModifiers = null)
         {
             var enemies = CollectEnemies(deck, plan, bonus);
             var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
-                            viewAssets, movement);
+                            viewAssets, movement, stackModifiers);
 
             def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
             def.WaveDeck = ToDeckDef(deck, enemies);
@@ -86,7 +87,8 @@ namespace Wassup.BattleCoreUnity
                                             float tileSize = 1f,
                                             System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
                                             MatchViewAssets viewAssets = null,
-                                            MovementTuningConfig movement = null)
+                                            MovementTuningConfig movement = null,
+                                            StackModifierSO[] stackModifiers = null)
         {
             var def = new MatchDefinition
             {
@@ -103,6 +105,11 @@ namespace Wassup.BattleCoreUnity
             // 저작이 없으면 코어 기본값(= 옛 씬 값)을 그대로 둔다. 0 으로 덮지 않는다 —
             // 그러면 몸 반지름 0(충돌 소멸)과 레인 1(분산 없음)이 조용히 성립한다.
             if (movement != null) def.Movement = ToMovementDef(movement);
+            // unit 6a — 스택 저작. **해시를 굽기 전**이어야 한다(뒤에 두면 「임계를 바꿨는데
+            // 해시가 그대로」가 된다). 안 넘기면 빈 표이고, 그러면 스택은 폴백 상한 5 로
+            // 쌓이기만 하고 **임계가 하나도 안 터진다** — 그 상태를 조용히 두지 않으려고
+            // `ToStackRuleDefs` 가 잘못된 저작을 loud 하게 거절한다.
+            def.StackRules = ToStackRuleDefs(stackModifiers);
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }
@@ -506,6 +513,65 @@ namespace Wassup.BattleCoreUnity
                 var g = mode.gimmickPool[i];
                 if (g == null) continue;
                 list.Add(new GimmickDef { Id = g.gimmickId });
+            }
+            return list.ToArray();
+        }
+
+        /// <summary>
+        /// 스택 저작 SO → 정의표. **자산당 한 줄**이다(F31) — 옛 전투는 `StackKind` 당 전역
+        /// 한 벌이라 드래곤과 킨들러가 불 스택 규칙을 물리적으로 공유했고, 한쪽을 올리면
+        /// 다른 쪽이 같이 올라갔다. 줄이 갈리면 그 결합이 사라진다.
+        ///
+        /// ⚠ **임계 배열의 비내림차순은 여기서 fail-closed 로 검증한다**(F13). 옛 전투는
+        /// 「저작자 책임」으로 두고 검증하지 않았고, 어긋난 저작은 **조용히** 임계 일부를
+        /// 건너뛴다. 같은 임계를 여러 줄 쓰는 것은 정상이다(라이브 피로도가 5·5·5 로 세
+        /// 스탯을 한꺼번에 건다) — 그래서 「엄격 증가」가 아니라 「비내림차순」이다.
+        /// </summary>
+        public static StackRuleDef[] ToStackRuleDefs(StackModifierSO[] src)
+        {
+            if (src == null || src.Length == 0) return System.Array.Empty<StackRuleDef>();
+
+            var list = new System.Collections.Generic.List<StackRuleDef>(src.Length);
+            for (int i = 0; i < src.Length; i++)
+            {
+                var so = src[i];
+                if (so == null) continue;
+
+                var authored = so.thresholds;
+                int n = authored != null ? authored.Length : 0;
+                var rows = n > 0 ? new StackThresholdDef[n] : System.Array.Empty<StackThresholdDef>();
+                for (int t = 0; t < n; t++)
+                {
+                    var a = authored[t];
+                    rows[t] = new StackThresholdDef
+                    {
+                        AtStack = a.atStack,
+                        Mode = (StackThresholdMode)(int)a.mode,
+                        Derived = (StackDerivedKind)(int)a.derivedKind,
+                        Magnitude = a.magnitude,
+                        Duration = a.duration,
+                        Stat = (int)a.stat,
+                        Op = (int)a.op,
+                        TickInterval = a.tickInterval,
+                    };
+                }
+
+                if (!Wassup.BattleCore.Effects.StackRules.IsAscending(rows))
+                {
+                    Debug.LogError(
+                        $"[MatchDefinitionBuilder] 스택 저작 '{so.name}' 의 임계가 비내림차순이 아니다 — "
+                        + "이 줄을 버린다(어긋난 저작은 임계 일부를 조용히 건너뛴다).", so);
+                    continue;
+                }
+
+                list.Add(new StackRuleDef
+                {
+                    Id = so.name,
+                    Kind = (int)so.kind,
+                    MaxStack = so.maxStack,
+                    PerAppDuration = so.perAppDuration,
+                    Thresholds = rows,
+                });
             }
             return list.ToArray();
         }

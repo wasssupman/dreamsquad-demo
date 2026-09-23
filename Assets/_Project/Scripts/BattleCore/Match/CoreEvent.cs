@@ -100,6 +100,28 @@ namespace Wassup.BattleCore
         /// **길이가 0 이어도 열림 신호는 난다** — 이 신호가 트레이를 만든다(census 계약 3).
         /// </summary>
         PlacementPhaseChanged = 33,
+
+        // ── unit 6a (효과 슬롯) ───────────────────────────────────────────────
+        // 전부 **부여·회수의 사건**이다. 「지금 얼마나 걸려 있나」를 묻는 질문에는 답하지
+        // 않는다 — 그것은 읽기 모델(`Unit.Modifiers` 외)의 몫이고, 사건으로 상태를
+        // 되묻기 시작하면 제약 4 가 무너진다.
+
+        /// <summary>스탯이 걸렸다. `Arg` = `StatKind`, `Amount` = 크기.</summary>
+        ModifierApplied = 34,
+        /// <summary>스탯이 **사라졌다**(만료·회수). `Arg` = `StatKind`. 오라가 꺼진 것을 뷰가 안다.</summary>
+        ModifierRevoked = 35,
+        /// <summary>스택이 움직였다. `Arg` = `StackKind`, `Amount` = 그 뒤의 중첩.</summary>
+        StackChanged = 36,
+        /// <summary>스택 임계가 **발화했다**. `Arg` = `StackKind`, `Amount` = 임계 중첩.</summary>
+        StackThreshold = 37,
+        /// <summary>군중 제어가 걸렸다. `Arg` = `CcSlotKind`, `Amount` = 지속(초).</summary>
+        CcApplied = 38,
+        /// <summary>군중 제어가 풀렸다. `Arg` = `CcSlotKind`, `Amount` = `CcClearReason`.</summary>
+        CcCleared = 39,
+        /// <summary>지속 피해가 걸렸다. `Arg` = (출처, 원소) 묶음, `Amount` = 값.</summary>
+        DotApplied = 40,
+        /// <summary>실드가 부여됐다. `Amount` = 양. **헛발동은 안 난다**(F20).</summary>
+        ShieldGranted = 41,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -418,5 +440,74 @@ namespace Wassup.BattleCore
 
         public static CoreEvent PlacementPhaseChanged(int tick, bool open, float windowSeconds)
             => Match(CoreEventKind.PlacementPhaseChanged, tick, open ? 1 : 0, windowSeconds);
+
+        // ── unit 6a (효과 슬롯) ───────────────────────────────────────────────
+        //
+        // ⚠ 제약 13 — 이 unit 은 새 도달 판정을 만들지 않는다(부여는 전부 unit 3 의 판정
+        // 결과를 받는다). 다만 **자리 짝의 형은 지킨다**: `SiteFired` = 건 쪽의 몸(몸에서
+        // 나오는 것), `SiteTarget` = 맞은 쪽의 몸. 건 쪽이 없으면(환경·스택 파생) `Nowhere` 다.
+
+        public static CoreEvent ModifierApplied(int tick, Unit target, SimEntityId source,
+                                                Effects.StatKind stat, float magnitude,
+                                                Unit sourceUnit = null)
+            => new CoreEvent(CoreEventKind.ModifierApplied, tick,
+                             source, target.Id,
+                             sourceUnit != null
+                                 ? new Site(sourceUnit.Position, sourceUnit.HitRadius) : Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, (int)stat, magnitude);
+
+        public static CoreEvent ModifierRevoked(int tick, Unit target, SimEntityId source,
+                                                Effects.StatKind stat)
+            => new CoreEvent(CoreEventKind.ModifierRevoked, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, (int)stat, 0f);
+
+        public static CoreEvent StackChanged(int tick, Unit target, SimEntityId source,
+                                             Effects.StackKind kind, int count)
+            => new CoreEvent(CoreEventKind.StackChanged, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, (int)kind, count);
+
+        public static CoreEvent StackThreshold(int tick, Unit target, Effects.StackKind kind, int atStack)
+            => new CoreEvent(CoreEventKind.StackThreshold, tick,
+                             target.Id, SimEntityId.None,
+                             new Site(target.Position, target.HitRadius), Site.Nowhere,
+                             target.Faction, (int)kind, atStack);
+
+        public static CoreEvent CcApplied(int tick, Unit target, SimEntityId source,
+                                          Effects.CcSlotKind kind, float seconds)
+            => new CoreEvent(CoreEventKind.CcApplied, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, (int)kind, seconds);
+
+        public static CoreEvent CcCleared(int tick, Unit target, Effects.CcSlotKind kind,
+                                          Effects.CcClearReason reason)
+            => new CoreEvent(CoreEventKind.CcCleared, tick,
+                             target.Id, SimEntityId.None,
+                             new Site(target.Position, target.HitRadius), Site.Nowhere,
+                             target.Faction, (int)kind, (int)reason);
+
+        public static CoreEvent DotApplied(int tick, Unit target, SimEntityId source,
+                                           Effects.DotOrigin origin, Effects.DotElement element,
+                                           float scalar)
+            => new CoreEvent(CoreEventKind.DotApplied, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, Effects.DotElementMap.PackArg(origin, element), scalar);
+
+        public static CoreEvent ShieldGranted(int tick, Unit target, SimEntityId source, float amount)
+            => new CoreEvent(CoreEventKind.ShieldGranted, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, 0, amount);
     }
 }

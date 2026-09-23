@@ -12,6 +12,8 @@ namespace Wassup.BattleCore
     //   ② 어그로 상태(만료 · 가디언 사망 해제 · 수용량 재계산)
     //   ③ 공용 사냥판(무제한 감지용)
     //   ④ 순찰 스텝
+    //   ⑤ 지속 피해 틱(unit 6a) — **이동 앞**이다(옛 `DotApplySystem` 의 자리와 같다).
+    //      여기서 인박스에 넣으면 같은 틱의 피해 단계(`CombatPhase`)가 소비한다.
     //
     // ⚠ **장애물이 바뀌면 어그로가 풀린다**(M10 의 「리무버 둘」 중 둘째). 그 경로가 없으면
     // 길이 막힌 뒤에도 적이 옛 추격판을 하강해 **못 가는 곳으로 영원히 밀린다**.
@@ -85,6 +87,36 @@ namespace Wassup.BattleCore
             StepAggro(ctx);
             RebuildHuntField(ctx);
             StepPatrol(ctx);
+            StepDot(ctx);
+        }
+
+        // ── ⑤ 지속 피해 ──────────────────────────────────────────────────────
+        //
+        // ⚠ **지급은 앞에서부터, 제거는 뒤에서부터**(F8). 역순으로 지급하면 여러 도트가
+        // 걸린 대상의 피해 숫자 표시 순서가 조용히 뒤집힌다.
+        // ⚠ 지급 한 번 = 인박스 한 건 = 화면의 숫자 하나다. 청크를 합치면 「초당 5씩
+        // 네 번」이 「20 한 번」으로 보인다.
+        // ⚠ **출처가 없다**(`SimEntityId.None`) — 지속 피해로 죽은 것은 미귀속이라
+        // 처치 보상이 안 난다(옛 전투와 같다. 의도).
+        private void StepDot(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                if (u.Dead || !u.Dot.Any) continue;   // 시체는 안 탄다
+
+                for (int k = 0; k < u.Dot.Count; k++)
+                {
+                    u.Dot.Step(k, ctx.Dt, out int ticks, out float perTick, out float continuous);
+                    if (continuous > 0f)
+                        u.Inbox.Damage.Add(new DamageEntry { Amount = continuous, Source = SimEntityId.None });
+                    for (int t = 0; t < ticks; t++)
+                        u.Inbox.Damage.Add(new DamageEntry { Amount = perTick, Source = SimEntityId.None });
+                }
+
+                u.Dot.RemoveExpired();
+            }
         }
 
         // ── ① 장애물 ──────────────────────────────────────────────────────────

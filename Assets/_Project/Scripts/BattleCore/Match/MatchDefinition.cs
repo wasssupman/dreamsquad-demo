@@ -57,6 +57,13 @@ namespace Wassup.BattleCore
         /// <summary>이번 판의 기믹 후보. 고르는 것은 `GimmickHost`, 부착은 unit 7.</summary>
         public GimmickDef[] Gimmicks = System.Array.Empty<GimmickDef>();
 
+        /// <summary>
+        /// 스택 저작. **줄의 주인은 스택 종류가 아니라 저작 자산**이다(F31) — 같은 불 스택을
+        /// 드래곤과 킨들러가 각자의 줄로 갖는다. 부여자가 줄 번호를 싣고, 미지정이면
+        /// `StackRules.Resolve` 가 그 종류의 첫 줄로 떨어뜨린다.
+        /// </summary>
+        public StackRuleDef[] StackRules = System.Array.Empty<StackRuleDef>();
+
         /// <summary>시드 생성 덱. `Mode.WaveSource` 가 `GeneratedFromDeck` 일 때 읽힌다.</summary>
         public Wave.WaveDeckDef WaveDeck = Wave.WaveDeckDef.Empty();
 
@@ -216,6 +223,11 @@ namespace Wassup.BattleCore
             {
                 sb.Append("[gimmick").Append(i.ToString(inv)).Append("]\n");
                 Gimmicks[i].Canonicalize(sb, inv);
+            }
+            for (int i = 0; i < StackRules.Length; i++)
+            {
+                sb.Append("[stackrule").Append(i.ToString(inv)).Append("]\n");
+                StackRules[i].Canonicalize(sb, inv);
             }
         }
 

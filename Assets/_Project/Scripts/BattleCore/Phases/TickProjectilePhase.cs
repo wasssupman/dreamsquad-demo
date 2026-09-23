@@ -3,6 +3,7 @@ using Unity.Mathematics;
 using Wassup.Battle.Units;
 using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Combat.Projectile;
+using Wassup.BattleCore.Effects;
 using Wassup.BattleCore.Map;
 
 namespace Wassup.BattleCore
@@ -21,7 +22,11 @@ namespace Wassup.BattleCore
     // 「도착했다」만 듣는다 — 그래서 경로 스윕에게 그 신호는 「착탄」이 아니라 **「비행 종료」**다.
     //
     // 이 단계가 여는 정거장(`object-pipeline-map` 대조용): 탄 스폰 → 이동 → 착탄 → 소멸.
-    // 스탯 만료·집계·지속 피해 틱은 **unit 6 의 자리**다(아래 표시된 곳).
+    //
+    // unit 6a 가 **끝**에 한 단계를 더했다: 스탯 만료 → 집계 → 최대 체력 → 스택 만료·임계.
+    // 여기인 이유는 「이동은 이미 지났고 피해는 아직 안 왔다」이기 때문이다 — 이동이 읽는
+    // 값(이동 배율)은 **다음 틱**에 들고, 피해가 읽는 값(받는 피해 배율)은 **이번 틱**에 든다.
+    // 그 비대칭이 곧 F29 의 계승이다(지연을 만든 것은 큐가 아니라 단계 순서다).
     public sealed class TickProjectilePhase : ITickPhase
     {
         public string Name => "TickProjectile";
@@ -30,6 +35,8 @@ namespace Wassup.BattleCore
 
         // 재사용 버퍼 — 틱 중 할당 0.
         private readonly List<SimEntityId> _expired = new List<SimEntityId>(16);
+        private readonly List<ModifierSlot> _revoked = new List<ModifierSlot>(8);
+        private readonly List<StackSlot> _stacksGone = new List<StackSlot>(4);
         private BounceCandidate[] _bounceCands = new BounceCandidate[64];
         private SimEntityId[] _bounceIds = new SimEntityId[64];
         private Unit[] _victims = new Unit[64];
@@ -40,13 +47,168 @@ namespace Wassup.BattleCore
 
         public void Run(TickContext ctx)
         {
-            // unit 6 자리 — 모디파이어 만료·집계 · 지속 피해 틱 · 스택 · 열기/피로 · 픽업.
-            // ⚠ 여기에 얹을 때 **「피해 그릇이 없으면 같이 멈춘다」를 재현하지 말 것**(C24).
-            // 옛 전투는 한 단계가 성격이 다른 일을 겸직해서 그 결합이 생겼다.
-
             SpawnRequested(ctx);
             StepFlight(ctx);
             Despawn(ctx);
+
+            // unit 6a — 효과 슬롯. 열기/피로·픽업은 6b2, 해저드는 6b 다.
+            // ⚠ **「피해 그릇이 없으면 같이 멈춘다」를 재현하지 말 것**(C24). 옛 전투는 한
+            // 단계가 성격이 다른 일을 겸직해서 그 결합이 생겼다 — 여기서는 재생이 인박스를
+            // 안 본다(그 값은 `Unit.RegenPerSec` 로 나가고 소비는 피해 단계가 한다).
+            StepEffects(ctx);
+        }
+
+        // ── ⑤ 효과 슬롯 ──────────────────────────────────────────────────────
+        //
+        // 순회는 `SimEntityId` 오름차순(목록 순서)이라 결정론이다.
+        private void StepEffects(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+
+                // ① 만료 → 회수 사건. **만료도 「다시 접어라」를 켠다**(F21) — 안 켜면
+                //    만료가 영원히 안 돌고 모디파이어가 무한 지속된다(실제 이력).
+                if (u.Modifiers.Any)
+                {
+                    _revoked.Clear();
+                    if (u.Modifiers.Expire(ctx.Dt, _revoked) > 0)
+                        for (int k = 0; k < _revoked.Count; k++)
+                            ctx.Bus.Publish(CoreEvent.ModifierRevoked(
+                                ctx.Tick, u, _revoked[k].Key.Source, _revoked[k].Key.Stat));
+                }
+
+                // ② 집계 → 개체 미러. 읽는 순간 접힌다(dirty 가 아니면 캐시 그대로).
+                var eff = u.Modifiers.Effective;
+                u.RegenPerSec = eff.RegenPerSec;
+                u.DamageTakenMul = eff.DmgTakenMul;
+
+                // ③ 최대 체력.
+                StepMaxHealth(u, eff.MaxHealthMul);
+
+                // ④ 스택.
+                StepStacks(ctx, u);
+            }
+        }
+
+        /// <summary>
+        /// 최대 체력 배율의 적용. **기준은 스폰 시점 원본**이고 배율이 1 에서 벗어난 첫 틱에
+        /// 잡는다(lazy-attach) — 스폰 경로를 하나도 안 고치는 방식이다.
+        ///
+        /// ⚠ 체력을 다른 담당자가 드는 개체(마음 타워)는 건너뛴다 — 그 최대치는 담당자의 것이다.
+        /// ⚠ 배율이 1 로 돌아와도 **무료 회복은 없다**(축소 때 잘린 것은 잘린 채다).
+        /// </summary>
+        private static void StepMaxHealth(Unit u, float mul)
+        {
+            if (u.HealthExternal || mul <= 0f) return;
+
+            if (u.BaseMaxHealth <= 0f)
+            {
+                if (mul == 1f || u.MaxHealth <= 0f) return;
+                u.BaseMaxHealth = u.MaxHealth;
+            }
+
+            MaxHealthScale.Apply(u.Health, u.BaseMaxHealth, mul,
+                                 out float value, out float max);
+            u.Health = value;
+            u.MaxHealth = max;
+        }
+
+        // 스택 — 틱 → 임계 → 만료. **옛 `StackModifierTickSystem` 과 같은 차례**다(지속을
+        // 먼저 깎아야 경계값의 발화 횟수가 이식 전후로 같다).
+        private void StepStacks(TickContext ctx, Unit u)
+        {
+            var stacks = u.Stacks;
+            if (!stacks.Any) return;
+
+            for (int k = 0; k < stacks.Count; k++)
+            {
+                stacks.Tick(k, ctx.Dt);
+                // **올라가는 길에만** 발화한다 — 차감·만료로 내려온 것은 재발화가 아니다.
+                if (stacks.Slots[k].Count > stacks.Slots[k].LastTriggered)
+                    DispatchThresholds(ctx, u, k);
+            }
+
+            _stacksGone.Clear();
+            if (stacks.RemoveExpired(_stacksGone) == 0) return;
+            for (int k = 0; k < _stacksGone.Count; k++)
+                ctx.Bus.Publish(CoreEvent.StackChanged(ctx.Tick, u, _stacksGone[k].Source,
+                                                       _stacksGone[k].Kind, 0));
+        }
+
+        // 이번에 넘은 임계를 **전부** 발화한다(4 → 7 이면 5·6·7 이 다 난다).
+        // 상한은 **그때그때의 중첩**이라 소비형이 깎은 뒤의 값을 본다.
+        private static void DispatchThresholds(TickContext ctx, Unit u, int index)
+        {
+            var slot = u.Stacks.Slots[index];
+            var rules = ctx.Def.StackRules;
+            int ruleIndex = StackRules.Resolve(rules, slot.Kind, slot.RuleIndex);
+
+            if (ruleIndex < 0 || rules[ruleIndex].ThresholdCount == 0)
+            {
+                // 규칙이 없으면 발화도 없다 — 다만 **경계 캐시는 올린다**(안 올리면 매 틱 재진입).
+                u.Stacks.Commit(index, slot.Count, slot.Count);
+                return;
+            }
+
+            var thresholds = rules[ruleIndex].Thresholds;
+            int prev = slot.LastTriggered;
+            int count = slot.Count;
+
+            for (int t = 0; t < thresholds.Length; t++)
+            {
+                if (!StackRules.Fires(in thresholds[t], prev, count)) continue;
+                Fire(ctx, u, slot.Kind, in thresholds[t]);
+                count = StackRules.AfterConsume(in thresholds[t], count);
+            }
+
+            // 기준은 **차감된 최종 중첩**이다(F13) — 안 맞추면 같은 임계가 재발화한다.
+            u.Stacks.Commit(index, count, count);
+            if (count != slot.Count)
+                ctx.Bus.Publish(CoreEvent.StackChanged(ctx.Tick, u, slot.Source, slot.Kind, count));
+        }
+
+        private static void Fire(TickContext ctx, Unit u, StackKind kind, in StackThresholdDef rule)
+        {
+            ctx.Bus.Publish(CoreEvent.StackThreshold(ctx.Tick, u, kind, rule.AtStack));
+
+            switch (rule.Derived)
+            {
+                case StackDerivedKind.ApplyDot:
+                {
+                    // ⚠ 스택 파생 지속 피해는 **보스에게도 통한다** — 전용 파이프라인이라
+                    // 행동불능 면역 술어를 지나지 않는다(옛 전투와 같다. 의도).
+                    var element = DotElementMap.FromStack(kind);
+                    if (u.Dot.Apply(DotOrigin.Stack, element, rule.Magnitude,
+                                    rule.TickInterval, rule.Duration))
+                        ctx.Bus.Publish(CoreEvent.DotApplied(ctx.Tick, u, SimEntityId.None,
+                                                             DotOrigin.Stack, element, rule.Magnitude));
+                    return;
+                }
+
+                case StackDerivedKind.ApplyStun:
+                    // 기절은 행동불능이라 **보스 면역에 걸린다**(문이 `RequestCc` 하나다).
+                    // `Magnitude` 가 곧 지속이다(`Duration` 은 안 읽는다).
+                    ctx.World.RequestCc(CcRequest.Of(u.Id, CcRequestKind.Stun,
+                                                     rule.Magnitude, SimEntityId.None));
+                    return;
+
+                case StackDerivedKind.ApplyStat:
+                {
+                    if (!EffectEligibility.AcceptsModifier(u)) return;
+                    // ⚠ 출처가 **피해자 자신**이라 배치·스킬 감속과 4키가 전부 겹친다 —
+                    // 그래서 칸을 종류별로 가른다(`SlotTag.OfStack`). 접으면 강한 배치
+                    // 감속이 약한 스택 감속으로 깎이던 버그가 그대로 재현된다(F26).
+                    var stat = (StatKind)rule.Stat;
+                    var key = new ModifierKey(u.Id, stat, (CombineOp)rule.Op, SlotTag.OfStack(kind));
+                    var origin = kind == StackKind.Fatigue
+                        ? ModifierOrigin.Burnout : ModifierOrigin.Stack;
+                    if (u.Modifiers.Apply(in key, rule.Magnitude, rule.Duration, 0f, origin))
+                        ctx.Bus.Publish(CoreEvent.ModifierApplied(ctx.Tick, u, u.Id, stat, rule.Magnitude));
+                    return;
+                }
+            }
         }
 
         // ── ① 발사 요청 → 탄 ─────────────────────────────────────────────────
