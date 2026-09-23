@@ -59,7 +59,7 @@
 - [ ] `ledgers/rules.md` 의 unit 5 귀속 5행(E27·M9·C7·X3·X16)이 코드 포인터로 매핑.
 - [ ] `GamePhase` 정수값이 안 밀렸다(`CameraDirectionConfig.breathPhases` 대조 1행, X16).
 - [ ] `ledgers/tools.md` 5·8행 닫힘(감지 프로브 · 장애물 디버그).
-- [ ] **`rule-holders.md` 미정 2행(판 안 재시작 · 쿨다운 시계)이 사용자 답으로 닫혔다.** 답이 「재시작 없음」이면 C7·S6·K5 를 unit 7 이식 제외 표로 옮긴다. 플레이어가 겪는 규칙이라 에이전트가 정하지 않는다.
+- [x] **`rule-holders.md` 미정 2행 닫힘(사용자 답 2026-09-23)**: 판 안 재시작 **없음** · 쿨다운은 **판의 시계**(감속·정지에 같이 느려진다). 기본값 구현과 일치. C7·S6·K5 의 「재시작」 전제는 unit 7 이식 제외 표로.
 - [ ] 새 lane 의 골든·상태 해시 대조는 **Unity 에서 구운 골든**과만(계약 5).
 - [ ] 뷰 코드에 `Unity.Entities` 0, 판정 코드 0.
 - [ ] `core-reviewer` APPROVE(Unity 층 포함: 매니저/컨트롤러 이름 0 · 판정 이전 0).
