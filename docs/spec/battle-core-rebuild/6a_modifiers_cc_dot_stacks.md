@@ -20,7 +20,7 @@
 | 부착 지점 | `World/Unit.cs` — `Modifiers`·`Cc`·`Dot`·`Stacks` **항상 있음**(UML §2 의 `*--`) · `Unit.ActionLocked` 에 CC 잠금 OR 합류 · **`Unit.BaseMaxHealth`(0 = 미캡처)** 추가 · `Unit.Reset` 에서 **0 으로 되돌린다**(풀 재사용 시 앞 점유자의 기준값이 물리면 최대체력 배율이 통째로 어긋난다, E11) · `UnitPartPool.Reclaim` 갱신 |
 | 틱 단계 | **새 phase 를 만들지 않는다**(UML §4 자리 그대로): `FieldPrepPhase` 끝(지속 피해 부여·틱 — 옛 `DotApplySystem` 캡처 위치 16 = **이동 앞**) · `TickProjectilePhase` 끝(스탯 만료 → 집계 → 최대체력 → 스택 만료/임계 — `3_combat.md` 변경 대상 표가 「스탯 만료/집계 자리는 unit 6」으로 예약해 둔 자리) · `CombatPhase.FlushCc` 안(군중 제어 슬롯 적용 · 기상 · 감쇠) |
 | 정의표 | `Match/MatchDefinition.cs` 에 `StackRuleDef[] StackRules` + canonicalize. `CombatDefs` 의 `AttackOutputDef.Stat/Op/StackKind` 소비 개통 |
-| 사건 | `Match/CoreEvent.cs` **34~41**(여덟 종류라 34~40 은 한 칸 모자랐다): `ModifierApplied`·`ModifierRevoked`·`StackChanged`·`StackThreshold`·`CcApplied`·`CcCleared`·`DotApplied`·`ShieldGranted` (append-only — `_Count` **앞**). 트레이스 채널 32~39 + `CoreHarness` 구독 8 도 같이 연다 |
+| 사건 | `Match/CoreEvent.cs` **34~42**(여덟 종류라 34~40 은 한 칸 모자랐고, 리뷰 MEDIUM-1 로 `DotCleared` 가 하나 더 붙었다): `ModifierApplied`·`ModifierRevoked`·`StackChanged`·`StackThreshold`·`CcApplied`·`CcCleared`·`DotApplied`·`ShieldGranted`·**`DotCleared`** (append-only — `_Count` **앞**). 트레이스 채널 32~40 + `CoreHarness` 구독 9 도 같이 연다 |
 | 테스트 | `Tests/EditModeCore/`: `ModifierSetTests` · `StackRuleTests` · `CcStateTests` · `DotSetTests` · `ShieldMathTests` · `MaxHealthScaleTests` · **`CoreSkillEnumPinTests`**(`StatKind`·`CombineOp`·`CcRequestKind` ↔ `Wassup.Skills` 의 `Skill*` 미러가 **값·개수 모두 일치** — 어셈블리가 갈려 컴파일러가 못 잡는다. 옛 `SkillModifierKindPinTests` 는 unit 9 에서 죽으므로 그 그물을 여기서 다시 친다) + `DeterminismTests` 확장 |
 
 ## 구현
@@ -93,6 +93,8 @@
 | `AiMovePhase` 의 외력 합성이 **군중 제어 슬롯을 읽는다** | 넉백은 슬롯이 소유하고 이동은 소비만 한다. `MoveState.PendingImpulse` 는 슬롯을 안 쓰는 한 방짜리 외력의 자리로 남는다 |
 | `CombatPhase` 의 쿨다운·피해가 **배율을 읽기 시작했다** | `atk.Interval * (1/공속)` · 피해 × `DamageMul`(+ 대상이 CC 면 `DamageVsCcMul`). 소비처는 unit 3 이 이미 세워 뒀고(「값을 넣는 것이 unit 6」) 이 unit 이 값을 넣었다 |
 | `BattleWorld.GrantShield` 신설 | F20(헛발동 없음)의 집. 비교 대상은 **셋 다**다 — 슬롯 · 스테이징된 것 · 이번 틱에 쌓인 것. 부여가 한 틱 늦게 들어서 「걸었는데 아직 슬롯에 없는」 구간이 있고, 그 구간만 빼먹으면 약한 재부여가 그때만 통과한다(구현 중 실제로 그랬다) |
+| 빌더의 **저작 enum 통짜 캐스트 6곳**(리뷰 HIGH-1) | 산출물 종류·스탯·결합 연산자·스택 종류·임계 모드·파생 효과가 전부 `(int)` 캐스트였다. 두 어휘는 다른 어셈블리라 컴파일러가 못 잡고 저작 값은 이미 에셋에 구워져 있다 — `PatternSelectionRule` 이 당한 그 함정이다. **이름 기반 매핑 6개 + 핀 테스트 7종**(`BuilderEnumPinTests`)으로 닫았다. 값은 안 바뀐다(지금은 여섯 쌍 모두 번호가 같다) |
+| 지속 피해 만료가 **소멸 사건을 안 냈다**(리뷰 MEDIUM-1) | 계약 7 은 「모든 소멸은 소멸 사건을 낸다」인데 `DotSet.RemoveExpired` 만 조용했다. 안 내면 오라를 켠 뷰가 「언제 끄나」를 매 프레임 폴링으로 되묻게 되고, 그 폴링이 옛 뷰 풀 셋의 모양이다. `DotCleared`(42) 신설 |
 | `BattleDriver._stackModifiers` + `MatchDefinitionBuilder(stackModifiers:)` | 장부 `bridge-fields` 74행(`stackModifierAuthoring`)이 「읽는 쪽이 unit 6 이라 빌더 입력은 그때 열린다」로 예약해 둔 자리 |
 
 ## 완료 기준
