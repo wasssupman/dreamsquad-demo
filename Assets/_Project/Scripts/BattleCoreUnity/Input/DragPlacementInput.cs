@@ -1,0 +1,300 @@
+using System.Collections.Generic;
+using Unity.Mathematics;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using Wassup.BattleCore;
+using Wassup.BattleCoreUnity.Hud;
+using Wassup.BattleCoreUnity.View;
+using Wassup.Core;
+using Wassup.Core.TimeControl;
+using Wassup.Data;
+using Wassup.Presentation;
+using Wassup.UI;
+
+namespace Wassup.BattleCoreUnity.Input
+{
+    // battle-core-rebuild unit 5b — **드래그 배치.** 옛 `DefenderDragPlacementController`(2,144줄)
+    // 에서 가져온 것은 **드래그·스냅·프리뷰뿐**이다.
+    //
+    // 옛 컨트롤러는 판정을 복제하고 있었다: 「코스트가 모자라면 거부」·「소진이면 거부」·
+    // 「여기 못 놓으면 거부」가 컨트롤러·트레이·브리지 **세 곳**에 살았고, 그래서 셋 중 하나만
+    // 고치면 화면과 판정이 갈렸다. 여기서는 그 셋이 **receipt 하나**로 접힌다.
+    //
+    // 이 파일이 하는 일 정확히 넷:
+    //   ① 손가락을 칸으로 옮긴다(`PlacementCellSnap` · `PlacementSnapDebounce` — 순수 함수 재사용)
+    //   ② 그 칸이 놓을 수 있는지 **코어에 묻는다**(`Judge` · `TrySnapAnchor`) — 재판정 아님
+    //   ③ 놓는다(`Command.PlaceDefender`) 그리고 receipt 를 **표시한다**
+    //   ④ 「착지했다」를 알린다(`Command.LandDefender`) — 비행은 프레젠테이션 시간이라 코어가
+    //      길이를 모른다
+    //
+    // ⚠ 이름이 `*Controller` 가 아닌 이유는 계약 12 다. 이 컴포넌트는 아무것도 «통제»하지
+    // 않는다 — 포인터를 커맨드로 옮길 뿐이다.
+    //
+    // ⚠ **방향 지정 배치(facing)는 안 옮겼다.** 옛 컨트롤러의 조준 화살표는 별도 축(저작된
+    // 방향 유닛)이고, 이 unit 의 질문(「배치가 도나」)에 답하는 데 필요하지 않다 — 5b
+    // 「이식 제외」 표 참조. 커맨드에는 자리가 이미 있으므로 그 축이 열릴 때 여기 한 줄이다.
+    [DisallowMultipleComponent]
+    [DefaultExecutionOrder(-50)]
+    public sealed class DragPlacementInput : MonoBehaviour
+    {
+        [SerializeField] private BattleDriver _driver;
+        [SerializeField] private CoreDefenderTray _tray;
+        [SerializeField] private CoreMapOverlay _overlay;
+        [SerializeField] private Camera _boardCamera;
+
+        [Header("손끝 → 칸")]
+        [Tooltip("드래그로 승격되는 이동량(px). 이보다 작게 움직이면 탭이다.")]
+        [SerializeField, Min(0f)] private float _dragThresholdPx = 16f;
+        [Tooltip("판정 포인터를 손가락 위로 얼마나 띄우나(px). 엄지에 가려지는 칸을 보이게 한다.")]
+        [SerializeField, Min(0f)] private float _pointerOffsetPx = 64f;
+        [Tooltip("승격 이후 이만큼 더 끌면 오프셋이 최대가 된다(px). 0 = 즉시 최대.")]
+        [SerializeField, Min(0f)] private float _pointerRampPx = 90f;
+        [Tooltip("셀 경계 히스테리시스(칸). 0.2~0.3 권장.")]
+        [SerializeField, Range(0f, 0.95f)] private float _stickMargin = 0.28f;
+        [Tooltip("칸 확정 주기(초). 0 = 매 프레임 실시간.")]
+        [SerializeField, Min(0f)] private float _snapIntervalSec = 0.08f;
+        [Tooltip("격자 밖 이 칸 수까지는 테두리 칸에 붙인다. 더 나가면 「아무 칸도 아니다」 = 취소.")]
+        [SerializeField, Min(0)] private int _outsideToleranceCells = 1;
+        [Tooltip("못 놓는 칸일 때 둘레 몇 칸까지 자석으로 당기나. 0 = 자석 없음.")]
+        [SerializeField, Min(0)] private int _magnetRadiusCells = 1;
+
+        [Header("착지")]
+        [Tooltip("드롭 → 착지까지의 비행 시간(초). 0 = 즉시(헤드리스와 같다).")]
+        [SerializeField, Min(0f)] private float _deployFlightSeconds;
+
+        private struct PendingLand
+        {
+            public SimEntityId Id;
+            public float Left;
+        }
+
+        private readonly List<PendingLand> _landing = new List<PendingLand>(4);
+
+        private int _defIndex = -1;
+        private bool _pressing;
+        private bool _promoted;
+        private Vector2 _pressScreen;
+        private float _travelPx;
+        private Vector2Int? _cell;
+        private PlacementSnapDebounce.State _snap;
+        private int2 _anchor;
+        private bool _anchorValid;
+        private bool _awaitingPlaced;
+
+        public bool IsDragging => _pressing && _promoted;
+
+        private void OnEnable()
+        {
+            if (_driver != null) _driver.Subscribe(ViewOrder.Unit, OnCoreEvent);
+        }
+
+        private void OnDisable()
+        {
+            if (_driver != null) _driver.Unsubscribe(OnCoreEvent);
+            EndDrag();
+        }
+
+        private void OnCoreEvent(CoreEvent e)
+        {
+            // 배치가 성사된 개체의 id 는 **사건만이 안다**(receipt 는 「받아들여졌다」만 말한다).
+            // 비행 뒤 「착지했다」를 알리려면 그 id 가 필요하므로 여기서 집는다.
+            if (e.Kind != CoreEventKind.Placed || !_awaitingPlaced) return;
+            _awaitingPlaced = false;
+            if (_deployFlightSeconds <= 0f) { _driver.Apply(Command.LandDefender(e.A)); return; }
+            _landing.Add(new PendingLand { Id = e.A, Left = _deployFlightSeconds });
+        }
+
+        private void Update()
+        {
+            if (_driver == null || !_driver.Running) return;
+
+            StepLanding();
+
+            var pointer = Pointer.current;
+            if (pointer == null) { EndDrag(); return; }
+
+            Vector2 screen = pointer.position.ReadValue();
+
+            if (pointer.press.wasPressedThisFrame) TryBeginPress(screen);
+            else if (_pressing && pointer.press.isPressed) StepDrag(screen);
+
+            if (pointer.press.wasReleasedThisFrame && _pressing) Release(screen);
+        }
+
+        // ── 착지 ─────────────────────────────────────────────────────────────
+        //
+        // **판의 시계로 잰다.** 프레임 시간으로 재면 메뉴로 멈춘 동안에도 착지가 진행돼
+        // 「정지 중에 유닛이 활성화된다」가 난다.
+        private void StepLanding()
+        {
+            if (_landing.Count == 0) return;
+            float dt = TimeManager.Instance.DeltaTime(TimeDomain.Battle);
+            for (int i = _landing.Count - 1; i >= 0; i--)
+            {
+                var p = _landing[i];
+                p.Left -= dt;
+                if (p.Left > 0f) { _landing[i] = p; continue; }
+                _landing.RemoveAt(i);
+                // 이미 죽었거나 없는 개체면 코어가 거절한다 — 조용히 무시하지 않는다.
+                _driver.Apply(Command.LandDefender(p.Id));
+            }
+        }
+
+        // ── 집기 ─────────────────────────────────────────────────────────────
+        private void TryBeginPress(Vector2 screen)
+        {
+            if (_tray == null) return;
+            // 버튼 위의 누름은 버튼의 것이다. 트레이 칸은 레이캐스트 대상이 아니라 여기 안 걸린다.
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+            if (!_tray.TryPickSlot(screen, null, out int defIndex)) return;
+
+            _defIndex = defIndex;
+            _pressing = true;
+            _promoted = false;
+            _pressScreen = screen;
+            _travelPx = 0f;
+            _cell = null;
+            _snap = default;
+            _anchorValid = false;
+        }
+
+        // ── 끌기 ─────────────────────────────────────────────────────────────
+        private void StepDrag(Vector2 screen)
+        {
+            _travelPx = Mathf.Max(_travelPx, Vector2.Distance(screen, _pressScreen));
+            if (!_promoted)
+            {
+                if (_travelPx < _dragThresholdPx) return;
+                _promoted = true;
+                if (_tray != null) _tray.DraggingDefIndex = _defIndex;
+            }
+
+            // 판정 포인터는 손가락의 **파생값**이지 치환이 아니다 — UI 판정·임계 비교는
+            // 계속 실제 좌표로 한다(`PlacementPointerOffset` 헤더의 계약).
+            float ramp = PlacementPointerOffset.Ramp(_travelPx, _dragThresholdPx, _pointerRampPx);
+            Vector2 judged = PlacementPointerOffset.Apply(screen, _pointerOffsetPx, ramp);
+
+            // 카메라를 손가락 쪽으로 살짝 당긴다(옛 드래그 포커스 채널 그대로).
+            var director = EnsureDirector();
+            if (director != null) director.SetDragFocus(screen);
+
+            if (!TryResolveCell(judged, out var cell)) { _anchorValid = false; HideGhost(); return; }
+            _cell = cell;
+
+            var def = _driver.Definition;
+            if (_defIndex < 0 || _defIndex >= def.Units.Length) return;
+            ref var unit = ref def.Units[_defIndex];
+            var size = new Vector2Int(math.max(1, unit.FootprintWidth), math.max(1, unit.FootprintHeight));
+
+            // 손끝 규약: 손가락 칸 = footprint **하단 행의 가로 중앙**. 유닛은 손가락 위로 자란다.
+            var anchorV = FootprintMath.AnchorFromBottomCenter(cell, size);
+            var anchor = new int2(anchorV.x, anchorV.y);
+
+            var placement = _driver.Match.Placement;
+            bool valid = placement.Judge(_defIndex, anchor) == RejectReason.None;
+            if (!valid && _magnetRadiusCells > 0
+                && placement.TrySnapAnchor(_defIndex, anchor, _magnetRadiusCells, out var snapped))
+            {
+                // **자석도 코어의 것이다.** 프리뷰가 자기 자를 따로 가지면
+                // 「고스트는 초록인데 놓으면 거절」이 난다.
+                anchor = snapped;
+                valid = true;
+            }
+
+            _anchor = anchor;
+            _anchorValid = true;
+            if (_overlay != null) _overlay.ShowPlacement(_defIndex, anchor, valid);
+        }
+
+        // 화면 좌표 → 칸. 「아무 칸도 아니다」(격자 밖 관용 초과)는 **null** 이고 그것이
+        // 「보드 밖 = 취소」를 성립시킨다 — 무조건 격자로 clamp 하면 그 경로가 도달 불가해진다.
+        private bool TryResolveCell(Vector2 screen, out Vector2Int cell)
+        {
+            cell = default;
+            if (!BoardSpace.IsConfigured) return false;
+            var cam = EnsureCamera();
+            if (cam == null) return false;
+
+            var ray = cam.ScreenPointToRay(screen);
+            var plane = BoardSpace.RaycastPlane();
+            if (!plane.Raycast(ray, out float enter)) return false;
+
+            float3 sim = BoardSpace.ToSim(ray.GetPoint(enter));
+            float ts = _driver.TileSize;
+            // sim 원점은 무조건 zero 다(맵 계약). 셀 중심이 정수이므로 그대로 칸 좌표가 된다.
+            var frac = new Vector2(sim.x / ts, sim.z / ts);
+
+            var grid = _driver.GridSize;
+            var resolved = PlacementCellSnap.Resolve(_cell, frac, _stickMargin,
+                                                     new Vector2Int(grid.x, grid.y), _outsideToleranceCells);
+            if (!resolved.HasValue) return false;
+
+            // 공간 히스테리시스 **위에** 시간 스로틀. 둘을 겹치는 이유: 공간만으로는 경계를
+            // 넘는 순간 즉시 따라가 이동 중에 칸이 휙휙 바뀌고, 시간만으로는 정지 중에도
+            // 경계 지터가 그대로 들어온다.
+            var committed = _cell ?? resolved.Value;
+            cell = PlacementSnapDebounce.Step(ref _snap, committed, resolved.Value,
+                                              Time.unscaledDeltaTime, _snapIntervalSec);
+            return true;
+        }
+
+        // ── 놓기 ─────────────────────────────────────────────────────────────
+        private void Release(Vector2 screen)
+        {
+            bool promoted = _promoted;
+            int defIndex = _defIndex;
+            bool hasAnchor = _anchorValid;
+            var anchor = _anchor;
+            EndDrag();
+
+            if (!promoted || !hasAnchor || defIndex < 0) return;
+
+            // **판정은 여기 없다.** 코스트도 소진도 쿨타임도 묻지 않고 그냥 보낸다 —
+            // 미리 거르면 그 거름이 두 번째 자가 되고, 옛 컨트롤러가 그래서 갈렸다.
+            var receipt = _driver.Apply(Command.PlaceDefender(defIndex, anchor));
+            if (receipt.Accepted)
+            {
+                _awaitingPlaced = true;
+                return;
+            }
+            if (_tray != null) _tray.ShowReject(receipt.Reason);
+        }
+
+        private void EndDrag()
+        {
+            _pressing = false;
+            _promoted = false;
+            _defIndex = -1;
+            _cell = null;
+            _anchorValid = false;
+            if (_tray != null) _tray.DraggingDefIndex = -1;
+            HideGhost();
+        }
+
+        private void HideGhost()
+        {
+            if (_overlay != null) _overlay.HidePlacement();
+        }
+
+        private Camera EnsureCamera()
+        {
+            if (_boardCamera != null && _boardCamera.isActiveAndEnabled) return _boardCamera;
+            _boardCamera = Camera.main;
+            return _boardCamera;
+        }
+
+        private CameraDirector _director;
+        private bool _directorMissed;
+
+        private CameraDirector EnsureDirector()
+        {
+            if (_director != null) return _director;
+            if (_directorMissed) return null;
+            var cam = EnsureCamera();
+            _director = cam != null ? cam.GetComponent<CameraDirector>() : null;
+            if (_director == null) _directorMissed = true;   // 한 번만 찾는다 — 매 프레임 조회 금지
+            return _director;
+        }
+    }
+}

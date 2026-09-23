@@ -105,6 +105,15 @@ namespace Wassup.BattleCoreUnity
         /// <summary>격자 크기(셀). 뷰 소팅이 읽는다.</summary>
         public int2 GridSize => _map.IsCreated ? _map.gridSize : default;
 
+        // unit 5b — 뷰가 «판이 화면 어디에 있나»를 묻는 두 창구. 둘 다 **읽기 전용**이고,
+        // 값을 만드는 것이 아니라 이미 소유한 곳을 가리킨다(제약 12 의 판단 순서 ⓐ).
+
+        /// <summary>보드 격자. 카메라 fit 이 판의 월드 bounds 를 재는 근거다.</summary>
+        public GridLayout BoardGrid => _boardPlane != null ? _boardPlane.Grid : null;
+
+        /// <summary>이 판에 선 스테이지 인스턴스. 스테이지가 소유한 것(포스트 볼륨)을 찾는 입구.</summary>
+        public Wassup.Core.MapStage StageRoot => _stageInstance;
+
         // ── 저작 자산 되찾기 ─────────────────────────────────────────────────
         // 정의표는 plain 이라 스켈레톤·시트·프리팹을 모른다(계약 6). 그런데 뷰는 그것이 있어야
         // 무엇을 그릴지 안다. 그래서 **인덱스**로 되찾는다 — 사건이 나르는 `DefIndex` 가
