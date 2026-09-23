@@ -144,6 +144,18 @@ namespace Wassup.Data
         [Tooltip("배치 불가 하이라이트 tint. placeableColor(시안)와 한눈에 갈리는 계열이어야 한다.")]
         public Color blockedColor = new Color(1f, 0.35f, 0.35f, 0.45f);
 
+        // battle-core-rebuild 5b (사용자 결정 2026-09-23) — 배치 불가 칸을 **두 색으로 가른다**:
+        // 위의 blockedColor = 「지형·프랍이 막았다」(내가 어떻게 할 수 없는 칸),
+        // 이 값 = 「유닛이 서 있다」(치우거나 기다리면 열리는 칸). 플레이어가 배우는 것이
+        // 다르기 때문에 색이 달라야 한다 — 한 색이면 「여긴 영영 안 되는구나」로 읽힌다.
+        //
+        // **타일은 blockedTile 을 같이 쓴다.** 사용자가 정한 것은 「타일 색을 구분한다」이고,
+        // 둘은 같은 사실(막혔다)의 두 이유라 그림까지 가르면 한 화면에 모양이 셋이 된다.
+        // 전용 타일 슬롯을 미리 파 두지도 않는다 — 소비처 없는 저작 칸은 「여기서 조절된다」고
+        // 광고만 한다.
+        [Tooltip("유닛이 점유해서 못 놓는 칸의 tint. blockedColor(지형·프랍)와 한눈에 갈려야 한다.")]
+        public Color occupiedColor = new Color(1f, 0.78f, 0.25f, 0.45f);
+
         [Header("Surround terrain ring (tilemap-world-surround)")]
         [Tooltip("플레이 보드 밖 외곽 링에 칠할 터레인 타일. 비면 decoTile(grass) 폴백.")]
         public TileBase terrainTile;
