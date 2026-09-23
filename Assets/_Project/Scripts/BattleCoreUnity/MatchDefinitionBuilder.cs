@@ -40,10 +40,12 @@ namespace Wassup.BattleCoreUnity
                                             in GeneratedMap map = default,
                                             float tileSize = 1f,
                                             System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
-                                            MatchViewAssets viewAssets = null)
+                                            MatchViewAssets viewAssets = null,
+                                            MovementTuningConfig movement = null)
         {
             var enemies = CollectEnemies(deck, plan, bonus);
-            var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures, viewAssets);
+            var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
+                            viewAssets, movement);
 
             def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
             def.WaveDeck = ToDeckDef(deck, enemies);
@@ -83,7 +85,8 @@ namespace Wassup.BattleCoreUnity
                                             in GeneratedMap map = default,
                                             float tileSize = 1f,
                                             System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
-                                            MatchViewAssets viewAssets = null)
+                                            MatchViewAssets viewAssets = null,
+                                            MovementTuningConfig movement = null)
         {
             var def = new MatchDefinition
             {
@@ -96,6 +99,10 @@ namespace Wassup.BattleCoreUnity
             // unit 3 — 전투 저작(공격·탄·발사 명세)을 같은 줄에 채워 넣는다. **해시를 굽기 전**
             // 이어야 한다 — 뒤에 두면 「스탯을 바꿨는데 해시가 그대로」가 된다.
             CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, viewAssets);
+            // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
+            // 저작이 없으면 코어 기본값(= 옛 씬 값)을 그대로 둔다. 0 으로 덮지 않는다 —
+            // 그러면 몸 반지름 0(충돌 소멸)과 레인 1(분산 없음)이 조용히 성립한다.
+            if (movement != null) def.Movement = ToMovementDef(movement);
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }
@@ -218,6 +225,14 @@ namespace Wassup.BattleCoreUnity
         }
 
         // ── unit 4: 모드·덱·플랜·기믹 → plain ────────────────────────────────
+
+        public static MovementTuningDef ToMovementDef(MovementTuningConfig c) => new MovementTuningDef
+        {
+            AgentRadiusTiles = c.AgentRadiusTiles,
+            SpawnSubLaneCount = c.SpawnSubLaneCount,
+            SpawnSpreadFraction = c.SpawnSpreadFraction,
+            SpawnSpreadTopScale = c.SpawnSpreadTopScale,
+        };
 
         public static ModeDef ToModeDef(MatchModeData m)
         {

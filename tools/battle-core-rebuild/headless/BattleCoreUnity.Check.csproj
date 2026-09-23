@@ -33,6 +33,8 @@
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\MatchModeData.cs" />
     <!-- unit 5a — 뷰 설정 SO 7종. 같은 이유(에디터가 아직 컴파일한 적 없는 새 타입)로 명시한다. -->
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\BattleView\**\*.cs" />
+    <!-- 5a 후속 — 이동 저작 SO. 같은 이유. -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\MovementTuningConfig.cs" />
   </ItemGroup>
 
   <ItemGroup>

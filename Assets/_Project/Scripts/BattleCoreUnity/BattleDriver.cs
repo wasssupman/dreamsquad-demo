@@ -47,6 +47,9 @@ namespace Wassup.BattleCoreUnity
 
         [SerializeField, Min(0.01f)] private float _tileSize = 1f;
 
+        [Tooltip("적이 어떻게 서고 어떻게 퍼지나. 비우면 코어 기본값(= 옛 씬 값)이 쓰인다.")]
+        [SerializeField] private MovementTuningConfig _movementTuning;
+
         [Tooltip("재현의 두 축 중 하나(나머지는 modeId). 같은 값이면 같은 판이다.")]
         [SerializeField] private int _seed = 1;
 
@@ -205,7 +208,8 @@ namespace Wassup.BattleCoreUnity
             var def = MatchDefinitionBuilder.Build(
                 _mode, _defenders, _deck, _plan, _bonus, _seed,
                 costRateMultiplier: 1f, map: in _map, tileSize: _tileSize,
-                structures: _stageStructures, viewAssets: _viewAssets);
+                structures: _stageStructures, viewAssets: _viewAssets,
+                movement: _movementTuning);
 
             Begin(def);
         }

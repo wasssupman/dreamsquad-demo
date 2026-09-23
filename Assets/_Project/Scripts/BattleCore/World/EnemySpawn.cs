@@ -14,9 +14,6 @@ namespace Wassup.BattleCore
     // 매니저가 아니다: 상태가 없고 판정도 없다. 「값 → 개체」의 조립뿐이다.
     public static class EnemySpawn
     {
-        /// <summary>몸 반지름(칸). **군집 통과로 검산한 값**이다 — 단독 통과는 검산이 아니다.</summary>
-        public const float AgentRadiusTiles = 0.25f;
-
         /// <summary>
         /// 적 하나. `lane` 이 0 이상이면 그 입구 칸에서 나오고 `cell` 은 무시된다.
         /// `conceptPathIndex` 는 웨이브 컨셉이 지정한 경로(-1 = 무지정).
@@ -43,8 +40,14 @@ namespace Wassup.BattleCore
 
             if (lane >= 0)
             {
+                // ⚠ 분산 값은 **정의표에서** 온다(계약 6). 여기 리터럴을 되돌리지 말 것 —
+                // 그러면 적이 퍼지는 폭이 저작 밖에서 정해지고 `configHash` 가 그것을 못 본다.
+                ref var mt = ref ctx.Def.Movement;
                 float2 heading = HeadingAt(map, cell, (byte)d.TraversalLayers);
-                float frac = SpawnSpread.LaneFraction(ctx.World.SpawnOrdinal++, 5, 0.4f, 1f);
+                float frac = SpawnSpread.LaneFraction(ctx.World.SpawnOrdinal++,
+                                                      mt.SpawnSubLaneCount,
+                                                      mt.SpawnSpreadFraction,
+                                                      mt.SpawnSpreadTopScale);
                 pos += SpawnSpread.LateralOffset(frac, snapshot.TileSize, heading);
             }
 
@@ -53,7 +56,7 @@ namespace Wassup.BattleCore
 
             u.Move = ctx.World.Parts.RentMove();
             u.Move.Speed = d.MoveSpeed;
-            u.Move.Radius = AgentRadiusTiles;
+            u.Move.Radius = ctx.Def.Movement.AgentRadiusTiles;
             u.Move.TraversalLayers = (byte)d.TraversalLayers;
             u.Move.Engage = (EngageMovement)math.clamp(d.EngageMovement, 0, 2);
             // 경로 선택 — **좁은 쪽이 이긴다**: 적 정의 > 웨이브 컨셉 > 레인 기본.

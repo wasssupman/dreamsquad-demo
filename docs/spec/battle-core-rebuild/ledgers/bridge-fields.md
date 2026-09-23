@@ -4,13 +4,17 @@
 
 **unit 5a 에서 91행 전부 닫혔다.** 분류는 넷이다:
 
+⚠ **5a 후속 정정(리드 판정)**: 처음에 「코어(상수)」로 둔 5행(24·39~42)은 잘못된 분류였다.
+spec 은 「코어로 가는 값은 `MatchDefinitionBuilder` 입력 → 정의표」라고 적었는데 이 다섯은
+`EnemySpawn` 안 리터럴로 굳어 있었고, 그중 셋은 **옛 씬 값과 달랐다**(3·0.2·0.5 → 5·0.4·1).
+제약 6 + 계약 2 위반이라 `MovementTuningDef` 로 올리고 옛 씬 값을 복원했다.
+
 | 분류 | 수 | 뜻 |
 |---|---|---|
-| 코어 정의표 | 8 | `MatchDefinitionBuilder` 의 입력. 값이 판 안으로 들어간다 |
-| 코어(상수) | 5 | 옮기는 과정에서 **코드 상수가 된 것**. ⚠ 셋은 씬 값과 다르다(40·41·42) — unit 2 가 고른 값이고 되볼 자리는 플레이다 |
+| 코어 정의표 | 12 | `MatchDefinitionBuilder` 의 입력. 값이 판 안으로 들어간다 |
 | 뷰 설정 SO | 53 | 새 자산 7종(`Data/BattleView/`). 값은 옛 씬 블록에서 그대로 복사했다. 그중 한 행(59 `tileSet`)은 **5b 의 맵 뷰가 가져간다** |
 | 씬 배선 참조 | 21 | **값이 아니다** — 프리팹·컴포넌트 슬롯이라 정의표에 실을 것이 없다. 각 행이 그 이유를 한 줄로 댄다 |
-| 삭제 | 4 | 소비처가 0 이거나(26·73) 새 층에 자리가 없다(34·35) |
+| 삭제 | 5 | 소비처가 0 이거나(26·73) 새 층에 자리가 없다(34·35) · 축이 값 안으로 접혔다(39) |
 
 값 대조: 7종 자산의 모든 수치는 `BattleScene.unity` 의 브리지 블록에서 복사했다. 91행 중
 **씬 값이 C# 선언 기본값과 다른 행은 다섯**이고, 전부 **씬 쪽을 정본으로** 삼았다 — 그것이
@@ -56,7 +60,7 @@
 | 21 | `seasonRegistry` | BattleBridge.cs | ○ | 코어 정의표 | ⚠ **기믹 풀만** `MatchModeData.gimmickPool` 로 옮겨졌다(계약 5) — 시즌 자산 전체가 은퇴한 것이 아니다. 살아 있는 소비가 둘 더 있다: `SeasonRuntime.Bind` 가 싣는 **맵 테마**가 `effectTiles`·`effectTileCount`(코어 `MatchDefinition.EffectTileCount`)와 `tileSet` 오버라이드(5b 의 타일 오버레이)를 준다. 5a 의 드라이버는 아직 안 읽는다 |
 | 22 | `tileSize` | BattleBridge.cs | ○ | 코어 정의표 | `Build(tileSize:)` → `MapSnapshot.TileSize`. 뷰의 타일↔월드 환산도 여기서 **파생**한다(저작 2벌 금지) |
 | 23 | `spawnHeight` | BattleBridge.cs | ○ | 뷰 설정 SO | `UnitLiftKnobs.spawnHeight` |
-| 24 | `agentRadiusTiles` | BattleBridge.cs | ○ | 코어(상수) | `EnemySpawn.AgentRadiusTiles = 0.25` — 씬 값과 같다(드리프트 0). 저작값으로 되돌리는 것은 unit 2 의 결정이라 여기서 바꾸지 않는다 |
+| 24 | `agentRadiusTiles` | BattleBridge.cs | ○ | 코어 정의표 | `MovementTuningDef.AgentRadiusTiles`(`MovementTuningConfig.asset` → 드라이버 → 빌더). **군집 통과로 검산한 값**이라 단독 통과는 검산이 아니다 |
 | 25 | `resultScreen` | BattleBridge.cs | ○ | 씬 배선 참조 | 결과 **화면 컴포넌트**다 — 값이 아니라 띄울 UI. 새 주인은 5c |
 | 26 | `scoreRules` | BattleBridge.cs | ○ | 삭제 | 소비처 0. 선언만 있고 읽는 줄이 없다(브리지 60행). 점수는 처치당 `killScore` 합이고 그 값은 적 SO 에 있다 |
 | 27 | `defenderPool` | BattleBridge.cs | ○ | 코어 정의표 | `Build(defenders:)` → `UnitDef[]`. 드라이버의 `_defenders` |
@@ -71,10 +75,10 @@
 | 36 | `enemyDragDimAlpha` | BattleBridge.cs | ○ | 뷰 설정 SO | `CharacterViewConfig.enemyDragDimAlpha` |
 | 37 | `enemyDragDimFadeSpeed` | BattleBridge.cs | ○ | 뷰 설정 SO | `CharacterViewConfig.enemyDragDimFadeSpeed` |
 | 38 | `spineDefenderYOffset` | BattleBridge.cs | ○ | 뷰 설정 SO | `UnitLiftKnobs.spineDefenderYOffset` |
-| 39 | `spawnSpreadEnabled` | BattleBridge.cs | ○ | 코어(상수) | `EnemySpawn` 의 레인 분산. 씬은 켬(1)이고 코어는 항상 켜져 있다 — 끄는 축이 없어졌다 |
-| 40 | `spawnSpreadFraction` | BattleBridge.cs | ○ | 코어(상수) | `SpawnSpread.LaneFraction(..., 0.4f, ...)` — 씬 0.2 와 **다르다**. unit 2 가 고른 값이고 이 unit 의 범위 밖이다(플레이로 되본다) |
-| 41 | `spawnSpreadTopScale` | BattleBridge.cs | ○ | 코어(상수) | `SpawnSpread.LaneFraction(..., 1f)` — 씬 0.5 와 다르다. 위와 같은 사유 |
-| 42 | `spawnSubLaneCount` | BattleBridge.cs | ○ | 코어(상수) | `SpawnSpread.LaneFraction(_, 5, _, _)` — 씬 3 과 다르다. 위와 같은 사유 |
+| 39 | `spawnSpreadEnabled` | BattleBridge.cs | ○ | 삭제 | `spawnSpreadEnabled` bool 축은 안 옮긴다 — **분산 폭 0 이 곧 「끔」**이라 끄는 방법이 이미 값 안에 있다. 축이 둘이면 「켜져 있는데 폭이 0」과 「꺼져 있는데 폭이 0.2」가 표현 가능해진다 |
+| 40 | `spawnSpreadFraction` | BattleBridge.cs | ○ | 코어 정의표 | `MovementTuningDef.SpawnSpreadFraction` |
+| 41 | `spawnSpreadTopScale` | BattleBridge.cs | ○ | 코어 정의표 | `MovementTuningDef.SpawnSpreadTopScale` |
+| 42 | `spawnSubLaneCount` | BattleBridge.cs | ○ | 코어 정의표 | `MovementTuningDef.SpawnSubLaneCount` |
 | 43 | `vfxSpawner` | BattleBridge.cs | ○ | 씬 배선 참조 | VFX **스포너 컴포넌트**. 구독할 사건이 unit 6·7 에서 열린다 |
 | 44 | `damageNumberSpawner` | BattleBridge.cs | ○ | 씬 배선 참조 | 피해 숫자 **스포너 컴포넌트**. 새 주인 = `CoreDamageNumberSpawner` |
 | 45 | `healthDisplayStyle` | BattleBridge.cs | ○ | 뷰 설정 SO | `CharacterViewConfig.healthDisplayStyle`(SO 참조를 SO 가 든다) |

@@ -89,6 +89,12 @@ namespace Wassup.BattleCore
         /// </summary>
         public int EffectTileCount;
 
+        /// <summary>
+        /// 적이 어떻게 서고 어떻게 퍼지나. **기본값이 옛 씬 값**이라 고정구가 정의표를 직접
+        /// 만들어도 라이브와 같은 판이 된다(struct 가 0 으로 떨어지면 몸 반지름 0 이 된다).
+        /// </summary>
+        public MovementTuningDef Movement = MovementTuningDef.Default();
+
         public MapSnapshot Map = MapSnapshot.Empty();
 
         /// <summary>
@@ -127,6 +133,7 @@ namespace Wassup.BattleCore
             Mode.Canonicalize(sb, inv);
             Put(sb, "costRateMultiplier", CostRateMultiplier, inv);
             Put(sb, "effectTileCount", EffectTileCount, inv);
+            Movement.Canonicalize(sb, inv);
             Heart.Canonicalize(sb, inv);
             Bonus.Canonicalize(sb, inv);
 

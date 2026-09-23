@@ -399,6 +399,7 @@ MonoBehaviour:
   _stagePrefab: {fileID: 3160083322633649763, guid: 36b2ec7400e81be42ba793aeb2cb80b2, type: 3}
   _boardPlane: {fileID: 503}
   _tileSize: 1
+  _movementTuning: {fileID: 11400000, guid: 07f01c7da34f433f8cda479fbb9f0e98, type: 2}
   _seed: 20260923
   _beginOnStart: 1
   _maxTicksPerFrame: 8
