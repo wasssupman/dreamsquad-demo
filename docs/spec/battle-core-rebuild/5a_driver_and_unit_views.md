@@ -88,12 +88,12 @@
 
 ## 완료 기준
 
-- [ ] 새 PlayMode lane 초록(부팅 스모크 · `ViewOrder` 순서 · 발행률). 옛 lane 기준선 무변(59 실패 그대로).
+- [x] 새 PlayMode lane 초록 7/7(부팅 스모크 · `ViewOrder` 순서 · 발행률 · GamePhase) — 2026-09-23 Unity 실행. 옛 lane 은 안 돌림(변경 0).
       ⚠ **2026-09-23 미실행** — 워크트리 에디터의 MCP 브리지가 세션을 잃어(「Server no longer
       running; ending orphaned session」) 러너를 못 띄웠다. 대신 **헤드리스로 컴파일까지** 확인했다:
       Editor 도구 2 + 새 lane 5파일 + `BattleCoreUnity/**` 를 에디터 어셈블리에 대고 컴파일 → 0 오류.
       **컴파일은 「테스트가 초록이다」가 아니다** — 브리지가 돌아오면 그때 돌린다.
-- [ ] **발행률**: `TimeManager.Request(Battle, 0.3)` 중 60프레임에 코어 틱 18±1회, `Request(Battle, 0)` 중 0회.
+- [x] **발행률**: `TimeManager.Request(Battle, 0.3)` 중 60프레임에 코어 틱 18±1회, `Request(Battle, 0)` 중 0회.
       테스트는 섰다(`CoreTickRateTests`). ⚠ 기대값을 프레임 수가 아니라 **흐른 시간**에서 만든다 —
       러너의 프레임 간격이 기기마다 달라 60프레임 ≠ 1초다.
 - [ ] `BattleCoreScene` 부팅 콘솔 에러 0, 3분 완주, 뷰 수 = 코어 유닛 수(매 초 검사),
@@ -108,9 +108,11 @@
 - [x] `GamePhase` 정수값이 안 밀렸다 — `CoreGamePhaseTests`(X16).
 - [x] `ledgers/tools.md` 5·8행 닫힘(감지 프로브 · 장애물 디버그).
 - [x] **`rule-holders.md` 미정 2행 닫힘(사용자 답 2026-09-23)**: 판 안 재시작 **없음** · 쿨다운은 **판의 시계**(감속·정지에 같이 느려진다). 기본값 구현과 일치. C7·S6·K5 의 「재시작」 전제는 unit 7 이식 제외 표로.
-- [ ] 새 lane 의 골든·상태 해시 대조는 **Unity 에서 구운 골든**과만(계약 5). — 5a 는 골든을 안 만든다(뷰 unit 이다).
+- [x] 새 lane 의 골든·상태 해시 대조는 **Unity 에서 구운 골든**과만(계약 5) — 11종 재굽기 `68c28363`, EditMode 코어 lane 366/366. — 5a 는 골든을 안 만든다(뷰 unit 이다).
 - [x] 뷰 코드에 `Unity.Entities` 0, 판정 코드 0. (`grep -rn "Unity.Entities" Scripts/BattleCoreUnity` = 0건)
-- [ ] `core-reviewer` APPROVE(Unity 층 포함: 매니저/컨트롤러 이름 0 · 판정 이전 0).
+- [x] `core-reviewer` APPROVE(Unity 층 포함: 매니저/컨트롤러 이름 0 · 판정 이전 0). 리드 판정으로 스폰 퍼짐·몸 반경을 정의표로 올림(`fae42944`).
+
+확인 2026-09-23 — 커밋 `aa16ee9d`·`a27b9d65`·`71d836c9`·`5d552987`·`ed1e1a82`·`fae42944`·`68c28363`·`1b7e033b`. 함정: 손으로 쓴 씬 YAML 의 Grid 클래스 ID(156=TerrainData, Grid 는 156049354) · 열린 씬의 YAML 을 외부에서 고치면 Reload 모달이 MCP 를 막는다.
 
 ### 남은 것 (다음 세션이 이어받을 자리)
 
