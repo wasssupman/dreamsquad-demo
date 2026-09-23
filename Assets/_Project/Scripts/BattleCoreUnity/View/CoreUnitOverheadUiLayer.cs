@@ -25,7 +25,6 @@ namespace Wassup.BattleCoreUnity.View
         [SerializeField] private CoreUnitViewPool _units;
         [SerializeField] private UnitOverheadUiStyle _style;
         [SerializeField] private CharacterViewConfig _characterView;
-        [SerializeField] private HeartHudConfig _heartHud;
         [SerializeField] private int _sortingOrder = 3;
 
         private readonly Dictionary<int, UnitOverheadView> _active = new Dictionary<int, UnitOverheadView>();

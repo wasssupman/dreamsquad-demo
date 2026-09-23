@@ -872,7 +872,6 @@ MonoBehaviour:
   _units: {fileID: 522}
   _style: {fileID: 11400000, guid: 7a6b5c4d3e2f10988776655443322110, type: 2}
   _characterView: {fileID: 11400000, guid: 27f8a8d23e5446c693a430cb57a8791a, type: 2}
-  _heartHud: {fileID: 11400000, guid: 1df5bd25f175423fa01bc16f433452e3, type: 2}
   _sortingOrder: 3
 --- !u!1 &570
 GameObject:
