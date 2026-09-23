@@ -39,6 +39,8 @@
 | `GamePhase.Tally` 합산 연출 | 이미 은퇴. enum 값은 카메라 에셋 정수라 유지(X16) | 보류(X19) |
 | `_spawnSpreadCounter` 가변 상태 | 현행 의미 유지, 순번 파생은 후속 후보 | 보류(X25) |
 | 타이머 소유자 2곳 | `ModeDef.durationSec` 하나(덱 값은 조각 E 까지 폴백) | 보류 |
+| 방패 걸린 마음의 **광역 부수 피해 제외** | 옛 `CoreShielded` 소비처 6 중 조준 2·도달 1·경로 1 은 이식됨(`IsTargetable`·`RefreshStructureLiveness`·`HeartMeter.OnGoalReached`), 예고 1 은 5b, **부수 피해 1 은 광역 생산자가 오는 unit 6 에서 `EffectEligibility` 가 소비** | 보류(unit 6) |
+| 미답 2건(판 안 재시작 · 액티브 쿨다운 시계) | 기본값(없음 · 판의 시계)으로 구현. `rule-holders.md` 미정 1·2 는 **5a 완료 기준에서 사용자 답으로 닫는다** | 보류(사용자) |
 
 ## 완료 기준
 
