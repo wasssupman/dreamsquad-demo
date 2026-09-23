@@ -26,7 +26,8 @@ namespace Wassup.BattleCoreUnity
         public static void Fill(MatchDefinition def,
                                 DefenderUnitData[] defenders,
                                 AttackUnitData[] enemies,
-                                IReadOnlyList<StructureEntry> structures = null)
+                                IReadOnlyList<StructureEntry> structures = null,
+                                MatchViewAssets viewAssets = null)
         {
             var projectiles = new List<ProjectileData>();
             var patterns = new List<ProjectilePatternData>();
@@ -60,7 +61,7 @@ namespace Wassup.BattleCoreUnity
             // 거점은 **탄 표를 유닛·적과 공유한다**(본능 포탑의 탄이 그 판의 탄 목록에 든다).
             // 표를 굳히기 **전**에 채우는 이유가 이것이다 — 뒤로 미루면 본능의 탄만 표 밖을
             // 가리켜 조용히 근접으로 접힌다.
-            FillStructures(def, structures, projectiles);
+            FillStructures(def, structures, projectiles, viewAssets);
 
             def.Projectiles = new ProjectileDef[projectiles.Count];
             for (int i = 0; i < projectiles.Count; i++) def.Projectiles[i] = ToDef(projectiles[i]);
@@ -68,6 +69,9 @@ namespace Wassup.BattleCoreUnity
             def.Patterns = new PatternDef[patterns.Count];
             for (int i = 0; i < patterns.Count; i++)
                 def.Patterns[i] = ToDef(patterns[i], projectiles);
+
+            // unit 5a — 뷰가 `DefIndex` 로 프리팹을 되찾을 수 있게 **번호를 매긴 그 목록**을 넘긴다.
+            viewAssets?.SetProjectiles(projectiles);
         }
 
         private static UnitDef[] Grow(UnitDef[] rows, List<DefenderUnitData> all, int authored)
@@ -138,11 +142,12 @@ namespace Wassup.BattleCoreUnity
         /// </summary>
         private static void FillStructures(MatchDefinition def,
                                            IReadOnlyList<StructureEntry> structures,
-                                           List<ProjectileData> projectiles)
+                                           List<ProjectileData> projectiles,
+                                           MatchViewAssets viewAssets = null)
         {
             var spots = def.Map.Structures;
             for (int i = 0; i < spots.Length; i++) spots[i].DefIndex = -1;
-            if (structures == null || structures.Count == 0) return;
+            if (structures == null || structures.Count == 0) { viewAssets?.SetStructures(null); return; }
 
             var assets = new List<StructureData>(structures.Count);
             var rows = new List<StructureDef>(structures.Count);
@@ -177,6 +182,7 @@ namespace Wassup.BattleCoreUnity
             }
 
             def.Structures = rows.ToArray();
+            viewAssets?.SetStructures(assets);
         }
 
         private static StructureDef ToStructureDef(StructureData d, List<ProjectileData> projectiles)

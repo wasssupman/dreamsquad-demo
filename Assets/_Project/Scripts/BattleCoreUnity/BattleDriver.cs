@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 using Wassup.BattleCore;
+using Wassup.Core.TimeControl;
+using Wassup.Data;
 
 namespace Wassup.BattleCoreUnity
 {
-    // battle-core-rebuild unit 1 — **시간만** 갖는 Unity 층(UML §6).
+    // battle-core-rebuild unit 1 → 5a — **시간과 문(門)만** 갖는 Unity 층(UML §6).
     //
     // 코어는 프레임을 모른다. 이 컴포넌트가 프레임 시간을 누산해 **정수 틱**으로 잘라
     // `BattleMatch.Tick()` 을 부른다. 그래서 슬로모·정지가 규칙을 건드리지 않는다 —
@@ -12,46 +16,212 @@ namespace Wassup.BattleCoreUnity
     //
     // `Time.timeScale` 을 쓰지 않는다. 전역 시간 배율은 UI 애니메이션·연출까지 같이
     // 끌고 가고, 이 프로젝트는 그래서 도메인 시간 제어(`TimeManager`)를 따로 두었다.
-    // 여기서는 «이 판의 틱만» 느려져야 한다.
+    // 여기서는 «이 판의 틱만» 느려져야 한다 — 발행률 = Battle 도메인 스케일.
+    //
+    // unit 5a 가 더한 것 셋:
+    //   ① **발행률을 `TimeManager` 에서 읽는다.** unit 1 은 자기 `_timeScale` 필드를 들고
+    //      있었는데, 그러면 「전투 시간의 주인」이 둘이 되고 카드 슬로모(0.3)가 이 판에만
+    //      안 걸린다. 그 필드와 `SetTimeScale` 은 은퇴했다(5a 「고친 것」).
+    //   ② **정의표를 짓는 문.** 스테이지 프리팹 → 격자·거점 → `MatchDefinitionBuilder`.
+    //   ③ **이벤트를 `ViewOrder` 로 정렬해 다시 방출한다** + 뷰가 보간할 읽기 모델.
     //
     // 이 컴포넌트는 **규칙을 하나도 소유하지 않는다.** 판정·상태·저장이 여기 들어오면
     // 그것이 새 브리지의 첫 줄이다(절대 제약 1).
     [DisallowMultipleComponent]
     public sealed class BattleDriver : MonoBehaviour
     {
-        [Header("틱 발행")]
-        [SerializeField, Min(0f), Tooltip("틱 발행률 배율. 1 = 실시간, 0 = 정지, 0.5 = 슬로모")]
-        private float _timeScale = 1f;
+        [Header("판 저작 (판 밖 → 정의표)")]
+        [Tooltip("매치 모드 SO. 비우면 판을 짓지 않는다 — 모드는 «어느 저작 자산을 쓸지» 고르는 축이다(계약 5).")]
+        [SerializeField] private MatchModeData _mode;
 
-        [SerializeField, Tooltip("한 프레임에 밀어 넣을 틱의 상한. 프레임이 튀었을 때 나선형 지연을 막는다")]
-        [Min(1)] private int _maxTicksPerFrame = 8;
+        [SerializeField] private DefenderUnitData[] _defenders = Array.Empty<DefenderUnitData>();
+        [SerializeField] private AttackDeck _deck;
+        [SerializeField] private WavePlanAsset _plan;
+        [SerializeField] private BonusWaveData _bonus;
+
+        [Tooltip("맵 스테이지 프리팹. 인스턴스가 곧 비주얼이고 격자·거점의 정본이다.")]
+        [SerializeField] private Wassup.Core.MapStage _stagePrefab;
+
+        [Tooltip("보드 평면 선언(격자). 비어 있으면 뷰가 sim→view 변환을 못 한다.")]
+        [SerializeField] private View.CoreBoardPlane _boardPlane;
+
+        [SerializeField, Min(0.01f)] private float _tileSize = 1f;
+
+        [Tooltip("재현의 두 축 중 하나(나머지는 modeId). 같은 값이면 같은 판이다.")]
+        [SerializeField] private int _seed = 1;
+
+        [SerializeField] private bool _beginOnStart = true;
+
+        [Header("틱 발행")]
+        [SerializeField, Min(1)]
+        [Tooltip("한 프레임에 밀어 넣을 틱의 상한. 프레임이 튀었을 때 나선형 지연을 막는다")]
+        private int _maxTicksPerFrame = 8;
 
         private BattleMatch _match;
+        private MatchDefinition _definition;
         private float _accumulator;
         private bool _paused;
 
-        /// <summary>
-        /// 틱이 돈 뒤 한 번, 그 틱에 배달된 사건 전부를 순서대로 방출한다.
-        /// 뷰 풀·HUD 는 각자 여기 붙는다 — 통합 뷰는 두지 않는다(UML §6).
-        /// </summary>
-        public event Action<CoreEvent> CoreEventRaised;
+        private Wassup.Core.MapStage _stageInstance;
+        private GeneratedMap _map;
+        private readonly List<StructureEntry> _stageStructures = new List<StructureEntry>();
+        private AttackUnitData[] _enemyAssets = Array.Empty<AttackUnitData>();
+        private readonly MatchViewAssets _viewAssets = new MatchViewAssets();
+
+        // ── 이벤트 방출 ───────────────────────────────────────────────────────
+        // C# 이벤트(`+=`)를 쓰지 않는 이유: 그 호출 순서는 곧 **씬 컴포넌트의 나열 순서**이고,
+        // 하이어라키에서 오브젝트 하나를 끌어 올리면 연출 순서가 조용히 뒤집힌다. 순서는
+        // `ViewOrder` 상수가 말한다 — 코어가 `EventOrder` 로 하는 것과 같은 결이다.
+        private readonly struct ViewSub
+        {
+            public readonly int Order;
+            public readonly Action<CoreEvent> Handler;
+            public ViewSub(int order, Action<CoreEvent> handler) { Order = order; Handler = handler; }
+        }
+
+        private readonly List<ViewSub> _subs = new List<ViewSub>(8);
+        // 방출 중에 구독이 바뀌어도(풀이 꺼지거나 켜져도) 이번 방출의 명단은 흔들리지 않는다.
+        private readonly List<ViewSub> _dispatch = new List<ViewSub>(8);
+        private bool _subsDirty;
+
+        // ── 읽기 모델 ────────────────────────────────────────────────────────
+        // 틱은 60Hz, 화면은 그보다 빠르거나 느리다. 뷰가 «틱 위치»를 그대로 쓰면 60Hz 계단이
+        // 보이므로 **직전 틱 위치와 현재 위치 사이를 보간**한다. 그 「직전」을 여기 든다.
+        // ⚠ 코어에 두지 않는다 — 보간은 화면의 사정이고, 코어에 들어가면 판이 프레임을 알게 된다.
+        private readonly Dictionary<int, float3> _prevPos = new Dictionary<int, float3>(256);
 
         public BattleMatch Match => _match;
+        public MatchDefinition Definition => _definition;
         public bool Paused => _paused;
-        public float TimeScale => _timeScale;
+        public bool Running => _match != null;
+        public float TileSize => _tileSize;
+
+        /// <summary>이 판에 세워진 스테이지 저작 거점 수. 「저작 = 월드」 대조의 왼쪽 항이다.</summary>
+        public int StageStructureCount => _stageStructures.Count;
+
+        /// <summary>격자 크기(셀). 뷰 소팅이 읽는다.</summary>
+        public int2 GridSize => _map.IsCreated ? _map.gridSize : default;
+
+        // ── 저작 자산 되찾기 ─────────────────────────────────────────────────
+        // 정의표는 plain 이라 스켈레톤·시트·프리팹을 모른다(계약 6). 그런데 뷰는 그것이 있어야
+        // 무엇을 그릴지 안다. 그래서 **인덱스**로 되찾는다 — 사건이 나르는 `DefIndex` 가
+        // 이 목록의 줄 번호다. 목록을 만드는 쪽과 인덱스를 매기는 쪽이 같아야 하므로
+        // 둘 다 `MatchDefinitionBuilder` 가 쓰는 것과 **같은 함수**에서 나온다.
+        public IReadOnlyList<DefenderUnitData> DefenderAssets => _defenders;
+        public IReadOnlyList<AttackUnitData> EnemyAssets => _enemyAssets;
+
+        /// <summary>탄·거점의 줄 번호 → 저작 에셋. **번호를 매긴 빌더가 직접 채운다**.</summary>
+        public MatchViewAssets ViewAssets => _viewAssets;
+
+        /// <summary>스테이지 저작 거점. 거점 프랍은 **맵 수명**이라 유닛 뷰 풀이 아니라 여기서 온다.</summary>
+        public IReadOnlyList<StructureEntry> StageStructures => _stageStructures;
+
+        /// <summary>
+        /// 틱 사이 보간 계수 [0,1). 뷰가 위치를 부드럽게 잇는 데 쓴다.
+        /// 정지 중에는 0 이다 — 멈춘 판에서 뷰가 계속 미끄러지면 안 된다.
+        /// </summary>
+        public float Alpha => _paused ? 0f : Mathf.Clamp01(_accumulator / BattleMatch.Dt);
+
+        /// <summary>판 위의 개체 전부. **읽기 전용**이다 — 뷰가 고치면 그것이 규칙이 된다.</summary>
+        public IReadOnlyList<Unit> Units => _match != null ? _match.World.Units : Array.Empty<Unit>();
+
+        public IReadOnlyList<Wassup.BattleCore.Combat.Projectile.Projectile> Projectiles
+            => _match != null ? _match.World.Projectiles
+                              : Array.Empty<Wassup.BattleCore.Combat.Projectile.Projectile>();
+
+        /// <summary>
+        /// 그 개체가 아직 판 위에 있나. **뷰의 자가 치유용**이지 정상 경로가 아니다 —
+        /// 모든 소멸은 소멸 이벤트를 낸다(계약 7). 여기서 유령이 잡히면 그것은 버그의 신호다.
+        /// </summary>
+        public bool IsAlive(SimEntityId id) => _match != null && _match.World.IsAlive(id);
+
+        public Unit Find(SimEntityId id) => _match?.World.Find(id);
+
+        /// <summary>
+        /// 이 프레임에 그릴 위치. 직전 틱 위치 → 현재 위치를 `Alpha` 로 보간한다.
+        /// 이번 틱에 태어난 개체는 「직전」이 없으므로 현재 위치를 그대로 쓴다(보간하면
+        /// 원점에서 날아온다).
+        /// </summary>
+        public bool TryGetRenderPosition(SimEntityId id, out float3 position)
+        {
+            var u = Find(id);
+            if (u == null) { position = default; return false; }
+            position = _prevPos.TryGetValue(id.Value, out var prev)
+                ? math.lerp(prev, u.Position, Alpha)
+                : u.Position;
+            return true;
+        }
+
+        /// <summary>
+        /// 뷰 풀이 자기 순서로 붙는 자리. `order` 가 낮을수록 먼저 받는다(`ViewOrder`).
+        /// 같은 값이면 구독한 차례 — 둘 다 결정론이다.
+        /// </summary>
+        public void Subscribe(int order, Action<CoreEvent> handler)
+        {
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
+            int at = _subs.Count;
+            while (at > 0 && _subs[at - 1].Order > order) at--;
+            _subs.Insert(at, new ViewSub(order, handler));
+            _subsDirty = true;
+        }
+
+        public void Unsubscribe(Action<CoreEvent> handler)
+        {
+            for (int i = _subs.Count - 1; i >= 0; i--)
+            {
+                if (_subs[i].Handler != handler) continue;
+                _subs.RemoveAt(i);
+                _subsDirty = true;
+                return;
+            }
+        }
+
+        private void Start()
+        {
+            if (_beginOnStart) Begin();
+        }
+
+        /// <summary>
+        /// 저작을 읽어 판을 짓고 건다. 스테이지가 없으면 **조용히 지나가지 않는다** —
+        /// 맵 없는 판은 적이 갈 곳이 없어 콘솔 에러 0 으로 아무 일도 일어나지 않는다.
+        /// </summary>
+        public void Begin()
+        {
+            if (_mode == null)
+            {
+                Debug.LogError("[BattleDriver] 매치 모드 SO 가 비었다 — 판을 짓지 않는다.", this);
+                return;
+            }
+            if (!BuildStage()) return;
+
+            // ⚠ **거점 목록을 반드시 넘긴다**(`55688ef5`). 격자 투영에는 셀과 진영밖에 없어
+            // 스탯이 없다 — 안 넘기면 마음 타워·본능이 한 기도 안 서고 콘솔 에러 0 으로
+            // 조용히 실패한다. 이 인자를 지우지 말 것.
+            // 적 목록은 **뷰도 같은 줄 번호로 읽어야** 해서 여기서도 한 번 모은다.
+            // 순수 함수라 아래 `Build` 안의 호출과 같은 배열이 나온다(그래서 둘이 안 갈린다).
+            _enemyAssets = MatchDefinitionBuilder.CollectEnemies(_deck, _plan, _bonus)
+                           ?? Array.Empty<AttackUnitData>();
+
+            var def = MatchDefinitionBuilder.Build(
+                _mode, _defenders, _deck, _plan, _bonus, _seed,
+                costRateMultiplier: 1f, map: in _map, tileSize: _tileSize,
+                structures: _stageStructures, viewAssets: _viewAssets);
+
+            Begin(def);
+        }
 
         /// <summary>판을 건다. 이미 걸려 있으면 교체한다(이전 판의 구독은 호출자가 정리한다).</summary>
         public void Begin(MatchDefinition definition)
         {
+            _definition = definition;
             _match = new BattleMatch(definition);
             _accumulator = 0f;
+            _prevPos.Clear();
             _match.Begin();
             DrainEvents();
         }
 
         public void Pause(bool paused) => _paused = paused;
-
-        public void SetTimeScale(float scale) => _timeScale = Mathf.Max(0f, scale);
 
         /// <summary>
         /// 커맨드를 건다. 코어가 그 자리에서 판정하고, 그 커맨드가 만든 사건도
@@ -68,13 +238,17 @@ namespace Wassup.BattleCoreUnity
         private void Update()
         {
             if (_match == null) return;
-            if (_paused || _timeScale <= 0f) { DrainEvents(); return; }
 
-            _accumulator += Time.unscaledDeltaTime * _timeScale;
+            // 발행률. 카드를 잡는 동안 0.3, 메뉴에서 0. 코어는 이 배율을 모른다(계약 5).
+            float rate = Mathf.Max(0f, TimeManager.Instance.ScaleOf(TimeDomain.Battle));
+            if (_paused || rate <= 0f) { DrainEvents(); return; }
+
+            _accumulator += Time.unscaledDeltaTime * rate;
 
             int ticks = 0;
             while (_accumulator >= BattleMatch.Dt && ticks < _maxTicksPerFrame)
             {
+                SnapshotPositions();
                 _accumulator -= BattleMatch.Dt;
                 _match.Tick();
                 ticks++;
@@ -87,13 +261,102 @@ namespace Wassup.BattleCoreUnity
             DrainEvents();
         }
 
+        // 「직전 틱의 위치」. 틱 **앞**에서 찍는다 — 뒤에서 찍으면 현재와 같아져 보간이 항등이 된다.
+        private void SnapshotPositions()
+        {
+            var units = _match.World.Units;
+            for (int i = 0; i < units.Count; i++) _prevPos[units[i].Id.Value] = units[i].Position;
+        }
+
         private void DrainEvents()
         {
             var events = _match.Events;
             if (events.Count == 0) return;
-            if (CoreEventRaised != null)
-                for (int i = 0; i < events.Count; i++) CoreEventRaised(events[i]);
+
+            if (_subsDirty)
+            {
+                _dispatch.Clear();
+                _dispatch.AddRange(_subs);
+                _subsDirty = false;
+            }
+
+            for (int i = 0; i < events.Count; i++)
+            {
+                var e = events[i];
+                for (int s = 0; s < _dispatch.Count; s++) _dispatch[s].Handler(e);
+            }
             _match.ClearEvents();
         }
+
+        // ── 스테이지 → 격자·거점 ─────────────────────────────────────────────
+        //
+        // 옛 브리지의 맵 빌드에서 **규칙에 필요한 것만** 옮겼다. 안 옮긴 것은 5a 의
+        // 「이식 제외」 표에 있다(맵 풀 선택·타일맵 페인팅·테마·카메라 bounds push).
+        private bool BuildStage()
+        {
+            TeardownStage();
+
+            if (_stagePrefab == null)
+            {
+                Debug.LogError("[BattleDriver] 맵 스테이지 프리팹이 없다 — 판을 짓지 않는다.", this);
+                return false;
+            }
+
+            // 루트는 원점·무회전·스케일 1 로 고정한다. 스캐너는 로컬(스케일 나눔)로 양자화하고
+            // 격자는 월드(스케일 곱)로 정렬하므로, 루트가 기울거나 늘어나면 프랍과 셀이
+            // **조용히** 어긋난다(옛 전투에서 실제로 잡힌 사고).
+            _stageInstance = Instantiate(_stagePrefab);
+            _stageInstance.name = _stagePrefab.name;
+            _stageInstance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            _stageInstance.transform.localScale = Vector3.one;
+
+            try
+            {
+                var scan = Wassup.Core.MapStageScanner.Scan(_stageInstance, _tileSize);
+                _map = DioramaMapBuilder.Assemble(scan, Unity.Collections.Allocator.Persistent);
+                _stageStructures.Clear();
+                _stageStructures.AddRange(scan.structures);
+                // 빌더와 같은 (y, x) 사전순 — 거점 인덱스가 저작 파일 순서에 흔들리지 않게.
+                _stageStructures.Sort(DioramaMapBuilder.CompareStructureRowMajor);
+            }
+            catch (Wassup.Data.MapGrid.MapGenerationFailedException ex)
+            {
+                Debug.LogError($"[BattleDriver] 스테이지 조립 실패 — {ex.Message}", this);
+                TeardownStage();
+                return false;
+            }
+
+            if (!MapConnectivity.AllSpawnsReachGoal(_map))
+            {
+                Debug.LogError("[BattleDriver] 스테이지 연결성 실패(스폰→골 도달 불가).", this);
+                TeardownStage();
+                return false;
+            }
+
+            // 보드 평면 선언. 뷰의 sim→view 는 전부 이 격자를 기준으로 돈다.
+            // sim origin 은 무조건 zero 다(맵 계약).
+            if (_boardPlane != null)
+                _boardPlane.Declare(_tileSize,
+                    _stageInstance.transform.TransformPoint(_stageInstance.gridOriginLocal));
+            else
+                Debug.LogWarning("[BattleDriver] 보드 평면이 배선되지 않았다 — 뷰가 sim→view 를 못 한다.", this);
+
+            return true;
+        }
+
+        private void TeardownStage()
+        {
+            if (_map.IsCreated) _map.Dispose();
+            _map = default;
+            _stageStructures.Clear();
+            if (_stageInstance != null)
+            {
+                if (Application.isPlaying) Destroy(_stageInstance.gameObject);
+                else DestroyImmediate(_stageInstance.gameObject);
+                _stageInstance = null;
+            }
+        }
+
+        private void OnDestroy() => TeardownStage();
     }
 }

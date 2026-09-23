@@ -206,11 +206,15 @@ namespace Wassup.BattleCore
                              SimEntityId.Match, SimEntityId.None,
                              Site.Nowhere, Site.Nowhere, Faction.None, (int)reason, battleTime);
 
+        // unit 5a — `DefIndex` 를 싣는다. 뷰 풀이 「어느 저작 줄인가」를 알아야 스켈레톤·시트를
+        // 고르는데, 사건에서 빠져 있으면 풀이 코어에 개체를 **되물어야** 한다. 스폰은 그 되묻기가
+        // 성립하는 몇 안 되는 사건이지만(개체가 막 태어났다), 그 예외를 허용하면 다음 사람이
+        // 소멸 사건에서도 같은 모양을 쓴다 — 계약 7 이 막는 것이 정확히 그 습관이다.
         public static CoreEvent Spawned(int tick, Unit u)
             => new CoreEvent(CoreEventKind.UnitSpawned, tick,
                              u.Id, SimEntityId.None,
                              new Site(u.Position, u.HitRadius), Site.Nowhere,
-                             u.Faction, (int)u.Kind, u.MaxHealth);
+                             u.Faction, (int)u.Kind, u.MaxHealth, u.DefIndex);
 
         // 발화 시점 몸 반경·자리를 **값으로** 싣는다 — 드레인 시점엔 이 개체가 없다.
         public static CoreEvent Destroyed(int tick, Unit u)

@@ -1,0 +1,40 @@
+namespace Wassup.BattleCoreUnity
+{
+    // battle-core-rebuild unit 5a — **뷰 사이의 순서 계약을 한 화면에 모은 곳.**
+    //
+    // 코어 `EventOrder` 의 뷰 쪽 짝이다. 코어가 담당자 사이의 차례를 구독 숫자로 적듯,
+    // Unity 층은 뷰 풀 사이의 차례를 여기 적는다. 「풀마다 자기 구독」(계약 12)이라
+    // 통합 뷰가 없고, 그러면 **누가 먼저 받느냐**를 말할 자리가 사라진다.
+    //
+    // ⚠ C# 이벤트 등록 순서에 기대지 않는다. 그 순서는 곧 **씬 컴포넌트의 나열 순서**이고,
+    // 하이어라키에서 오브젝트 하나를 끌어 올리면 연출 순서가 조용히 뒤집힌다. 그 버그는
+    // 씬을 만진 날이 아니라 그 다음 플레이에서 나온다.
+    //
+    // 오늘의 전순서(X3 — 「뷰 갱신 직전에 도약 채널을 비워야 1프레임 팝이 없다」):
+    //   도약 연출 → 유닛 동기 → 투사체 → 숫자·히트바 → 오버헤드
+    // 도약이 유닛 동기보다 **먼저**인 이유: 도약은 그 유닛의 뷰 위치를 덮어쓰고(비행),
+    // 유닛 동기가 그 덮어쓴 값을 읽는다. 순서가 뒤집히면 비행이 한 프레임 늦어 착지점에서
+    // 출발점으로 튀는 팝이 보인다.
+    //
+    // 값 사이를 10 씩 띄운 것은 나중에 사이에 끼울 자리를 남기기 위해서다.
+    public static class ViewOrder
+    {
+        /// <summary>관측·로그. 누구보다 먼저 — 뷰가 무엇을 하기 전의 사건을 남긴다.</summary>
+        public const int Trace = 0;
+
+        /// <summary>도약 연출. 비행 중 유닛 뷰 위치를 덮어쓴다(X3).</summary>
+        public const int Leap = 10;
+
+        /// <summary>유닛 뷰 생성·회수·모션. 도약의 덮어쓰기를 읽는다.</summary>
+        public const int Unit = 20;
+
+        /// <summary>투사체 뷰 생성·회수.</summary>
+        public const int Projectile = 30;
+
+        /// <summary>피해 숫자·히트바. 유닛 뷰가 선 뒤라야 앵커가 있다.</summary>
+        public const int Damage = 40;
+
+        /// <summary>오버헤드 UI·오라. 맨 뒤 — 위의 결과를 읽어 화면에 얹는다.</summary>
+        public const int Overhead = 50;
+    }
+}

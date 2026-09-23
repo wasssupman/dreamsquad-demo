@@ -39,10 +39,11 @@ namespace Wassup.BattleCoreUnity
                                             float costRateMultiplier = 1f,
                                             in GeneratedMap map = default,
                                             float tileSize = 1f,
-                                            System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null)
+                                            System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
+                                            MatchViewAssets viewAssets = null)
         {
             var enemies = CollectEnemies(deck, plan, bonus);
-            var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures);
+            var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures, viewAssets);
 
             def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
             def.WaveDeck = ToDeckDef(deck, enemies);
@@ -81,7 +82,8 @@ namespace Wassup.BattleCoreUnity
                                             ModeDef mode,
                                             in GeneratedMap map = default,
                                             float tileSize = 1f,
-                                            System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null)
+                                            System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
+                                            MatchViewAssets viewAssets = null)
         {
             var def = new MatchDefinition
             {
@@ -93,7 +95,7 @@ namespace Wassup.BattleCoreUnity
             };
             // unit 3 — 전투 저작(공격·탄·발사 명세)을 같은 줄에 채워 넣는다. **해시를 굽기 전**
             // 이어야 한다 — 뒤에 두면 「스탯을 바꿨는데 해시가 그대로」가 된다.
-            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures);
+            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, viewAssets);
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }

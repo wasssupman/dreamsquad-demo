@@ -31,6 +31,8 @@
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\BattleCoreUnity\**\*.cs" />
     <!-- unit 4 — 새 모드 SO. `Wassup.Runtime.dll` 은 에디터가 이 타입을 컴파일하기 전 것이라 여기 명시로 넣는다(에디터 재컴파일 뒤에는 중복이 아니라 «먼저 찾는 쪽»이 된다). -->
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\MatchModeData.cs" />
+    <!-- unit 5a — 뷰 설정 SO 7종. 같은 이유(에디터가 아직 컴파일한 적 없는 새 타입)로 명시한다. -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\BattleView\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,6 +50,8 @@
     <Reference Include="$(UnityScriptAssemblies)/Unity.Entities.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.Transforms.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.TextMeshPro.dll" Private="false" />
+    <!-- unit 5a — 오버헤드 바가 uGUI(Canvas·CanvasScaler)를 쓴다. 패키지 어셈블리라 UnityEngine 모듈 폴더에 없다. -->
+    <Reference Include="$(UnityScriptAssemblies)/UnityEngine.UI.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.InputSystem.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/spine-unity.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/spine-csharp.dll" Private="false" />

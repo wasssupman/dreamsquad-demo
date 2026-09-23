@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7084c21e5bb468ba31be4afe8dd4117, type: 3}
+  m_Name: LeapVisualConfig
+  m_EditorClassIdentifier: 
+  bossTotalSeconds: 0.83
+  bossRecoilSeconds: 0.14
+  bossRecoilDip: 0.35
+  bossArcHeightFactor: 0.5
+  bossArcMinHeight: 6
+  bossLaunchControl: {x: 0.25, y: 1}
+  bossLandingHeight: 0.25
+  bossHangPower: 0.7
+  bossLandingSquash: 0.1
+  bossLandingSquashSeconds: 0.05
+  ultimateAscendSeconds: 0.45
+  ultimateDescendSeconds: 0.25
+  ultimateHeight: 14
+  ultimateLandingSquash: 0.14
+  ultimateLandingSquashSeconds: 0.06
