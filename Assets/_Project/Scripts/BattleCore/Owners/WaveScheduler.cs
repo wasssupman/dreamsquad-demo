@@ -97,6 +97,68 @@ namespace Wassup.BattleCore
 
         public bool BonusOffered => _bonusOfferLatched;
 
+        // ── 예고(unit 5b) ────────────────────────────────────────────────────
+        //
+        // 옛 브리지는 웨이브를 큐에 올릴 때 예보 배열을 **한 번 구워** 들고 있었다. 여기서는
+        // 대기열이 이미 정본이라 굽지 않고 **읽는다** — 구워 두면 당김·보너스가 대기열을
+        // 바꿨을 때 예보만 옛 값으로 남는다.
+
+        /// <summary>아직 안 나온 스폰의 (레인 × 경로)별 **첫 시각**. 예고선 한 줄의 입력이다.</summary>
+        public readonly struct SpawnForecast
+        {
+            /// <summary>스폰 레인 번호. 입구 칸이 여기서 나온다.</summary>
+            public readonly int Lane;
+
+            /// <summary>저작 경로 번호. 웨이포인트 목록이 여기서 나온다.</summary>
+            public readonly int PathIndex;
+
+            /// <summary>그 줄의 적(통행 층을 읽는다). 한 레인에 여러 종이면 **먼저 나올 쪽**.</summary>
+            public readonly int EnemyIndex;
+
+            /// <summary>전투 시계 기준 첫 등장 시각(초).</summary>
+            public readonly float FirstSpawnSec;
+
+            public SpawnForecast(int lane, int pathIndex, int enemyIndex, float firstSpawnSec)
+            {
+                Lane = lane;
+                PathIndex = pathIndex;
+                EnemyIndex = enemyIndex;
+                FirstSpawnSec = firstSpawnSec;
+            }
+        }
+
+        /// <summary>
+        /// 예보를 채운다. 반환 = 항목 수.
+        ///
+        /// ⚠ **보너스는 세지 않는다.** 본류와 코드 경로를 공유하지 않는 별도 큐·포탈이고
+        /// (`PullBonus` 가 커맨드부터 별개인 이유), 예고선도 그 구분을 따른다.
+        /// 순서는 **대기열의 삽입 순서**다 — 시간으로 정렬하면 같은 시각의 동률을 정렬
+        /// 안정성이 정하게 되고, 그 순간 뷰 풀 인덱스가 판마다 달라진다.
+        /// </summary>
+        public int CollectForecast(List<SpawnForecast> into)
+        {
+            if (into == null) return 0;
+            into.Clear();
+            for (int i = 0; i < _pending.Count; i++)
+            {
+                var s = _pending[i];
+                if (s.Bonus) continue;
+
+                int at = -1;
+                for (int k = 0; k < into.Count; k++)
+                    if (into[k].Lane == s.Lane && into[k].PathIndex == s.PathIndex) { at = k; break; }
+
+                if (at < 0)
+                {
+                    into.Add(new SpawnForecast(s.Lane, s.PathIndex, s.EnemyIndex, s.AtSec));
+                    continue;
+                }
+                if (s.AtSec >= into[at].FirstSpawnSec) continue;
+                into[at] = new SpawnForecast(s.Lane, s.PathIndex, s.EnemyIndex, s.AtSec);
+            }
+            return into.Count;
+        }
+
         /// <summary>
         /// 보너스 당김 억제. **판 경계 리셋에서 지우지 않는다**(X6) — 판 시작 **전** 외부
         /// 주입이라, 리셋에 넣으면 켜 둔 억제가 판 시작에 지워진다. 다른 모든 보너스 상태와

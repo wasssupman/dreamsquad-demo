@@ -38,6 +38,7 @@ namespace Wassup.BattleCore
         private readonly GimmickHost _gimmick;
 
         private readonly CommandPhase _commands;
+        private readonly AiMovePhase _aiMove;
         private readonly FieldPrepPhase _fieldPrep;
         private readonly MapRuntime _map;
         private readonly SeamHooks _seams;
@@ -82,12 +83,17 @@ namespace Wassup.BattleCore
 
             _commands = new CommandPhase(_world, _clock, _def, _map, _placement, _cost, _waves, _hand);
 
+            // 이동 단계는 **붙들어 둔다**(unit 5b). 거점 선택의 후보 배열이 그 안에 있고,
+            // 예고선이 같은 답을 받아야 하기 때문이다(M18) — 배열을 밖으로 복제하는 대신
+            // 「고르는 자」에게 물으러 간다.
+            _aiMove = new AiMovePhase(_map, chasePool);
+
             // 틱 순서. **순서를 바꾸는 것은 규칙을 바꾸는 것**이므로 그때 같은 커밋에서 근거를 남긴다.
             _pipeline = new TickPipeline(new ITickPhase[]
             {
                 _commands,                              // phase 0 — Immediate seam
                 _fieldPrep,                             // unit 2 — 장애물·어그로·사냥판·순찰
-                new AiMovePhase(_map, chasePool),       // unit 2 — 상태·도발·거점·감지·이동·분리
+                _aiMove,                                // unit 2 — 상태·도발·거점·감지·이동·분리
                 new TickProjectilePhase(_map),          // unit 3 — 발사 요청·궤적·착탄
                 new CombatPhase(_map),                  // unit 3 — 공격·피해·사망·도약
                 // ── unit 4: 담당자 단계 ──
@@ -142,6 +148,13 @@ namespace Wassup.BattleCore
         }
 
         public MapRuntime Map => _map;
+
+        /// <summary>
+        /// 이동 단계. 뷰가 읽는 것은 **거점 선택 하나**다(`TryPickStructure` — M18).
+        /// 상태를 고치는 통로가 아니다 — 예고선이 「적이 어디로 갈까」를 이동과 같은 자로
+        /// 묻기 위한 창구이고, 그 외의 용도로 늘리면 그것이 새 브리지의 첫 줄이다.
+        /// </summary>
+        public AiMovePhase AiMove => _aiMove;
 
         /// <summary>트리거 레이어(unit 7)가 여기 등록한다. 등록은 **틱 밖**에서만.</summary>
         public SeamHooks Seams => _seams;

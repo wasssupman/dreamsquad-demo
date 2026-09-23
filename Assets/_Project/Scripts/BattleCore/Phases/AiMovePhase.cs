@@ -112,6 +112,37 @@ namespace Wassup.BattleCore
             }
         }
 
+        // ── 거점 선택의 창구(M18) ─────────────────────────────────────────────
+        //
+        // **예고선이 「어디로 갈까」를 묻는 자리다.** 후보 배열도 정렬도 생존·방패 반영도
+        // 전부 이 클래스의 것이고, 밖으로 내보내는 것은 **답 하나**다.
+        //
+        // 배열을 그대로 빌려주지 않는 이유: 빌려주면 부르는 쪽이 자기 필터를 한 줄 얹게 되고,
+        // 그 한 줄이 곧 두 번째 자다. 옛 전투가 정확히 그렇게 갈렸다 — 브리지가 후보를 다시
+        // 모으고 `StructureChoice` 만 공유했는데, 방패 배제가 한쪽에만 들어가 **예고선은
+        // 마음으로 가는 길을 그리는데 적은 본능으로 갔다.**
+
+        /// <summary>거점 후보 수(저작 자리). 판 중에 늘거나 줄지 않는다.</summary>
+        public int StructureCount => _structCount;
+
+        /// <summary>
+        /// 그 자리에서 이 마스크로 갈 거점. 없으면 false — 그때는 골이 목적지다.
+        ///
+        /// ⚠ **이동이 매 틱 쓰는 그 배열 그대로** 고른다(`_structLiveFaction` — 죽은 자리와
+        /// 방패에 가린 마음은 0 이라 어떤 마스크도 안 문다). 이 함수가 도는 시점이 틱 밖이면
+        /// 값은 「마지막 틱의 생존」이고, 그것이 예고선이 원하는 답이다.
+        /// </summary>
+        public bool TryPickStructure(float2 from, int targetMask, out int2 cell)
+        {
+            cell = default;
+            if (_structCount == 0) return false;
+            int pick = StructureChoice.NearestIndex(
+                from, _structPos, _structLiveFaction, _structCount, targetMask);
+            if (pick < 0) return false;
+            cell = _structCell[pick];
+            return true;
+        }
+
         public void Run(TickContext ctx)
         {
             if (_map == null || _map.Snapshot.CellCount == 0) return;

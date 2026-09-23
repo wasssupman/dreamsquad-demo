@@ -9,11 +9,17 @@ namespace Wassup.BattleCore
     //
     // 판정 순서가 규칙이다(「구조 &gt; 자원」):
     //
-    //     페이즈 → [정의표 참조] → 공간 → 로스터 → 재배치 대기 → 보드 상한 → 코스트
+    //     페이즈 → [정의표 참조] → 공간 → 로스터 → 보드 상한 → 재배치 대기 → 코스트
     //
     // 대괄호는 규칙이 아니라 **계산의 전제**다 — 정의표 줄을 못 읽으면 footprint 도 층도
     // 모르므로 공간을 물을 수조차 없다. spec 의 나열(페이즈 → 공간 → 유닛 유효 → …)에서
     // 이 한 칸만 앞으로 당겼고 그 이유가 이것이다.
+    //
+    // unit 5b — **보드 상한이 재배치 대기보다 앞으로 왔다.** 둘 다 「구조」라 그 사이의
+    // 순서는 규칙이 아니라 «둘 다 걸렸을 때 무엇을 말해 주나» 이고, 옛 트레이는 그 답을
+    // 「소진 &gt; 쿨타임」으로 이미 정해 두었다(도색 우선순위). 뒤쪽 뒤에 두면 상한 1 짜리
+    // 유닛이 「재배치 대기 중」이라고 답해 **플레이어가 기다리면 된다고 배운다** — 거짓이다.
+    // 자세한 근거는 `SlotBlock` 헤더에 있다.
     //
     // 코스트가 **마지막**인 것이 「구조 &gt; 자원」의 이행이다: 못 놓을 자리에 놓으려 했을 때
     // 「돈이 없다」고 답하면 플레이어가 배우는 것이 틀린다(P6 — 성공 판정 → 차감).
@@ -232,15 +238,42 @@ namespace Wassup.BattleCore
             }
             if (!_map.Occupancy.IsFree(anchor, w, h)) return RejectReason.Occupied;
 
+            // ③~⑥ 은 자리를 묻지 않는다 — 트레이 도색이 같은 답을 받아야 해서
+            // **한 함수**로 뽑아 뒀다(`SlotBlock`).
+            return SlotBlock(defIndex);
+        }
+
+        /// <summary>
+        /// 「이 슬롯을 지금 못 쓰는 이유」 — **자리 없이** 묻는 판정. `RejectReason.None` = 쓸 수 있다.
+        ///
+        /// 트레이가 이것을 읽는다. 트레이가 자기 셈(「판 위에 몇이지 / 쿨이 남았나 / 살 수 있나」)을
+        /// 가지면 드롭 거절과 **다른 답**을 낼 수 있고, 그 순간 화면이 규칙을 틀리게 가르친다.
+        ///
+        /// 순서는 「**소진 &gt; 쿨타임 &gt; 코스트**」다 — 옛 트레이의 도색 우선순위 그대로이고,
+        /// 그것이 옳은 이유는 **소진이 더 오래 가는 답**이기 때문이다. 상한 1 짜리 유닛은
+        /// 쿨이 끝나도 여전히 못 놓는다(판 위의 그 유닛이 사라져야 열린다). 둘 다 걸렸을 때
+        /// 「재배치 대기 중」이라고 답하면 플레이어는 기다리면 된다고 배운다 — 거짓이다.
+        ///
+        /// 자원이 **마지막**인 것은 그대로다(「구조 &gt; 자원」 — P6).
+        /// </summary>
+        public RejectReason SlotBlock(int defIndex)
+        {
+            if (_clock.Ended) return RejectReason.MatchEnded;
+            if (_clock.Phase == MatchPhase.Placement && !_inputEnabledDuringPlacement)
+                return RejectReason.NotRunningOrPlacementClosed;
+
+            if (defIndex < 0 || defIndex >= _def.Units.Length) return RejectReason.InvalidUnit;
+            ref var d = ref _def.Units[defIndex];
+
             // ③ 로스터.
             if (!InRoster(defIndex)) return RejectReason.NotInPickedPool;
 
-            // ④ 재배치 대기.
-            if (!IsReady(defIndex)) return RejectReason.OnCooldown;
-
-            // ⑤ 보드 상한. 유닛 저작과 모드 상한이 **둘 다** 걸린다.
+            // ④ 보드 상한(소진). 유닛 저작과 모드 상한이 **둘 다** 걸린다.
             if (OnBoard(defIndex) >= d.EffectiveMaxOnBoard) return RejectReason.LimitReached;
             if (_boardCap > 0 && OnBoardTotal() >= _boardCap) return RejectReason.LimitReached;
+
+            // ⑤ 재배치 대기(쿨타임).
+            if (!IsReady(defIndex)) return RejectReason.OnCooldown;
 
             // ⑥ 자원. 마지막이다.
             if (!_cost.CanAfford(d.Cost)) return RejectReason.InsufficientCost;
