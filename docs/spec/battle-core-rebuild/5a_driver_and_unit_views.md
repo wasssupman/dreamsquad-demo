@@ -75,6 +75,7 @@
 | 새 뷰 `CoreStructurePropLayer`(spec 목록 밖) | 거점 프랍은 **맵 수명**이라 유닛 뷰 풀이 들 수 없다(판이 시작되기 전부터 서 있다). 옛 전투도 같은 판단이었다(`SpawnStructureViews` 가 맵 빌드 소유). 「빈 풀 금지」와 무관하다 — 이 뷰는 구독할 사건이 없는 것이 아니라 **사건이 필요 없다** |
 | 새 뷰 `CoreBoardPlane`(spec 목록 밖) | 뷰는 전부 `BoardSpace.ToView` 로 화면에 놓이고 그 변환의 권위는 격자다. 옛 전투는 타일맵 뷰가 그 일을 겸했는데(바닥+오버레이+평면 선언) 셋 중 **평면 선언만** 이 unit 에 필요하다 |
 | Check lane csproj 에 `Data/BattleView/**` 글롭 + `UnityEngine.UI.dll` 참조 | 새 타입이라 stale `Wassup.Runtime.dll` 에 없고, 오버헤드 바가 uGUI 를 쓴다 |
+| **`MatchDefinitionBuilder.ToUnitDef` 가 배치 저작 7칸을 싣는다**(코스트 · 연사 게이트 · 사망/퇴근 대기 · 판 위 상한 · 배치 모션 · 각성 보상) — 사용자 플레이 1차 | unit 4 가 `UnitDef` 에 그 칸들을 더했는데 변환은 unit 1 의 모양 그대로였다. 증상은 **트레이 코스트 칩이 전부 0**(= 배치가 공짜라 코스트 경제가 통째로 없다)이었고, 나머지 여섯은 기본값이 그럴듯해 **안 보였다**: 상한 0 은 1 로 접히고, 쿨타임 0 은 「항상 준비됨」, 배치 모션 0 은 **배치 페이즈 자체를 없앤다**(`hasDeployPhase` false). 콘솔 에러도 빨간 테스트도 안 났다. 실어 보내는 것은 **날 저작값**이고 「0 이면 무슨 뜻인가」의 해석은 코어 `Effective*` 가 한다(두 곳에서 접으면 답이 갈린다). ⚠ **골든 재굽기 없음** — 코퍼스는 SO 가 아니라 in-code 고정구로 짓는다(`CoreGoldenCorpus`). 다만 `cost` 등이 canonical text 에 있어 **라이브 정의표의 `configHash` 는 바뀐다** |
 
 ## 규칙 장부 매핑 (unit 5 귀속 5행)
 

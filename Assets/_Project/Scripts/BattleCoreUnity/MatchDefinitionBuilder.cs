@@ -199,6 +199,15 @@ namespace Wassup.BattleCoreUnity
         /// 방어유닛 SO 한 장 → 정의표 한 줄. `public` 인 이유: 순찰 소환물처럼 **카탈로그에
         /// 없는** 에셋을 unit 3 의 전투 빌더가 표에 편입해야 한다(그쪽이 같은 변환을 복제하면
         /// 두 벌이 갈린다).
+        ///
+        /// ⚠ **정의표에 칸이 늘면 이 함수도 같이 는다.** unit 4 가 배치 저작 일곱 칸(코스트 ·
+        /// 연사 게이트 · 사망/퇴근 대기 · 판 위 상한 · 배치 모션 · 각성 보상)을 `UnitDef` 에
+        /// 더했는데 이 변환은 unit 1 의 모양 그대로였다 — 그래서 **판 전체가 공짜였고**(트레이
+        /// 코스트 칩 0), 상한은 1 로 접히고, 배치 모션 0 이라 배치 페이즈 자체가 없었다.
+        /// 「기본값이 그럴듯해서 안 보이는 미싱」이라 콘솔 에러도 테스트 빨강도 안 났다.
+        ///
+        /// 실어 보내는 것은 **날 저작값**이고 「0 이면 무슨 뜻인가」의 해석은 코어의
+        /// `Effective*` 가 한다 — 두 곳에서 접으면 언젠가 두 답이 갈린다.
         /// </summary>
         public static UnitDef ToUnitDef(DefenderUnitData d)
         {
@@ -221,6 +230,16 @@ namespace Wassup.BattleCoreUnity
                 AggroCapacity = d.aggroCapacity,
                 TargetFactions = (int)d.targetFactions,
                 MoveSpeed = d.moveSpeed,
+
+                // ── unit 4 배치 저작 ──────────────────────────────────────────
+                Cost = d.cost,
+                PlacementCooldown = d.placementCooldown,
+                DeathCooldown = d.deathCooldown,
+                RetireCooldownRatio = d.retireCooldownRatio,
+                MaxOnBoard = d.maxOnBoard,
+                // 저작 초가 아니라 **모션에서 파생된** 값이고 그 파생은 소유자(SO)가 한다.
+                DeployMotionSeconds = d.DeployMotionSeconds,
+                AwakeningReward = d.awakeningReward,
             };
         }
 
