@@ -1,7 +1,7 @@
 LTV0
 channels=core
 scenario=detour_obstacle
-configHash=66415fd78ccb20ae
+configHash=5e47038f37071571
 matchSeed=2002
 stepDt=0.0166666675
 tickCount=1800

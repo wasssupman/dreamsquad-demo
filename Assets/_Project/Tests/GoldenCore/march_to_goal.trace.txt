@@ -1,7 +1,7 @@
 LTV0
 channels=core
 scenario=march_to_goal
-configHash=5296ef62fbdd49c7
+configHash=3d6441dc0907d17a
 matchSeed=2001
 stepDt=0.0166666675
 tickCount=1800
@@ -13,13 +13,13 @@ events=13
 22 1 4 -1 2 100000
 42 1 5 -1 2 100000
 42 1 6 -1 2 100000
-317 4 2 -1 1 0
-323 4 1 -1 1 0
-339 4 3 -1 1 0
-342 4 4 -1 1 0
+319 4 2 -1 1 0
+322 4 1 -1 1 0
+339 4 4 -1 1 0
+340 4 3 -1 1 0
 359 4 5 -1 1 0
-359 4 6 -1 1 0
+361 4 6 -1 1 0
 finalKills=0
 finalScore=0
 finalLeaks=0
-finalStateHash=F9F8380BF57959B6
+finalStateHash=8D3159556BE56F88
