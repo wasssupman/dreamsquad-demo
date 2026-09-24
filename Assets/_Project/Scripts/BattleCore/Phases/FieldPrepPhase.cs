@@ -12,7 +12,11 @@ namespace Wassup.BattleCore
     //   ② 어그로 상태(만료 · 가디언 사망 해제 · 수용량 재계산)
     //   ③ 공용 사냥판(무제한 감지용)
     //   ④ 순찰 스텝
-    //   ⑤ 지속 피해 틱(unit 6a) — **이동 앞**이다(옛 `DotApplySystem` 의 자리와 같다).
+    //   ⑤ 존 장판(unit 6b) — 수명 → 멤버십 → 부여. 옛 `HazardLifetimeSystem`(1) ·
+    //      `ZoneApplySystem`(5) 의 자리 = **이동 앞, 지속 피해 틱 앞**. 그래서 장판이 건 지속
+    //      피해는 같은 틱에 첫 지급이 난다(F7 「진입 즉시 1회」가 옛 16번과 같은 틱이다).
+    //   ⑥ 아군 버프 장 재발행(unit 6b) — 옛 `AllyBuffFieldSystem`(3) 의 자리(이동 앞).
+    //   ⑦ 지속 피해 틱(unit 6a) — **이동 앞**이다(옛 `DotApplySystem` 의 자리와 같다).
     //      여기서 인박스에 넣으면 같은 틱의 피해 단계(`CombatPhase`)가 소비한다.
     //
     // ⚠ **장애물이 바뀌면 어그로가 풀린다**(M10 의 「리무버 둘」 중 둘째). 그 경로가 없으면
@@ -90,10 +94,238 @@ namespace Wassup.BattleCore
             StepAggro(ctx);
             RebuildHuntField(ctx);
             StepPatrol(ctx);
+            StepZones(ctx);
+            StepAllyFields(ctx);
             StepDot(ctx);
         }
 
-        // ── ⑤ 지속 피해 ──────────────────────────────────────────────────────
+        // ── ⑤ 존 장판 ────────────────────────────────────────────────────────
+        //
+        // ⚠ **멤버십은 스냅샷이 아니다.** 매 틱 다시 판정하므로 들어온 적도 걸리고 나간 적은
+        // 풀린다 — 「풀린다」의 시간은 슬롯을 지우는 것이 아니라 `RestDuration` 이다(F17).
+        // ⚠ **겹친 장판은 한 번만, 가장 강한 값으로 쓴다**(F23). 장판마다 쓰면 승자가 순회
+        // 순서가 된다 — 새 코어에서 순서는 결정론적이지만, 그러면 「나중에 깐 약한 장판이
+        // 먼저 깐 강한 장판을 덮는다」가 규칙이 된다. 규칙은 순서가 아니라 세기여야 한다.
+        private void StepZones(TickContext ctx)
+        {
+            var world = ctx.World;
+            var zones = world.Hazards;
+            if (zones.Count == 0) return;
+
+            // 수명 — 0 이하가 되는 틱에 사라지고 **그 틱에는 효과를 안 건다**(옛 ECB 즉시 재생).
+            _zoneGone.Clear();
+            for (int z = 0; z < zones.Count; z++)
+            {
+                zones[z].Remaining -= ctx.Dt;
+                if (zones[z].Remaining <= 0f) _zoneGone.Add(zones[z].Id);
+            }
+            for (int i = 0; i < _zoneGone.Count; i++) world.DestroyHazard(_zoneGone[i], ctx.Tick);
+            if (zones.Count == 0) return;
+
+            var hazards = ctx.Def.Hazards;
+            float inv = _map.TileSize > 1e-6f ? 1f / _map.TileSize : 1f;
+            var units = world.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                if (u.Dead || u.Deploying) continue;
+                // 거점은 전면 면역(F3) — 지속 피해 관문은 이 술어를 안 지나므로 여기서 거른다.
+                if (!EffectEligibility.AcceptsModifier(u)) continue;
+                byte theirs = u.Move != null ? u.Move.TraversalLayers : (byte)0;
+
+                ZoneFold fold = default;
+                fold.Reset();
+                for (int z = 0; z < zones.Count; z++)
+                {
+                    var h = zones[z];
+                    if (h.RadiusTiles < 0) continue;                       // F18 — 효과 없는 존
+                    if (h.DefIndex < 0 || h.DefIndex >= hazards.Length) continue;
+                    ref var hd = ref hazards[h.DefIndex];
+                    if (hd.EffectCount == 0) continue;
+                    if (!LayerBits.CanTarget(h.TargetLayers, theirs)) continue;   // F15 — 0 = 필터 없음
+                    // 제약 13 — 존은 「자리에 떨어지는 것」이다. 원점 항은 칸 반폭이고 깐 자의 몸은 안 붙는다.
+                    if (!Wassup.Skills.SkillMath.ReachFromCell(
+                            (u.Position.x - h.Center.x) * inv, (u.Position.z - h.Center.z) * inv,
+                            h.RadiusTiles, u.HitRadius)) continue;
+
+                    for (int e = 0; e < hd.EffectCount; e++)
+                    {
+                        ref var eff = ref hd.Effects[e];
+                        // F34 — 진영은 **저작 축**이다. 하드 게이트가 아니다.
+                        if (((int)u.Faction & eff.TargetFactions) == 0) continue;
+                        fold.Add(in eff, h.Id);
+                    }
+                }
+                if (fold.Any) ApplyZoneFold(ctx, u, ref fold);
+            }
+        }
+
+        private static void ApplyZoneFold(TickContext ctx, Unit u, ref ZoneFold f)
+        {
+            // 감속 — 군중 제어가 아니라 **이동속도 모디파이어**(6a 구현 9). 출처를 비워 한 슬롯을
+            // 나눠 쓴다(옛 `source = Entity.Null`) — 장판 id 를 넣으면 겹칠 때 곱으로 쌓인다.
+            if (f.HasSlow)
+                Effects.EffectApply.Stat(ctx, SimEntityId.None, null, u,
+                                         Effects.StatKind.MoveSpeedMul, Effects.CombineOp.Multiplicative,
+                                         f.SlowMagnitude, f.SlowRest, new Effects.SlotTag(Effects.SlotKind.Zone),
+                                         0f, Effects.ModifierOrigin.Zone);
+
+            // 지속 피해 — 출처는 **언제나 장판**(F16). 원소마다 한 슬롯.
+            for (int el = 0; el < ZoneFold.ElementCount; el++)
+            {
+                if (!f.DotHas[el]) continue;
+                Effects.EffectApply.Dot(ctx, f.DotSource[el], u, Effects.DotOrigin.Zone,
+                                        (Effects.DotElement)el, f.DotScalar[el], f.DotInterval[el], f.DotRest[el]);
+            }
+
+            // 행동 불능 — 문은 `RequestCc` 하나다(거점·보스 면역이 거기 있다). 같은 틱의 피해
+            // 단계 후처리가 슬롯에 옮긴다.
+            if (f.StunRest > 0f)
+                ctx.World.RequestCc(CcRequest.Of(u.Id, CcRequestKind.Stun, f.StunRest, f.StunSource));
+            if (f.SleepRest > 0f)
+                ctx.World.RequestCc(CcRequest.Of(u.Id, CcRequestKind.Sleep, f.SleepRest, f.SleepSource));
+        }
+
+        // 한 대상이 이번 틱에 겹쳐 선 장판들의 **접힌 결과**. 스택 위 값이라 할당이 없다.
+        private struct ZoneFold
+        {
+            public const int ElementCount = 5;   // `DotElement` None..Poison
+
+            public bool Any;
+            public bool HasSlow;
+            public float SlowMagnitude, SlowRest;
+            public bool[] DotHas;
+            public float[] DotScalar, DotInterval, DotRest;
+            public SimEntityId[] DotSource;
+            public float StunRest, SleepRest;
+            public SimEntityId StunSource, SleepSource;
+
+            public void Reset()
+            {
+                Any = false;
+                HasSlow = false;
+                SlowMagnitude = 1f;
+                SlowRest = 0f;
+                StunRest = SleepRest = 0f;
+                StunSource = SleepSource = SimEntityId.None;
+                if (DotHas == null)
+                {
+                    DotHas = s_dotHas; DotScalar = s_dotScalar; DotInterval = s_dotInterval;
+                    DotRest = s_dotRest; DotSource = s_dotSource;
+                }
+                for (int i = 0; i < ElementCount; i++)
+                {
+                    DotHas[i] = false;
+                    DotScalar[i] = DotInterval[i] = DotRest[i] = 0f;
+                    DotSource[i] = SimEntityId.None;
+                }
+            }
+
+            public void Add(in HazardEffectDef eff, SimEntityId zone)
+            {
+                switch ((HazardEffectKind)eff.Kind)
+                {
+                    case HazardEffectKind.Slow:
+                        SlowMagnitude = HasSlow
+                            ? Effects.FieldFold.Strongest(Effects.CombineOp.Multiplicative, SlowMagnitude, eff.Magnitude)
+                            : eff.Magnitude;
+                        SlowRest = math.max(SlowRest, eff.RestDuration);
+                        HasSlow = true;
+                        Any = true;
+                        break;
+                    case HazardEffectKind.DoT:
+                    {
+                        int el = eff.Element;
+                        if (el < 0 || el >= ElementCount) break;
+                        // 같은 원소끼리는 **센 쪽의 요율·주기**가 이긴다. 남은 여유는 긴 쪽.
+                        if (!DotHas[el] || eff.Magnitude > DotScalar[el])
+                        {
+                            DotScalar[el] = eff.Magnitude;
+                            DotInterval[el] = eff.TickInterval;
+                            DotSource[el] = zone;
+                        }
+                        DotRest[el] = math.max(DotRest[el], eff.RestDuration);
+                        DotHas[el] = true;
+                        Any = true;
+                        break;
+                    }
+                    case HazardEffectKind.Stun:
+                        if (eff.RestDuration > StunRest) { StunRest = eff.RestDuration; StunSource = zone; }
+                        Any = true;
+                        break;
+                    case HazardEffectKind.Sleep:
+                        if (eff.RestDuration > SleepRest) { SleepRest = eff.RestDuration; SleepSource = zone; }
+                        Any = true;
+                        break;
+                    // `Impulse` — **방향이 없다**(옛 저작도 벡터 0). 방향을 모르는 대상은 밀지 않는다(C8).
+                    // 「이식 제외」 표에 있다.
+                }
+            }
+
+            // 단일 스레드라 한 벌이면 된다(계약 6 — 틱 중 할당 0).
+            private static readonly bool[] s_dotHas = new bool[ElementCount];
+            private static readonly float[] s_dotScalar = new float[ElementCount];
+            private static readonly float[] s_dotInterval = new float[ElementCount];
+            private static readonly float[] s_dotRest = new float[ElementCount];
+            private static readonly SimEntityId[] s_dotSource = new SimEntityId[ElementCount];
+        }
+
+        // ── ⑥ 아군 버프 장 ────────────────────────────────────────────────────
+        //
+        // 안에 선 **배치 완료** 방어유닛에게 매 틱 짧은 모디파이어를 재발행한다. 이탈·만료·사망이
+        // 전부 «재발행이 멈춘다»로 처리된다(회수 원시연산 불요). 겹치면 스탯마다 가장 강한 값(F23).
+        // ⚠ 제약 13 — 아군 **장판**은 「자리에 떨어지는 것」(칸 반폭)이다. 드림캐쳐 **오라**는
+        // 몸형이고(숙주 `HitRadius`) 그 생산자는 unit 7 이다 — 둘을 한 자로 재지 말 것.
+        private void StepAllyFields(TickContext ctx)
+        {
+            var fields = ctx.World.Fields;
+            bool any = false;
+            for (int f = 0; f < fields.Count; f++) if (fields[f].Kind == FieldKind.AllyBuff) { any = true; break; }
+            if (!any) return;
+
+            float inv = _map.TileSize > 1e-6f ? 1f / _map.TileSize : 1f;
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                if (u.Kind != UnitKind.Defender || u.Dead || u.Deploying) continue;
+
+                for (int s = 0; s < _allyBest.Length; s++) _allyBest[s] = 0f;
+                for (int f = 0; f < fields.Count; f++)
+                {
+                    var fc = fields[f];
+                    if (fc.Kind != FieldKind.AllyBuff) continue;
+                    if (!Wassup.Skills.SkillMath.ReachFromCell(
+                            (u.Position.x - fc.Center.x) * inv, (u.Position.z - fc.Center.z) * inv,
+                            fc.Range, u.HitRadius)) continue;
+                    int s = (int)fc.Stat;
+                    if (s < 0 || s >= _allyBest.Length) continue;
+                    // 올리는 장이다 — 배율이 클수록 세다(옛 `max`). 버킷 분류는 아래 한 곳.
+                    if (fc.Magnitude > _allyBest[s])
+                    {
+                        _allyBest[s] = fc.Magnitude;
+                        _allyRefresh[s] = fc.RefreshSeconds > 0f ? fc.RefreshSeconds
+                                                                 : Effects.FieldRefresh.Seconds(ctx.Dt);
+                    }
+                }
+                for (int s = 0; s < _allyBest.Length; s++)
+                {
+                    if (_allyBest[s] <= 0f) continue;
+                    Effects.ModifierAuthoring.FromMultiplier(_allyBest[s], out var op, out float mag);
+                    // 출처 = 자기(옛과 같다) · 칸 = 아군 장 — 겹친 장판이 한 슬롯을 나눠 쓴다.
+                    Effects.EffectApply.Stat(ctx, u.Id, u, u, (Effects.StatKind)s, op, mag, _allyRefresh[s],
+                                             new Effects.SlotTag(Effects.SlotKind.AllyField), 0f,
+                                             Effects.ModifierOrigin.Skill);
+                }
+            }
+        }
+
+        private readonly System.Collections.Generic.List<SimEntityId> _zoneGone =
+            new System.Collections.Generic.List<SimEntityId>(4);
+        private readonly float[] _allyBest = new float[7];
+        private readonly float[] _allyRefresh = new float[7];
+
+        // ── ⑦ 지속 피해 ──────────────────────────────────────────────────────
         //
         // ⚠ **지급은 앞에서부터, 제거는 뒤에서부터**(F8). 역순으로 지급하면 여러 도트가
         // 걸린 대상의 피해 숫자 표시 순서가 조용히 뒤집힌다.
@@ -146,8 +378,16 @@ namespace Wassup.BattleCore
                     continue;
                 }
                 // 길막 장판 — 「막으면 돌아간다」의 다른 소스. 거점은 통행을 안 막는다(점유만).
+                // unit 6b — **저작 모양만큼** 막는다(3×3 바위는 아홉 칸). 정의 줄이 없는 개체
+                // (정의표 밖에서 선 것)는 자기 칸 하나다 — unit 3 의 종전 동작.
                 if (u.Kind == UnitKind.BlockingHazard)
-                    obstacles.Block(_map.CellOf(u.Position));
+                {
+                    var c = _map.CellOf(u.Position);
+                    int span = u.DefIndex >= 0 && u.DefIndex < ctx.Def.BlockingHazards.Length
+                        ? ctx.Def.BlockingHazards[u.DefIndex].SpanRadius : 0;
+                    if (span <= 0) obstacles.Block(c);
+                    else obstacles.BlockRect(new int2(c.x - span, c.y - span), span * 2 + 1, span * 2 + 1);
+                }
             }
 
             if (!obstacles.EndRebuild()) return;   // 안 바뀌었으면 다시 굽지 않는다

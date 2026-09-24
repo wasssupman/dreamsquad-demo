@@ -355,9 +355,9 @@
 | 253 | `DebugTryGetPatrolAnchorCell/2` | MapRuntime (코어) |  |
 | 254 | `RegisterPatrolUnitSO/1` | 미정 |  |
 | 255 | `DrainPatrolSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
-| 256 | `AddEffectTile/2` | MapRuntime (코어) |  |
-| 257 | `ApplyEffectTileIfAny/2` | MapRuntime (코어) |  |
-| 258 | `ApplyEffectTileOnce/2` | MapRuntime (코어) |  |
+| 256 | `AddEffectTile/2` | PlacementService | unit 6b 정정 — 칸 목록의 주인은 **뽑고 소비하는 자**다(`Begin` 이 칸·종류를 함께 뽑는다). 맵은 그 칸을 모른다 |
+| 257 | `ApplyEffectTileIfAny/2` | PlacementService | unit 6b 정정 — `ApplyArmedTile`(활성화 엣지 · 저작 연산자 그대로 · 칸 `SlotKind.Tile`) |
+| 258 | `ApplyEffectTileOnce/2` | PlacementService | unit 6b 정정 — 1회 가드는 `ConsumeEffectTile`(unit 4), 회수는 `RevokeTile`(퇴근 · F33). 배치 스킬 표식과 비공유(F19) |
 | 259 | `FireOnPlaceCameraShake/1` | CameraDirector.Shake | 호출부는 unit 6(배치 VFX) — 세기는 유닛 저작값이라 5b 가 지어낼 수 없다 |
 | 260 | `MarkJustDeployedForRules/1` | `DefenderActivated` 사건 | 표식 컴포넌트를 남기지 않는다 — 남으면 다음 배치 사건과 섞인다(E6) |
 | 261 | `DebugSpawnObstacleAt/2` | 디버그/로그 (도구 처분표) |  |
@@ -367,19 +367,19 @@
 | 265 | `DebugSpawnBlockingHazardAt/2` | 디버그/로그 (도구 처분표) |  |
 | 266 | `DebugLogFatigueStacks/0` | 디버그/로그 (도구 처분표) |  |
 | 267 | `DebugLogPickups/0` | GimmickHost |  |
-| 268 | `RegisterBlockingHazardSO/1` | 미정 |  |
-| 269 | `RegisterZoneHazardSO/1` | 미정 |  |
+| 268 | `RegisterBlockingHazardSO/1` | 삭제 (BoardEffectDefinitionBuilder.ToBlockingHazardDefs) | 런타임 등록부가 **판 밖 정의표**(`MatchDefinition.BlockingHazards`)로 바뀐다. 탄→길막 참조는 줄의 역참조(`SpawnedByProjectile`) |
+| 269 | `RegisterZoneHazardSO/1` | 삭제 (BoardEffectDefinitionBuilder.ToHazardDefs) | 같은 이유 — `MatchDefinition.Hazards` 줄 번호가 곧 참조다 |
 | 270 | `EnsureBlockingHazardVisualRoot/0` | 뷰 풀 |  |
 | 271 | `ClearBlockingHazardVisuals/0` | 뷰 풀 |  |
-| 272 | `RecordHazardSpawn/2` | 미정 |  |
+| 272 | `RecordHazardSpawn/2` | 삭제 (`HazardSpawned` 사건 · CoreHarness 트레이스 구독) | 기록은 사건 구독이다(계약 7). 채널 42 |
 | 273 | `DrainHazardRuntimeEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 274 | `DrainHazardSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 275 | `SyncBlockingHazardOverheadGauges/1` | 뷰 풀 |  |
 | 276 | `DrainHazardDestroyedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 277 | `DrainGoalCollapsedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 278 | `SyncGoalOverheadGauges/1` | HeartMeter |  |
-| 279 | `RecordBlockingHazard/4` | 미정 |  |
-| 280 | `RecordBlockingHazardDestroyed/2` | 미정 |  |
+| 279 | `RecordBlockingHazard/4` | 삭제 (`UnitSpawned` 사건 — `UnitKind.BlockingHazard`) | 길막은 유닛이라 스폰 사건이 이미 있다 |
+| 280 | `RecordBlockingHazardDestroyed/2` | 삭제 (`UnitDestroyed` 사건 — `UnitKind.BlockingHazard`) | 같은 이유 — 문은 「부서짐」 하나 |
 | 281 | `WorldToLogCell/1` | MapRuntime (코어) |  |
 | 282 | `BlockingHazardLogSide/1` | 디버그/로그 (도구 처분표) |  |
 | 283 | `BuildStackThresholdRegistry/0` | 삭제 (MatchDefinitionBuilder.ToStackRuleDefs) | 전역 사전(`StackKind` → 규칙)이 **자산당 한 줄**인 정의표로 바뀐다(F31). 등록 시점도 판 밖이다 |

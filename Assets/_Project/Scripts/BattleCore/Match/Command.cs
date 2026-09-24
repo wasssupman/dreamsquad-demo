@@ -1,4 +1,5 @@
 using Unity.Mathematics;
+using Wassup.Battle.Units;
 
 namespace Wassup.BattleCore
 {
@@ -75,6 +76,21 @@ namespace Wassup.BattleCore
         /// unit 7 이므로 그때까지의 유일한 생산자다.
         /// </summary>
         DebugImbue = 16,
+
+        // ── unit 6b ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 존 장판을 **판정 없이** 깐다. 까는 자(카드·스킬)는 unit 7 이라 그때까지의 유일한
+        /// 생산자이고, 메뉴(6c)도 담당자를 직접 부르지 않고 이 커맨드를 낸다(tools.md 원칙 —
+        /// 하네스·리플레이가 같은 길을 탄다).
+        /// </summary>
+        DebugSpawnHazard = 17,
+
+        /// <summary>
+        /// 길막 설치물을 세운다. 탄 착탄(`PayloadKind.SpawnBlocker`)과 **같은 문**
+        /// (`BlockerSpawn.TrySpawn`)을 지나므로 자리 검증도 같다.
+        /// </summary>
+        DebugSpawnBlocker = 18,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -179,6 +195,13 @@ namespace Wassup.BattleCore
 
         /// <summary>`DebugImbue` 가 거는 효과의 지속(초).</summary>
         public float Seconds;
+
+        // ── unit 6b 디버그 ───────────────────────────────────────────────────
+        /// <summary>`DebugSpawnHazard` = `MatchDefinition.Hazards` 줄 · `DebugSpawnBlocker` = `BlockingHazards` 줄.</summary>
+        public int HazardDefIndex;
+
+        /// <summary>`DebugSpawnHazard` — 깐 쪽의 진영(사건 스냅샷). 대상 진영은 저작이 정한다.</summary>
+        public Faction HazardFaction;
 
         // 스킬 파라미터(대상 자리·방향 등)는 unit 7(트리거 레이어)에서 붙는다.
 
@@ -346,6 +369,37 @@ namespace Wassup.BattleCore
         /// 부여를 접는다)이고 조준은 `cell` 이다 — 카드탄·배치 스킬탄·포물선탄이 전부
         /// 칸 바인딩이라 이 한 형태로 셋을 다 세울 수 있다.
         /// </summary>
+        // ── unit 6b ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 존 장판 하나를 `cell` 에 깐다. `faction` 은 **깐 쪽**이다(사건이 값으로 나른다) —
+        /// 누가 맞는지는 저작의 `TargetFactions` 가 정하고 이 값과 무관하다.
+        /// </summary>
+        public static Command DebugSpawnHazard(int hazardDefIndex, int2 cell,
+                                               Faction faction = Faction.DefenderUnit) => new Command
+        {
+            Kind = CommandKind.DebugSpawnHazard,
+            DefIndex = -1,
+            HazardDefIndex = hazardDefIndex,
+            Cell = cell,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+            HazardFaction = faction,
+        };
+
+        /// <summary>길막 설치물 하나를 `cell` 에 세운다.</summary>
+        public static Command DebugSpawnBlocker(int blockerDefIndex, int2 cell) => new Command
+        {
+            Kind = CommandKind.DebugSpawnBlocker,
+            DefIndex = -1,
+            HazardDefIndex = blockerDefIndex,
+            Cell = cell,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+        };
+
         public static Command DebugFireProjectile(int projectileDefIndex, SimEntityId caster,
                                                   int2 cell, float damage = 0f) => new Command
         {

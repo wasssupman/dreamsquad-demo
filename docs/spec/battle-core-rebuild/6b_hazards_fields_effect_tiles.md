@@ -29,7 +29,7 @@
 | 효과 타일 | `Match/EffectTileDef.cs` + `MatchDefinition.EffectTiles[]` · `Owners/PlacementService.cs`(배치 시 적용 · **퇴근·재배치 시 회수**) |
 | 정의표 | `Match/HazardDef.cs`(모양·반경·수명·효과 배열) · `Match/BlockingHazardDef.cs` · canonicalize |
 | 커맨드 | `Match/Command.cs` 에 `DebugSpawnHazard`·`DebugSpawnBlocker` |
-| 사건 | `CoreEvent` 41~44: `HazardSpawned`·`HazardDestroyed`·`FieldSpawned`·`FieldDespawned` |
+| 사건 | `CoreEvent` **44~47**: `HazardSpawned`·`HazardDestroyed`·`FieldSpawned`·`FieldDespawned` · 트레이스 채널 **42~45**(41~43 은 6a·6a2 가 먼저 썼다) |
 | 테스트 | `Tests/EditModeCore/`: `HazardZoneTests`·`BlockingHazardTests`·`FieldCarrierTests`·`EffectTileTests` |
 
 ## 구현
@@ -71,18 +71,29 @@
 | **감속장 스냅샷**(`ApplySlowField`) | 「안에 있는 대상이 영향을 받는다」 원칙의 **마지막 예외**다. 예외를 옮길지 없앨지는 생산자(액티브 카드)가 오는 unit 7 에서 정한다 — 여기서 정하면 소비처 없는 결정이 된다 | 보류 · unit 7 · F35 |
 | 회오리·포탈을 **까는 자** · 길막 **부서질 때의 폭발** | 「경계」 표의 unit 7 열. rev 3 이 바인딩으로 환원했고, 여기서 또 세우면 unit 7 이 그것을 걷어내야 한다 | 보류 · unit 7 |
 | `MapRuntime.EffectTiles`(장부의 제안 주인) | unit 4 가 뽑기·소비를 `PlacementService` 에 두면서 다르게 답했다. **칸 목록의 주인은 뽑는 자**이고 맵은 그 칸을 모른다 | 완료(장부 정정) |
+| 존 효과 `Impulse`(넉백 토큰) | 옛 `ZoneApplySystem` 은 벡터 `0` 으로 실었다 — **방향이 없는 넉백**이라 밀지 않는다(C8 「방향을 모르는 대상은 밀리지 않는다」). 라이브 장판 저작 9종 중 이 토큰을 쓰는 것이 없다. 방향 있는 장판 넉백이 필요해지면 저작에 방향 축부터 연다 | 제거 · C8 |
+| 길막 폭발 탄의 **탄 표 편입** | 폭발 탄은 공격 표 밖이라 줄 번호가 없다(`ExplodeProjectileDefIndex = -1`). 발사도 편입도 사망 seam 이 여는 unit 7 의 것 — 여기서 편입하면 소비처 없는 줄이 선다 | 보류 · unit 7 |
+| 아군 버프 장의 재발행 여유 **0.5초** | 근거(엔진 최대 프레임 델타)가 고정 틱에서 사라졌다(F36). 틱 3개(0.05초)로 재산출 — 「나가면 곧 풀린다」의 체감이 바뀌지만 생산자가 unit 7 이라 라이브 영향 0. 체감을 되돌리려면 저작 필드(`FieldCarrier.RefreshSeconds`)다 | 변경 · F36 |
 
 ## 고친 것 (기존 코어·Unity 층 변경)
 
-*(구현 중 채운다.)*
+| 무엇 | 어디 | 출처 |
+|---|---|---|
+| **효과 타일 개수가 정의표에 안 실렸다** — `EffectTileCount` 를 아무 빌더도 안 채워 라이브 3칸이 새 코어에서 0 이 됐다 | `BoardEffectDefinitionBuilder.FillEffectTiles`(시즌 맵 테마의 `effectTiles`·`effectTileCount`, 스테이지 `suppressEffectTiles` 존중) ← `BattleDriver` 가 `SeasonRuntime.Active.mapTheme` 을 넘긴다 · `BoardEffectAuthoringTests.효과_타일_개수와_종류가_시즌_맵_테마에서_실린다` | 2026-09-24 드리프트 감사(리드 배정) |
+| 효과 타일 **종류 배정**이 없었다(칸만 뽑고 무엇인지 몰랐다) | `EffectTileSelect.AssignKinds`(옛 `seed ^ 0x7EFFEC7` 칸마다 난수 그대로) · `PlacementService.EffectTileKindAt` | 옛 `BattleBridge.cs:1500-1508` |
+| 장 목록을 아무나 고칠 수 있었다(`List<FieldCarrier>` 공개) — 장만 소멸 사건 없이 사라질 수 있었다 | `BattleWorld.Fields` → `IReadOnlyList` + `SpawnField`/`DespawnField` 두 문(계약 7) · `MovementRulesTests` 두 곳이 문을 지나게 고쳤다 | 계약 7 |
+| 길막이 **자기 칸 하나**만 막았다(3×3 바위도 한 칸) · 몸 반경이 빌더 상수 0.5 | 정의 줄이 있으면 `SpanRadius` 만큼 `BlockRect`(unit 2 경로) · 몸 = 막는 칸의 내접원(`StructureSize.BodyRadius`) | 옛 `EffectSpawner.SpawnBlockingHazard`(반경 1 샘플) |
+| 탄 착탄 길막이 **자리 검증 없이** 섰다(골 칸·막힌 칸·방어유닛 위) | `BlockerSpawn.TrySpawn` 한 문 — 탄·디버그가 같이 지난다 | 옛 `ValidateCellsForBlockingHazard` |
 
 ## 완료 기준
 
-- [ ] **EditMode 코어 lane 초록** + 새 테스트 4묶음: `HazardZoneTests`(칸 반폭 자 · 모양→반경 3매핑 · 음수 = 효과 없음 · `restDuration` 은 나간 뒤부터 · **감속이 스탯 슬롯으로 간다** · 진영 축이 오늘 저작으로 옛 결과와 같다) · `BlockingHazardTests`(체력÷감소 = 무간섭 수명 · 문은 부서짐 하나) · `FieldCarrierTests`(겹치면 가장 강한 값 · 재발행 주기 > 틱 델타 · 수명은 이동 뒤에 깎인다) · `EffectTileTests`(배치 적용 · **퇴근 회수** · 두 마킹 비공유).
-- [ ] **증상 단언 2건**: ⑴ 존 장판 위에 선 적의 체력이 **초당 저작값만큼** 준다(나가면 멈춘다) ⑵ 효과 타일 칸에 놓은 유닛의 공격력이 **오르고, 퇴근시키면 돌아온다**.
-- [ ] 디버그 커맨드 2종이 헤드리스 하네스에서 동작(`CommandSchedule` 로 예약 → 개체가 선다). **메뉴 UI 없이** 커맨드만으로 검증된다.
-- [ ] **틱 phase 수 무변** — 새 단계를 안 만들었고, 존은 `FieldPrepPhase` 끝 · 캐리어·길막은 `TickProjectilePhase` 끝이다(각각 옛 캡처 위치 1·5 와 27 을 따른다).
-- [ ] `ledgers/rules.md` **F11·F12 · F15~F19 · F23 · F32~F36** 이 코드 포인터로 매핑.
-- [ ] `ledgers/bridge-methods.md` 미정 **51 → 46**: `RegisterBlockingHazardSO/1` · `RegisterZoneHazardSO/1` · `RecordHazardSpawn/2` · `RecordBlockingHazard/4` · `RecordBlockingHazardDestroyed/2` 가 닫힌다. ⚠ 효과 타일 3행(`AddEffectTile`·`ApplyEffectTileIfAny`·`ApplyEffectTileOnce`)은 **이미 배정된 행의 주인 정정**이라 잔량을 줄이지 않는다.
+- [x] **EditMode 코어 lane 초록** + 새 테스트 4묶음: `HazardZoneTests`(칸 반폭 자 · 모양→반경 3매핑 · 음수 = 효과 없음 · `restDuration` 은 나간 뒤부터 · **감속이 스탯 슬롯으로 간다** · 진영 축이 오늘 저작으로 옛 결과와 같다) · `BlockingHazardTests`(체력÷감소 = 무간섭 수명 · 문은 부서짐 하나) · `FieldCarrierTests`(겹치면 가장 강한 값 · 재발행 주기 > 틱 델타 · 수명은 이동 뒤에 깎인다) · `EffectTileTests`(배치 적용 · **퇴근 회수** · 두 마킹 비공유).
+- [x] **증상 단언 2건**: ⑴ 존 장판 위에 선 적의 체력이 **초당 저작값만큼** 준다(나가면 멈춘다) ⑵ 효과 타일 칸에 놓은 유닛의 공격력이 **오르고, 퇴근시키면 돌아온다**.
+- [x] 디버그 커맨드 2종이 헤드리스 하네스에서 동작(`CommandSchedule` 로 예약 → 개체가 선다). **메뉴 UI 없이** 커맨드만으로 검증된다.
+- [x] **틱 phase 수 무변** — 새 단계를 안 만들었고, 존은 `FieldPrepPhase` 끝 · 캐리어·길막은 `TickProjectilePhase` 끝이다(각각 옛 캡처 위치 1·5 와 27 을 따른다). ⚠ 존·아군 장은 `FieldPrepPhase` 안에서 **지속 피해 틱 앞**이다 — 옛 `ZoneApplySystem`(5)이 `DotApplySystem`(16)보다 앞이라 장판이 건 지속 피해는 같은 틱에 첫 지급이 났다(F7). 문자 그대로 「끝」에 두면 한 틱 밀린다.
+- [x] `ledgers/rules.md` **F11·F12 · F15~F19 · F23 · F32~F36** 이 코드 포인터로 매핑.
+- [x] `ledgers/bridge-methods.md` 미정 **51 → 46**: `RegisterBlockingHazardSO/1` · `RegisterZoneHazardSO/1` · `RecordHazardSpawn/2` · `RecordBlockingHazard/4` · `RecordBlockingHazardDestroyed/2` 가 닫힌다. ⚠ 효과 타일 3행(`AddEffectTile`·`ApplyEffectTileIfAny`·`ApplyEffectTileOnce`)은 **이미 배정된 행의 주인 정정**이라 잔량을 줄이지 않는다.
 - [ ] **골든 체크박스를 여기서 들지 않는다** — 정의표가 6b2 에서 한 번 더 바뀐다. 재굽기는 6b2.
 - [ ] `core-reviewer` APPROVE — **매니저 0**(`HazardManager` 없음 · 해저드는 `BattleWorld` 의 목록이고 규칙은 phase 가 든다) · **값 하드코딩 0** · 제약 13 진입점만 호출(인라인 거리 계산 0건, grep 으로 확인).
+
+확인 2026-09-24 — 헤드리스·Unity EditMode 코어·Assets·PlayMode 코어 lane(수치는 커밋 보고). 골든 무변(재굽기 없음). 커밋 해시는 리드 재검증 뒤 기록.

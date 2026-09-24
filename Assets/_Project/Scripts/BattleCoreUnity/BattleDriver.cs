@@ -240,7 +240,15 @@ namespace Wassup.BattleCoreUnity
                 costRateMultiplier: 1f, map: in _map, tileSize: _tileSize,
                 structures: _stageStructures, viewAssets: _viewAssets,
                 movement: _movementTuning, stackModifiers: _stackModifiers,
-                imbueCaps: _imbueCaps);
+                imbueCaps: _imbueCaps,
+                // unit 6b — 효과 타일은 **시즌 맵 테마**에서 온다(옛 `SeasonRuntime.Active.mapTheme`).
+                // 테마가 없으면(시즌 미바인딩 진입) 효과 타일 0 — 조용히 기본값을 지어내지 않는다.
+                board: new BoardEffectAuthoring
+                {
+                    Theme = Wassup.Data.Season.SeasonRuntime.Active != null
+                        ? Wassup.Data.Season.SeasonRuntime.Active.mapTheme : null,
+                    SuppressEffectTiles = _stageInstance != null && _stageInstance.suppressEffectTiles,
+                });
 
             Begin(def);
         }

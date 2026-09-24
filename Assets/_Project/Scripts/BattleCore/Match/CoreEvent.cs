@@ -137,6 +137,21 @@ namespace Wassup.BattleCore
         /// (슬롯이 하나도 안 남으면 0 이 온다).
         /// </summary>
         ImbueChanged = 43,
+
+        // ── unit 6b (판 위에 깔리는 것) ───────────────────────────────────────
+        //
+        // ⚠ 넷 다 **`SiteFired` 가 칸이다**(`OriginBody == 0`) — 존도 장도 「자리에 떨어지는
+        // 것」이라 깐 유닛의 몸이 붙지 않는다(제약 13). 그 0 이 곧 「이 자리는 칸이다」의
+        // 표현이고, 뷰는 그것을 보고 칸 반폭으로 그린다(새 필드가 필요 없다).
+
+        /// <summary>존 장판이 깔렸다. `Arg` = 반경(칸), `Amount` = 수명(초), `DefIndex` = 저작 줄.</summary>
+        HazardSpawned = 44,
+        /// <summary>존 장판이 사라졌다(수명 만료). `DefIndex` = 저작 줄.</summary>
+        HazardDestroyed = 45,
+        /// <summary>장이 깔렸다. `Arg` = `FieldKind`, `Amount` = 수명(초).</summary>
+        FieldSpawned = 46,
+        /// <summary>장이 사라졌다. `Arg` = `FieldKind`.</summary>
+        FieldDespawned = 47,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -543,5 +558,33 @@ namespace Wassup.BattleCore
                              Site.Nowhere,
                              new Site(owner.Position, owner.HitRadius),
                              owner.Faction, key.Pack(), carried);
+
+        // ── unit 6b (판 위에 깔리는 것) ───────────────────────────────────────
+        //
+        // 값 스냅샷이다(계약 7) — 소멸 사건이 자리를 나르므로 뷰가 개체를 되묻지 않는다.
+
+        public static CoreEvent HazardSpawned(int tick, Hazard h)
+            => new CoreEvent(CoreEventKind.HazardSpawned, tick,
+                             h.Id, h.Source,
+                             Site.AtCell(h.Center), Site.Nowhere,
+                             h.Faction, h.RadiusTiles, h.Remaining, h.DefIndex);
+
+        public static CoreEvent HazardDestroyed(int tick, Hazard h)
+            => new CoreEvent(CoreEventKind.HazardDestroyed, tick,
+                             h.Id, SimEntityId.None,
+                             Site.AtCell(h.Center), Site.Nowhere,
+                             h.Faction, h.RadiusTiles, 0f, h.DefIndex);
+
+        public static CoreEvent FieldSpawned(int tick, FieldCarrier f)
+            => new CoreEvent(CoreEventKind.FieldSpawned, tick,
+                             f.Id, f.Source,
+                             Site.AtCell(f.Center), Site.Nowhere,
+                             (Faction)f.Faction, (int)f.Kind, f.Duration);
+
+        public static CoreEvent FieldDespawned(int tick, FieldCarrier f)
+            => new CoreEvent(CoreEventKind.FieldDespawned, tick,
+                             f.Id, SimEntityId.None,
+                             Site.AtCell(f.Center), Site.Nowhere,
+                             (Faction)f.Faction, (int)f.Kind, 0f);
     }
 }

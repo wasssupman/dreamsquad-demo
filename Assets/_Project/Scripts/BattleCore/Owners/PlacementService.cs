@@ -72,6 +72,20 @@ namespace Wassup.BattleCore
         private readonly List<Pending> _pending = new List<Pending>(8);
         private readonly HashSet<int> _retiring = new HashSet<int>();
         private readonly List<int2> _effectTiles = new List<int2>(8);
+        // unit 6b — 칸마다 어느 종류냐(`MatchDefinition.EffectTiles` 줄). `_effectTiles` 와 **쌍으로** 바뀐다.
+        private readonly List<int> _effectTileKinds = new List<int>(8);
+        // unit 6b — 소비했지만 아직 활성화 전인 유닛의 타일 종류. 효과는 **활성화 엣지**에 건다
+        // (옛 `ApplyEffectTileOnce` 가 배치 스킬 seam 안에 있었다). 표식을 배치 스킬과 공유하지
+        // 않는 것이 F19 다 — 이 표는 이 담당자 혼자 쓴다.
+        private readonly List<ArmedTile> _tileOnActivate = new List<ArmedTile>(4);
+        private readonly List<Effects.ModifierSlot> _tileRevoked = new List<Effects.ModifierSlot>(4);
+        private TickContext _ctx;
+
+        private struct ArmedTile
+        {
+            public SimEntityId Id;
+            public int Kind;
+        }
         private readonly List<int> _roster = new List<int>(8);
 
         private bool _inputEnabledDuringPlacement;
@@ -128,8 +142,22 @@ namespace Wassup.BattleCore
         /// <summary>아직 활성화를 기다리는 유닛 수(배치 모션 중).</summary>
         public int PendingActivations => _pending.Count;
 
-        /// <summary>효과 타일이 아직 남아 있는 칸들. **회수는 없다** — 소비되면 목록에서 빠진다.</summary>
+        /// <summary>
+        /// 효과 타일이 아직 남아 있는 칸들. 소비되면 목록에서 빠진다(칸 재무장 없음 — unit 4).
+        /// 그 칸이 **준 효과**는 퇴근 때 회수된다(unit 6b — F33).
+        /// </summary>
         public IReadOnlyList<int2> ArmedEffectTiles => _effectTiles;
+
+        /// <summary>그 칸의 효과 타일 종류(`MatchDefinition.EffectTiles` 줄). 없으면 -1.</summary>
+        public int EffectTileKindAt(int2 cell)
+        {
+            for (int i = 0; i < _effectTiles.Count; i++)
+                if (_effectTiles[i].Equals(cell)) return _effectTileKinds[i];
+            return -1;
+        }
+
+        /// <summary>틱 문맥. 효과 타일이 효과 관문(`EffectApply`)을 지나려면 필요하다.</summary>
+        public void Bind(TickContext ctx) => _ctx = ctx;
 
         public void Begin(int[] roster, bool inputEnabledDuringPlacement, bool retireEnabled,
                           int boardCap, int effectTileCount, int mapSeed)
@@ -138,6 +166,8 @@ namespace Wassup.BattleCore
             _pending.Clear();
             _retiring.Clear();
             _effectTiles.Clear();
+            _effectTileKinds.Clear();
+            _tileOnActivate.Clear();
             _map.Occupancy.Clear();
 
             _inputEnabledDuringPlacement = inputEnabledDuringPlacement;
@@ -154,7 +184,13 @@ namespace Wassup.BattleCore
             {
                 var cells = new int2[effectTileCount];
                 int n = _map.SelectEffectTiles(mapSeed, effectTileCount, cells);
-                for (int i = 0; i < n; i++) _effectTiles.Add(cells[i]);
+                var kinds = new int[n];
+                EffectTileSelect.AssignKinds(mapSeed, _def.EffectTiles.Length, kinds, n);
+                for (int i = 0; i < n; i++)
+                {
+                    _effectTiles.Add(cells[i]);
+                    _effectTileKinds.Add(kinds[i]);
+                }
             }
         }
 
@@ -202,12 +238,13 @@ namespace Wassup.BattleCore
                 _pending.Add(new Pending { Id = u.Id, DefIndex = defIndex, Remaining = motionTicks });
 
             StartCooldown(defIndex, d.PlacementCooldown, CooldownSource.Place);
-            ConsumeEffectTile(anchor, w, h, tick);
+            int tileKind = ConsumeEffectTile(anchor, w, h, tick);
+            if (tileKind >= 0) _tileOnActivate.Add(new ArmedTile { Id = u.Id, Kind = tileKind });
 
             _bus.Publish(CoreEvent.Placed(tick, u, defIndex, d.Cost));
             // 배치 페이즈가 없는 유닛은 **그 자리에서** 활성화된다. 배치 스킬의 엣지가
             // 이 사건이므로 순서가 「배치 → 활성화」인 것이 계약이다.
-            if (!hasDeployPhase) _bus.Publish(CoreEvent.DefenderActivated(tick, u, defIndex));
+            if (!hasDeployPhase) Activate(u, defIndex, tick);
             return Receipt.Ok;
         }
 
@@ -391,8 +428,54 @@ namespace Wassup.BattleCore
                 u.Deploying = false;
                 // 배치 스킬(unit 7)의 엣지가 이 사건이다. 표식 컴포넌트를 남기지 않는 이유:
                 // 남으면 다음 배치 사건과 섞인다(E6).
-                _bus.Publish(CoreEvent.DefenderActivated(ctx.Tick, u, p.DefIndex));
+                Activate(u, p.DefIndex, ctx.Tick);
             }
+        }
+
+        // 활성화 = 효과 타일 적용 → 활성화 사건. **활성화 경로가 둘**(즉시 · 모션 뒤)이라 한 함수로
+        // 접는다 — 한쪽에만 타일을 걸면 모션 없는 유닛만 타일을 먹는다.
+        private void Activate(Unit u, int defIndex, int tick)
+        {
+            ApplyArmedTile(u, tick);
+            _bus.Publish(CoreEvent.DefenderActivated(tick, u, defIndex));
+        }
+
+        // ⚠ **저작한 연산자를 그대로 쓴다** — 값으로 버킷을 고르는 중앙 헬퍼를 지나지 않는다
+        // (재생은 기본 0 이라 가산이어야 하고 그 선택은 타일이 한다 — 옛 규칙).
+        // 지속 = 무한(+∞ 는 만료 경로를 자연 통과한다). 끝은 **회수**다(퇴근).
+        private void ApplyArmedTile(Unit u, int tick)
+        {
+            for (int i = 0; i < _tileOnActivate.Count; i++)
+            {
+                if (_tileOnActivate[i].Id != u.Id) continue;
+                int kind = _tileOnActivate[i].Kind;
+                _tileOnActivate.RemoveAt(i);
+                if (kind < 0 || kind >= _def.EffectTiles.Length || _ctx == null) return;
+                ref var row = ref _def.EffectTiles[kind];
+                var tag = new Effects.SlotTag(Effects.SlotKind.Tile);
+                for (int e = 0; e < row.EntryCount; e++)
+                {
+                    var en = row.Entries[e];
+                    Effects.EffectApply.Stat(_ctx, u.Id, u, u, (Effects.StatKind)en.Stat,
+                                             (Effects.CombineOp)en.Op, en.Magnitude,
+                                             float.PositiveInfinity, tag, 0f, Effects.ModifierOrigin.Tile);
+                }
+                return;
+            }
+        }
+
+        // 퇴근 회수(F33). 퇴근은 개체를 지우므로 슬롯은 어차피 사라지지만, **회수 사건**을
+        // 내는 자리가 여기다 — 뷰·로그가 「타일 효과가 풀렸다」를 개체 소멸에서 추론하지 않게.
+        private void RevokeTile(Unit u, int tick)
+        {
+            for (int i = _tileOnActivate.Count - 1; i >= 0; i--)
+                if (_tileOnActivate[i].Id == u.Id) _tileOnActivate.RemoveAt(i);
+
+            _tileRevoked.Clear();
+            if (u.Modifiers.RevokeTag(Effects.SlotKind.Tile, 0, _tileRevoked) == 0) return;
+            for (int k = 0; k < _tileRevoked.Count; k++)
+                _bus.Publish(CoreEvent.ModifierRevoked(tick, u, _tileRevoked[k].Key.Source,
+                                                       _tileRevoked[k].Key.Stat));
         }
 
         // ── 퇴근 ─────────────────────────────────────────────────────────────
@@ -419,6 +502,7 @@ namespace Wassup.BattleCore
             // 판정하면 사망과 구분이 안 된다 — 버스는 발행 순서대로 배달하므로 이 한 줄의
             // 위치가 그 구분을 만든다. 개체가 아직 살아 있어야 자리·몸을 실을 수 있기도 하다.
             _bus.Publish(CoreEvent.Retired(tick, u, defIndex, cd));
+            RevokeTile(u, tick);
 
             _map.Occupancy.Release(id);
             // ⚠ `Dead` 를 켜지 않는다. 퇴근은 죽음이 아니다.
@@ -432,6 +516,8 @@ namespace Wassup.BattleCore
 
             for (int i = _pending.Count - 1; i >= 0; i--)
                 if (_pending[i].Id == e.A) _pending.RemoveAt(i);
+            for (int i = _tileOnActivate.Count - 1; i >= 0; i--)
+                if (_tileOnActivate[i].Id == e.A) _tileOnActivate.RemoveAt(i);
 
             // 소멸 사건의 `Arg` 는 **종류**(UnitKind)라 정의표 인덱스가 아니다 — 그래서
             // 스폰 때 적어 둔 자리를 본다.
@@ -535,11 +621,11 @@ namespace Wassup.BattleCore
 
         // ── 효과 타일 ────────────────────────────────────────────────────────
 
-        // **1회 소비 · 회수 없음 · 재배치 재무장 없음.** 여기 있는 것은 그 «가드» 뿐이고
-        // 효과의 적용은 unit 6 이다 — 가드를 나중에 얹으면 그때는 이미 두 번 먹은 판이 있다.
-        private void ConsumeEffectTile(int2 anchor, int w, int h, int tick)
+        // **1회 소비 · 칸 재무장 없음.** 반환 = 소비한 칸의 종류(없으면 -1). 효과는 활성화 엣지에
+        // 걸고(`ApplyArmedTile`) 퇴근 때 거둔다(`RevokeTile`, unit 6b).
+        private int ConsumeEffectTile(int2 anchor, int w, int h, int tick)
         {
-            if (_effectTiles.Count == 0) return;
+            if (_effectTiles.Count == 0) return -1;
             for (int dy = 0; dy < h; dy++)
             for (int dx = 0; dx < w; dx++)
             {
@@ -547,11 +633,14 @@ namespace Wassup.BattleCore
                 for (int i = 0; i < _effectTiles.Count; i++)
                 {
                     if (!_effectTiles[i].Equals(c)) continue;
+                    int kind = _effectTileKinds[i];
                     _effectTiles.RemoveAt(i);
-                    Report?.Invoke($"[PlacementService] 효과 타일 ({c.x},{c.y}) 소비 — 효과의 적용은 unit 6 이다(tick {tick}).");
-                    return;
+                    _effectTileKinds.RemoveAt(i);
+                    Report?.Invoke($"[PlacementService] 효과 타일 ({c.x},{c.y}) 소비 — 종류 {kind}(tick {tick}).");
+                    return kind;
                 }
             }
+            return -1;
         }
 
         /// <summary>진단 통로. 연결하지 않으면 버려진다 — 코어는 로거를 소유하지 않는다.</summary>

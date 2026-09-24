@@ -85,6 +85,8 @@ namespace Wassup.BattleCore
                     return _waves.ForceNext() ? Receipt.Ok : Receipt.Reject(RejectReason.NoMoreWaves);
                 case CommandKind.DebugFireProjectile: return DebugFire(cmd);
                 case CommandKind.DebugImbue: return DebugImbue(cmd);
+                case CommandKind.DebugSpawnHazard: return DebugHazard(cmd, tick);
+                case CommandKind.DebugSpawnBlocker: return DebugBlocker(cmd, tick);
 
                 default: return Receipt.Reject(RejectReason.UnknownCommand);
             }
@@ -182,6 +184,29 @@ namespace Wassup.BattleCore
         // 회수 사건의 순서를 순회 순서에 안 맡기려고 지운 슬롯을 받는 자리(6a 규율).
         private readonly System.Collections.Generic.List<Effects.ImbueSlot> _revokedImbue
             = new System.Collections.Generic.List<Effects.ImbueSlot>(4);
+
+        // unit 6b — 판 위에 깔리는 것의 생산자 자리. 진짜 생산자(카드·스킬)는 unit 7 이고,
+        // 그때도 이 함수가 아니라 **같은 조립 자리**(`HazardSpawn` · `BlockerSpawn`)를 부른다.
+        private Receipt DebugHazard(in Command cmd, int tick)
+        {
+            if (_map != null && !_map.Snapshot.InBounds(cmd.Cell)) return Receipt.Reject(RejectReason.OutOfBounds);
+            var h = HazardSpawn.Spawn(_world, _map, _def, cmd.HazardDefIndex, cmd.Cell,
+                                      SimEntityId.None, cmd.HazardFaction, targetLayers: 0, tick: tick);
+            return h != null ? Receipt.Ok : Receipt.Reject(RejectReason.InvalidUnit);
+        }
+
+        private Receipt DebugBlocker(in Command cmd, int tick)
+        {
+            var u = BlockerSpawn.TrySpawn(_world, _map, _def, cmd.HazardDefIndex, cmd.Cell, tick,
+                                          out var reason);
+            if (u != null) return Receipt.Ok;
+            switch (reason)
+            {
+                case BlockerSpawn.Reject.OutOfBounds: return Receipt.Reject(RejectReason.OutOfBounds);
+                case BlockerSpawn.Reject.NoDefinition: return Receipt.Reject(RejectReason.InvalidUnit);
+                default: return Receipt.Reject(RejectReason.Occupied);
+            }
+        }
 
         private Receipt DebugObstacle(in Command cmd)
         {

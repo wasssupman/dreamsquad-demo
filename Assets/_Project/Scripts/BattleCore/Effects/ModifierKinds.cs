@@ -82,6 +82,12 @@ namespace Wassup.BattleCore.Effects
         /// <summary>스택 임계 파생. 판별자 = `StackKind`(불과 얼음이 서로 다른 칸).</summary>
         StackDerived = 5,
         Gimmick = 6,
+        /// <summary>
+        /// unit 6b — 존 장판. **판별자가 없다**(전부 0) — 겹친 장판이 «한 슬롯을 나눠 쓰는
+        /// 것»이 규칙이기 때문이다. 장판마다 칸을 주면 겹칠 때 배율이 곱으로 누적된다.
+        /// 대신 누가 이기는지를 순회 순서가 아니라 `FieldFold.Strongest` 가 정한다(F23).
+        /// </summary>
+        Zone = 7,
     }
 
     /// <summary>

@@ -70,6 +70,33 @@ namespace Wassup.BattleCore
         /// </summary>
         public ImbueCapDef[] ImbueCaps = System.Array.Empty<ImbueCapDef>();
 
+        /// <summary>
+        /// unit 6b — 존 장판 저작. **까는 자는 unit 7** 이라 이 표가 비어 있어도 판은 돈다.
+        /// 깔 때 가리키는 것은 이 배열의 줄 번호다.
+        /// </summary>
+        public HazardDef[] Hazards = System.Array.Empty<HazardDef>();
+
+        /// <summary>
+        /// unit 6b — 길막 설치물 저작. `ProjectileDef.BlockerDefIndex` 가 가리킨다 —
+        /// 옛 저작도 탄 SO 가 길막 SO 를 참조했고, 그 참조를 줄 번호로 편 것이다.
+        /// </summary>
+        public BlockingHazardDef[] BlockingHazards = System.Array.Empty<BlockingHazardDef>();
+
+        /// <summary>그 탄이 세우는 길막 줄. 없으면 -1(→ 탄에 실린 수치로 세우는 unit 3 폴백).</summary>
+        public int BlockerOfProjectile(int projectileDefIndex)
+        {
+            if (projectileDefIndex < 0) return -1;
+            for (int i = 0; i < BlockingHazards.Length; i++)
+                if (BlockingHazards[i].SpawnedByProjectile == projectileDefIndex) return i;
+            return -1;
+        }
+
+        /// <summary>
+        /// unit 6b — 효과 타일 저작. **몇 칸을 뽑나**는 아래 `EffectTileCount` 이고,
+        /// **어느 칸이 어느 종류냐**는 `PlacementService` 가 판 시작에 시드로 정한다.
+        /// </summary>
+        public EffectTileDef[] EffectTiles = System.Array.Empty<EffectTileDef>();
+
         /// <summary>시드 생성 덱. `Mode.WaveSource` 가 `GeneratedFromDeck` 일 때 읽힌다.</summary>
         public Wave.WaveDeckDef WaveDeck = Wave.WaveDeckDef.Empty();
 
@@ -239,6 +266,23 @@ namespace Wassup.BattleCore
             {
                 sb.Append("[imbuecap").Append(i.ToString(inv)).Append("]\n");
                 ImbueCaps[i].Canonicalize(sb, inv);
+            }
+            // unit 6b — 빈 표는 **한 줄도 안 적는다.** 그래서 저작이 없는 판(오늘의 골든
+            // 코퍼스 전부)은 정본 텍스트가 안 바뀌고 `configHash` 가 그대로다.
+            for (int i = 0; i < Hazards.Length; i++)
+            {
+                sb.Append("[hazard").Append(i.ToString(inv)).Append("]\n");
+                Hazards[i].Canonicalize(sb, inv);
+            }
+            for (int i = 0; i < BlockingHazards.Length; i++)
+            {
+                sb.Append("[blocking").Append(i.ToString(inv)).Append("]\n");
+                BlockingHazards[i].Canonicalize(sb, inv);
+            }
+            for (int i = 0; i < EffectTiles.Length; i++)
+            {
+                sb.Append("[effecttile").Append(i.ToString(inv)).Append("]\n");
+                EffectTiles[i].Canonicalize(sb, inv);
             }
         }
 

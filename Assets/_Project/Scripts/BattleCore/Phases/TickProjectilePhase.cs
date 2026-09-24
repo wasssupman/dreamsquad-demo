@@ -58,6 +58,52 @@ namespace Wassup.BattleCore
             // 단계가 성격이 다른 일을 겸직해서 그 결합이 생겼다 — 여기서는 재생이 인박스를
             // 안 본다(그 값은 `Unit.RegenPerSec` 로 나가고 소비는 피해 단계가 한다).
             StepEffects(ctx);
+
+            // unit 6b — 판 위에 깔린 것의 시계. **이동 뒤**다: 옛 `EffectTickSystem`(27)은
+            // `[UpdateAfter(MovementSystem)]` 라서 캐리어가 사라지는 틱에도 이동은 그것을 한 번
+            // 더 본다. 길막 노후화는 피해라서 **피해 단계 앞**이면 같은 틱에 정산된다.
+            StepCarriers(ctx);
+            StepBlockerDecay(ctx);
+        }
+
+        // ── ⑥ 장 캐리어 수명 ─────────────────────────────────────────────────
+        //
+        // `Duration > 0` 만 깎는다 — 0 이하는 무기한 센티널이다(`FieldCarrier.Duration`).
+        // 소멸은 `BattleWorld.DespawnField` 한 문이고 반드시 `FieldDespawned` 가 난다(계약 7).
+        private void StepCarriers(TickContext ctx)
+        {
+            var fields = ctx.World.Fields;
+            if (fields.Count == 0) return;
+            _expired.Clear();
+            for (int i = 0; i < fields.Count; i++)
+            {
+                var f = fields[i];
+                if (f.Duration <= 0f) continue;
+                f.Duration -= ctx.Dt;
+                if (f.Duration <= 0f) _expired.Add(f.Id);
+            }
+            for (int i = 0; i < _expired.Count; i++) ctx.World.DespawnField(_expired[i], ctx.Tick);
+        }
+
+        // ── ⑦ 길막 노후화 ────────────────────────────────────────────────────
+        //
+        // ⚠ **죽음 경로가 아니라 피해다.** 부서짐이 문 하나(F11 — 체력 ÷ 초당 감소 = 무간섭 수명)
+        // 라서 노후화로 부서진 것도 맞아서 부서진 것과 같은 사망·폭발 문으로 나간다.
+        // 출처를 비운다 — 환경 피해는 귀속이 없다(채우면 처치 귀속이 엉뚱한 대상에게 간다).
+        private static void StepBlockerDecay(TickContext ctx)
+        {
+            var rows = ctx.Def.BlockingHazards;
+            if (rows.Length == 0) return;
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                if (u.Kind != UnitKind.BlockingHazard || u.Dead) continue;
+                if (u.DefIndex < 0 || u.DefIndex >= rows.Length) continue;
+                float decay = rows[u.DefIndex].DecayPerSec;
+                if (decay <= 0f) continue;
+                u.Inbox.Damage.Add(new DamageEntry { Amount = decay * ctx.Dt, Source = SimEntityId.None });
+            }
         }
 
         // ── ⑤ 효과 슬롯 ──────────────────────────────────────────────────────
@@ -766,7 +812,16 @@ namespace Wassup.BattleCore
         // 터지는 것은 부서질 때다(그 폭발은 unit 7 의 사망 seam 이 낸다).
         private void ResolveSpawnBlocker(TickContext ctx, Projectile p)
         {
-            if (p.BlockerHealth > 0f)
+            // unit 6b — 정의 줄이 있으면 **그 문**(`BlockerSpawn`)으로 세운다: 자리 검증(골·막힌
+            // 칸·점유)과 노후화·모양이 따라온다. 없으면 탄에 실린 수치로 세우는 unit 3 폴백이다.
+            int row = ctx.Def.BlockerOfProjectile(p.DefIndex);
+            if (row >= 0)
+            {
+                var cell = _map != null ? _map.CellOf(p.Impact) : new int2((int)p.Impact.x, (int)p.Impact.z);
+                if (BlockerSpawn.TrySpawn(ctx.World, _map, ctx.Def, row, cell, ctx.Tick, out var why) == null)
+                    ctx.Warn($"[TickProjectile] 길막 거절 ({cell.x},{cell.y}) — {why}");
+            }
+            else if (p.BlockerHealth > 0f)
             {
                 var cell = _map != null ? _map.CellOf(p.Impact) : new int2((int)p.Impact.x, (int)p.Impact.z);
                 float3 pos = _map != null ? _map.CenterOf(cell) : p.Impact;

@@ -43,11 +43,12 @@ namespace Wassup.BattleCoreUnity
                                             MatchViewAssets viewAssets = null,
                                             MovementTuningConfig movement = null,
                                             StackModifierSO[] stackModifiers = null,
-                                            ImbueCapConfig imbueCaps = null)
+                                            ImbueCapConfig imbueCaps = null,
+                                            BoardEffectAuthoring board = default)
         {
             var enemies = CollectEnemies(deck, plan, bonus);
             var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
-                            viewAssets, movement, stackModifiers, imbueCaps);
+                            viewAssets, movement, stackModifiers, imbueCaps, board);
 
             def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
             def.WaveDeck = ToDeckDef(deck, enemies);
@@ -90,7 +91,8 @@ namespace Wassup.BattleCoreUnity
                                             MatchViewAssets viewAssets = null,
                                             MovementTuningConfig movement = null,
                                             StackModifierSO[] stackModifiers = null,
-                                            ImbueCapConfig imbueCaps = null)
+                                            ImbueCapConfig imbueCaps = null,
+                                            BoardEffectAuthoring board = default)
         {
             var def = new MatchDefinition
             {
@@ -102,7 +104,12 @@ namespace Wassup.BattleCoreUnity
             };
             // unit 3 — 전투 저작(공격·탄·발사 명세)을 같은 줄에 채워 넣는다. **해시를 굽기 전**
             // 이어야 한다 — 뒤에 두면 「스탯을 바꿨는데 해시가 그대로」가 된다.
-            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, viewAssets);
+            // unit 6b — 탄 SO 목록을 **번호를 매긴 그 순회에서** 받는다(길막 역참조가 그 번호를 쓴다).
+            // 뷰가 없는 판(테스트·헤드리스)에서도 필요하므로 없으면 로컬 한 벌을 만든다.
+            var assets = viewAssets ?? new MatchViewAssets();
+            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets);
+            // unit 6b — 판 위에 깔리는 것(존 장판 · 길막 · 효과 타일). **해시를 굽기 전**이다.
+            BoardEffectDefinitionBuilder.Fill(def, assets, in board);
             // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
             // 저작이 없으면 코어 기본값(= 옛 씬 값)을 그대로 둔다. 0 으로 덮지 않는다 —
             // 그러면 몸 반지름 0(충돌 소멸)과 레인 1(분산 없음)이 조용히 성립한다.

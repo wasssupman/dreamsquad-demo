@@ -37,10 +37,91 @@ namespace Wassup.BattleCore
         /// <summary>id 오름차순 개체 목록. 순회 중 구조 변경 금지 — 소멸은 틱 단계가 모아서 한다.</summary>
         public IReadOnlyList<Unit> Units => _units;
 
-        // unit 2 — 판 위에 깔린 장(포탈·당김). 유닛이 아니라 여기 산다(UML §2).
-        // 이동이 매 틱 읽고, 생성·수명은 효과 레이어(unit 6)가 갖는다.
+        // unit 2 — 판 위에 깔린 장(포탈·당김·아군 버프). 유닛이 아니라 여기 산다(UML §2).
+        // 이동이 매 틱 읽고, 수명은 unit 6b 가 갖는다(`TickProjectilePhase` 끝 = 이동 뒤).
+        //
+        // unit 6b — **목록을 직접 못 고친다.** 계약 7(「모든 소멸은 소멸 이벤트를 낸다」)이
+        // 유닛·탄에만 걸려 있으면 뷰가 장만 폴링으로 지켜보게 된다. 문은 아래 둘뿐이다.
         private readonly List<FieldCarrier> _fields = new List<FieldCarrier>(8);
-        public List<FieldCarrier> Fields => _fields;
+        public IReadOnlyList<FieldCarrier> Fields => _fields;
+
+        // unit 6b — 판 위에 깔린 존 장판. 장과 같은 자리에 살지만 **정의표 줄을 가리킨다**
+        // (저작이 여럿이고 효과 배열이 그 줄에 있다). 순회는 발급 순서 = `SimEntityId` 오름차순.
+        private readonly List<Hazard> _hazards = new List<Hazard>(8);
+        private readonly Stack<Hazard> _hazardPool = new Stack<Hazard>(8);
+        public IReadOnlyList<Hazard> Hazards => _hazards;
+
+        /// <summary>
+        /// 존 장판 하나를 깐다. 반드시 `HazardSpawned` 를 낸다(소멸의 짝).
+        /// **판정은 없다** — 「어디에 깔 수 있나」는 까는 자(unit 7)의 질문이다.
+        /// </summary>
+        public Hazard SpawnHazard(int defIndex, int2 cell, float3 center, int radiusTiles, float lifetime,
+                                  SimEntityId source, Faction faction, byte targetLayers, int tick)
+        {
+            var h = _hazardPool.Count > 0 ? _hazardPool.Pop() : new Hazard();
+            h.Reset();
+            h.Id = new SimEntityId(_nextId++);
+            h.DefIndex = defIndex;
+            h.OriginCell = cell;
+            h.RadiusTiles = radiusTiles;
+            h.Center = center;
+            h.Remaining = lifetime;
+            h.Source = source;
+            h.Faction = faction;
+            h.TargetLayers = targetLayers;
+
+            _hazards.Add(h);   // id 단조 증가 → append 가 곧 오름차순
+            _bus.Publish(CoreEvent.HazardSpawned(tick, h));
+            return h;
+        }
+
+        /// <summary>
+        /// **존의 유일한 제거 경로.** 반드시 `HazardDestroyed` 를 낸다.
+        /// 사건은 **빼기 전에** 값을 읽어 만든다 — `Reset` 뒤에 읽으면 자리가 0 으로 샌다.
+        /// </summary>
+        public bool DestroyHazard(SimEntityId id, int tick)
+        {
+            for (int i = 0; i < _hazards.Count; i++)
+            {
+                if (_hazards[i].Id != id) continue;
+                var h = _hazards[i];
+                var ev = CoreEvent.HazardDestroyed(tick, h);
+                _hazards.RemoveAt(i);
+                h.Reset();
+                _hazardPool.Push(h);
+                _bus.Publish(ev);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 장 하나를 깐다. 반드시 `FieldSpawned` 를 낸다. 인자가 아니라 **완성된 개체**를 받는
+        /// 이유: 종류마다 읽는 필드가 달라(포탈 = 출구 · 당김 = 속도 · 아군 버프 = 스탯) 공용
+        /// 인자 목록을 만들면 절반이 언제나 의미 없는 0 이 된다.
+        /// </summary>
+        public FieldCarrier SpawnField(FieldCarrier field, int tick)
+        {
+            if (field == null) return null;
+            field.Id = new SimEntityId(_nextId++);
+            _fields.Add(field);
+            _bus.Publish(CoreEvent.FieldSpawned(tick, field));
+            return field;
+        }
+
+        /// <summary>**장의 유일한 제거 경로.** 반드시 `FieldDespawned` 를 낸다.</summary>
+        public bool DespawnField(SimEntityId id, int tick)
+        {
+            for (int i = 0; i < _fields.Count; i++)
+            {
+                if (_fields[i].Id != id) continue;
+                var ev = CoreEvent.FieldDespawned(tick, _fields[i]);
+                _fields.RemoveAt(i);
+                _bus.Publish(ev);
+                return true;
+            }
+            return false;
+        }
 
         // unit 2 — 어그로 **요청** 줄. 「누가 누구에게 끌렸다」를 말하는 것은 히트를 낸 쪽
         // (unit 3 의 공격 루프)과 도발을 건 쪽(unit 7)이고, **게이트·추격판·이벤트는 여기**가 한다.
@@ -327,6 +408,29 @@ namespace Wassup.BattleCore
                 h = Fnv(h, Quantize(p.Position.z));
                 h = Fnv(h, Quantize(p.Elapsed));
                 h = Fnv(h, Quantize(p.Damage));
+            }
+            // unit 6b — 판 위에 깔린 것도 상태다. 빼면 「이벤트는 같은데 장판이 하나 더 남아
+            // 있다」를 못 잡는다. 깔린 것이 없는 판은 두 루프가 한 번도 안 돌아 앞 unit 들의
+            // 지문이 그대로 유지된다(탄 루프와 같은 규율).
+            for (int i = 0; i < _hazards.Count; i++)
+            {
+                var z = _hazards[i];
+                h = Fnv(h, z.Id.Value);
+                h = Fnv(h, z.DefIndex);
+                h = Fnv(h, z.OriginCell.x);
+                h = Fnv(h, z.OriginCell.y);
+                h = Fnv(h, Quantize(z.Remaining));
+                h = Fnv(h, z.TargetLayers);
+            }
+            for (int i = 0; i < _fields.Count; i++)
+            {
+                var f = _fields[i];
+                h = Fnv(h, f.Id.Value);
+                h = Fnv(h, (int)f.Kind);
+                h = Fnv(h, Quantize(f.Center.x));
+                h = Fnv(h, Quantize(f.Center.z));
+                h = Fnv(h, Quantize(f.Range));
+                h = Fnv(h, Quantize(f.Duration));
             }
             return h;
         }
