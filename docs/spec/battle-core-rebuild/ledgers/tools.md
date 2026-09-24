@@ -13,7 +13,9 @@
 | 7 | `BlockingHazardDebugMenu` | `Battle/Effects/` | **예** | 길막 해저드 수동 스폰 | **완료** — 6행과 같은 메뉴. `DebugSpawnBlocker`(18) · 가까운 칸부터 코어가 받을 때까지 시도(거절 사유는 코어 `BlockerSpawn`) | unit 6c |
 | 8 | `ObstacleDebugMenu` | `Battle/Effects/` | **예** | 장애물 토글·흐름장 재빌드 확인 | **완료** — `Editor/BattleCore/CoreObstacleDebugMenu.cs`. `CommandKind.DebugSetObstacle` 커맨드를 넣고 막힌 칸 수 + 흐름장 지문을 같이 찍는다(「토글은 됐는데 길이 안 바뀐」 경우가 이 도구의 존재 이유) | unit 5a |
 | 9 | `FatigueDebugMenu` | `Battle/Effects/` | **예** | 피로 스택 강제 | **완료** — `Editor/BattleCore/CoreGimmickDebugMenu.cs`. `DebugSetStack`(21, 피로·열기) · `DebugSpawnPickup`(19) · `DebugDropResignation`(20) + 셈판 찍기. ⚠ 픽업·사직서·열기는 **그 기믹이 뽑힌 판**에서만 받는다(`GimmickInactive` — 기본 모드는 기믹 0) | unit 6c |
-| 10 | `PatrolDebugMenu` | `Battle/Movement/` | **예** | 순찰병 수동 스폰 | 코어 스폰 커맨드로 재작성 | **조각 D 앞** |
-| 11 | `RelocationDebugMenu` | `Bridge/` | **예** | 재배치 강제 | `PlacementService` 디버그 커맨드로 재작성 | **조각 D 앞** |
+| 10 | `PatrolDebugMenu` | `Battle/Movement/` | **예** | 순찰병 수동 스폰 | **완료** — `Editor/BattleCore/CoreSummonDebugMenu.cs`. `DebugSummonPatrol`(24) — 소환사와 **같은 조립 자리**(`CombatPhase.SpawnPatrol`)라 구역·이동·공격이 진짜 소환물과 같고 소환사만 없다(연쇄 소멸 없음). 앵커 = 배치된 첫 방어유닛 칸(옛 메뉴와 같이 커서를 안 쓴다) · 반경 2/4 · 구역 찍기. 짝 도구 `CoreTriggerDebugMenu`(`DebugFireBinding` 25 — 규칙 목록 · 강제 발화 · 「왜 안 터졌나」 4원인, 판정은 코어 `BindingDiagnosis`) | unit 7d |
+| 11 | `RelocationDebugMenu` | `Bridge/` | **예** | 재배치 강제 | **은퇴** — 재배치(유닛 이동)는 이식 제외(`defender-clock-out/0` 이 진입구를 껐고 퇴근이 대신한다 · 7d 「이식 제외」). 구동할 기능이 없다 | unit 7d |
 
 원칙: 디버그 도구는 브리지 메서드를 부르는 대신 **코어 커맨드**(`Command.Kind = Debug*`)를 넣는다 — 그래야 하네스·리플레이에서도 같은 길을 탄다. 완전성 리뷰가 「10개」로 센 것은 `SimHarnessRunner` 를 메뉴에 포함해 셌기 때문이며 실측 파일은 11.
+
+> **7d 에서 도구 11행 전건 처분 완료**(완료 9 · 은퇴 1 · 예정 1 = 4행 `SimOrderDumpMenu` 은퇴는 unit 9).

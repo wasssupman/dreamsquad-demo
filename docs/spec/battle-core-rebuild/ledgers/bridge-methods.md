@@ -61,22 +61,22 @@
 
 | # | 메서드 | 새 주인 | 비고 |
 |---|---|---|---|
-| 1 | `RelocationCheck/7` | 미정 |  |
+| 1 | `RelocationCheck/7` | 삭제 (7d · 재배치 미이식) | 재배치(유닛 이동)는 라이브에 없다 — `defender-clock-out/0` 이 진입구를 껐고(2026-08-13) 퇴근이 대신한다. 7d 「이식 제외」 · 판정 본체는 배치 판정(`PlacementService.Judge`)과 같은 자라 따로 둘 것이 없다 |
 | 2 | `RelocationFootprintCheck/9` | PlacementService |  |
-| 3 | `TryGetDefenderAt/4` | 미정 |  |
+| 3 | `TryGetDefenderAt/4` | 삭제 (7d · 재배치 미이식) | 재배치(유닛 이동)는 라이브에 없다 — `defender-clock-out/0` 이 진입구를 껐고(2026-08-13) 퇴근이 대신한다. 7d 「이식 제외」 · 다른 소비자(배치 착지 가드·카드 드래그·검사 패널)는 새 층에서 코어 사건(`CoreDeployFlightPresenter`)과 화면 집기(`CoreCardTargets`·`SelectionInput`)가 대신한다 |
 | 4 | `TryGetDefenderCell/2` | MapRuntime (코어) |  |
 | 5 | `CanRelocateDefender/3` | PlacementService |  |
 | 6 | `HasCostForRelocation/1` | CostLedger |  |
 | 7 | `TryBeginDefenderRelocation/4` | PlacementService |  |
-| 8 | `RelocatePatrolAnchorFor/2` | 미정 |  |
+| 8 | `RelocatePatrolAnchorFor/2` | 삭제 (7d · 재배치 미이식) | 재배치(유닛 이동)는 라이브에 없다 — `defender-clock-out/0` 이 진입구를 껐고(2026-08-13) 퇴근이 대신한다. 7d 「이식 제외」 · 소환사가 안 움직이니 순찰 앵커를 옮길 일이 없다(앵커 = 소환 순간의 소환사 칸, `CombatPhase.SpawnPatrol`) |
 | 9 | `SetDefenderViewOverride/4` | 뷰 풀 |  |
 | 10 | `ClearDefenderViewOverride/1` | 뷰 풀 |  |
-| 11 | `PlayLandingSquash/3` | 미정 |  |
+| 11 | `PlayLandingSquash/3` | CoreUnitView.PlayLandingSquash | 착지 눌림은 뷰의 것 — 부르는 자는 `CoreDeployFlightPresenter`(배치 착지) · `CoreLeapPresenter`(도약·궁극기 착지). 재배치 착지 호출부는 재배치와 함께 사라졌다 |
 | 12 | `TryGetDefenderViewOverride/4` | 뷰 풀 |  |
-| 13 | `TryGetRelocationAnchors/5` | 미정 |  |
-| 14 | `ActivateRelocatedDefender/3` | 미정 |  |
-| 15 | `ApplyRefitHeal/2` | 미정 |  |
-| 16 | `FinishDefenderRelocation/2` | 미정 |  |
+| 13 | `TryGetRelocationAnchors/5` | 삭제 (7d · 재배치 미이식) | 재배치(유닛 이동)는 라이브에 없다 — `defender-clock-out/0` 이 진입구를 껐고(2026-08-13) 퇴근이 대신한다. 7d 「이식 제외」 |
+| 14 | `ActivateRelocatedDefender/3` | 삭제 (7d · 재배치 미이식) | 재배치(유닛 이동)는 라이브에 없다 — `defender-clock-out/0` 이 진입구를 껐고(2026-08-13) 퇴근이 대신한다. 7d 「이식 제외」 |
+| 15 | `ApplyRefitHeal/2` | 삭제 (7d · 재배치 미이식) | 재배치(유닛 이동)는 라이브에 없다 — `defender-clock-out/0` 이 진입구를 껐고(2026-08-13) 퇴근이 대신한다. 7d 「이식 제외」 · 재정비 회복은 재배치 전용 규칙이었다 |
+| 16 | `FinishDefenderRelocation/2` | 삭제 (7d · 재배치 미이식) | 재배치(유닛 이동)는 라이브에 없다 — `defender-clock-out/0` 이 진입구를 껐고(2026-08-13) 퇴근이 대신한다. 7d 「이식 제외」 |
 | 17 | `DebugRelocateFirstDefender/0` | 디버그/로그 (도구 처분표) |  |
 
 ## BattleBridge.UltimateLeap.cs (6)
@@ -107,24 +107,24 @@
 | 5 | `SetMatchSeed/1` | `ModeSelection.Seed` → BattleDriver | 재현의 둘째 축. 씬 경계를 넘어오는 값이라 진입 선택이 나른다(0 = 저작 시드) |
 | 6 | `BuildBriefingWavePlan/0` | WaveScheduler |  |
 | 7 | `SetAssignedGimmick/1` | GimmickHost |  |
-| 8 | `Awake/0` | 미정 |  |
-| 9 | `OnValidate/0` | 미정 |  |
+| 8 | `Awake/0` | 삭제 (7d · 계약 1) | MonoBehaviour 수명. 코어의 수명은 `BattleMatch` 조립이고 드라이버(`BattleDriver`)가 든다 |
+| 9 | `OnValidate/0` | 삭제 (7d · 계약 1) | 인스펙터 값 보정 — 값의 정본이 SO → `MatchDefinitionBuilder` 로 옮겨 빌더가 거절한다(계약 6) |
 | 10 | `ApplyUnitHealthPresentationMode/0` | CharacterViewConfig | 표시 모드는 저작 값이 됐다 — 런타임에 미는 함수가 없다 |
 | 11 | `EnterPlacementOrIntro/0` | PlacementService |  |
-| 12 | `OnRestartRequested/0` | 미정 |  |
+| 12 | `OnRestartRequested/0` | 삭제 (7d · 사용자 결정) | 판 안 재시작 없음(사용자 확정 2026-09-23) — 새 판은 `BattleMatch` 를 새로 조립한다 |
 | 13 | `ReLogSkillLoadoutForNewSession/1` | BindingRegistry / TriggerDispatcher |  |
 | 14 | `TeardownCurrentBattle/0` | MatchClock |  |
 | 15 | `HasLiveEntityManager/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 16 | `AttachSimEntityId/1` | HandDeck |  |
-| 17 | `DestroyBattleEntities/0` | 미정 |  |
-| 18 | `DestroyEcsInfrastructureEntities/0` | 미정 |  |
-| 19 | `DisposeEcsInfrastructureNativeContainers/0` | 미정 |  |
-| 20 | `DisposeCachedQueries/0` | 미정 |  |
+| 17 | `DestroyBattleEntities/0` | 삭제 (7d · 계약 1) | ECS 월드 정리. 코어 월드는 판과 함께 버려진다 — 개별 파괴 경로가 없다 |
+| 18 | `DestroyEcsInfrastructureEntities/0` | 삭제 (7d · 계약 1) | 싱글턴·채널 엔티티 정리 — 코어에 큐·싱글턴이 없다 |
+| 19 | `DisposeEcsInfrastructureNativeContainers/0` | 삭제 (7d · 계약 1) | NativeContainer 해제 — 코어는 관리 배열만 쓴다(계약 4) |
+| 20 | `DisposeCachedQueries/0` | 삭제 (7d · 계약 1) | EntityQuery 캐시 — 코어에 쿼리가 없다(순회 = `SimEntityId` 오름차순 목록) |
 | 21 | `BuildFlowField/0` | MapRuntime (코어) |  |
 | 22 | `AddTraversalMask/2` | BattleMatch (7a 확인) | 통행 층 목록은 조립 지점이 정의표에서 한 번 모은다(`CollectTraversalMasks`) — 규칙이 만드는 개체(장판·탄)는 새 층을 안 연다 |
 | 23 | `BuildPickupSpawnState/0` | GimmickHost |  |
 | 24 | `TeardownPickupSpawnState/0` | MatchClock |  |
-| 25 | `ComputeSpawnLateralOffset/1` | 미정 |  |
+| 25 | `ComputeSpawnLateralOffset/1` | EnemySpawn (코어) | 스폰 칸 흐름 수직 이산 N-레인 분산 = `Move/SpawnSpread` + `World/EnemySpawn` · 값은 `MovementTuningDef.SpawnSpread*`(bridge-fields 40~42). 가변 순번은 X25 보류(후속 후보) |
 | 26 | `BuildStageMarkerRegistry/0` | BattleDriver | 스테이지 스캔 → 거점 목록. `Build(…, structures:)` 의 입력 |
 | 27 | `TryGetGoalVisualAnchor/1` | HeartMeter |  |
 | 28 | `TryGetSpawnVisualAnchor/2` | 뷰 풀 |  |
@@ -134,12 +134,12 @@
 | 32 | `TeardownFlowField/0` | MatchClock |  |
 | 33 | `BeginPlacement/0` | PlacementService |  |
 | 34 | `StartBattle/0` | MatchClock |  |
-| 35 | `EnsureQueriesAndQueues/0` | 미정 |  |
+| 35 | `EnsureQueriesAndQueues/0` | 삭제 (7d · 계약 1) | 쿼리·큐 지연 생성 — 둘 다 코어에 없다 |
 | 36 | `StopBattle/0` | MatchClock |  |
 | 37 | `PrepareDraftMap/0` | MapRuntime (코어) |  |
 | 38 | `DeferredPrepareDraftMap/0` | MapRuntime (코어) |  |
 | 39 | `CleanupDraftMapBeforeRebuild/0` | MapRuntime (코어) |  |
-| 40 | `DestroyEntitiesByType/0` | 미정 |  |
+| 40 | `DestroyEntitiesByType/0` | 삭제 (7d · 계약 1) | 판 경계 타입별 엔티티 파괴 헬퍼 — 판 경계 = 조립 교체라 소비처가 없다 |
 | 41 | `RebuildDraftMap/0` | MapRuntime (코어) |  |
 | 42 | `SetAuthoredWavePlan/1` | WaveScheduler |  |
 | 43 | `TryInitializeGeneratedWaves/0` | WaveScheduler |  |
@@ -195,7 +195,7 @@
 | 93 | `EvaluateEnemyHealthTint/1` | CoreUnitViewPool | 저체력 틴트. 값은 `CharacterViewConfig.healthDisplayStyle` |
 | 94 | `SyncSummonerAnimationState/3` | 뷰 풀 |  |
 | 95 | `TraceDefenderAiTransition/1` | 디버그/로그 (도구 처분표) |  |
-| 96 | `FindSummonPatrolAbility/1` | 미정 |  |
+| 96 | `FindSummonPatrolAbility/1` | CombatDefinitionBuilder (7d 확인) | `GetAbility<SummonPatrolAbility>()` → `AttackDef.SummonPatrolDefIndex` · 순찰 유닛을 정의표 줄에 편입 |
 | 97 | `DrainDefenderDeathEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 98 | `OccupyDefenderFootprint/2` | PlacementService |  |
 | 99 | `ReleaseDefenderFootprint/1` | PlacementService |  |
@@ -260,15 +260,15 @@
 | 158 | `KnockbackOn/1` | 삭제 | 저작 술어(`거리>0 && 지속>0`)일 뿐이다. 넉백의 실체는 `CcState` 의 `Impulse` 슬롯이고, 「값이 있나」 판정은 부여 호출부에 이미 인라인돼 있다 |
 | 159 | `GetOrCreateSkillVfxIndex/1` | BindingRegistry / TriggerDispatcher |  |
 | 160 | `GetOrCreateProjectileDataIndex/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 161 | `EffectiveLeakLimit/0` | 미정 |  |
+| 161 | `EffectiveLeakLimit/0` | 삭제 (7d · 계약 9) | 유출 한도 제거 확정(X17) |
 | 162 | `ResetGoalStability/0` | HeartMeter |  |
 | 163 | `BakeProjectileRef/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 164 | `SpawnStructureEntities/0` | FieldPrepPhase.Begin | 코어가 저작 거점을 세운다 — 드라이버는 목록만 넘긴다 |
 | 165 | `SpawnStructureViews/0` | 뷰 풀 |  |
 | 166 | `ClearStructureViews/0` | 뷰 풀 |  |
 | 167 | `DestroyStructureEntities/0` | 삭제 | 판이 끝나면 월드가 통째로 사라진다 — 개별 파괴 경로가 없다 |
-| 168 | `RemainingLeakAllowance/0` | 미정 |  |
-| 169 | `TryPayLeakAllowance/1` | 미정 |  |
+| 168 | `RemainingLeakAllowance/0` | 삭제 (7d · 계약 9) | 유출 한도 제거 확정(X17) |
+| 169 | `TryPayLeakAllowance/1` | 삭제 (7d · 계약 9) | 유출 한도 제거 확정(X17) |
 | 170 | `DrainGoalEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 171 | `NearestGoalCell/1` | HeartMeter |  |
 | 172 | `EnqueueGoalHeal/1` | 삭제 (코어 내부 호출) |  |
@@ -277,10 +277,10 @@
 | 175 | `SyncGoalStability/0` | HeartMeter |  |
 | 176 | `OpenBreachedCellsForLeak/1` | MapRuntime (코어) |  |
 | 177 | `OpenGoalCellAfterBreach/1` | HeartMeter |  |
-| 178 | `LeakSiegingEnemy/1` | 미정 |  |
+| 178 | `LeakSiegingEnemy/1` | 삭제 (7d · 휴면 코드) | 골 붕괴 셀의 공성 적 → 유출 전환. 옛 코드도 **도달 불가**(heart-stress-axis 0 — 첫 붕괴가 판을 끝낸다 `BattleBridge.cs:7072`). 코어는 `HeartMeter.Damage` 가 첫 붕괴에 판을 닫는다 |
 | 179 | `SubmitMatch/0` | MatchClock |  |
 | 180 | `CheckTimer/0` | MatchClock |  |
-| 181 | `NoQueuedAttackersRemain/0` | 미정 |  |
+| 181 | `NoQueuedAttackersRemain/0` | WaveScheduler.FieldClear | 전멸 술어(보너스 적 제외 · 자기 술어 X12) · 목표는 `LastWaveDispatchedAndFieldClear` 를 읽는다 |
 | 182 | `ReportMatchResult/1` | CoreMatchOutcomePresenter | 게이트 = `submitsReport && allowSubmit`. `ReportResult` 시그니처 무변(계약 13) |
 | 183 | `EndMatch/1` | MatchClock |  |
 | 184 | `ShowResult/1` | CoreMatchOutcomePresenter | `MatchOutcome` → `MatchTally` 어댑터 한 줄 + `ResultScreen.Show` |
@@ -316,7 +316,7 @@
 | 214 | `OnDefenderActivated/1` | `DefenderActivated` 사건 구독 | 뷰 풀이 배치 모션을 재생한다 |
 | 215 | `DrainDefenderActivatedEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 216 | `TriggerDeploymentOnPlaceSkill/2` | BindingRegistry / TriggerDispatcher |  |
-| 217 | `ApplyEnvironmentGating/0` | 미정 |  |
+| 217 | `ApplyEnvironmentGating/0` | 삭제 (7d) | 타일맵 모드에서 끌 옛 환경 오브젝트 — 필드 `tilemapHiddenEnvironment` 가 bridge-fields 73 에서 이미 삭제(새 씬에 끌 환경이 없다) |
 | 218 | `SetPlacementHover/2` | PlacementService |  |
 | 219 | `SetPlacementHover/3` | PlacementService |  |
 | 220 | `PulsePlacementHover/2` | PlacementService |  |
@@ -353,7 +353,7 @@
 | 251 | `TryGetPatrolHomeCell/4` | MapRuntime (코어) |  |
 | 252 | `DebugSpawnPatrolAt/3` | 디버그/로그 (도구 처분표) |  |
 | 253 | `DebugTryGetPatrolAnchorCell/2` | MapRuntime (코어) |  |
-| 254 | `RegisterPatrolUnitSO/1` | 미정 |  |
+| 254 | `RegisterPatrolUnitSO/1` | CombatDefinitionBuilder (7d 확인) | 순찰 SO → `Units` 줄 인덱스. 옛 런타임 등록부의 후계는 bake 한 번이다 — 실행은 `CombatPhase.SpawnPatrol` |
 | 255 | `DrainPatrolSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 256 | `AddEffectTile/2` | PlacementService | unit 6b 정정 — 칸 목록의 주인은 **뽑는 자**다(`Begin` 이 칸·종류를 함께 뽑고 판 내내 불변). 맵은 그 칸을 모른다 |
 | 257 | `ApplyEffectTileIfAny/2` | PlacementService | unit 6b 정정 — `ApplyArmedTile`(활성화 엣지 · 저작 연산자 그대로 · 칸 `SlotKind.Tile`) |
@@ -388,7 +388,7 @@
 | 286 | `ShapeToHazardVisualScale/3` | 뷰 풀 |  |
 | 287 | `DebugSpawnObstacleContext/0` | 디버그/로그 (도구 처분표) |  |
 | 288 | `LogPlacementReject/3` | PlacementService |  |
-| 289 | `OnDestroy/0` | 미정 |  |
+| 289 | `OnDestroy/0` | 삭제 (7d · 계약 1) | MonoBehaviour 수명 — 판이 끝나면 `BattleMatch` 가 통째로 버려진다 |
 | 290 | `EnsureMonoViewPools/0` | 뷰 풀 |  |
 | 291 | `CreateViewPool/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 292 | `ResolveUnitMaterial/2` | CoreUnitViewPool | 쿼드 폴백 머티리얼. `RuntimeMaterialFactory` 경유로 바뀌었다 |
@@ -403,5 +403,5 @@
 | 301 | `SpawnUnit/1` | WaveScheduler |  |
 | 302 | `CreateEnemyEntity/4` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 303 | `ConeCosSq/1` | BindingDefinitionBuilder (7a) | bake 1회 변환(도 → cos²). 그림용 반각은 `BindingDef.ConeHalfAngleDeg` 로 함께 싣는다(브레스 `TriggerFired`) |
-| 304 | `SpawnSplitChildren/2` | 미정 |  |
+| 304 | `SpawnSplitChildren/2` | EnemySplit (코어 · 7d) | 사망 seam `OnSlain` — 부모 칸 중심 + `2π·c/count` · 첫 슬롯 · 자기순환 거절 · 전멸 판정 앞(`d4cded945`) |
 | 305 | `CreateAttackUnitRuntimeMaterial/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
