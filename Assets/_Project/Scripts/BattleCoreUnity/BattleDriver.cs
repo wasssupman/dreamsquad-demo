@@ -64,6 +64,23 @@ namespace Wassup.BattleCoreUnity
         [SerializeField] private Wassup.Battle.Effects.BlockingHazardSO[] _extraBlockers
             = Array.Empty<Wassup.Battle.Effects.BlockingHazardSO>();
 
+        [Tooltip("개발용 덱 덮어쓰기(구성 순서 그대로). **비우면** 프로필 확정 덱 + 판마다 굴린 액티브로 짓는다(unit 7c) — "
+                 + "채우면 이 목록이 곧 덱이다(테스트·개발 판).")]
+        [SerializeField] private DreamcatcherCard[] _cards = Array.Empty<DreamcatcherCard>();
+
+        [Header("드림캐쳐 덱 (unit 7c — 프로필 확정 덱 + 판마다 굴린 액티브)")]
+        [Tooltip("프로필(씬 간 메모리 캐시). 확정 덱이 없거나 검증에 실패하면 부착 덱은 비어 있다(기본 덱 폴백 없음 — D3).")]
+        [SerializeField] private Wassup.Core.PlayerProfileSO _profile;
+        [SerializeField] private DreamcatcherCardCatalog _cardCatalog;
+        [Tooltip("판마다 굴리는 공용 액티브의 스킬 풀. 굴림 시드 = 판 시드(재현).")]
+        [SerializeField] private SkillData[] _activePool = Array.Empty<SkillData>();
+        [SerializeField, Min(0)] private int _activeCount = 2;
+        [Tooltip("스킬을 감싸는 액티브 카드. 굴린 스킬을 감싸는 카드가 없으면 그 장만 빠진다(D4).")]
+        [SerializeField] private DreamcatcherCard[] _activeCards = Array.Empty<DreamcatcherCard>();
+
+        [Tooltip("판 진입 드림스톤(스탯 돌 = 배치 유닛 상속 · 코스트 돌 = 재생 배율). 비우면 없음.")]
+        [SerializeField] private DreamstoneData[] _dreamstones = Array.Empty<DreamstoneData>();
+
         [Tooltip("재현의 두 축 중 하나(나머지는 modeId). 같은 값이면 같은 판이다.")]
         [SerializeField] private int _seed = 1;
 
@@ -76,6 +93,7 @@ namespace Wassup.BattleCoreUnity
 
         private BattleMatch _match;
         private MatchDefinition _definition;
+        private MatchModeData _resolvedMode;
         private float _accumulator;
         private bool _paused;
 
@@ -110,6 +128,9 @@ namespace Wassup.BattleCoreUnity
         public BattleMatch Match => _match;
         public MatchDefinition Definition => _definition;
         public bool Paused => _paused;
+
+        /// <summary>이 판을 지은 모드 SO(선택 3단을 푼 결과). 손패 화면이 각성 저작(감속 배율 · 표식 반경)을 읽는 창구다.</summary>
+        public MatchModeData Mode => _resolvedMode;
         public bool Running => _match != null;
         public float TileSize => _tileSize;
 
@@ -234,6 +255,20 @@ namespace Wassup.BattleCoreUnity
             // 시드 0 은 「아무도 안 골랐다」다 — 저작 시드로 떨어진다(`ModeSelection.Seed` 주석).
             int seed = selection.Seed != 0 ? selection.Seed : _seed;
             if (!BuildStage()) return;
+            _resolvedMode = mode;
+
+            // unit 7c — 덱. 개발용 덮어쓰기가 비었으면 프로필 확정 덱 + 판 시드로 굴린 액티브(판 밖에서 한 번).
+            // ⚠ 모드에 각성 저작이 없으면 카드 **값**을 모른다(값의 주인 = `AwakeningConfig`) — 그 모드는 카드 없는 판이다.
+            // 짓다가 카드마다 에러를 내지 않고 한 번 말한다(테스트 모드 SO · 각성 없는 모드).
+            IReadOnlyList<DreamcatcherCard> cards;
+            if (_cards != null && _cards.Length > 0) cards = _cards;
+            else if (mode.awakeningConfig == null)
+            {
+                Debug.LogWarning($"[BattleDriver] 모드 '{mode.name}' 에 각성 저작(AwakeningConfig)이 없다 — 드림캐쳐 덱 없이 짓는다.", this);
+                cards = Array.Empty<DreamcatcherCard>();
+            }
+            else cards = Cards.CoreDeckComposition.Compose(_profile, _cardCatalog, _activePool, _activeCount, _activeCards,
+                                                           seed, msg => Debug.LogWarning(msg, this));
 
             // ⚠ **거점 목록을 반드시 넘긴다**(`55688ef5`). 격자 투영에는 셀과 진영밖에 없어
             // 스탯이 없다 — 안 넘기면 마음 타워·본능이 한 기도 안 서고 콘솔 에러 0 으로
@@ -262,7 +297,8 @@ namespace Wassup.BattleCoreUnity
                     Theme = Wassup.Data.Season.SeasonRuntime.Active != null
                         ? Wassup.Data.Season.SeasonRuntime.Active.mapTheme : null,
                     SuppressEffectTiles = _stageInstance != null && _stageInstance.suppressEffectTiles,
-                });
+                },
+                cards: cards, dreamstones: _dreamstones);
 
             Begin(def);
         }

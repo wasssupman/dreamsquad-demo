@@ -158,6 +158,18 @@ namespace Wassup.BattleCore
         public readonly Inbox Inbox = new Inbox();
 
         /// <summary>
+        /// unit 7a — 이 유닛이 든 규칙(등록부 항목). 순서 = `InstanceId` 오름차순(부착 순 append).
+        /// 소유자가 사라지면 같이 떨어진다 — `BattleWorld.Destroy` 가 리셋 **전에** 등록부에 알린다.
+        /// </summary>
+        public readonly System.Collections.Generic.List<Trigger.Binding> Bindings
+            = new System.Collections.Generic.List<Trigger.Binding>(2);
+
+        /// <summary>
+        /// unit 7a — 처치 보상 배율(살찌운 제물 `ScaleKillReward`). 1 = 저작 그대로. 소비는 보상 담당자(7b).
+        /// </summary>
+        public float AwakeningRewardMul = 1f;
+
+        /// <summary>
         /// 풀에 돌아가기 전 비우기. **부분은 버리지 않고 `UnitPartPool` 이 회수한다**(F4) —
         /// 틱 중 `new` 가 그대로 쓰레기가 되던 자리다.
         /// ⚠ 부분이 늘면 `UnitPartPool.Reclaim` 도 같이 고친다.
@@ -190,6 +202,8 @@ namespace Wassup.BattleCore
             Cc.Reset();
             Dot.Reset();
             Stacks.Reset();
+            Bindings.Clear();
+            AwakeningRewardMul = 1f;
         }
 
         /// <summary>
@@ -213,7 +227,7 @@ namespace Wassup.BattleCore
         /// ⚠ 넉백은 잠금이 아니다(밀리는 중에도 때린다).
         /// </summary>
         public bool ActionLocked
-            => (Progressive != null && Progressive.LeapActive)
+            => (Progressive != null && (Progressive.LeapActive || Progressive.HopActive))
                || (Move != null && Move.Locked)
                || Cc.IsLocked;
 
@@ -224,6 +238,9 @@ namespace Wassup.BattleCore
         /// 군중 제어가 풀리는 틱에 도약 잠금까지 같이 풀린다. 소유자를 안 섞고 **읽는 자리에서**
         /// 합친다.
         /// </summary>
-        public bool MovementLocked => (Move != null && Move.Locked) || Cc.IsLocked;
+        public bool MovementLocked
+            => (Move != null && Move.Locked) || Cc.IsLocked
+               // unit 7d — 일반 도약 비행 창(옛 `LeapFlight`: 자기주도 이동·감지 막힘 판정이 같은 술어를 읽었다).
+               || (Progressive != null && Progressive.HopActive);
     }
 }

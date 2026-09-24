@@ -65,5 +65,62 @@ namespace Wassup.BattleCoreUnity
 
         public StructureData Structure(int defIndex)
             => defIndex >= 0 && defIndex < _structures.Count ? _structures[defIndex] : null;
+
+        // ── unit 7c — 카드와 규칙 줄의 그림 ─────────────────────────────────────
+        //
+        // 같은 규율이다: **카드 줄 번호를 매긴 순회**(`CardDefinitionBuilder.Fill` — 빈 칸을 건너뛴다)가 카드 에셋 목록을,
+        // **규칙 줄 번호를 매긴 순회**(`BindingDefinitionBuilder.Bake`)가 줄별 연출 프리팹을 채운다. 뷰는 사건이 나른
+        // `DefIndex`(카드 줄 · 규칙 줄)로 되찾기만 한다 — 뷰가 덱 목록을 다시 모으면 빈 칸 하나에 번호가 밀린다.
+        private readonly List<DreamcatcherCard> _cards = new List<DreamcatcherCard>();
+        private readonly Dictionary<int, (UnityEngine.GameObject prefab, float scale)> _bindingAuras
+            = new Dictionary<int, (UnityEngine.GameObject, float)>();
+        private readonly List<UnityEngine.GameObject> _skillVfx = new List<UnityEngine.GameObject>();
+
+        public IReadOnlyList<DreamcatcherCard> Cards => _cards;
+
+        public void SetCards(List<DreamcatcherCard> rows)
+        {
+            _cards.Clear();
+            if (rows != null) _cards.AddRange(rows);
+        }
+
+        public DreamcatcherCard Card(int cardIndex)
+            => cardIndex >= 0 && cardIndex < _cards.Count ? _cards[cardIndex] : null;
+
+        /// <summary>규칙 줄이 선언한 **부착 오라**(옛 `DcAuraVisualPool.Register` — 메커닉 저작 `auraPrefab`). 새 판마다 비운다.</summary>
+        public void ClearBindingVisuals()
+        {
+            _bindingAuras.Clear();
+            _skillVfx.Clear();
+        }
+
+        public void SetBindingAura(int row, UnityEngine.GameObject prefab, float scale)
+        {
+            if (prefab == null || row < 0) return;
+            _bindingAuras[row] = (prefab, scale);
+        }
+
+        public bool TryGetBindingAura(int row, out UnityEngine.GameObject prefab, out float scale)
+        {
+            if (_bindingAuras.TryGetValue(row, out var v)) { prefab = v.prefab; scale = v.scale; return true; }
+            prefab = null; scale = 0f;
+            return false;
+        }
+
+        /// <summary>
+        /// 스킬 연출 표(빔 — 옛 `GetOrCreateSkillVfxIndex`). 규칙 줄의 `DataIndex` 가 이 번호를 싣는다(`SkillVisual.DefIndex`).
+        /// 같은 프리팹은 같은 번호다.
+        /// </summary>
+        public int RegisterSkillVfx(UnityEngine.GameObject prefab)
+        {
+            if (prefab == null) return -1;
+            int at = _skillVfx.IndexOf(prefab);
+            if (at >= 0) return at;
+            _skillVfx.Add(prefab);
+            return _skillVfx.Count - 1;
+        }
+
+        public UnityEngine.GameObject SkillVfx(int index)
+            => index >= 0 && index < _skillVfx.Count ? _skillVfx[index] : null;
     }
 }

@@ -97,6 +97,19 @@ namespace Wassup.BattleCore
         /// </summary>
         public EffectTileDef[] EffectTiles = System.Array.Empty<EffectTileDef>();
 
+        /// <summary>
+        /// unit 7a — 규칙(`BindingDef`) 표. 유닛·적 줄이 `Bindings`(인덱스)로 가리킨다 — 참조를 복제하지 않는다.
+        /// **빈 표는 한 줄도 안 적는다**(저작이 없는 판 = 오늘의 골든 코퍼스 전부의 해시 무변).
+        /// </summary>
+        public Trigger.BindingDef[] Bindings = System.Array.Empty<Trigger.BindingDef>();
+
+        /// <summary>
+        /// unit 7b — **판 호스트가 판 시작에 드는 규칙 줄**(드림스톤 — 판 진입 장비의 스탯 상속). 비면 한 줄도 안 쓴다.
+        /// 카드가 아니다(손패·각성과 무관) — 그 판에 들고 들어온 플레이어 장비라 모드가 아니라 반입이 정한다
+        /// (`CostRateMultiplier` 와 같은 축).
+        /// </summary>
+        public int[] MatchBindings = System.Array.Empty<int>();
+
         /// <summary>시드 생성 덱. `Mode.WaveSource` 가 `GeneratedFromDeck` 일 때 읽힌다.</summary>
         public Wave.WaveDeckDef WaveDeck = Wave.WaveDeckDef.Empty();
 
@@ -173,6 +186,12 @@ namespace Wassup.BattleCore
             Mode.Canonicalize(sb, inv);
             Put(sb, "costRateMultiplier", CostRateMultiplier, inv);
             Put(sb, "effectTileCount", EffectTileCount, inv);
+            if (MatchBindings != null && MatchBindings.Length > 0)
+            {
+                var parts = new string[MatchBindings.Length];
+                for (int i = 0; i < parts.Length; i++) parts[i] = MatchBindings[i].ToString(inv);
+                Put(sb, "matchBindings", string.Join(",", parts));
+            }
             Movement.Canonicalize(sb, inv);
             Heart.Canonicalize(sb, inv);
             Bonus.Canonicalize(sb, inv);
@@ -284,6 +303,11 @@ namespace Wassup.BattleCore
                 sb.Append("[effecttile").Append(i.ToString(inv)).Append("]\n");
                 EffectTiles[i].Canonicalize(sb, inv);
             }
+            for (int i = 0; i < Bindings.Length; i++)
+            {
+                sb.Append("[binding").Append(i.ToString(inv)).Append("]\n");
+                Bindings[i].Canonicalize(sb, inv);
+            }
         }
 
         private static string Cell(int2 c, CultureInfo inv)
@@ -382,6 +406,9 @@ namespace Wassup.BattleCore
         /// </summary>
         public int AwakeningReward;
 
+        /// <summary>unit 7a — 이 유닛이 저작으로 든 규칙(`MatchDefinition.Bindings` 인덱스). null/빈 = 없음.</summary>
+        public int[] Bindings;
+
         public int EffectiveMaxOnBoard => MaxOnBoard <= 0 ? 1 : MaxOnBoard;
 
         public float EffectiveDeathCooldown => DeathCooldown > 0f ? DeathCooldown : 0f;
@@ -414,6 +441,16 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "deployMotionSeconds", DeployMotionSeconds, inv);
             MatchDefinition.Put(sb, "awakeningReward", AwakeningReward, inv);
             Attack.Canonicalize(sb, inv);
+            PutBindings(sb, inv, Bindings);
+        }
+
+        // unit 7a — **비면 한 줄도 안 쓴다**(골든 코퍼스 해시 무변 — 칸을 더했다는 사실만으로 해시가 바뀌면 오보가 난다).
+        internal static void PutBindings(StringBuilder sb, CultureInfo inv, int[] rows)
+        {
+            if (rows == null || rows.Length == 0) return;
+            var parts = new string[rows.Length];
+            for (int i = 0; i < rows.Length; i++) parts[i] = rows[i].ToString(inv);
+            MatchDefinition.Put(sb, "bindings", string.Join(",", parts));
         }
     }
 
@@ -451,6 +488,18 @@ namespace Wassup.BattleCore
         /// <summary>공격 저작. 방어유닛 줄과 **같은 타입**이다(통합 루프가 둘을 구분하지 않는다).</summary>
         public AttackDef Attack;
 
+        /// <summary>unit 7a — 이 적이 저작으로 든 규칙(악몽 메커닉). null/빈 = 없음.</summary>
+        public int[] Bindings;
+
+        // ── unit 7d — 분열(`OnDeath × SplitOnDeath` 의 **첫 슬롯**) ──
+        // 규칙 레이어 항목이 아니다(S8 — 그릇은 붙이되 항목은 건너뛴다). 이 적이 **피해로** 죽으면 그 칸에서 자식이 퍼진다
+        // (`EnemySplit` · 사망 seam). ⚠ **게이트는 `SplitCount`** 다 — 기본값 0 = 안 갈라진다. 자식 줄의 기본값 0 은 유효
+        // index 라 게이트로 쓰면 안 된다(S4).
+        /// <summary>자식 수(1~8). 0 = 분열 없음. 빌더가 저작 상한으로 자른다.</summary>
+        public int SplitCount;
+        /// <summary>자식의 `Enemies` 줄. `SplitCount > 0` 일 때만 읽힌다.</summary>
+        public int SplitChildDefIndex;
+
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
             MatchDefinition.Put(sb, "id", Id);
@@ -473,6 +522,10 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "targetFactions", TargetFactions, inv);
             MatchDefinition.Put(sb, "waypointPathIndex", WaypointPathIndex, inv);
             Attack.Canonicalize(sb, inv);
+            UnitDef.PutBindings(sb, inv, Bindings);
+            // unit 7d — 분열이 없으면 안 쓴다(골든 코퍼스 해시 무변).
+            if (SplitCount > 0)
+                MatchDefinition.Put(sb, "split", SplitChildDefIndex.ToString(inv) + "," + SplitCount.ToString(inv));
         }
     }
 

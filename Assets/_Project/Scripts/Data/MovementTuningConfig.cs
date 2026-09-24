@@ -27,7 +27,22 @@ namespace Wassup.Data
         [Tooltip("위쪽(+) 범위만 좁히는 배율. 키 큰 캐릭터 보정. 1 = 대칭.")]
         [SerializeField, Range(0f, 1f)] private float spawnSpreadTopScale = 0.5f;
 
+        [Tooltip("보스 일반 도약의 비행 창(초). 이 동안 공격·이동을 못 하고(맞기는 한다) 창 끝에 착지 슬램이 터진다. " +
+                 "옛 브리지 값 0.83. 뷰(`CoreLeapPresenter`)는 이 값을 도약 사건으로 받는다.")]
+        [SerializeField, Min(0.05f)] private float bossLeapFlightSeconds = 0.83f;
+
+        [Tooltip("분열 자식이 부모 칸 중심에서 퍼지는 반경(칸 폭 비). 옛 브리지 값 0.25. 0.49 미만이어야 자식이 부모와 " +
+                 "같은 칸에 남는다(옆 칸이 골이면 처치했는데 유출). 0 = 한 점.")]
+        [SerializeField, Range(0f, 0.49f)] private float splitSpreadFraction = 0.25f;
+
+        [Tooltip("분열 자식 상한 — 한 죽음에 서는 자식 수의 천장. 밸런스가 아니라 저작 사고 방어선(옛 브리지 상수 8). " +
+                 "빌더가 저작 수를 이 값으로 자르고 코어가 한 번 더 자른다.")]
+        [SerializeField, Min(1)] private int splitMaxChildren = 8;
+
+        public int SplitMaxChildren => splitMaxChildren;
         public float AgentRadiusTiles => agentRadiusTiles;
+        public float SplitSpreadFraction => splitSpreadFraction;
+        public float BossLeapFlightSeconds => bossLeapFlightSeconds;
         public int SpawnSubLaneCount => spawnSubLaneCount;
         public float SpawnSpreadFraction => spawnSpreadFraction;
         public float SpawnSpreadTopScale => spawnSpreadTopScale;

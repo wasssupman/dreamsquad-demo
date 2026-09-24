@@ -120,5 +120,62 @@ namespace Wassup.Tests.EditMode.Core
                 StringAssert.DoesNotContain("_projectiles.Remove", code, Path.GetFileName(path));
             }
         }
-    }
+    
+        [Test]
+        public void 스킬_경로의_쓰기는_IntentApplier_한_표면을_지난다()
+        {
+            // unit 7a · S20 — 옛 전투는 asmdef 가 「쓰기는 발행으로만」을 컴파일러로 강제했다. 새 코어 안에서는
+            // 아무것도 막지 않으므로 규율을 **표면 하나**로 옮기고 그 형태를 여기서 못박는다.
+            // 트리거 폴더에서 세계를 바꾸는 호출(관문·요청 줄·인박스·장·장판)은 `IntentApplier` 에만 있어야 한다.
+            // 예외 하나: 등록부의 소급 회수(`RevokeTag`) — 수명의 일이지 스킬의 쓰기가 아니다.
+            var writes = new Regex(@"EffectApply\.|RequestCc\(|ProjectileRequests\.Add|GrantShield\(|SpawnField\(|HazardSpawn\.|AggroRequests\.Add|Inbox\.(Damage|Heal|Shield)|\.Cc\.(Apply|Clear)\(|\.Health\s*=[^=]|\.Position\s*=[^=]");
+            var offenders = new List<string>();
+            foreach (var path in Sources("Trigger"))
+            {
+                string name = Path.GetFileName(path);
+                if (name == "IntentApplier.cs") continue;
+                if (writes.IsMatch(CodeOnly(path))) offenders.Add(name);
+            }
+            CollectionAssert.IsEmpty(offenders, "스킬 경로의 상태 변경은 `IntentApplier.Apply` 뿐이다");
+
+            // 문맥(질의)은 쓰기를 **위임만** 한다 — `Emit` 두 줄이 applier 로 간다.
+            string ctx = CodeOnly(Path.Combine(CoreDir, "Trigger/CoreSkillContext.cs"));
+            StringAssert.Contains("_applier.Apply(in intent)", ctx);
+        }
+
+        [Test]
+        public void 손패_담당자에는_효과가_한_줄도_없다()
+        {
+            // unit 7b — 「효과는 `BindingRegistry` 호출로만 나간다」. 손패가 의도·관문·스탯·군중 제어를 직접 만지면
+            // 그것이 카드 효과를 아는 첫 줄이고, 다음 사람이 그 옆에 다음 카드의 효과를 적는다.
+            string code = CodeOnly(Path.Combine(CoreDir, "Owners/HandDeck.cs"));
+            var effects = new Regex(@"SimIntent|IntentApplier|EffectApply\.|RequestCc\(|\.Modifiers\.|\.Cc\.|ProjectileRequests|Inbox\.|\.Mods\.|ISkill\b|\.Execute\(");
+            var hit = effects.Match(code);
+            Assert.IsFalse(hit.Success, "HandDeck 에 효과 코드: " + hit.Value);
+            StringAssert.Contains("_registry.AttachCard(", code, "부착은 등록부로 나간다");
+            StringAssert.Contains("_registry.DetachCard(", code, "회수도 등록부로 나간다");
+        }
+
+        [Test]
+        public void 탄_부여_생산자는_디버그_커맨드뿐이다_생산자를_열면_상한_줄을_같이_저작한다()
+        {
+            // unit 7b 완료 기준(6a2 리뷰 F1) — 상한 줄이 없는 키의 부여는 관문이 거절한다(빌더는 어떤 키가 쓰일지 모른다).
+            // 7b 는 부여 생산자를 **열지 않았다**: 카드의 착탄 효과(비수의 출혈·서리 화살의 기절)는 공격 seam 에서 대상에
+            // 직접 걸고(옛 RESOLVE 시점), 카드 탄은 관문이 시전자 저작 출력을 접는다(6a2 결정 ①). 이 그물은 **다음 생산자**를
+            // 잡는다 — 여기가 빨개지면 그 키의 `ImbueCapConfig` 줄을 같은 커밋에서 저작하고 목록에 더할 것.
+            var grants = new List<string>();
+            foreach (var path in Directory.GetFiles(CoreDir, "*.cs", SearchOption.AllDirectories))
+                if (Regex.IsMatch(CodeOnly(path), @"ImbueGate\.Grant\(")) grants.Add(Path.GetFileName(path));
+            grants.Remove("ProjectileImbueSet.cs");   // 관문 자신
+            CollectionAssert.AreEquivalent(new[] { "CommandPhase.cs" }, grants);
+        }
+
+        [Test]
+        public void 트리거_레이어에_매니저_이름이_없다()
+        {
+            foreach (var path in Sources("Trigger"))
+                Assert.IsFalse(Regex.IsMatch(CodeOnly(path), @"class\s+\w*(Manager|Bridge|Controller)\b"),
+                    Path.GetFileName(path) + " — 새 코어 절대 제약 1");
+        }
+}
 }

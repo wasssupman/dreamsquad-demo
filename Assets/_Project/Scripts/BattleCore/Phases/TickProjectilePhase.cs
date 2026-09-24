@@ -473,6 +473,7 @@ namespace Wassup.BattleCore
                 p.BlockerHealth = d.BlockerHealth;
                 p.BlockerBodyRadius = d.BlockerBodyRadius;
                 p.OrbitPhase = req.OrbitPhase;
+                p.TelegraphTileRange = req.TelegraphTileRange;
                 p.FuseSeconds = req.FuseSeconds;
 
                 float distance = req.DistanceOverride > 0f ? req.DistanceOverride : d.MaxDistance;

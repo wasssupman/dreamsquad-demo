@@ -85,6 +85,17 @@ namespace Wassup.BattleCore
         // unit 6c 후속 — 상태의 끝. `i` = 사유 enum(`AggroReleaseReason` · `LastRunEndReason`).
         AggroReleased = 52,
         LastRunEnded = 53,
+        // unit 7a — 규칙. `a` = 소유자, `b` = 대상, `i` = InstanceId, `f` = payload(발동·부착) / 사유(떨어짐).
+        TriggerFired = 54,
+        BindingAttached = 55,
+        BindingDetached = 56,
+        // unit 7b — 카드. `a` = 숙주(시전은 판), `i` = 손패 항목 번호, `f` = 부착 묶음 핸들.
+        CardAttached = 57,
+        CardDetached = 58,
+        CardCast = 59,
+        // unit 7d — 시즌 기믹. `a` = 주인, `b` = 만든 개체, `i` = `GimmickKind`, `f` = 종류별 값.
+        GimmickTriggered = 60,
+        // ⚠ `SkillVisual` 은 채널이 없다 — 뷰 전용 연출 신호라 규칙을 증언하지 않는다(위 `TryChannel` 주석).
         // ⚠ `ScoreChanged` 는 **채널이 없다.** 처치 사건과 1:1 이라 새 정보가 0 이고
         // (`UnitSlain` + 진영으로 정확히 재구성된다) 총점은 아래 `finalScore` 가 증언한다.
         // 「전부 기록」을 강제하지 않는 이유가 이것이다 — 같은 사실의 두 번째 기록은
@@ -212,6 +223,13 @@ namespace Wassup.BattleCore
                 case CoreEventKind.ResignationConsumed: channel = CoreTraceChannel.ResignationConsumed; return true;
                 case CoreEventKind.AggroReleased: channel = CoreTraceChannel.AggroReleased; return true;
                 case CoreEventKind.LastRunEnded: channel = CoreTraceChannel.LastRunEnded; return true;
+                case CoreEventKind.TriggerFired: channel = CoreTraceChannel.TriggerFired; return true;
+                case CoreEventKind.BindingAttached: channel = CoreTraceChannel.BindingAttached; return true;
+                case CoreEventKind.BindingDetached: channel = CoreTraceChannel.BindingDetached; return true;
+                case CoreEventKind.CardAttached: channel = CoreTraceChannel.CardAttached; return true;
+                case CoreEventKind.CardDetached: channel = CoreTraceChannel.CardDetached; return true;
+                case CoreEventKind.CardCast: channel = CoreTraceChannel.CardCast; return true;
+                case CoreEventKind.GimmickTriggered: channel = CoreTraceChannel.GimmickTriggered; return true;
                 default: channel = default; return false;
             }
         }

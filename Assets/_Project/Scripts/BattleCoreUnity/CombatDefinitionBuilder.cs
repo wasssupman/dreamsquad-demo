@@ -30,7 +30,10 @@ namespace Wassup.BattleCoreUnity
                                 DefenderUnitData[] defenders,
                                 AttackUnitData[] enemies,
                                 IReadOnlyList<StructureEntry> structures = null,
-                                MatchViewAssets viewAssets = null)
+                                MatchViewAssets viewAssets = null,
+                                HazardSO[] hazards = null,
+                                IReadOnlyList<ProjectileData> extraProjectiles = null,
+                                CardAuthoring cards = default)
         {
             var projectiles = new List<ProjectileData>();
             var patterns = new List<ProjectilePatternData>();
@@ -64,10 +67,33 @@ namespace Wassup.BattleCoreUnity
                 if (def.Enemies[i].Attack.Unarmed) def.Enemies[i].AttackRange = 0f;
             }
 
+            // unit 7a — 유닛·적이 **저작으로 든 규칙**(배치 스킬 · 적 악몽 · 실드 캐스트). 탄·패턴 표를 굳히기 **전**이다 —
+            // 규칙이 가리키는 탄·패턴이 같은 표에 들어야 한다.
+            // unit 7c — 규칙 줄의 연출(부착 오라 · 빔)과 카드 에셋 목록도 **번호를 매기는 그 순회**가 채운다.
+            viewAssets?.ClearBindingVisuals();
+            BindingDefinitionBuilder.Fill(def, unitList, enemies, projectiles, patterns, hazards, viewAssets);
+            // unit 7b — 카드(덱) · 드림스톤. 같은 이유로 표를 굳히기 전이다(카드 탄·패턴이 같은 표에 든다).
+            CardDefinitionBuilder.Fill(def, in cards, projectiles, patterns, hazards, viewAssets);
+
             // 거점은 **탄 표를 유닛·적과 공유한다**(본능 포탑의 탄이 그 판의 탄 목록에 든다).
             // 표를 굳히기 **전**에 채우는 이유가 이것이다 — 뒤로 미루면 본능의 탄만 표 밖을
             // 가리켜 조용히 근접으로 접힌다.
             FillStructures(def, structures, projectiles, viewAssets);
+
+            // unit 7b — 유닛·적·거점이 아닌 **판 규칙**이 가리키는 탄(퇴근 기믹의 운석). 같은 이유로 표를 굳히기 전이다.
+            if (extraProjectiles != null)
+                for (int i = 0; i < extraProjectiles.Count; i++)
+                    if (extraProjectiles[i] != null) IndexOf(projectiles, extraProjectiles[i]);
+
+            // unit 7d — **길막이 부서질 때 쓰는 폭발 탄**(폭탄 배럴)도 탄 표에 든다. 공격 표 밖의 탄이라 줄 번호가 없었다(6b 이식
+            // 제외 「탄 표 편입 — unit 7」). 탄 → 길막 → 폭발 탄의 역참조라 **목록이 자라는 동안** 훑는다(폭발 탄이 또 길막을 세우면
+            // 그것도 따라간다). 표를 굳히기 전이다 — 뒤에 넣으면 폭발 줄이 -1 로 남아 배럴이 조용히 안 터진다.
+            for (int i = 0; i < projectiles.Count; i++)
+            {
+                var blast = projectiles[i] != null && projectiles[i].spawnBlocker != null
+                    ? projectiles[i].spawnBlocker.explodeProjectile : null;
+                if (blast != null) IndexOf(projectiles, blast);
+            }
 
             // ⚠ **패턴을 먼저 굽고 탄 표를 나중에 굳힌다.** 패턴 변환이 자기 탄(barrel)을 탄 목록에
             // 등록하므로, 표를 먼저 굳히면 그 뒤 등록된 탄은 **표 밖**을 가리킨다(조용히 「패턴에
@@ -338,7 +364,7 @@ namespace Wassup.BattleCoreUnity
             return outp;
         }
 
-        private static int IndexOf(List<ProjectileData> table, ProjectileData asset)
+        internal static int IndexOf(List<ProjectileData> table, ProjectileData asset)
         {
             if (asset == null) return -1;
             int i = table.IndexOf(asset);
@@ -376,7 +402,7 @@ namespace Wassup.BattleCoreUnity
 
         // 저작 토큰 → (궤적, 페이로드). **전사가 아니다** — 같은 궤적이 다른 페이로드와
         // 짝지으면 다른 토큰이고, 궤도·수류탄은 저작 토큰이 없다(코드 경로가 직접 고른다).
-        private static (MovementKind, PayloadKind) Translate(ProjectileFlightMode mode)
+        internal static (MovementKind, PayloadKind) Translate(ProjectileFlightMode mode)
         {
             switch (mode)
             {

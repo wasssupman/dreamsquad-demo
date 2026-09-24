@@ -83,6 +83,8 @@ namespace Wassup.Tests.EditMode.Core
             }, 0);
             m.Tick();   // 틱 밖에서 낸 사건은 다음 배달(틱 끝)에 간다
             Assert.AreEqual(1, spawned.Count);
+            Assert.AreEqual(5, spawned[0].AreaTiles, "unit 7d — 소용돌이 그림의 반경(칸)이 사건에 값으로 실린다");
+            Assert.AreEqual(0f, spawned[0].SiteFired.OriginBody, "자리형 — 원점 항은 칸 반폭(뷰가 CoreDrawRadius 로)");
             Assert.Greater(enemy.Position.z, z0, "사라지는 틱에도 이동은 당김을 받는다");
             Assert.AreEqual(1, gone.Count, "계약 7");
             Assert.AreEqual(spawned[0].A, gone[0].A);

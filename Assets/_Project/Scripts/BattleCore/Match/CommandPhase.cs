@@ -15,7 +15,7 @@ namespace Wassup.BattleCore
     // 이 클래스가 하는 일은 「어느 담당자에게 가나」뿐이고, 그것이 계약 12 의 이행이다 —
     // 커맨드마다 판정을 조금씩 여기 두면 이 파일이 새 브리지가 된다.
     // 남아 있는 판정은 **디버그 커맨드**뿐이고 그쪽은 정의상 판정을 갖지 않는다(시나리오가 곧 의도다).
-    public sealed class CommandPhase : ITickPhase
+    public sealed class CommandPhase : ITickPhase, ISeamHost
     {
         public string Name => "Command";
 
@@ -44,10 +44,14 @@ namespace Wassup.BattleCore
             _hand = hand;
         }
 
+        /// <summary>틱 안 seam 순서표에서 이 단계는 **맨 앞**(`Immediate`)이다 — 실제 드레인은 커맨드 콜스택이다.</summary>
+        public void AppendSeams(System.Collections.Generic.List<Seam> into) => into.Add(Seam.Immediate);
+
         public void Run(TickContext ctx)
         {
-            // unit 7 — Immediate seam 드레인이 여기 들어온다. 지금은 커맨드가 동기라
-            // 이 자리에서 할 일이 없다(빈 단계를 지우지 않는 이유는 위 주석).
+            // unit 7a — 틱 시작. 디스패처의 「이번 틱에 어디까지 돌았나」가 여기서 처음으로 돌아간다 —
+            // 잔여 규칙(후속 seam 이면 같은 틱 · 지난 seam 이면 다음 틱)의 기준점이다.
+            ctx.Triggers?.BeginTick(ctx.Tick);
         }
 
         public Receipt Execute(in Command cmd, int tick)
@@ -56,6 +60,20 @@ namespace Wassup.BattleCore
             // 결과 화면이 판 뒤에 바뀐다(계약 5).
             if (_clock.Ended) return Receipt.Reject(RejectReason.MatchEnded);
 
+            var receipt = Dispatch(in cmd, tick);
+            // unit 7a — **Immediate seam 의 유일한 호출부.** 커맨드를 적용한 **이 콜스택 안**에서 드레인한다 —
+            // 큐에 넣고 틱을 기다리면 소모(차감·쿨다운) 뒤에 실행이 도착한다(퇴근 운석 · 부착 즉시 · 액티브).
+            if (_ctx != null)
+            {
+                // 커맨드는 틱 사이에 온다 — 이 드레인이 내는 사건의 틱 = 커맨드의 틱(다음 틱 번호)이다.
+                _ctx.Tick = tick;
+                _ctx.Seams?.Run(Seam.Immediate, _ctx);
+            }
+            return receipt;
+        }
+
+        private Receipt Dispatch(in Command cmd, int tick)
+        {
             switch (cmd.Kind)
             {
                 case CommandKind.PlaceDefender:
@@ -75,7 +93,11 @@ namespace Wassup.BattleCore
                 case CommandKind.AttachCard:
                     return _hand.TryAttach(cmd.CardIndex, cmd.Target, tick);
                 case CommandKind.CastActive:
-                    return _hand.TryCast(cmd.CardIndex, tick);
+                    return _hand.TryCast(cmd.CardIndex, cmd.Cell, cmd.CellB, cmd.HasCellB, tick);
+                case CommandKind.DebugAttachCard:
+                    return _hand.DebugAttach(cmd.CardIndex, cmd.Target, tick);
+                case CommandKind.DebugCastCard:
+                    return _hand.DebugCast(cmd.CardIndex, cmd.Cell, cmd.CellB, cmd.HasCellB, tick);
                 case CommandKind.Submit:
                     return Submit();
 
@@ -93,6 +115,8 @@ namespace Wassup.BattleCore
                 case CommandKind.DebugSpawnPickup: return DebugPickup(cmd, tick);
                 case CommandKind.DebugDropResignation: return DebugResignation(cmd, tick);
                 case CommandKind.DebugSetStack: return DebugSetStack(cmd, tick);
+                case CommandKind.DebugSummonPatrol: return DebugSummonPatrol(cmd);
+                case CommandKind.DebugFireBinding: return DebugFireBinding(cmd);
 
                 default: return Receipt.Reject(RejectReason.UnknownCommand);
             }
@@ -112,6 +136,52 @@ namespace Wassup.BattleCore
             int h = math.max(1, d.FootprintHeight);
             _placement.SpawnDefender(cmd.DefIndex, cmd.Cell, w, h, cmd.Facing, tick, deploying: false);
             return Receipt.Ok;
+        }
+
+        // unit 7d — tools.md 10(순찰병 수동 스폰). 소환사와 **같은 문**을 지난다. 소환사가 없으니 연쇄 소멸도 없다.
+        private Receipt DebugSummonPatrol(in Command cmd)
+        {
+            if (_ctx == null) return Receipt.Reject(RejectReason.UnknownCommand);
+            if (cmd.DefIndex < 0 || cmd.DefIndex >= _def.Units.Length) return Receipt.Reject(RejectReason.InvalidUnit);
+            if (_map != null && _map.Snapshot.CellCount > 0 && !_map.Snapshot.InBounds(cmd.Cell))
+                return Receipt.Reject(RejectReason.OutOfBounds);
+            _ctx.Tick = _clock.Tick;
+            float3 at = _map != null && _map.Snapshot.CellCount > 0 ? _map.CenterOf(cmd.Cell) : new float3(cmd.Cell.x, 0f, cmd.Cell.y);
+            CombatPhase.SpawnPatrol(_ctx, cmd.DefIndex, cmd.Cell, cmd.Count, SimEntityId.None, at);
+            return Receipt.Ok;
+        }
+
+        // unit 7d — 규칙 강제 발화(「왜 안 터졌나」 도구). 카운터·게이트·감지자를 건너뛰고 실행자만 — 발동 상한은 지킨다.
+        // 사건은 `Immediate` seam 에 줄 서고 이 커맨드의 콜스택(`Execute`)이 곧 드레인한다.
+        private Receipt DebugFireBinding(in Command cmd)
+        {
+            var triggers = _ctx?.Triggers;
+            if (triggers == null) return Receipt.Reject(RejectReason.UnknownCommand);
+            Unit owner = null;
+            System.Collections.Generic.IReadOnlyList<Trigger.Binding> list;
+            if (cmd.Target.IsNone || cmd.Target == SimEntityId.Match) list = triggers.Registry.MatchBindings;
+            else
+            {
+                owner = _world.Find(cmd.Target);
+                if (owner == null) return Receipt.Reject(RejectReason.NoSuchEntity);
+                list = owner.Bindings;
+            }
+            for (int i = 0; i < list.Count; i++)
+            {
+                var b = list[i];
+                if (b.InstanceId != cmd.Count) continue;
+                var e = owner != null
+                    ? Trigger.TriggerDispatcher.SubjectOf(owner, Seam.Immediate, b.Def.Trigger)
+                    : new Trigger.TriggerEvent
+                    {
+                        Seam = Seam.Immediate, Kind = b.Def.Trigger, Subject = SimEntityId.Match,
+                        SubjectFaction = Wassup.Battle.Units.Faction.DefenderUnit, Target = SimEntityId.None,
+                    };
+                if (owner?.Attack != null) e.TargetLayers = owner.Attack.TargetLayers;
+                triggers.RaiseFor(b, in e);
+                return Receipt.Ok;
+            }
+            return Receipt.Reject(RejectReason.NoSuchEntity);
         }
 
         private Receipt Submit()

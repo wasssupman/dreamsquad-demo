@@ -9,22 +9,26 @@ namespace Wassup.Tests.EditMode.Core
     public class SeamHookTests
     {
         [Test]
-        public void Periodic_은_append_라_앞_번호가_안_밀렸다()
+        public void Periodic_Immediate_는_append_라_앞_번호가_안_밀렸다()
         {
             Assert.AreEqual(0, (int)Seam.Attack);
             Assert.AreEqual(1, (int)Seam.Death);
             Assert.AreEqual(2, (int)Seam.Lifecycle);
             Assert.AreEqual(3, (int)Seam.Threshold);
             Assert.AreEqual(4, (int)Seam.Periodic);
-            Assert.AreEqual(5, (int)Seam._Count, "새 seam 은 `_Count` 앞에 붙는다");
+            Assert.AreEqual(5, (int)Seam.Immediate, "unit 7a — `_Count` 앞 append");
+            Assert.AreEqual(6, (int)Seam._Count, "새 seam 은 `_Count` 앞에 붙는다");
         }
 
         [Test]
-        public void 핸들러가_없어도_판은_돌고_호출부는_매_틱_실행된다()
+        public void 규칙이_없어도_판은_돌고_호출부는_매_틱_실행된다()
         {
             var m = new BattleMatch(CoreCombatFixtures.Definition());
             m.Begin();
-            Assert.AreEqual(0, m.Seams.CountAt(Seam.Periodic), "이 unit 의 산출 = 핸들러 0 인 호출부");
+            // unit 7a — 디스패처가 seam 마다 **하나**를 등록한다. unit 7d — 사망 seam 에만 코어 규칙 둘(분열 · 길막 폭발)이
+            // 더 붙는다(개체의 성질이라 스킬 레일 밖이다). 그 외 핸들러는 없다.
+            for (int s = 0; s < (int)Seam._Count; s++)
+                Assert.AreEqual((Seam)s == Seam.Death ? 3 : 1, m.Seams.CountAt((Seam)s), ((Seam)s).ToString());
             CoreCombatFixtures.Tick(m, 3);   // 빈 seam 으로도 돈다
 
             int calls = 0, lastTick = -1;

@@ -111,6 +111,14 @@ namespace Wassup.BattleCore
         public Unity.Mathematics.float2 AimDirection;
         /// <summary>이 발사에 쓰는 탄막 난수 씨앗 — `hash(사수 SimEntityId, 발사 카운터)`.</summary>
         public uint Seed;
+
+        /// <summary>
+        /// unit 7a — **규칙이 연 버스트**인가(평타 연발이 아니라). 스킬 경로는 ⑴ 피해 = 패턴 저작값 ⑵ 대상 =
+        /// 시전자의 **상대 진영 유닛** ⑶ 방향 패턴은 스킬이 정한 축·사거리로 쏜다(옛 템플릿 스냅샷).
+        /// </summary>
+        public bool FromSkill;
+        /// <summary>unit 7a — 방향 패턴의 편도 거리(월드) 덮어쓰기. 0 = 탄 정의/사거리 유도.</summary>
+        public float MaxDistanceOverride;
         /// <summary>이 인스턴스가 쓸 간격표. 난수 저작이면 씨앗에서 매 트리거 다시 뽑는다.</summary>
         public float[] Intervals = System.Array.Empty<float>();
         /// <summary>같은 길이의 방향표(0~1). 난수 저작이 매 트리거 다시 뽑는 두 번째 축이다.</summary>
@@ -186,7 +194,15 @@ namespace Wassup.BattleCore
         /// 그 카드의 계약이다), 스윙 중 유지는 커밋이 한다(strict lapse 가 같은 규칙).
         /// 오늘의 생산자는 없다 — 부착하는 것은 unit 7 의 카드다.
         /// </summary>
-        public bool WantsFrontmost;
+        /// <summary>
+        /// unit 7a — 공격 수식자(`AttackMod`). 저작(`AttackDef.Mods`)으로 서고 카드가 더한다(7b).
+        /// </summary>
+        public readonly List<AttackModState> Mods = new List<AttackModState>(1);
+        /// <summary>최전방을 무는 공격인가 — 최전방 수식자가 있으면(옛 `wantFrontmost`).</summary>
+        public bool WantsFrontmost => AttackMod.WantsFrontmost(Mods);
+        /// <summary>unit 7a — START 에 스냅샷한 최전방 배율과 그 대상(옛 `FrontmostAttackLock`). 스윙 중 카드가 바뀌어도 이 공격은 안 바뀐다.</summary>
+        public float FrontmostMulSnapshot = 1f;
+        public SimEntityId FrontmostTarget = SimEntityId.None;
 
         /// <summary>
         /// 기절·수면·넉백 면역(보스). **출처를 묻지 않는다** — 면역은 대상의 성질이다.
@@ -261,7 +277,9 @@ namespace Wassup.BattleCore
             ProjectileDefIndex = -1;
             Outputs = System.Array.Empty<AttackOutputDef>();
             AggroCapacity = 0;
-            WantsFrontmost = false;
+            Mods.Clear();
+            FrontmostMulSnapshot = 1f;
+            FrontmostTarget = SimEntityId.None;
             BossImmune = false;
             CooldownRemaining = 0f;
             HitDelayRemaining = 0f;
@@ -415,10 +433,37 @@ namespace Wassup.BattleCore
         /// <summary>이탈 직전 자리. 퇴근 취소가 여기로 되돌린다.</summary>
         public float3 LeapOrigin;
 
+        // unit 7d — **일반 도약(보스 `SelfBlink`) 비행 창.** 위치는 발동 틱에 이미 착지점이다(순간이동) — 이 창은
+        // 「공격·자기주도 이동 불가 · 피격 가능」(옛 `LeapFlight`)과 **창 끝의 착지 슬램**만 든다. 옛 전투는 창의 길이와
+        // 슬램을 브리지(뷰 시계)가 소유했다. 궁극기(`LeapActive`)와 **다른 칸**이다 — 한 칸을 둘이 쓰면 먼저 끝나는 쪽이
+        // 남의 잠금을 걷는다(옛 소유권 가드가 막던 결함).
+        public bool HopActive;
+        public float HopRemaining;
+        public float3 HopLanding;
+        public float HopSlamDamage;
+        public int HopSlamTileRange;
+        /// <summary>슬램 탄 줄(`MatchDefinition.Projectiles`). **-1 = 없음** — 슬램 피해가 저작돼도 탄이 없으면 안 터진다(말한다).</summary>
+        public int HopSlamDefIndex = -1;
+
         // 치명 타이머 — 시간이 끝나면 스스로 깎는다(자해라 킬 미귀속).
         public bool LethalActive;
         public float LethalRemaining;
-        public float LethalFraction;
+        // ⚠ unit 7a — 옛 `LethalFraction`(「최대 체력의 일부를 깎는다」)는 **생산자 0 인 발명**이었다. 옛 치명 타이머는
+        // 시간이 끝나면 **죽었다**(`LethalTimerSystem` → `DeadTag`, 출처 없음). 그래서 칸을 걷고 규칙을 되돌렸다.
+
+        // ── 호접몽(unit 7a) — 잠 + 완주 감시. 잠이 먼저 풀리면(피격) 파탄, 완주하면 보상 스탯. ──
+        public bool CocoonActive;
+        public float CocoonRemaining;
+        /// <summary>보상 스탯(`SkillStatKind` 값).</summary>
+        public int CocoonStat;
+        public float CocoonMult;
+        public int CocoonStackId;
+
+        /// <summary>
+        /// 완주 판정의 여유(초) — 잠과 감시가 같은 길이면 잠이 먼저 만료된 틱에 「깨어났다 = 파탄」으로 읽힌다.
+        /// 옛 `DreamCocoon.Epsilon` 그대로(규칙 값이 아니라 타이밍 보정).
+        /// </summary>
+        public const float CocoonEpsilon = 0.05f;
 
         /// <summary>다음 공격 한 번을 즉시 더 쏘는 충전. 각 발이 온전한 공격이다.</summary>
         public int Charge;
@@ -439,7 +484,7 @@ namespace Wassup.BattleCore
             LastRunFraction = damageFraction;
         }
 
-        public bool Any => LeapActive || LethalActive || Charge > 0 || LastRunActive;
+        public bool Any => LeapActive || HopActive || LethalActive || Charge > 0 || LastRunActive || CocoonActive;
 
         /// <summary>
         /// 중단 정책 표의 **유일한 이행 지점**. 분기를 소비처로 흩지 말 것.
@@ -467,15 +512,20 @@ namespace Wassup.BattleCore
                     // 도약 중 사망은 정의상 일어나지 않지만(C12), 오버킬 경합으로 왔다면
                     // 착지 없이 상태만 걷어 「시체가 잠긴 채」 남지 않게 한다.
                     LeapActive = false;
+                    // 일반 도약은 비행 중에도 맞으니 **죽을 수 있다** — 그러면 슬램 없이 끝난다(옛 `abandoned` → 착지 처리 안 함).
+                    HopActive = false;
                     LethalActive = false;
                     LastRunActive = false;
+                    CocoonActive = false;
                     Charge = 0;
                     return;
 
                 case ProgressInterrupt.Retire:
                     LeapActive = false;
+                    HopActive = false;
                     LethalActive = false;
                     LastRunActive = false;
+                    CocoonActive = false;
                     Charge = 0;
                     return;
             }
@@ -490,9 +540,19 @@ namespace Wassup.BattleCore
             SlamDamage = 0f;
             SlamTileRange = 0;
             SlamProjectileDefIndex = -1;
+            HopActive = false;
+            HopRemaining = 0f;
+            HopLanding = float3.zero;
+            HopSlamDamage = 0f;
+            HopSlamTileRange = 0;
+            HopSlamDefIndex = -1;
             LethalActive = false;
             LethalRemaining = 0f;
-            LethalFraction = 0f;
+            CocoonActive = false;
+            CocoonRemaining = 0f;
+            CocoonStat = 0;
+            CocoonMult = 0f;
+            CocoonStackId = 0;
             LastRunActive = false;
             LastRunRemaining = 0f;
             LastRunFraction = 0f;

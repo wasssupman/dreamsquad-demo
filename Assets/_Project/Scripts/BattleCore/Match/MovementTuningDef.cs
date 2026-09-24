@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Unity.Mathematics;
 
 namespace Wassup.BattleCore
 {
@@ -42,6 +43,32 @@ namespace Wassup.BattleCore
         /// <summary>위쪽(+) 범위만 좁히는 배율. 키 큰 캐릭터 보정. 1 = 대칭.</summary>
         public float SpawnSpreadTopScale;
 
+        /// <summary>
+        /// unit 7d — **보스 일반 도약의 비행 창(초).** 이 창 동안 보스는 공격도 자기주도 이동도 못 하고(맞기는 한다),
+        /// 창이 끝나는 틱에 착지 슬램이 터진다. 옛 값의 집은 브리지 직렬화 필드(`bossLeapTotalSeconds`)였고 슬램도
+        /// 브리지가 뷰 도착 시각에 쐈다 — 그 시각이 판의 규칙이라 판 밖 저작으로 올린다. 뷰는 이 값을 사건으로 받는다.
+        /// </summary>
+        public float BossLeapFlightSeconds;
+
+        /// <summary>
+        /// unit 7d — **분열 자식이 부모 칸 중심에서 퍼지는 반경(칸 폭 비).** 옛 브리지 리터럴 `tileSize * 0.25f` 의 저작 자리.
+        /// ⚠ 0.49 미만이어야 자식이 **부모와 같은 칸**에 남는다(옆 칸이 골이면 「처치했는데 유출」 — E1). 0 = 한 점에 겹쳐 난다.
+        /// </summary>
+        public float SplitSpreadFraction;
+
+        /// <summary>
+        /// unit 7d 후속 — **분열 자식 상한**(한 죽음에 서는 자식 수의 천장). 밸런스 값이 아니라 저작 사고 방어선이다
+        /// (옛 `BattleBridge.MaxSplitChildren`). 빌더가 저작을 이 값으로 자르고, 코어 `EnemySplit` 이 한 번 더 자른다 —
+        /// 고정구·헤드리스는 빌더를 안 지나기 때문이다(M2).
+        /// </summary>
+        public int SplitMaxChildren;
+
+        /// <summary>
+        /// 「기본값이면 canonical 줄을 안 쓴다」의 float 허용 오차. SO 직렬화 왕복(0.83 → 0.83000001)이 1 ulp 를 흔들어도
+        /// 해시가 뒤집히지 않게 한다 — 판정 수치가 아니라 **해시 안정성**의 값이다(M1).
+        /// </summary>
+        public const float CanonicalDefaultEpsilon = 1e-6f;
+
         /// <summary>옛 씬 값. 「기본값 = 라이브」가 이 표의 계약이다.</summary>
         public static MovementTuningDef Default() => new MovementTuningDef
         {
@@ -49,7 +76,12 @@ namespace Wassup.BattleCore
             SpawnSubLaneCount = 3,
             SpawnSpreadFraction = 0.2f,
             SpawnSpreadTopScale = 0.5f,
+            BossLeapFlightSeconds = 0.83f,
+            SplitSpreadFraction = 0.25f,
+            SplitMaxChildren = 8,
         };
+
+        internal static bool SameAsDefault(float value, float def) => math.abs(value - def) <= CanonicalDefaultEpsilon;
 
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
@@ -57,6 +89,15 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "spawnSubLaneCount", SpawnSubLaneCount, inv);
             MatchDefinition.Put(sb, "spawnSpreadFraction", SpawnSpreadFraction, inv);
             MatchDefinition.Put(sb, "spawnSpreadTopScale", SpawnSpreadTopScale, inv);
+            // unit 7d — **옛 값과 같으면 안 쓴다**(고정구·라이브 기본값의 해시 무변 — 칸을 더했다는 사실만으로 골든이 빨개지면 오보다).
+            var d = Default();
+            // ⚠ float 은 **허용 오차로** 견준다(M1) — `!=` 정확 비교는 SO 왕복의 1 ulp 로 해시를 뒤집는다.
+            if (!SameAsDefault(BossLeapFlightSeconds, d.BossLeapFlightSeconds))
+                MatchDefinition.Put(sb, "bossLeapFlightSeconds", BossLeapFlightSeconds, inv);
+            if (!SameAsDefault(SplitSpreadFraction, d.SplitSpreadFraction))
+                MatchDefinition.Put(sb, "splitSpreadFraction", SplitSpreadFraction, inv);
+            if (SplitMaxChildren != d.SplitMaxChildren)
+                MatchDefinition.Put(sb, "splitMaxChildren", SplitMaxChildren, inv);
         }
     }
 }

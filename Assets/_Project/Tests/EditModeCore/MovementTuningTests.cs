@@ -111,5 +111,35 @@ namespace Wassup.Tests.EditMode.Core
             var c = DefinitionWith(laneCount: 3, fraction: 0.4f);
             Assert.AreNotEqual(a.ConfigHash, c.ConfigHash, "분산 폭이 해시에 들어야 한다");
         }
+
+        // unit 7d 후속(M1) — 「기본값이면 canonical 줄을 안 쓴다」가 **float 정확 비교**면 SO 직렬화 왕복(0.83 → 0.83000001)
+        // 1 ulp 로 해시가 뒤집힌다. 판이 같은데 골든이 「조건이 바뀌었다」고 오보한다.
+        private static string HashWith(System.Func<MovementTuningDef, MovementTuningDef> edit)
+        {
+            var def = CoreMatchFixtures.Definition();
+            def.Movement = edit(MovementTuningDef.Default());
+            return def.ComputeConfigHash();
+        }
+
+        private static float Ulp(float v, int steps) => math.asfloat(math.asint(v) + steps);
+
+        [Test]
+        public void 기본값_이웃_1ulp_는_canonical_줄을_안_쓴다()
+        {
+            string baseline = HashWith(m => m);
+            Assert.AreEqual(baseline, HashWith(m => { m.BossLeapFlightSeconds = Ulp(m.BossLeapFlightSeconds, +1); return m; }), "+1 ulp");
+            Assert.AreEqual(baseline, HashWith(m => { m.BossLeapFlightSeconds = Ulp(m.BossLeapFlightSeconds, -1); return m; }), "-1 ulp");
+            Assert.AreEqual(baseline, HashWith(m => { m.SplitSpreadFraction = Ulp(m.SplitSpreadFraction, +1); return m; }), "+1 ulp");
+            Assert.AreEqual(baseline, HashWith(m => { m.SplitSpreadFraction = Ulp(m.SplitSpreadFraction, -1); return m; }), "-1 ulp");
+        }
+
+        [Test]
+        public void 기본값에서_실제로_움직이면_해시가_움직인다()
+        {
+            string baseline = HashWith(m => m);
+            Assert.AreNotEqual(baseline, HashWith(m => { m.BossLeapFlightSeconds *= 2f; return m; }));
+            Assert.AreNotEqual(baseline, HashWith(m => { m.SplitSpreadFraction *= 0.5f; return m; }));
+            Assert.AreNotEqual(baseline, HashWith(m => { m.SplitMaxChildren += 1; return m; }), "분열 상한도 해시에 든다");
+        }
     }
 }

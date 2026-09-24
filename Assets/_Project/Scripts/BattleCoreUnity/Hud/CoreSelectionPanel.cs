@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,8 +19,10 @@ namespace Wassup.BattleCoreUnity.Hud
     // enabled, label)` 이고 라벨의 주인은 호출자다 — 슬롯을 「퇴근 버튼」으로 재특화하면
     // 다음 동사가 올 때 시그니처부터 되돌려야 한다.
     //
-    // ⚠ **부착 카드 줄·손패는 안 옮겼다**(unit 7). 빈 칸을 그리지 않는다 — 빈 슬롯은
-    // 「여기서 조절된다」고 광고하고, 그 광고는 아직 거짓이다.
+    // unit 7c — **부착 카드 줄**(옛 `DcInspectPanelView.BuildAttachRows`). 줄은 **부착 사건**(`CardAttached`/`CardDetached`)이
+    // 세우고 거둔다 — 이 패널이 자기 구독으로 숙주별 목록을 든다(계약 12). 순서 = **부착 번호 오름차순**(D20 — 부착 순서가 곧
+    // 기능이다; 사건의 묶음 핸들이 판 수명 단조라 그 순서다). 카드가 없으면 섹션째 안 그린다(빈 칸 광고 금지). 문안은
+    // formatter 의 효과 줄만(`EffectOnly` — 옛 unit 11 rev: 이미 붙은 카드는 「언제」보다 「무엇이 달라지나」).
     [DisallowMultipleComponent]
     public sealed class CoreSelectionPanel : MonoBehaviour
     {
@@ -30,6 +33,11 @@ namespace Wassup.BattleCoreUnity.Hud
         [SerializeField, Min(120f)] private float _width = 320f;
         [Tooltip("화면 왼쪽에서 띄우는 거리. 옛 패널과 같이 **좌측 고정**이다.")]
         [SerializeField] private Vector2 _anchoredPos = new Vector2(24f, 0f);
+
+        [Header("부착 카드 줄 (unit 7c — 옛 DcInspectPanelView)")]
+        [SerializeField, Min(24f)] private float _attachArtHeight = 78f;
+        [SerializeField, Min(0)] private int _descMaxLines = 2;
+        [SerializeField] private DefenderCatalog _defenderCatalog;
 
         private sealed class StatRow
         {
@@ -45,6 +53,187 @@ namespace Wassup.BattleCoreUnity.Hud
         private Button _action;
         private TextMeshProUGUI _actionLabel;
         private System.Action _onAction;
+
+        private sealed class AttachRow
+        {
+            public RectTransform Root;
+            public Image Art;
+            public TextMeshProUGUI Name;
+            public TextMeshProUGUI Kind;
+            public TextMeshProUGUI Desc;
+        }
+
+        private const float BaseHeight = 268f;
+        // 스탯 셋이 끝나는 자리(-78 − 2×34 − 30 ≈ -176)보다 조금 아래 — 섹션이 그 사이에 끼고 액션 슬롯은 패널 바닥에 남는다.
+        private const float SectionTop = 186f;
+        private readonly Dictionary<int, List<(int handle, int cardIndex)>> _cardsByHost =
+            new Dictionary<int, List<(int, int)>>();
+        private readonly List<AttachRow> _attachRows = new List<AttachRow>(3);
+        private RectTransform _attachSection;
+        private TextMeshProUGUI _attachLabel;
+        private SimEntityId _shownHost = SimEntityId.None;
+
+        /// <summary>지금 보여 주는 부착 카드 줄 수(테스트 — 「사건 1 → 줄 1」).</summary>
+        public int AttachRowCount
+        {
+            get
+            {
+                int n = 0;
+                for (int i = 0; i < _attachRows.Count; i++) if (_attachRows[i].Root.gameObject.activeSelf) n++;
+                return IsVisible && _attachSection != null && _attachSection.gameObject.activeSelf ? n : 0;
+            }
+        }
+
+        /// <summary>그 숙주에 붙은 카드 줄(부착 순). 테스트·진단.</summary>
+        public int AttachedCountOf(SimEntityId host)
+            => _cardsByHost.TryGetValue(host.Value, out var l) ? l.Count : 0;
+
+        private void OnEnable()
+        {
+            if (_driver != null) _driver.Subscribe(ViewOrder.Hand, OnCoreEvent);
+        }
+
+        private void OnDisable()
+        {
+            if (_driver != null) _driver.Unsubscribe(OnCoreEvent);
+            _cardsByHost.Clear();
+        }
+
+        private void OnCoreEvent(CoreEvent e)
+        {
+            switch (e.Kind)
+            {
+                case CoreEventKind.MatchStarted:
+                    _cardsByHost.Clear();
+                    break;
+                case CoreEventKind.CardAttached:
+                {
+                    if (!_cardsByHost.TryGetValue(e.A.Value, out var list))
+                        _cardsByHost[e.A.Value] = list = new List<(int, int)>(3);
+                    list.Add(((int)e.Amount, e.DefIndex));
+                    list.Sort((a, b) => a.handle.CompareTo(b.handle));
+                    if (e.A == _shownHost) RebuildAttachRows();
+                    break;
+                }
+                case CoreEventKind.CardDetached:
+                {
+                    if (_cardsByHost.TryGetValue(e.A.Value, out var list))
+                    {
+                        list.RemoveAll(x => x.handle == (int)e.Amount);
+                        if (list.Count == 0) _cardsByHost.Remove(e.A.Value);
+                    }
+                    if (e.A == _shownHost) RebuildAttachRows();
+                    break;
+                }
+                // 숙주가 사라지면 줄도 간다(카드 사건이 먼저 오지만 — 유령 방지).
+                case CoreEventKind.UnitDestroyed:
+                    _cardsByHost.Remove(e.A.Value);
+                    break;
+            }
+        }
+
+        /// <summary>그 유닛의 부착 카드 줄을 띄운다(`Show` 뒤에 부른다).</summary>
+        public void ShowAttachedCardsOf(SimEntityId host)
+        {
+            _shownHost = host;
+            RebuildAttachRows();
+        }
+
+        private void RebuildAttachRows()
+        {
+            if (!_built) return;
+            _cardsByHost.TryGetValue(_shownHost.Value, out var list);
+            int count = list != null ? list.Count : 0;
+            _attachSection.gameObject.SetActive(count > 0);
+            while (_attachRows.Count < count) _attachRows.Add(BuildAttachRow(_attachRows.Count));
+            float inner = _width - 24f;
+            float artW = _attachArtHeight * (2f / 3f);
+            float y = 34f;
+            var assets = _driver != null ? _driver.ViewAssets : null;
+            var def = _driver != null ? _driver.Definition : null;
+            for (int i = 0; i < _attachRows.Count; i++)
+            {
+                var row = _attachRows[i];
+                bool used = i < count;
+                row.Root.gameObject.SetActive(used);
+                if (!used) continue;
+                int cardIndex = list[i].cardIndex;
+                var card = assets != null ? assets.Card(cardIndex) : null;
+                bool isSquad = card != null && card.type == CardType.Squad;
+                row.Name.text = card != null && !string.IsNullOrEmpty(card.displayName) ? card.displayName
+                              : (def != null && cardIndex >= 0 && cardIndex < def.Cards.Length ? def.Cards[cardIndex].Id : "");
+                int cost = def != null && cardIndex >= 0 && cardIndex < def.Cards.Length ? def.Cards[cardIndex].Cost : 0;
+                row.Kind.text = (isSquad ? "스쿼드" : "유닛") + "  ·  " + cost;
+                row.Desc.text = card != null
+                    ? Wassup.UI.DreamcatcherCardText.EffectOnly(card,
+                        _defenderCatalog != null ? _defenderCatalog.DisplayNameOf : (System.Func<string, string>)null)
+                    : "";
+                row.Desc.maxVisibleLines = _descMaxLines > 0 ? _descMaxLines : 99999;
+                row.Art.sprite = card != null ? card.art : null;
+                row.Art.enabled = row.Art.sprite != null;
+
+                float tx = 8f + artW + 12f, tw = inner - tx - 10f;
+                float descH = string.IsNullOrEmpty(row.Desc.text) ? 0f : row.Desc.GetPreferredValues(row.Desc.text, tw, 0f).y;
+                if (descH > 0f && _descMaxLines > 0) descH = Mathf.Min(descH, _descMaxLines * row.Desc.fontSize * 1.3f);
+                float rowH = Mathf.Max(_attachArtHeight + 12f, 12f + 28f + (descH > 0f ? descH + 4f : 0f) + 10f);
+                row.Root.anchoredPosition = new Vector2(0f, -y);
+                row.Root.sizeDelta = new Vector2(inner, rowH);
+                ((RectTransform)row.Art.transform).anchoredPosition = new Vector2(8f, -6f);
+                ((RectTransform)row.Art.transform).sizeDelta = new Vector2(artW, _attachArtHeight);
+                float kindW = tw * 0.34f;
+                H(row.Name).anchoredPosition = new Vector2(tx, -12f);
+                H(row.Name).sizeDelta = new Vector2(tw - kindW - 6f, 28f);
+                H(row.Kind).anchoredPosition = new Vector2(tx + tw - kindW, -12f);
+                H(row.Kind).sizeDelta = new Vector2(kindW, 28f);
+                H(row.Desc).anchoredPosition = new Vector2(tx, -44f);
+                H(row.Desc).sizeDelta = new Vector2(tw, Mathf.Max(0f, descH));
+                y += rowH + 6f;
+            }
+            _attachLabel.text = "부착 드림캐쳐 " + count;
+            float sectionH = count > 0 ? y : 0f;
+            _attachSection.sizeDelta = new Vector2(inner, sectionH);
+            _root.sizeDelta = new Vector2(_width, BaseHeight + (count > 0 ? sectionH + 8f : 0f));
+        }
+
+        private AttachRow BuildAttachRow(int i)
+        {
+            var root = CoreHudUi.Rect("Attach" + i, _attachSection, new Vector2(0f, 1f), new Vector2(0f, 1f),
+                                      Vector2.zero, new Vector2(_width - 24f, _attachArtHeight + 12f));
+            CoreHudUi.Fill("Bg", root, new Color(1f, 1f, 1f, 0.05f));
+            var art = CoreHudUi.Rect("Art", root, new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero,
+                                     new Vector2(_attachArtHeight * (2f / 3f), _attachArtHeight)).gameObject.AddComponent<Image>();
+            art.preserveAspect = true;
+            art.raycastTarget = false;
+            TextMeshProUGUI Text(string n, float size, Color c, TextAlignmentOptions a)
+            {
+                var host = CoreHudUi.Rect(n + "Row", root, new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, new Vector2(10f, 10f));
+                var t = CoreHudUi.Label(n, host, "", size, c, a);
+                return t;
+            }
+            var row = new AttachRow
+            {
+                Root = root,
+                Art = art,
+                Name = Text("Name", 22f, CoreHudUi.Ink, TextAlignmentOptions.TopLeft),
+                Kind = Text("Kind", 18f, CoreHudUi.Accent, TextAlignmentOptions.TopRight),
+                Desc = Text("Desc", 18f, CoreHudUi.InkDim, TextAlignmentOptions.TopLeft),
+            };
+            row.Desc.textWrappingMode = TextWrappingModes.Normal;
+            row.Desc.overflowMode = TextOverflowModes.Ellipsis;
+            // 라벨 헬퍼는 부모를 늘인다 — 행 레이아웃이 위치·폭을 직접 민다(부모 RT 를 쓴다).
+            row.Name = Reparent(row.Name); row.Kind = Reparent(row.Kind); row.Desc = Reparent(row.Desc);
+            return row;
+        }
+
+        private static RectTransform H(TextMeshProUGUI t) => (RectTransform)t.transform.parent;
+
+        // 라벨이 든 호스트 RT 자체를 줄 좌상단 기준으로 쓴다(`CoreHudUi.Label` 은 호스트를 채운다).
+        private static TextMeshProUGUI Reparent(TextMeshProUGUI t)
+        {
+            var host = (RectTransform)t.transform.parent;
+            host.pivot = new Vector2(0f, 1f);
+            return t;
+        }
         private (bool enabled, string label)? _actionState;
         private bool _built;
 
@@ -130,6 +319,7 @@ namespace Wassup.BattleCoreUnity.Hud
             if (!_built) return;
             _onAction = null;
             _actionState = null;
+            _shownHost = SimEntityId.None;
             _root.gameObject.SetActive(false);
         }
 
@@ -195,6 +385,15 @@ namespace Wassup.BattleCoreUnity.Hud
                                        new Color(0.16f, 0.2f, 0.3f, 0.92f));
             _actionLabel = CoreHudUi.Label("ActionLabel", _action.transform, "", 26f, CoreHudUi.Ink);
             _action.onClick.AddListener(() => _onAction?.Invoke());
+
+            // 부착 카드 섹션 — 스탯·액션 **아래**(패널이 그만큼 아래로 자란다 — 옛 섹션 배치).
+            _attachSection = CoreHudUi.Rect("AttachSection", _root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                                            new Vector2(0f, -SectionTop), new Vector2(_width - 24f, 0f));
+            _attachLabel = CoreHudUi.Label("AttachLabel",
+                CoreHudUi.Rect("AttachLabelRow", _attachSection, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                               new Vector2(0f, -4f), new Vector2(_width - 24f, 26f)),
+                "", 20f, CoreHudUi.InkDim, TextAlignmentOptions.Left);
+            _attachSection.gameObject.SetActive(false);
 
             _root.gameObject.SetActive(false);
         }

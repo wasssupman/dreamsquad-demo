@@ -44,16 +44,21 @@ namespace Wassup.BattleCoreUnity
                                             MovementTuningConfig movement = null,
                                             StackModifierSO[] stackModifiers = null,
                                             ImbueCapConfig imbueCaps = null,
-                                            BoardEffectAuthoring board = default)
+                                            BoardEffectAuthoring board = default,
+                                            System.Collections.Generic.IReadOnlyList<DreamcatcherCard> cards = null,
+                                            System.Collections.Generic.IReadOnlyList<DreamstoneData> dreamstones = null)
         {
             // 모드가 고른 저작이 호출자(드라이버)의 것을 이긴다 — 모드는 「어느 자산을 쓸지」를 고른다.
             deck = ResolveDeck(mode, deck);
             plan = ResolvePlan(mode, plan);
             var enemies = CollectEnemies(deck, plan, bonus);
             var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
-                            viewAssets, movement, stackModifiers, imbueCaps, board);
+                            viewAssets, movement, stackModifiers, imbueCaps, board,
+                            extraProjectiles: GimmickProjectilesOf(mode),
+                            cards: new CardAuthoring { Cards = cards, Awakening = mode.awakeningConfig, Dreamstones = dreamstones });
 
-            def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
+            // unit 7b — 드림스톤 코스트 배율은 **반입이 정한다**(모드가 아니다). 호출자 배율과 곱한다(둘 다 1 이면 무변).
+            def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier * CardDefinitionBuilder.CostRateOf(dreamstones));
             def.WaveDeck = ToDeckDef(deck, enemies);
             def.WavePlan = ToPlanDef(plan, enemies);
             def.Bonus = ToBonusDef(bonus, enemies);
@@ -121,28 +126,34 @@ namespace Wassup.BattleCoreUnity
                                             MovementTuningConfig movement = null,
                                             StackModifierSO[] stackModifiers = null,
                                             ImbueCapConfig imbueCaps = null,
-                                            BoardEffectAuthoring board = default)
+                                            BoardEffectAuthoring board = default,
+                                            System.Collections.Generic.IReadOnlyList<ProjectileData> extraProjectiles = null,
+                                            CardAuthoring cards = default)
         {
+            // unit 7b — 카드가 까는 장판(잿불)도 장판 표에 든다. 표를 짓기 **전**이다(규칙이 줄 번호로 가리킨다).
+            board.Hazards = CardDefinitionBuilder.WithCardHazards(board.Hazards, cards.Cards);
             var def = new MatchDefinition
             {
                 Seed = seed,
                 Mode = mode,
                 Units = BuildUnits(defenders),
-                Enemies = BuildEnemies(enemies),
                 Map = BuildMap(in map, tileSize),
             };
+            // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
+            // 저작이 없으면 코어 기본값(= 옛 씬 값)을 그대로 둔다. 0 으로 덮지 않는다 —
+            // 그러면 몸 반지름 0(충돌 소멸)과 레인 1(분산 없음)이 조용히 성립한다.
+            // unit 7d 후속(M2) — 적 표보다 **먼저** 둔다: 분열 상한을 적 줄 bake 와 규칙 검증이 이 값에서 읽는다.
+            if (movement != null) def.Movement = ToMovementDef(movement);
+            def.Enemies = BuildEnemies(enemies, def.Movement.SplitMaxChildren);
             // unit 3 — 전투 저작(공격·탄·발사 명세)을 같은 줄에 채워 넣는다. **해시를 굽기 전**
             // 이어야 한다 — 뒤에 두면 「스탯을 바꿨는데 해시가 그대로」가 된다.
             // unit 6b — 탄 SO 목록을 **번호를 매긴 그 순회에서** 받는다(길막 역참조가 그 번호를 쓴다).
             // 뷰가 없는 판(테스트·헤드리스)에서도 필요하므로 없으면 로컬 한 벌을 만든다.
             var assets = viewAssets ?? new MatchViewAssets();
-            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets);
+            // unit 7a — 장판 표(규칙의 `SpawnHazard` 가 가리킨다)를 함께 넘긴다.
+            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets, board.Hazards, extraProjectiles, cards);
             // unit 6b — 판 위에 깔리는 것(존 장판 · 길막 · 효과 타일). **해시를 굽기 전**이다.
             BoardEffectDefinitionBuilder.Fill(def, assets, in board);
-            // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
-            // 저작이 없으면 코어 기본값(= 옛 씬 값)을 그대로 둔다. 0 으로 덮지 않는다 —
-            // 그러면 몸 반지름 0(충돌 소멸)과 레인 1(분산 없음)이 조용히 성립한다.
-            if (movement != null) def.Movement = ToMovementDef(movement);
             // unit 6a — 스택 저작. **해시를 굽기 전**이어야 한다(뒤에 두면 「임계를 바꿨는데
             // 해시가 그대로」가 된다). 안 넘기면 빈 표이고, 그러면 스택은 폴백 상한 5 로
             // 쌓이기만 하고 **임계가 하나도 안 터진다** — 그 상태를 조용히 두지 않으려고
@@ -306,6 +317,9 @@ namespace Wassup.BattleCoreUnity
             SpawnSubLaneCount = c.SpawnSubLaneCount,
             SpawnSpreadFraction = c.SpawnSpreadFraction,
             SpawnSpreadTopScale = c.SpawnSpreadTopScale,
+            BossLeapFlightSeconds = c.BossLeapFlightSeconds,
+            SplitSpreadFraction = c.SplitSpreadFraction,
+            SplitMaxChildren = c.SplitMaxChildren,
         };
 
         public static ModeDef ToModeDef(MatchModeData m)
@@ -371,6 +385,13 @@ namespace Wassup.BattleCoreUnity
                         Add(list, w.groups[g] != null ? w.groups[g].unit : null);
                 }
             if (bonus != null) Add(list, bonus.enemyUnit);
+            // unit 7d — **분열 자식**도 그 판에 나온다(사슬 전부 — 2단계 분열). 웨이브 풀 밖 에셋이라 여기서 편입한다 —
+            // 안 하면 자식 줄이 표 밖을 가리켜 분열이 조용히 죽는다. 뒤에 붙이므로 앞 줄 번호는 안 밀린다.
+            for (int i = 0; i < list.Count; i++)
+            {
+                var child = SplitChain.NextInChain(list[i]);
+                if (child != null && !list.Contains(child)) list.Add(child);
+            }
             return list.ToArray();
 
             void Add(System.Collections.Generic.List<AttackUnitData> into, params AttackUnitData[] units)
@@ -566,6 +587,20 @@ namespace Wassup.BattleCoreUnity
         /// 이미 같은 자산의 줄이 있으면 그 줄을 가리키고, 없으면 끝에 붙인다. 그래서 `def` 의 스택
         /// 표가 **먼저** 차 있어야 한다(`Build` 안의 순서).
         /// </summary>
+        /// <summary>
+        /// unit 7b — 기믹 후보가 가리키는 탄(퇴근 기믹의 운석). **탄 표를 굳히기 전에** 넘겨야 기믹 줄이 그 탄의 줄 번호를
+        /// 찾는다(`ToGimmickDef`) — 뒤에 넣으면 운석이 표 밖을 가리켜 barrage 가 떨어진다.
+        /// </summary>
+        public static System.Collections.Generic.List<ProjectileData> GimmickProjectilesOf(MatchModeData mode)
+        {
+            var list = new System.Collections.Generic.List<ProjectileData>(1);
+            if (mode == null || !mode.gimmickEnabled || mode.gimmickPool == null) return list;
+            foreach (var g in mode.gimmickPool)
+                if (g is ClockOutGimmickData co && co.meteorProjectile != null && !list.Contains(co.meteorProjectile))
+                    list.Add(co.meteorProjectile);
+            return list;
+        }
+
         public static GimmickDef[] ToGimmickDefs(MatchModeData mode, MatchDefinition def)
         {
             if (mode == null || !mode.gimmickEnabled || mode.gimmickPool == null)
@@ -630,7 +665,13 @@ namespace Wassup.BattleCoreUnity
                         MeteorTileRange = co.meteorTileRange,
                         MeteorWarningSec = co.meteorWarningSec,
                         MeteorStaggerSec = co.meteorStaggerSec,
+                        // unit 7b — 운석 탄 줄. **명시 -1**(S4 — 0 은 유효 줄). 탄 표에 없으면 barrage 가 loud 하게 떨어진다.
+                        MeteorProjectileDefIndex = ProjectileRowOf(def, co.meteorProjectile),
                     };
+                    if (co.meteorProjectile == null)
+                        Debug.LogError($"[MatchDefinitionBuilder] 퇴근 기믹 '{g.gimmickId}' 에 운석 탄(meteorProjectile)이 없다 — 임계에 닿아도 운석이 안 떨어진다.", g);
+                    else if (row.ClockOut.MeteorProjectileDefIndex < 0)
+                        Debug.LogWarning($"[MatchDefinitionBuilder] 퇴근 기믹 '{g.gimmickId}' 의 운석 탄이 탄 표에 없다 — `GimmickProjectilesOf` 를 거치지 않은 빌드다(운석 barrage 가 떨어진다).", g);
                     break;
                 default:
                     // 모르는 SO 는 고르기·알리기만 된다(셈판 없음). loud 하게 — 새 기믹을 만들고 여기를
@@ -640,6 +681,15 @@ namespace Wassup.BattleCoreUnity
                     break;
             }
             return row;
+        }
+
+        // 탄 자산의 줄(같은 id). 없으면 -1. 탄 표는 `CombatDefinitionBuilder.Fill` 이 이미 굳혔다.
+        private static int ProjectileRowOf(MatchDefinition def, ProjectileData asset)
+        {
+            if (asset == null || def?.Projectiles == null || string.IsNullOrEmpty(asset.id)) return -1;
+            for (int i = 0; i < def.Projectiles.Length; i++)
+                if (def.Projectiles[i].Id == asset.id) return i;
+            return -1;
         }
 
         // 그 스택 자산의 줄. 이미 있으면(같은 이름) 그 줄, 없으면 끝에 붙인다. null 이면 -1.
@@ -840,7 +890,8 @@ namespace Wassup.BattleCoreUnity
             return list.ToArray();
         }
 
-        private static EnemyDef[] BuildEnemies(AttackUnitData[] src)
+        /// <param name="splitCap">분열 자식 상한 — `MovementTuningDef.SplitMaxChildren`(저작 사고 방어선 · 옛 `BattleBridge.MaxSplitChildren`).</param>
+        private static EnemyDef[] BuildEnemies(AttackUnitData[] src, int splitCap)
         {
             if (src == null) return System.Array.Empty<EnemyDef>();
             var outp = new EnemyDef[src.Length];
@@ -875,6 +926,16 @@ namespace Wassup.BattleCoreUnity
                     TargetFactions = (int)e.targetFactions,
                     WaypointPathIndex = e.waypointPathIndex,
                 };
+                // unit 7d — 분열(첫 슬롯만 · 상한 = 정의표 · 자기순환 거절 — 옛 `SpawnSplitChildren` 과 같은 규약). 사슬 검증
+                // (`SplitChain.Validate`)은 규칙 bake(`BindingDefinitionBuilder`)가 loud 하게 한다 — 여기선 값만 싣는다.
+                var child = SplitChain.NextInChain(e);
+                int count = Mathf.Clamp(SplitChain.CountAt(e), 0, splitCap);
+                int childIndex = System.Array.IndexOf(src, child);
+                if (child != null && child != e && count > 0 && childIndex >= 0)
+                {
+                    outp[i].SplitCount = count;
+                    outp[i].SplitChildDefIndex = childIndex;
+                }
             }
             return outp;
         }

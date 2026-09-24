@@ -192,6 +192,58 @@ namespace Wassup.BattleCore
         /// crash 피해는 이 사건과 별개로 `DamageApplied` 가 나른다.
         /// </summary>
         LastRunEnded = 55,
+
+        // ── unit 7a (트리거 → 발동) ───────────────────────────────────────────
+        //
+        // 셋 다 **규칙의 사건**이다(개체의 사건이 아니다) — 카드 펄스(7c)·「왜 안 터졌나」 도구(7d)·
+        // 트레이스가 듣는다. `Arg` = 그 규칙의 `InstanceId`(억제 키 E2 · 카드 칸 판별자) — 뷰가 규칙을
+        // id 로 되찾지 않게 값으로 싣는다.
+
+        /// <summary>
+        /// 규칙이 **발동했다**(실행 직전). `A` = 소유자, `B` = 사건 대상, `Arg` = `InstanceId`,
+        /// `Amount` = `TriggerPayload`, `DefIndex` = 규칙 줄(-1 = 런타임 조립).
+        /// `SiteFired` = 시전자 몸(없으면 스냅샷) · `SiteTarget` = 사건 자리(0 몸 = 칸).
+        /// ⚠ 화염 브레스(`AreaBreath`)는 **그 스킬의 콘**을 `AttackDir`·`AttackShape`·`AttackRange` 에
+        /// 싣는다(6c 후속 3) — `AttackResolved` 의 도형은 **공격의** 도형이라 드래곤에서 브레스와 다르다.
+        /// </summary>
+        TriggerFired = 56,
+        /// <summary>규칙이 붙었다. `A` = 소유자, `Arg` = `InstanceId`, `Amount` = `TriggerPayload`, `DefIndex` = 줄.</summary>
+        BindingAttached = 57,
+        /// <summary>규칙이 떨어졌다. `A` = 소유자, `Arg` = `InstanceId`, `Amount` = `BindingDetachReason`.</summary>
+        BindingDetached = 58,
+        /// <summary>
+        /// 스킬이 **연출을 요청했다**(`SimIntentKind.PlayVisual` 중 다른 사건이 이미 나르지 않는 것 —
+        /// 적중 펄스 · 빔). 상태를 안 바꾼다. `A` = 시전자, `B` = 대상, `Arg` = `SkillVisualKind`,
+        /// `Amount` = 지속(초), `DefIndex` = 연출 index(-1 = 무연출 저작). 「언제 트나」는 스킬의 판단이고
+        /// 무엇을 그리나는 뷰의 것이다 — 이 사건이 없으면 요청이 **조용히 버려진다**.
+        /// </summary>
+        SkillVisual = 59,
+
+        // ── unit 7b (카드의 규칙) ─────────────────────────────────────────────
+        //
+        // 카드는 개체가 아니다(숙주의 등록부 항목 묶음이다). 그래서 **카드의 사건**을 따로 낸다 — 뷰(7c 손패·
+        // 부착 줄·표식)가 규칙 사건(`BindingAttached` 여러 건)을 모아 「어느 카드인가」를 역산하지 않게.
+        // `Arg` = 손패 항목 번호(`HandDeck.Entry.EntryId`), `DefIndex` = **카드 줄**(`MatchDefinition.Cards`),
+        // `Amount` = 부착 묶음 핸들(판 수명 단조 — F1).
+
+        /// <summary>카드가 붙었다. `A` = 숙주(방어유닛 · 표식이면 적), `SiteFired` = 숙주 몸(발화 시점).</summary>
+        CardAttached = 60,
+        /// <summary>카드가 떨어졌다(숙주 소멸·퇴근·표식 대상 소멸). `A` = 숙주(이미 없을 수 있다).</summary>
+        CardDetached = 61,
+        /// <summary>
+        /// 액티브를 시전했다. `A` = 판, `SiteTarget` = 조준 칸 중심(몸 0 = 칸), `SiteFired` = 둘째 칸(포탈 출구 —
+        /// 한 칸 조준이면 첫 칸과 같다), `Faction` = 플레이어 진영.
+        /// </summary>
+        CardCast = 62,
+
+        // ── unit 7d (시즌 기믹이 판에 얹는 일) ────────────────────────────────
+        /// <summary>
+        /// 시즌 기믹이 **일을 했다**(규칙이 발동해 실제로 무언가를 바꿨다 — 헛발은 안 난다). `A` = 주인(유닛 · 판),
+        /// `B` = 그 일이 만든 개체(픽업·사직서 — 없으면 None), `Arg` = `GimmickKind`, `Amount` = 종류별 값
+        /// (열기 = 체력 델타 · 피로 = 요청량 · 그 외 0), `SiteTarget` = 그 일이 일어난 자리(0 몸 = 칸).
+        /// 트레이스·도구(「왜 안 터졌나」)가 듣는다 — 뷰는 결과 사건(`PickupSpawned` 등)을 이미 받는다.
+        /// </summary>
+        GimmickTriggered = 63,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -311,13 +363,22 @@ namespace Wassup.BattleCore
         /// </summary>
         public readonly float AttackRange;
 
+        /// <summary>
+        /// unit 7b — `UnitSlain` 전용: 죽은 개체의 **각성 보상 배율**(살찌운 제물 표식 — `Unit.AwakeningRewardMul`)
+        /// 발화 시점 스냅샷. 그 외 사건은 0 이다(안 읽힌다). 보상 담당자(`HandDeck`)가 이 값으로 곱한다 —
+        /// 드레인 시점에 개체를 되물으면 소멸이 한 틱 당겨지는 날 배율이 조용히 1 로 떨어진다(계약 7).
+        /// ⚠ **마음 회복은 이 배율을 안 본다**(SO 원값 — 표식 두 축 겸직 금지). 트레이스에는 안 실린다(골든 무변).
+        /// </summary>
+        public readonly float RewardMul;
+
         private CoreEvent(CoreEventKind kind, int tick, SimEntityId a, SimEntityId b,
                           Site siteFired, Site siteTarget, Faction faction, int arg, float amount,
                           int defIndex = -1, int areaTiles = 0,
                           Combat.Projectile.PayloadKind payload = default,
                           float2 attackDir = default, Combat.AttackShapeBaked attackShape = default,
-                          float attackRange = 0f)
+                          float attackRange = 0f, float rewardMul = 0f)
         {
+            RewardMul = rewardMul;
             Kind = kind;
             Tick = tick;
             A = a;
@@ -429,12 +490,15 @@ namespace Wassup.BattleCore
         /// 탄 발사. `SiteFired.OriginBody` 가 **제약 13 의 원점 항**을 경계 너머로 나른다 —
         /// 0 이면 「자리에 떨어지는 것」이다.
         /// </summary>
+        /// ⚠ unit 7a — `AreaTiles` = **착탄 예고 반경(칸)**(0 = 예고 없음). 예고 표식 뷰(6c 보류)가 그 반경으로
+        /// 칠한다 — 반경 없이 칠하면 뷰가 규칙을 지어낸다. 트레이스에는 안 실린다(채널 여섯 칸) — 골든 무변.
         public static CoreEvent ProjectileSpawned(int tick, Combat.Projectile.Projectile p)
             => new CoreEvent(CoreEventKind.ProjectileSpawned, tick,
                              p.Id, p.Owner,
                              new Site(p.Position, p.OriginBodyRadius),
                              new Site(p.Impact, 0f),
-                             p.OwnerFaction, (int)p.Movement, p.Damage);
+                             p.OwnerFaction, (int)p.Movement, p.Damage,
+                             areaTiles: p.TelegraphTileRange);
 
         public static CoreEvent ProjectileDespawned(int tick, Combat.Projectile.Projectile p)
             => new CoreEvent(CoreEventKind.ProjectileDespawned, tick,
@@ -489,7 +553,8 @@ namespace Wassup.BattleCore
                              killer, victim.Id,
                              Site.Nowhere,
                              new Site(victim.Position, victim.HitRadius),
-                             victim.Faction, (int)victim.Kind, victim.MaxHealth, victim.DefIndex);
+                             victim.Faction, (int)victim.Kind, victim.MaxHealth, victim.DefIndex,
+                             rewardMul: victim.AwakeningRewardMul);
 
         public static CoreEvent Knockup(int tick, Unit target, float seconds, float height)
             => new CoreEvent(CoreEventKind.Knockup, tick,
@@ -673,11 +738,17 @@ namespace Wassup.BattleCore
                              Site.AtCell(h.Center), Site.Nowhere,
                              h.Faction, h.RadiusTiles, 0f, h.DefIndex);
 
+        /// <summary>
+        /// 장이 섰다. unit 7d — 뷰(`CoreFieldPresenter`)가 **되묻지 않게** 그림 재료를 값으로 싣는다:
+        /// 포탈 = `SiteTarget` 에 출구 · 당김/아군 장 = `AreaTiles` 에 반경(칸, 자리형 — 원점 항은 칸 반폭).
+        /// </summary>
         public static CoreEvent FieldSpawned(int tick, FieldCarrier f)
             => new CoreEvent(CoreEventKind.FieldSpawned, tick,
                              f.Id, f.Source,
-                             Site.AtCell(f.Center), Site.Nowhere,
-                             (Faction)f.Faction, (int)f.Kind, f.Duration);
+                             Site.AtCell(f.Center),
+                             f.Kind == FieldKind.Portal ? Site.AtCell(f.Exit) : Site.Nowhere,
+                             (Faction)f.Faction, (int)f.Kind, f.Duration,
+                             areaTiles: f.Kind == FieldKind.Portal ? 0 : (int)math.round(f.Range));
 
         public static CoreEvent FieldDespawned(int tick, FieldCarrier f)
             => new CoreEvent(CoreEventKind.FieldDespawned, tick,
@@ -737,5 +808,61 @@ namespace Wassup.BattleCore
                              u.Id, SimEntityId.None,
                              new Site(u.Position, u.HitRadius), Site.Nowhere,
                              u.Faction, (int)reason, 0f);
+
+        // ── unit 7a ───────────────────────────────────────────────────────────
+
+        public static CoreEvent TriggerFired(int tick, Trigger.Binding b, SimEntityId target,
+                                             Site casterSite, Site targetSite, Faction faction,
+                                             float2 coneAxis = default,
+                                             Combat.AttackShapeBaked cone = default, float coneRange = 0f)
+            => new CoreEvent(CoreEventKind.TriggerFired, tick,
+                             b.Owner, target, casterSite, targetSite, faction,
+                             b.InstanceId, (float)(int)b.Def.Payload, b.DefIndex,
+                             attackDir: coneAxis, attackShape: cone, attackRange: coneRange);
+
+        public static CoreEvent BindingAttached(int tick, Trigger.Binding b, Unit owner)
+            => new CoreEvent(CoreEventKind.BindingAttached, tick,
+                             b.Owner, SimEntityId.None,
+                             owner != null ? new Site(owner.Position, owner.HitRadius) : Site.Nowhere,
+                             Site.Nowhere, owner != null ? owner.Faction : Faction.None,
+                             b.InstanceId, (float)(int)b.Def.Payload, b.DefIndex);
+
+        public static CoreEvent BindingDetached(int tick, Trigger.Binding b, Unit owner,
+                                                Trigger.BindingDetachReason reason)
+            => new CoreEvent(CoreEventKind.BindingDetached, tick,
+                             b.Owner, SimEntityId.None,
+                             owner != null ? new Site(owner.Position, owner.HitRadius) : Site.Nowhere,
+                             Site.Nowhere, owner != null ? owner.Faction : Faction.None,
+                             b.InstanceId, (float)(int)reason, b.DefIndex);
+
+        // ── unit 7b ───────────────────────────────────────────────────────────
+
+        public static CoreEvent CardAttached(int tick, SimEntityId host, Unit hostUnit, int entryId, int cardIndex, int handle)
+            => new CoreEvent(CoreEventKind.CardAttached, tick, host, SimEntityId.None,
+                             hostUnit != null ? new Site(hostUnit.Position, hostUnit.HitRadius) : Site.Nowhere,
+                             Site.Nowhere, hostUnit != null ? hostUnit.Faction : Faction.None,
+                             entryId, handle, cardIndex);
+
+        public static CoreEvent CardDetached(int tick, SimEntityId host, Unit hostUnit, int entryId, int cardIndex, int handle)
+            => new CoreEvent(CoreEventKind.CardDetached, tick, host, SimEntityId.None,
+                             hostUnit != null ? new Site(hostUnit.Position, hostUnit.HitRadius) : Site.Nowhere,
+                             Site.Nowhere, hostUnit != null ? hostUnit.Faction : Faction.None,
+                             entryId, handle, cardIndex);
+
+        public static CoreEvent GimmickTriggered(int tick, SimEntityId owner, SimEntityId made, GimmickKind kind,
+                                                 float amount, Site at, Faction faction)
+            => new CoreEvent(CoreEventKind.GimmickTriggered, tick, owner, made, Site.Nowhere, at, faction,
+                             (int)kind, amount);
+
+        public static CoreEvent CardCast(int tick, int entryId, int cardIndex, float3 cellA, float3 cellB, int handle)
+            => new CoreEvent(CoreEventKind.CardCast, tick, SimEntityId.Match, SimEntityId.None,
+                             Site.AtCell(cellB), Site.AtCell(cellA), Faction.DefenderUnit,
+                             entryId, handle, cardIndex);
+
+        public static CoreEvent SkillVisual(int tick, SimEntityId source, SimEntityId target,
+                                            Site fired, Site at, Faction faction, int visualKind,
+                                            float seconds, int dataIndex)
+            => new CoreEvent(CoreEventKind.SkillVisual, tick, source, target, fired, at, faction,
+                             visualKind, seconds, dataIndex);
     }
 }

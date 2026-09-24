@@ -107,6 +107,13 @@ namespace Wassup.BattleCore
             // unit 6c 후속 — 상태의 끝. 새 채널을 열면 여기 구독도 같이 연다.
             match.Bus.Subscribe(CoreEventKind.AggroReleased, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.LastRunEnded, 0, trace.Record);
+            // unit 7a — 규칙의 사건. 규칙이 없는 판(오늘의 코퍼스 전부)에서는 한 줄도 안 나 골든이 무변이다.
+            match.Bus.Subscribe(CoreEventKind.TriggerFired, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.BindingAttached, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.BindingDetached, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CardAttached, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CardDetached, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CardCast, 0, trace.Record);
 
             int kills = 0;
             match.Bus.Subscribe(CoreEventKind.UnitSlain, 1, _ => kills++);

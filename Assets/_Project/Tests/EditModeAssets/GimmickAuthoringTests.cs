@@ -66,6 +66,31 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void 퇴근의_운석_탄은_탄_표의_줄_번호로_가리킨다()
+        {
+            // unit 7b — barrage 실행이 서면서 운석 탄이 탄 표에 편입됐다(6b2 이월). 표에 없으면 -1(S4 — 0 은 유효 줄).
+            var so = Load<ClockOutGimmickData>("Gimmick_ClockOut");
+            Assert.IsNotNull(so.meteorProjectile, "라이브 퇴근 기믹은 운석 탄을 든다");
+            Assert.AreEqual(-1, MatchDefinitionBuilder.ToGimmickDef(so, EmptyDef()).ClockOut.MeteorProjectileDefIndex);
+
+            var def = EmptyDef();
+            var other = ProjectileDef.Default(); other.Id = "other";
+            var meteor = ProjectileDef.Default(); meteor.Id = so.meteorProjectile.id;
+            def.Projectiles = new[] { other, meteor };
+            Assert.AreEqual(1, MatchDefinitionBuilder.ToGimmickDef(so, def).ClockOut.MeteorProjectileDefIndex);
+            CollectionAssert.Contains(MatchDefinitionBuilder.GimmickProjectilesOf(ModeWith(so)), so.meteorProjectile,
+                "탄 표를 굳히기 전에 넘길 목록에 든다");
+        }
+
+        private static MatchModeData ModeWith(GimmickData g)
+        {
+            var mode = UnityEngine.ScriptableObject.CreateInstance<MatchModeData>();
+            mode.gimmickEnabled = true;
+            mode.gimmickPool = new[] { g };
+            return mode;
+        }
+
+        [Test]
         public void 번아웃의_피로_스택_자산은_스택_규칙_줄로_들어가고_줄_번호로_가리킨다()
         {
             var so = Load<BurnoutGimmickData>("Gimmick_Burnout");

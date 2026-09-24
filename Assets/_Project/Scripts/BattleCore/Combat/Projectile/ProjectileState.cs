@@ -123,6 +123,8 @@ namespace Wassup.BattleCore.Combat.Projectile
         // (비소비형·감쇠 없음), 튕김은 「맞고 나서 남은 홉」(소비형·감쇠 있음). 한 탄이 둘 다
         // 가질 수 있어 합치지 않는다. ⚠ 방향 바인딩의 재조준 반경은 **0 이다**(겨눌 임자가 없다).
         public int RetargetTileRange;
+        /// <summary>unit 7a — 착탄 예고 반경(칸). 0 = 예고 없음(요청에서 온다).</summary>
+        public int TelegraphTileRange;
         public int BounceRemaining;
         public int BounceTileRange;
         public float BounceDamageMul = 1f;
@@ -184,6 +186,7 @@ namespace Wassup.BattleCore.Combat.Projectile
             SweepKnockbackSpeed = 0f;
             SweepKnockbackDuration = 0f;
             RetargetTileRange = 0;
+            TelegraphTileRange = 0;
             BounceRemaining = 0;
             BounceTileRange = 0;
             BounceDamageMul = 1f;

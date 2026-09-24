@@ -44,6 +44,9 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsNotNull(hazards, "씬에 CoreHazardViewPool 이 있어야 한다");
             Assert.IsNotNull(pickups, "씬에 CorePickupViewPool 이 있어야 한다");
             Assert.IsNotNull(resignations, "씬에 CoreResignationViewPool 이 있어야 한다");
+            // unit 7c — 적에게 붙은 표식(살찌운 제물)도 같은 식으로 센다: 표식 수 = 코어에서 표식된 적 수.
+            var statusFx = Object.FindAnyObjectByType<CoreStatusFxSpawner>();
+            Assert.IsNotNull(statusFx, "씬에 CoreStatusFxSpawner 가 있어야 한다");
 
             // ④ 저작 거점 = 월드 거점. 방어 마음은 골(`Goals`)이 정본이라 이 축에서 빠진다 —
             //    세우는 자가 다르므로(마음은 `HeartMeter`) 같은 수로 세면 항상 어긋난다.
@@ -75,6 +78,7 @@ namespace Wassup.Tests.PlayMode.Core
                     nextCheck = Time.unscaledTime + 1f;
                     AssertViewCount(driver, pool);
                     AssertBoardViewCounts(driver, hazards, pickups, resignations);
+                    AssertMarkCount(driver, statusFx);
                 }
 
                 Assert.IsTrue(driver.Match.Clock.Ended,
@@ -108,6 +112,16 @@ namespace Wassup.Tests.PlayMode.Core
 
         // unit 6c — 장판·길막·픽업·사직서. 라이브 판에서는 놓는 자가 unit 7 이라 대개 0 = 0 이지만,
         // 그 0 이 「뷰가 없어서」가 아니라 「개체가 없어서」인지를 같은 식이 증언한다.
+        private static void AssertMarkCount(BattleDriver driver, CoreStatusFxSpawner statusFx)
+        {
+            int marked = 0;
+            var units = driver.Match.World.Units;
+            for (int i = 0; i < units.Count; i++)
+                if (units[i].Kind == UnitKind.Enemy && Wassup.BattleCore.Trigger.CardBindings.IsMarked(units[i])) marked++;
+            Assert.AreEqual(marked, statusFx.WantedCountOfKind(Wassup.Data.StatusFxKind.Marked),
+                $"틱 {driver.Match.Clock.Tick}: 표식 수 = 코어에서 표식된 적 수 — 어긋나면 카드 사건을 안 낸 소멸 경로가 있다");
+        }
+
         private static void AssertBoardViewCounts(BattleDriver driver, CoreHazardViewPool hazards,
                                                   CorePickupViewPool pickups, CoreResignationViewPool resignations)
         {

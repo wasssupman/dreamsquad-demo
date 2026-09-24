@@ -10,32 +10,45 @@ namespace Wassup.Tests.EditMode.Core
     public class MatchHandDeckTests
     {
         // 부착 10 + 공용 액티브 2 = 12. 마지막 부착 카드가 「인수인계」를 선언한다.
-        private static CardDef[] Cards()
+        // unit 7b — 카드는 **규칙을 실어야** 붙는다(규칙 0 줄 카드는 옛 `attached == 0` 처럼 거절된다).
+        // 자원 테스트라 규칙은 무해한 한 줄(처치 × 자기 버프)이고, 액티브는 무동작 한 줄(배율 1 = 조용히 소모)이다.
+        private static CardDef[] Cards(MatchDefinition def)
         {
             var cards = new CardDef[12];
+            var attachRule = CoreCardFixtures.CardRule(Wassup.BattleCore.Trigger.TriggerKind.OnKill,
+                                                       Wassup.BattleCore.Trigger.TriggerPayload.SelfStatBuff);
+            attachRule.StatKind = (int)Wassup.Skills.SkillStatKind.DamageMul;
+            attachRule.Magnitude = 1f;
+            int attachRow = CoreTriggerFixtures.Add(def, attachRule)[0];
+            var activeRule = CoreCardFixtures.CardProbe(Wassup.BattleCore.Trigger.TriggerKind.None,
+                                                        new Wassup.Skills.Concrete.TileStatBurstSkill());
+            activeRule.Magnitude = 1f;
+            int activeRow = CoreTriggerFixtures.Add(def, activeRule)[0];
             for (int i = 0; i < 10; i++)
-                cards[i] = new CardDef
-                {
-                    Id = "attach_" + i,
-                    Kind = CardKind.Attach,
-                    Cost = 15,
-                    DeclaresRetireRecall = i == 9,
-                };
+            {
+                cards[i] = CardDef.Default();
+                cards[i].Id = "attach_" + i;
+                cards[i].Kind = CardKind.Attach;
+                cards[i].Cost = 15;
+                cards[i].DeclaresRetireRecall = i == 9;
+                cards[i].Bindings = new[] { attachRow };
+            }
             for (int i = 10; i < 12; i++)
-                cards[i] = new CardDef
-                {
-                    Id = "active_" + i,
-                    Kind = CardKind.Active,
-                    Cost = 20,
-                    CooldownSeconds = 2f,
-                };
+            {
+                cards[i] = CardDef.Default();
+                cards[i].Id = "active_" + i;
+                cards[i].Kind = CardKind.Active;
+                cards[i].Cost = 20;
+                cards[i].CooldownSeconds = 2f;
+                cards[i].ActiveBinding = activeRow;
+            }
             return cards;
         }
 
         private static BattleMatch Battle(System.Action<MatchDefinition> tweak = null)
         {
             var def = CoreMatchFixtures.Definition();
-            def.Cards = Cards();
+            def.Cards = Cards(def);
             def.Mode.Awakening = new AwakeningDef { Start = 60f, Max = 100f };
             tweak?.Invoke(def);
             def.ConfigHash = def.ComputeConfigHash();
@@ -269,6 +282,31 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(100f, match.Hand.Gauge, 1e-4f);
             Assert.AreEqual(8f, match.Hand.OverflowLost, 1e-4f,
                 "화면이 「넘쳤다」를 알릴 근거가 없으면 플레이어는 안 받은 줄 안다");
+        }
+
+        // unit 7c — 손패 화면의 딤·드래그 게이트는 코어 preflight 를 읽는다(뷰가 `gauge >= cost` 를 다시 세지 않게).
+        // 그 preflight 가 **커밋과 같은 답**을 내는지를 건다 — 갈리면 「밝은 카드인데 거절」이 돌아온다.
+        [Test]
+        public void 쓸_수_있나_preflight_는_커밋과_같은_답이다()
+        {
+            var match = Battle(d => { d.Mode.HandSize = 12; d.Mode.Awakening = new AwakeningDef { Start = 5f, Max = 100f }; });
+            match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
+            var host = CoreMatchFixtures.PlacedDefender(match);
+            int attach = FirstOfKind(match, CardKind.Attach);
+            int active = FirstOfKind(match, CardKind.Active);
+
+            Assert.AreEqual(RejectReason.InsufficientAwakening, match.Hand.UsableReason(attach));
+            Assert.AreEqual(match.Hand.UsableReason(attach), match.Apply(Command.AttachCard(attach, host)).Reason);
+            Assert.AreEqual(match.Hand.UsableReason(active), match.Apply(Command.CastActive(active)).Reason);
+            Assert.AreEqual(RejectReason.CardNotInHand, match.Hand.UsableReason(9999));
+
+            match.Hand.Gain(95f);
+            Assert.AreEqual(RejectReason.None, match.Hand.UsableReason(active));
+            Assert.IsTrue(match.Apply(Command.CastActive(active)).Accepted);
+            Assert.AreEqual(RejectReason.CardOnCooldown, match.Hand.UsableReason(active),
+                "대기가 각성보다 먼저다(커밋 순서)");
+            Assert.AreEqual(match.Hand.UsableReason(active), match.Apply(Command.CastActive(active)).Reason);
+            Assert.AreEqual(RejectReason.None, match.Hand.UsableReason(attach));
         }
 
         private static int EntryOfCard(BattleMatch match, int cardIndex)

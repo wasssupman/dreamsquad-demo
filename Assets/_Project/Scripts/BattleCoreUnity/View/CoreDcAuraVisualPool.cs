@@ -18,9 +18,10 @@ namespace Wassup.BattleCoreUnity.View
     // Entities 누수 3곳 중 하나였고, 키 치환이 아니라 **계약**(모든 소멸은 소멸 사건을 낸다)으로
     // 푼다: 숙주의 `UnitDestroyed` 가 오라를 거둔다. 초당 한 번의 자가 치유는 **경고**다.
     //
-    // ⚠ 옛 풀의 다른 절반 — **카드 페이로드가 선언한 오라 프리팹**(`DcPayloadSpec.auraPrefab` 을
-    // 베이크가 숙주에 등록)은 부착 사건이 unit 7 이라 여기 없다(6c 이식 제외). 이 풀이 켜는 것은
-    // 「드림캐쳐 출처 스탯이 살아 있다」 하나이고, 그 그림은 상태 표식 등록부의 `Empowered` 줄이다.
+    // unit 7c — 옛 풀의 다른 절반, **메커닉이 선언한 부착 오라**(`DcPayloadSpec.auraPrefab` — 옛 `DcAuraVisualPool.Register`,
+    // 보스 나이트메어의 바람 오라 등). 옛 bake 는 숙주 스폰 때 등록했고, 새 코어에서는 그 규칙 줄이 **붙는 사건**
+    // (`BindingAttached`)이 그 계기다 — 줄 번호 → 프리팹은 번호를 매긴 빌더가 채운 뷰 표(`MatchViewAssets.TryGetBindingAura`)다.
+    // 옛 규약 그대로 **숙주당 하나**(먼저 붙은 것이 이긴다) · 앵커 위치 추종 · 줄이 떨어지거나 숙주가 사라지면 거둔다.
     [DisallowMultipleComponent]
     public sealed class CoreDcAuraVisualPool : MonoBehaviour
     {
@@ -35,6 +36,21 @@ namespace Wassup.BattleCoreUnity.View
         private readonly Stack<CoreStatusFxView> _pool = new Stack<CoreStatusFxView>();
         private readonly List<int> _scratch = new List<int>();
         private float _nextSweep;
+
+        private struct Declared
+        {
+            public int Row;
+            public GameObject Prefab;
+            public float Scale;
+            public GameObject Instance;
+        }
+        private readonly Dictionary<int, Declared> _declared = new Dictionary<int, Declared>();
+        private readonly List<int> _declaredKeys = new List<int>();
+        private Transform _declaredRoot;
+
+        /// <summary>메커닉 선언 오라가 선 숙주 수(테스트).</summary>
+        public int DeclaredCount => _declared.Count;
+        public bool HasDeclaredAura(SimEntityId host) => _declared.ContainsKey(host.Value);
 
         /// <summary>실제로 선 오라 수.</summary>
         public int ActiveCount => _active.Count;
@@ -74,9 +90,20 @@ namespace Wassup.BattleCoreUnity.View
 
                 case CoreEventKind.UnitSlain:
                     Drop(e.B.Value);
+                    DropDeclared(e.B.Value, -1);
                     break;
                 case CoreEventKind.UnitDestroyed:
                     Drop(e.A.Value);
+                    DropDeclared(e.A.Value, -1);
+                    break;
+
+                case CoreEventKind.BindingAttached:
+                    if (_driver != null && !_declared.ContainsKey(e.A.Value)
+                        && _driver.ViewAssets.TryGetBindingAura(e.DefIndex, out var prefab, out float scale))
+                        _declared[e.A.Value] = new Declared { Row = e.DefIndex, Prefab = prefab, Scale = scale <= 0f ? 1f : scale };
+                    break;
+                case CoreEventKind.BindingDetached:
+                    DropDeclared(e.A.Value, e.DefIndex);
                     break;
             }
         }
@@ -91,9 +118,46 @@ namespace Wassup.BattleCoreUnity.View
             _pool.Push(view);
         }
 
+        // row = -1 → 그 숙주의 것 전부. 줄이 떨어진 경우는 **그 줄이 세운 오라**만 거둔다.
+        private void DropDeclared(int host, int row)
+        {
+            if (!_declared.TryGetValue(host, out var d)) return;
+            if (row >= 0 && d.Row != row) return;
+            if (d.Instance != null) Destroy(d.Instance);
+            _declared.Remove(host);
+        }
+
+        private void SyncDeclared()
+        {
+            if (_declared.Count == 0) return;
+            _declaredKeys.Clear();
+            foreach (var k in _declared.Keys) _declaredKeys.Add(k);
+            for (int i = 0; i < _declaredKeys.Count; i++)
+            {
+                int host = _declaredKeys[i];
+                var d = _declared[host];
+                var anchor = AnchorOf(new SimEntityId(host));
+                if (anchor == null) { if (d.Instance != null) d.Instance.SetActive(false); continue; }
+                if (d.Instance == null)
+                {
+                    if (_declaredRoot == null)
+                    {
+                        _declaredRoot = new GameObject("CoreDeclaredAuras").transform;
+                        _declaredRoot.SetParent(transform, false);
+                    }
+                    d.Instance = Instantiate(d.Prefab, _declaredRoot);
+                    d.Instance.transform.localScale = Vector3.one * d.Scale;
+                    _declared[host] = d;
+                }
+                if (!d.Instance.activeSelf) d.Instance.SetActive(true);
+                d.Instance.transform.position = anchor.position;
+            }
+        }
+
         private void LateUpdate()
         {
             if (_driver == null || !_driver.Running || _units == null) return;
+            SyncDeclared();
 
             if (_wanted.Count > _active.Count)
             {
@@ -122,11 +186,14 @@ namespace Wassup.BattleCoreUnity.View
             _scratch.Clear();
             foreach (var host in _wanted)
                 if (!_driver.IsAlive(new SimEntityId(host))) _scratch.Add(host);
+            foreach (var host in _declared.Keys)
+                if (!_driver.IsAlive(new SimEntityId(host)) && !_scratch.Contains(host)) _scratch.Add(host);
             for (int i = 0; i < _scratch.Count; i++)
             {
                 Debug.LogWarning($"[CoreDcAuraVisualPool] 유령 오라 회수 — 숙주 {_scratch[i]} 는 판에 없다. "
                     + "소멸 사건을 안 낸 경로가 있다(계약 7).", this);
                 Drop(_scratch[i]);
+                DropDeclared(_scratch[i], -1);
             }
             _scratch.Clear();
         }
@@ -152,6 +219,8 @@ namespace Wassup.BattleCoreUnity.View
 
         public void Clear()
         {
+            foreach (var kv in _declared) if (kv.Value.Instance != null) Destroy(kv.Value.Instance);
+            _declared.Clear();
             foreach (var kv in _active) if (kv.Value != null) Destroy(kv.Value.gameObject);
             _active.Clear();
             _wanted.Clear();

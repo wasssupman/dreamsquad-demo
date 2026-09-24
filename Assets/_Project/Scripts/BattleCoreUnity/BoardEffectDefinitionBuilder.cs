@@ -199,6 +199,11 @@ namespace Wassup.BattleCoreUnity
                     // 폭발 탄이 **공격 표에 이미 있으면** 그 줄이다. 없으면 -1 로 남는다 — 폭발의 발사와
                     // 그 탄의 표 편입은 사망 seam 과 함께 unit 7 이 연다(그 전엔 폭발이 안 난다).
                     d.ExplodeProjectileDefIndex = IndexOfProjectile(projectileRows, so.explodeProjectile);
+                    // unit 7d — 탄이 세우는 길막의 폭발 탄은 전투 빌더가 표에 편입한다. 그래도 없다면(탄 밖에서만 세우는 길막 —
+                    // 디버그 목록 등) 조용히 안 터지지 않게 말한다.
+                    if (d.ExplodeProjectileDefIndex < 0)
+                        Debug.LogError($"[BoardEffectDefinitionBuilder] 길막 '{so.name}' 의 폭발 탄 '{so.explodeProjectile.name}' 이 "
+                                       + "이 판의 탄 표에 없다 — 부서져도 안 터진다.");
                 }
             }
             return d;

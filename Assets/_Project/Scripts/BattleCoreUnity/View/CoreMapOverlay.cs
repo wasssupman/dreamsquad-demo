@@ -5,6 +5,8 @@ using Wassup.Battle.Units;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Map;
+using Wassup.BattleCore.Trigger;
+using SimEntityId = Wassup.BattleCore.SimEntityId;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Presentation;
@@ -126,12 +128,228 @@ namespace Wassup.BattleCoreUnity.View
             _guideShownAt = -1f;
         }
 
+        // ── ⑥ 카드 조준(unit 7c) — 손패 드래그가 미는 것 ─────────────────────────
+        //
+        // 옛 브리지 범위 채널(`RangeDisplayOwner`)의 카드 몫 둘: **부착 범위 링**(`SetAttachPreview` — host 몸 중심, 락온 유닛을 따라간다)
+        // 과 **액티브 칸 조준**(`SetSkillAimRange`/`SetSkillAimCells` — 조준 칸 중심 원 · 반경 0 이면 그 칸들). 둘은 한 화면에 안 뜨므로
+        // 채널 하나다. **배치 드래그가 살아 있으면 양보한다**(옛 H-2 — 배치 링을 훔치면 다음 칸 이동까지 사라진다).
+        //
+        // ⚠ **반경을 여기서 재지 않는다**(구현 4 · 제약 13). 부착 링 = `RangeSpec.RadiusWithOrigin(host 몸)` — 판정과 같은 매핑
+        // (`SkillMath.TryOriginRadius`)을 **부르기만** 한다. 대상 몸은 더하지 않는다(대상 그림자가 링에 닿으면 걸린다 = 판정식과 동치).
+        // 조준 원의 반경은 드래그 슬롯이 같은 함수로 낸 값이다. 스타일은 저작(`DreamcatcherFocusConfig.attachRangeStyle` ·
+        // `TileSetData.aimRingStyle` — 옛 두 채널의 값 그대로).
+        // unit 7d — `Telegraph` = 낙하탄 착탄 예고(옛 `PinSkillTelegraph` — 옛 범위 채널의 `SkillTelegraph` 몫). 같은 채널이라
+        // 「마지막에 쓴 자가 이긴다」·「반납은 주인만」이 옛 `SetRangeOwner`/`ClearRange` 규칙 그대로다.
+        private enum AreaKind : byte { None = 0, Attach = 1, AimRing = 2, AimCells = 3, Telegraph = 4 }
+        private AreaKind _area;
+        private SimEntityId _areaHost = SimEntityId.None;
+        private SimEntityId _telegraphId = SimEntityId.None;
+        private RangeSpec _areaSpec = RangeSpec.None;
+        private RangeRingStyle _areaStyle;
+        private float3 _areaCenter;
+        private float _areaRadius;
+        private readonly List<int2> _aimCellList = new List<int2>(2);
+        private readonly List<SpriteRenderer> _aimCells = new List<SpriteRenderer>(2);
+        private LineRenderer _areaRing;
+        private MeshRenderer _areaFill;
+        private Mesh _areaFillMesh;
+        private readonly List<Vector3> _areaPoints = new List<Vector3>(80);
+
+        /// <summary>부착 범위 링을 그 host 에 건다(락온 전환 순간에만 불린다 — 추종은 여기서 매 프레임).</summary>
+        public void ShowAttachRange(SimEntityId host, RangeSpec spec, RangeRingStyle style)
+        {
+            if (!host.IsEntity || spec.Shape == RangeShape.None || spec.RadiusTiles <= 0f) { HideAttachRange(); return; }
+            _area = AreaKind.Attach;
+            _areaHost = host;
+            _areaSpec = spec;
+            _areaStyle = style;
+        }
+
+        public void HideAttachRange()
+        {
+            if (_area == AreaKind.Attach) ClearArea();
+        }
+
+        /// <summary>액티브 칸 조준 — 조준 칸 중심의 원(반경은 호출부가 판정과 같은 함수로 낸 값).</summary>
+        public void ShowAimRing(float3 centerSim, float radiusTiles)
+        {
+            if (radiusTiles <= 0f || _tileSet == null) { HideAim(); return; }
+            _area = AreaKind.AimRing;
+            _areaCenter = centerSim;
+            _areaRadius = radiusTiles;
+            _areaStyle = _tileSet.aimRingStyle;
+        }
+
+        /// <summary>액티브 칸 조준 — 칸 집합(반경 0 · 포탈 입구+출구 후보). 옛 `SetSkillAimCells`.</summary>
+        public void ShowAimCells(List<int2> cells)
+        {
+            _area = AreaKind.AimCells;
+            _aimCellList.Clear();
+            if (cells != null) _aimCellList.AddRange(cells);
+        }
+
+        /// <summary>
+        /// unit 7d — 착탄 예고 링. 반경은 호출부가 사건 값(`ProjectileSpawned.AreaTiles`)으로 `CoreDrawRadius` 를 지나 낸 값이다.
+        /// `projectile` = 그 탄 — 반납은 **그 탄의 착탄·소멸**만 한다(옛: 남의 착탄이 예고를 지우면 안 된다).
+        /// </summary>
+        public void ShowTelegraph(SimEntityId projectile, float3 centerSim, float radiusTiles)
+        {
+            if (radiusTiles <= 0f || _tileSet == null) return;
+            _area = AreaKind.Telegraph;
+            _telegraphId = projectile;
+            _areaCenter = centerSim;
+            _areaRadius = radiusTiles;
+            _areaStyle = _tileSet.aimRingStyle;
+        }
+
+        public void HideTelegraph(SimEntityId projectile)
+        {
+            if (_area == AreaKind.Telegraph && _telegraphId == projectile) ClearArea();
+        }
+
+        /// <summary>테스트 창구 — 지금 예고 중인 탄(없으면 None).</summary>
+        public SimEntityId TelegraphProjectile => _area == AreaKind.Telegraph ? _telegraphId : SimEntityId.None;
+
+        public void HideAim()
+        {
+            if (_area == AreaKind.AimRing || _area == AreaKind.AimCells) ClearArea();
+        }
+
+        /// <summary>테스트 창구 — 지금 떠 있는 카드 링의 반경(칸)과 중심(sim). 없으면 false.</summary>
+        public bool TryGetCardArea(out float radiusTiles, out float3 centerSim)
+        {
+            radiusTiles = _areaRadius; centerSim = _areaCenter;
+            return _areaRing != null && _areaRing.enabled;
+        }
+
+        public int ActiveAimCellCount
+        {
+            get
+            {
+                int n = 0;
+                for (int i = 0; i < _aimCells.Count; i++) if (_aimCells[i] != null && _aimCells[i].enabled) n++;
+                return n;
+            }
+        }
+
+        private void ClearArea()
+        {
+            _area = AreaKind.None;
+            _areaHost = SimEntityId.None;
+            _telegraphId = SimEntityId.None;
+            _aimCellList.Clear();
+        }
+
+        private void PaintCardArea()
+        {
+            bool ring = false, cells = false;
+            if (!_hasDrag)
+            {
+                switch (_area)
+                {
+                    case AreaKind.Attach:
+                    {
+                        var u = _driver.Find(_areaHost);
+                        // 생존 술어 = 판 위에 있다(사망 모션 중 시체 위에 링을 남기지 않는다 — 옛 `CanDrawAttachPreviewFor`).
+                        if (u == null || u.Dead) { ClearArea(); break; }
+                        _areaCenter = u.Position;
+                        _areaRadius = _areaSpec.RadiusWithOrigin(u.HitRadius);
+                        ring = _areaRadius > 0f;
+                        break;
+                    }
+                    case AreaKind.AimRing: ring = true; break;
+                    case AreaKind.Telegraph: ring = true; break;
+                    case AreaKind.AimCells: cells = _aimCellList.Count > 0; break;
+                }
+            }
+            if (ring) DrawAreaRing(); else HideAreaRing();
+            if (cells && _tileSet != null)
+            {
+                int used = 0;
+                for (int i = 0; i < _aimCellList.Count; i++)
+                {
+                    var sr = Rent(_aimCells, used++, BoardSortOrder.PlacementHighlightOrder);
+                    Tint(sr, _tileSet.rangeColor);
+                    sr.transform.position = ViewOf(CellCenterSim(_aimCellList[i]));
+                    sr.transform.rotation = PlaneRotation();
+                    sr.transform.localScale = Vector3.one * _driver.TileSize;
+                }
+                SetCount(_aimCells, used);
+            }
+            else SetCount(_aimCells, 0);
+        }
+
+        private void DrawAreaRing()
+        {
+            if (!EnsureAreaRenderers()) return;
+            float ts = _driver.TileSize;
+            Vector3 lift = SurfaceLift();
+            _areaPoints.Clear();
+            for (int i = 0; i <= _ringSegments; i++)
+            {
+                float a = i / (float)_ringSegments * math.PI * 2f;
+                var p = new float3(_areaCenter.x + math.cos(a) * _areaRadius * ts, 0f,
+                                   _areaCenter.z + math.sin(a) * _areaRadius * ts);
+                _areaPoints.Add((Vector3)BoardSpace.ToView(p) + lift);
+            }
+            _areaRing.positionCount = _areaPoints.Count;
+            for (int i = 0; i < _areaPoints.Count; i++) _areaRing.SetPosition(i, _areaPoints[i]);
+            var line = _areaStyle.color; line.a = _areaStyle.lineAlpha;
+            _areaRing.startColor = _areaRing.endColor = line;
+            _areaRing.enabled = true;
+
+            // 채움 = 같은 원의 부채 메시(작은 반경에선 채움이 주신호다 — 옛 D1).
+            var center = (Vector3)BoardSpace.ToView(new float3(_areaCenter.x, 0f, _areaCenter.z)) + lift;
+            var verts = new Vector3[_areaPoints.Count + 1];
+            verts[0] = center;
+            for (int i = 0; i < _areaPoints.Count; i++) verts[i + 1] = _areaPoints[i];
+            var tris = new int[(_areaPoints.Count - 1) * 3];
+            for (int i = 0; i < _areaPoints.Count - 1; i++)
+            {
+                tris[i * 3] = 0; tris[i * 3 + 1] = i + 2; tris[i * 3 + 2] = i + 1;
+            }
+            _areaFillMesh.Clear();
+            _areaFillMesh.vertices = verts;
+            _areaFillMesh.triangles = tris;
+            _areaFillMesh.RecalculateBounds();
+            var fill = _areaStyle.color; fill.a = _areaStyle.fillAlpha;
+            Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_areaFill.sharedMaterial, fill);
+            _areaFill.enabled = true;
+        }
+
+        private void HideAreaRing()
+        {
+            if (_areaRing != null && _areaRing.enabled) _areaRing.enabled = false;
+            if (_areaFill != null && _areaFill.enabled) _areaFill.enabled = false;
+        }
+
+        private bool EnsureAreaRenderers()
+        {
+            if (_areaRing == null) _areaRing = CreateLine("CardAreaRing", _ringWidth, BoardSortOrder.RangeRingOrder, _ringColor);
+            if (_areaFill != null) return true;
+            var mat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(_ringColor);
+            if (mat == null) return false;   // 링만 그린다(머티리얼 미배선 — 도형 가이드와 같은 규약)
+            var go = new GameObject($"{name}_CardAreaFill");
+            go.transform.SetParent(transform, false);
+            _areaFillMesh = new Mesh { name = "CardAreaFill" };
+            go.AddComponent<MeshFilter>().sharedMesh = _areaFillMesh;
+            _areaFill = go.AddComponent<MeshRenderer>();
+            _areaFill.sharedMaterial = mat;
+            _areaFill.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _areaFill.receiveShadows = false;
+            _areaFill.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            _areaFill.sortingOrder = BoardSortOrder.RangeRingOrder - 1;
+            _areaFill.enabled = false;
+            return true;
+        }
+
         private void LateUpdate()
         {
             if (_driver == null || !_driver.Running || !BoardSpace.IsConfigured) return;
 
             if (_showGrid && !_gridBuilt) BuildGrid();
             if (_grid != null) _grid.enabled = _showGrid;
+            PaintCardArea();
 
             if (!_hasDrag || _dragDefIndex < 0)
             {
@@ -706,6 +924,8 @@ namespace Wassup.BattleCoreUnity.View
             if (_shapeFill != null && _shapeFill.sharedMaterial != null) Destroy(_shapeFill.sharedMaterial);
             if (_shapeRim != null && _shapeRim.sharedMaterial != null) Destroy(_shapeRim.sharedMaterial);
             if (_shapeFillMesh != null) Destroy(_shapeFillMesh);
+            if (_areaFill != null && _areaFill.sharedMaterial != null) Destroy(_areaFill.sharedMaterial);
+            if (_areaFillMesh != null) Destroy(_areaFillMesh);
             if (_shapeRimMesh != null) Destroy(_shapeRimMesh);
         }
     }

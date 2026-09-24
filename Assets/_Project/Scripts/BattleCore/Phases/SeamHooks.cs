@@ -2,10 +2,10 @@ using System;
 
 namespace Wassup.BattleCore
 {
-    // battle-core-rebuild unit 3 — 트리거 레이어가 들어올 **자리**. unit 6b2 가 `Periodic` 을 더했다(4 로 append).
+    // battle-core-rebuild unit 3 — 트리거 레이어가 들어올 **자리**. unit 6b2 가 `Periodic`(4), unit 7a 가 `Immediate`(5) 를 append 했다.
     //
-    // 이 unit 은 훅을 **뚫기만** 한다(spec 변경 대상 표: 「seam 은 unit 7 이 채운다」).
-    // 지금 등록된 핸들러는 0 이고 `Run` 은 빈 루프다.
+    // unit 3 은 훅을 **뚫기만** 했고(「seam 은 unit 7 이 채운다」), unit 7a 의 `TriggerDispatcher` 가
+    // seam 마다 핸들러 하나를 등록한다(`BattleMatch` 조립 시점).
     //
     // ⚠ **왜 지금 만드나**(제약 8 「나중을 위한 추상 레이어 금지」와의 관계):
     // seam 은 추상 레이어가 아니라 **순서 계약**이다. 「피해 뒤·소멸 전」처럼 사건이 끼어들 수
@@ -35,6 +35,12 @@ namespace Wassup.BattleCore
         /// 뒤 단계가 소비)로 요청만 넣는다. 여기서 곧바로 더하면 1틱 지연이 사라진다.
         /// </summary>
         Periodic = 4,
+        /// <summary>
+        /// unit 7a — **커맨드의 콜스택 안.** 부착·액티브·퇴근은 동기 트랜잭션이라 큐에 넣고 틱을 기다리면
+        /// 소모(차감·쿨다운) 뒤에 실행이 도착한다. 그래서 이 seam 은 **자기 순서를 갖지 않고**
+        /// `CommandPhase.Execute` 가 커맨드를 적용한 그 자리에서 돈다(틱 파이프라인의 0번 자리는 그 몫이다).
+        /// </summary>
+        Immediate = 5,
 
         /// <summary>종류 수. 종류가 아니다 — 배열 크기가 이 값에서 나온다.</summary>
         _Count,

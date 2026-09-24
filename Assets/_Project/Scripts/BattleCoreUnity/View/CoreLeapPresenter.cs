@@ -99,7 +99,9 @@ namespace Wassup.BattleCoreUnity.View
             var flatStart = new Vector3(start.x, 0f, start.z);
             var flatEnd = new Vector3(end.x, 0f, end.z);
 
-            float duration = Mathf.Max(0.05f, _config.BossTotalSeconds);
+            // unit 7d — 비행 창은 **코어의 규칙**이다(창 끝 = 착지 슬램). 길이는 사건이 나른다 — 뷰가 제 설정으로 재면
+            // 슬램이 뷰 도착보다 먼저/늦게 터진다. 설정값은 사건에 길이가 없을 때(옛 트레이스 재생 등)의 폴백뿐이다.
+            float duration = Mathf.Max(0.05f, e.Amount > 0f ? e.Amount : _config.BossTotalSeconds);
             float recoilFrac = Mathf.Clamp(_config.BossRecoilSeconds / duration, 1e-4f, 0.9f);
 
             _flight[key] = (e.SiteFired.Pos, 0f);

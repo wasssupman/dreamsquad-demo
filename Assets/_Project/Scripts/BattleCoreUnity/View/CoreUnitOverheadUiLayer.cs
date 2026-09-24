@@ -16,8 +16,10 @@ namespace Wassup.BattleCoreUnity.View
     // 화면에 그리는 일은 옛 `UnitOverheadView` 가 그대로 한다(UI 뿐이라 키 타입이 없다).
     // 그래서 여기서 복사한 것은 **창(프레임 경계)과 풀링**이지 바 그리기가 아니다.
     //
-    // ⚠ **부착 카드는 아직 없다.** 그 사건(부착)이 코어에 없어서(unit 7) 카드 줄은 옮기지
-    // 않았다 — 빈 카드 슬롯을 먼저 만들면 「카드가 안 뜬다」를 사건이 아니라 UI 에서 찾게 된다.
+    // unit 7c — **부착 카드 줄**(아이콘만). 옛 `UnitOverheadUiLayer.RebuildCards` 가 손패 컨트롤러의 `AttachmentsChanged` 로
+    // 다시 모으던 것을, 이 층이 **부착 사건**(`CardAttached`/`CardDetached`)을 직접 들어 숙주별 목록으로 든다(계약 12).
+    // 순서 = 부착 번호(묶음 핸들 — 판 수명 단조). 발동 펄스(`TriggerFired` × **카드 규칙 줄**)는 옛 `PulseCards` 그대로다
+    // (UI 펄스는 코얼레스하지 않는다 — 뷰가 타이머 재시작으로 자체 흡수한다).
     //
     // unit 6c 가 개통한 것 셋(5a 가 0/`null` 로 흘린 자리):
     //   · **실드 비율** = 실드 합 / 최대 체력. 정규화(체력+실드 > 100% 압축)는 뷰(`UnitOverheadView`)가 한다.
@@ -55,8 +57,74 @@ namespace Wassup.BattleCoreUnity.View
 
         public int ActiveCount => _active.Count;
 
+        private readonly Dictionary<int, List<(int handle, DreamcatcherCard card)>> _cardsByHost =
+            new Dictionary<int, List<(int, DreamcatcherCard)>>();
+        private readonly Dictionary<int, List<DreamcatcherCard>> _cardViews = new Dictionary<int, List<DreamcatcherCard>>();
+
+        /// <summary>그 숙주의 오버헤드 카드 아이콘 수(테스트 — 「부착 1 → 아이콘 1」).</summary>
+        public int CardIconCountOf(SimEntityId host)
+            => _cardViews.TryGetValue(host.Value, out var l) ? l.Count : 0;
+
+        private void OnEnable()
+        {
+            if (_driver != null) _driver.Subscribe(ViewOrder.Overhead, OnCoreEvent);
+        }
+
+        private void OnCoreEvent(CoreEvent e)
+        {
+            switch (e.Kind)
+            {
+                case CoreEventKind.MatchStarted:
+                    _cardsByHost.Clear();
+                    _cardViews.Clear();
+                    break;
+                case CoreEventKind.CardAttached:
+                {
+                    var card = _driver.ViewAssets.Card(e.DefIndex);
+                    if (!_cardsByHost.TryGetValue(e.A.Value, out var list))
+                        _cardsByHost[e.A.Value] = list = new List<(int, DreamcatcherCard)>(3);
+                    list.Add(((int)e.Amount, card));
+                    list.Sort((a, b) => a.handle.CompareTo(b.handle));
+                    RebuildCardView(e.A.Value);
+                    break;
+                }
+                case CoreEventKind.CardDetached:
+                    if (_cardsByHost.TryGetValue(e.A.Value, out var l))
+                    {
+                        l.RemoveAll(x => x.handle == (int)e.Amount);
+                        if (l.Count == 0) _cardsByHost.Remove(e.A.Value);
+                    }
+                    RebuildCardView(e.A.Value);
+                    break;
+                case CoreEventKind.UnitDestroyed:
+                    _cardsByHost.Remove(e.A.Value);
+                    _cardViews.Remove(e.A.Value);
+                    break;
+                case CoreEventKind.TriggerFired:
+                {
+                    // 카드 규칙이 발동했다 — 그 숙주의 카드 줄을 튕긴다. 유닛 저작 스킬(배치 스킬 등)은 카드 줄이 아니다.
+                    var def = _driver.Definition;
+                    int row = e.DefIndex;
+                    if (row < 0 || row >= def.Bindings.Length || def.Bindings[row].Origin != Wassup.BattleCore.Trigger.BindingOrigin.Card) break;
+                    if (_active.TryGetValue(e.A.Value, out var view) && view != null) view.PulseCards();
+                    break;
+                }
+            }
+        }
+
+        private void RebuildCardView(int host)
+        {
+            if (!_cardsByHost.TryGetValue(host, out var list) || list.Count == 0) { _cardViews.Remove(host); return; }
+            if (!_cardViews.TryGetValue(host, out var cards)) _cardViews[host] = cards = new List<DreamcatcherCard>(3);
+            cards.Clear();
+            for (int i = 0; i < list.Count; i++) if (list[i].card != null) cards.Add(list[i].card);
+        }
+
         private void OnDisable()
         {
+            if (_driver != null) _driver.Unsubscribe(OnCoreEvent);
+            _cardsByHost.Clear();
+            _cardViews.Clear();
             Clear();
             _sprites?.Dispose();
             _sprites = null;
@@ -158,9 +226,10 @@ namespace Wassup.BattleCoreUnity.View
             }
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_canvasRect, screenAnchor, null, out var local);
             float scale = Mathf.Max(0.001f, _canvas.scaleFactor);
+            _cardViews.TryGetValue(id.Value, out var cards);
             view.Show(local, tileScreenWidth / scale,
                       defender ? OverheadBarSkin.Defender : OverheadBarSkin.Enemy,
-                      healthRatio, null, _style, _sprites, resetHealth,
+                      healthRatio, defender ? cards : null, _style, _sprites, resetHealth,
                       shieldRatio: shieldRatio, stacks: stacks,
                       stackIcons: _statusFx != null ? _statusFx.StackIcons : null, barScale: 1f);
         }

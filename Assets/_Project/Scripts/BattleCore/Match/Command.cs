@@ -111,6 +111,33 @@ namespace Wassup.BattleCore
         /// 스택 단계가 본다. 스택 종류 쪽은 게이트가 없다 — 6a 의 스택은 기믹 전용이 아니다.
         /// </summary>
         DebugSetStack = 21,
+
+        // ── unit 7b ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 카드 한 장(`CardIndex` = **정의표 줄**)을 손패·각성·상한 없이 붙인다. 적용성(`Applicability`)은 **지난다** —
+        /// 판정을 건너뛰면 라이브에서 안 붙는 조합이 붙어 검증이 거짓이 된다. 숙주가 떠나면 떨어지고 **큐로 안 돌아온다**.
+        /// 손패 UI(7c) 없이 규칙을 라이브에서 확인하는 문이다(6b2 의 규율).
+        /// </summary>
+        DebugAttachCard = 22,
+
+        /// <summary>액티브 한 장(`CardIndex` = 정의표 줄)을 손패·각성·쿨다운 없이 시전한다.</summary>
+        DebugCastCard = 23,
+
+        // ── unit 7d ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 순찰 소환물(`DefIndex` = `Units` 줄)을 소환사 없이 `Cell` 을 앵커로 세운다. 구역 반경 = `Count`(칸, 1 이상).
+        /// 소환사의 스폰과 **같은 문**(`CombatPhase.SpawnPatrol`)이다 — tools.md 10(`PatrolDebugMenu`)의 후계.
+        /// </summary>
+        DebugSummonPatrol = 24,
+
+        /// <summary>
+        /// 규칙 하나(`Count` = `InstanceId`, 소유자 `Target` — None 이면 판 호스트)를 **지금** 발동시킨다. 카운터·게이트·
+        /// 감지자를 건너뛰고 그 규칙의 실행자만 부른다(발동 상한은 지킨다 — 「왜 안 터졌나」의 한 원인이다).
+        /// 커맨드 콜스택(`Immediate` seam)에서 드레인된다 — tools.md 「트리거 강제 발화」.
+        /// </summary>
+        DebugFireBinding = 25,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -174,6 +201,18 @@ namespace Wassup.BattleCore
         // ── unit 6b2 ──────────────────────────────────────────────────────────
         /// <summary>그 기믹이 이번 판에 안 뽑혔다. 셈판은 뽑힌 판에서만 돈다.</summary>
         GimmickInactive,
+
+        // ── unit 7b ───────────────────────────────────────────────────────────
+        /// <summary>적을 겨누는 카드(표식)를 적이 아닌 것에 붙이려 했다.</summary>
+        NotAnEnemy,
+        /// <summary>방어유닛 카드를 방어유닛이 아닌 것(적·순찰 소환물·거점)에 붙이려 했다.</summary>
+        NotADefender,
+        /// <summary>그 카드의 부착 제한(직업·유닛)을 이 숙주가 못 채운다 — 무효 저작도 여기다(fail-closed).</summary>
+        AttachRequirementUnmet,
+        /// <summary>이 숙주에서는 그 카드의 규칙이 **한 줄도** 안 돈다(옛 `attached == 0`).</summary>
+        NoContribution,
+        /// <summary>두 칸을 받는 액티브(포탈)에 둘째 칸이 없다.</summary>
+        NeedsSecondCell,
     }
 
     public struct Command
@@ -234,7 +273,10 @@ namespace Wassup.BattleCore
         /// <summary>`DebugSetStack` 이 놓을 중첩.</summary>
         public int Count;
 
-        // 스킬 파라미터(대상 자리·방향 등)는 unit 7(트리거 레이어)에서 붙는다.
+        // ── unit 7b ──────────────────────────────────────────────────────────
+        /// <summary>액티브의 둘째 칸(포탈 출구). `HasCellB` 가 거짓이면 안 읽힌다.</summary>
+        public int2 CellB;
+        public bool HasCellB;
 
         public static Command PlaceDefender(int defIndex, int2 cell, float2 facing = default) => new Command
         {
@@ -371,6 +413,42 @@ namespace Wassup.BattleCore
             Target = SimEntityId.None,
             Lane = -1,
             CardIndex = cardIndex,
+        };
+
+        /// <summary>두 칸을 받는 액티브(포탈 — 입구 `a` · 출구 `b`)를 시전한다.</summary>
+        public static Command CastActivePair(int cardIndex, int2 a, int2 b) => new Command
+        {
+            Kind = CommandKind.CastActive,
+            DefIndex = -1,
+            Cell = a,
+            CellB = b,
+            HasCellB = true,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = cardIndex,
+        };
+
+        /// <summary>디버그 — 정의표 카드 줄을 손패·각성·상한 없이 붙인다(적용성은 지난다).</summary>
+        public static Command DebugAttachCard(int cardRow, SimEntityId host) => new Command
+        {
+            Kind = CommandKind.DebugAttachCard,
+            DefIndex = -1,
+            Target = host,
+            Lane = -1,
+            CardIndex = cardRow,
+        };
+
+        /// <summary>디버그 — 정의표 액티브 줄을 손패·각성·쿨다운 없이 시전한다.</summary>
+        public static Command DebugCastCard(int cardRow, int2 a, int2 b = default, bool hasB = false) => new Command
+        {
+            Kind = CommandKind.DebugCastCard,
+            DefIndex = -1,
+            Cell = a,
+            CellB = b,
+            HasCellB = hasB,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = cardRow,
         };
 
         /// <summary>보너스 웨이브를 당긴다(제안이 떠 있을 때만).</summary>
@@ -528,6 +606,29 @@ namespace Wassup.BattleCore
             Magnitude = magnitude,
             Seconds = seconds,
             Flag = true,
+        };
+
+        public static Command DebugSummonPatrol(int patrolDefIndex, int2 anchor, int radius) => new Command
+        {
+            Kind = CommandKind.DebugSummonPatrol,
+            DefIndex = patrolDefIndex,
+            Cell = anchor,
+            Count = radius,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+            ProjectileDefIndex = -1,
+        };
+
+        public static Command DebugFireBinding(SimEntityId owner, int instanceId) => new Command
+        {
+            Kind = CommandKind.DebugFireBinding,
+            DefIndex = -1,
+            Target = owner,
+            Count = instanceId,
+            Lane = -1,
+            CardIndex = -1,
+            ProjectileDefIndex = -1,
         };
 
         /// <summary>그 시전자에게 자기가 건 부여를 전부 회수한다.</summary>
