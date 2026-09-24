@@ -440,6 +440,25 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d385cdd627de949599cfc0b0174650e8, type: 2}
   _extraBlockers:
   - {fileID: 11400000, guid: db7dcf5e2c6674ddba4a3849df2057e5, type: 2}
+  _cards: []
+  _profile: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  _cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
+  _activePool:
+  - {fileID: 11400000, guid: b2e8d5f3a96c5f708d4e9f1b3c7a8e21, type: 2}
+  - {fileID: 11400000, guid: c3f9e6a4b07d6a819e5f0c2d4e8b9f32, type: 2}
+  - {fileID: 11400000, guid: 35bce914a516247cc9adee30e2bc5b4d, type: 2}
+  - {fileID: 11400000, guid: 617c2b597eefc4309bb176c2df4826ed, type: 2}
+  - {fileID: 11400000, guid: f8d27dec75a4449c9984a1fd2b1f5e03, type: 2}
+  - {fileID: 11400000, guid: a1f7c4d2e85b4e6f9c3d7b8e2a1f5d60, type: 2}
+  _activeCount: 2
+  _activeCards:
+  - {fileID: 11400000, guid: c2156bc97318c334c90169a18c55dc80, type: 2}
+  - {fileID: 11400000, guid: 7abe7cdbbb2d0754db92e7e980b3a9a3, type: 2}
+  - {fileID: 11400000, guid: 534083247e5810b44a3308840442e689, type: 2}
+  - {fileID: 11400000, guid: f76bf930b1cf2004ab994885fe7336d8, type: 2}
+  - {fileID: 11400000, guid: aee631d1aa88aa847a311bbf02546792, type: 2}
+  - {fileID: 11400000, guid: 58eb9d4db7ed0364fbdcf8139fa49763, type: 2}
+  _dreamstones: []
   _seed: 20260923
   _beginOnStart: 1
   _maxTicksPerFrame: 8
@@ -1094,6 +1113,109 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _driver: {fileID: 302}
   _blobShadow: {fileID: 11400000, guid: 057ae949d711494bbb80cd87c12155ef, type: 2}
+--- !u!1 &513531
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 513533}
+  - component: {fileID: 513532}
+  m_Layer: 0
+  m_Name: CardHand
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &513532
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 513531}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fdbff98e11264cd485185ec38a877d37, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Cards.CoreHandView
+  _driver: {fileID: 302}
+  _units: {fileID: 522}
+  _overlay: {fileID: 1402320339}
+  _selection: {fileID: 341322860}
+  _tray: {fileID: 402}
+  _costDisplay: {fileID: 406}
+  _gauge: {fileID: 1019195218}
+  _vfx: {fileID: 678589399}
+  _mainCamera: {fileID: 102}
+  _focusConfig: {fileID: 11400000, guid: 4c0ee75552ae74daabf68d5c0c14058a, type: 2}
+  _defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
+  _labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  _numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
+  _trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
+  _slomoFallback: 0.3
+  flipHalfDuration: 0.14
+  cardOverlap: 16
+  arcHeight: 46
+  rotMax: 10
+  handBaseY: 16
+  springK: 14
+  dealStaggerSec: 0.05
+  dealDurationSec: 0.34
+  dealStartScale: 0.62
+  trayFadeSec: 0.12
+  dealRise: 220
+  dealTiltX: 50
+  clusterK: 0.3
+  crumpleUnfoldSec: 0.6
+  textFadeSec: 0.18
+  sinkDurationSec: 0.26
+  sinkStaggerSec: 0.04
+  dragClearanceDrop: 210
+  dragClearanceSpring: 320
+  dragClearanceDamping: 24
+  cancelZoneHeight: 310
+  slomoOnOpen: 0
+  focusRaise: 100
+  focusScale: 1.28
+  scatter: 42
+  scatterNeighbors: 2
+  idleBobY: 5
+  idleSwayX: 3
+  idleFreq: 1.6
+  idlePhase: 0.7
+  unitHoverTint: {r: 1, g: 0.28, b: 0.22, a: 1}
+  tooltipWidth: 480
+  tooltipTopOffset: 24
+  tooltipHeaderFont: 27
+  tooltipBodyFont: 23
+  tooltipBobY: 6
+  tooltipBobX: 3
+  tooltipBobFreq: 1.2
+  boardTapMoveThreshold: 24
+  flinchStrengthX: 14
+  flinchDuration: 0.26
+  flinchFrequency: 14
+  rejectKickStrength: 0.45
+  rejectKickDuration: 0.1
+--- !u!4 &513533
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 513531}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &136373342
 GameObject:
   m_ObjectHideFlags: 0
@@ -1537,6 +1659,15 @@ MonoBehaviour:
   _detectionMarkPrefab: {fileID: 1332620569595262163, guid: 6b8dc33d536f7441991c259536fcd4ef, type: 3}
   _detectionMarkLift: 0.9
   _unitAttackAoeSustainMul: 2
+  _cardAbsorbPrefab: {fileID: 1190586612074608, guid: 37f1dda35c3982a428263da65fbd3888, type: 3}
+  _cardAbsorbScale: 0.6
+  _dcVisual: {fileID: 11400000, guid: 381fd605e17f4850a5377e7cbbfcf438, type: 2}
+  _areaBreathPrefab: {fileID: 0}
+  _areaBreathScalePerTile: 0.55
+  _areaBreathScaleMax: 2.4
+  _areaBreathForwardFactor: 0.45
+  _areaBreathAngleOffset: 90
+  _overlay: {fileID: 0}
   _deployRingColor: {r: 0.2, g: 0.95, b: 1, a: 0.7}
   _deployRingStartScale: 0.2
   _deployRingEndScale: 1.35
@@ -1641,6 +1772,81 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 779237441}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1019195217
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1019195219}
+  - component: {fileID: 1019195218}
+  m_Layer: 0
+  m_Name: JarDock
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1019195218
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1019195217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e75367e15144ec5b997ce132b145548, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Cards.CoreAwakeningGaugeView
+  _driver: {fileID: 302}
+  _tray: {fileID: 402}
+  labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
+  backingColor: {r: 0.09, g: 0.08, b: 0.15, a: 0.95}
+  chargedColor: {r: 0.43, g: 0.86, b: 0.92, a: 0.95}
+  maxColor: {r: 1, g: 0.77, b: 0.12, a: 1}
+  rimColor: {r: 0.56, g: 0.43, b: 1, a: 0.9}
+  dormantColor: {r: 0.62, g: 0.58, b: 0.7, a: 0.7}
+  overflowColor: {r: 1, g: 0.35, b: 0.24, a: 1}
+  valuePunchScale: 1.18
+  trayGap: 30
+  baselineY: 18
+  fallbackTrayHalf: 490
+  maxFigures: 44
+  figureRadius: 11
+  figureGravity: 1500
+  figureDamping: 0.9
+  representativeUnit: {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
+  figureSkeletonMaterial: {fileID: 2100000, guid: b66cf7a186d13054989b33a5c90044e4, type: 2}
+  figureAnimation: Idle
+  figureScale: 0.22
+  figureFlightSeconds: 0.44
+  figureFlightArc: 140
+  figureFlightStagger: 0.05
+  maxConcurrentFlights: 4
+  figureHopStrength: 2.1
+  figureTints:
+  - {r: 0.62, g: 0.5, b: 0.9, a: 1}
+  - {r: 0.45, g: 0.82, b: 0.88, a: 1}
+  - {r: 0.55, g: 0.62, b: 0.95, a: 1}
+--- !u!4 &1019195219
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1019195217}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -1774,6 +1980,9 @@ MonoBehaviour:
   _driver: {fileID: 302}
   _width: 320
   _anchoredPos: {x: 24, y: 0}
+  _attachArtHeight: 78
+  _descMaxLines: 2
+  _defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
 --- !u!4 &1375787159
 Transform:
   m_ObjectHideFlags: 0
@@ -2141,3 +2350,5 @@ SceneRoots:
   - {fileID: 1113034369}
   - {fileID: 175241007}
   - {fileID: 678589400}
+  - {fileID: 1019195219}
+  - {fileID: 513533}
