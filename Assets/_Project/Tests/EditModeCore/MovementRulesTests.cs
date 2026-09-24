@@ -176,13 +176,13 @@ namespace Wassup.Tests.EditMode.Core
             match.Tick();
             float withoutPull = enemy.Position.z;
 
-            match.World.Fields.Add(new FieldCarrier
+            match.World.SpawnField(new FieldCarrier
             {
                 Kind = FieldKind.Pull,
                 Center = new float3(1f, 0f, 4f),
                 Range = 5f,
                 Speed = 4f,
-            });
+            }, 0);
             match.Tick();
 
             Assert.Greater(enemy.Position.z, withoutPull, "당김이 가산 변위로 얹힌다");
@@ -197,13 +197,13 @@ namespace Wassup.Tests.EditMode.Core
             match.Begin();
             match.Apply(Command.DebugSpawnEnemyInLane(0, 0));
 
-            match.World.Fields.Add(new FieldCarrier
+            match.World.SpawnField(new FieldCarrier
             {
                 Kind = FieldKind.Portal,
                 Center = new float3(0f, 0f, 2f),
                 Exit = new float3(6f, 0f, 2f),
                 Range = 1f,
-            });
+            }, 0);
             match.Tick();
 
             Assert.Greater(match.World.Units[0].Position.x, 5.5f);

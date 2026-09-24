@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat.Projectile;
 using Wassup.Data;
+using CoreOp = Wassup.BattleCore.Effects.CombineOp;
+using CoreStack = Wassup.BattleCore.Effects.StackKind;
+using CoreStat = Wassup.BattleCore.Effects.StatKind;
 
 namespace Wassup.BattleCoreUnity
 {
@@ -56,6 +59,9 @@ namespace Wassup.BattleCoreUnity
                 var e = enemies[i];
                 if (e == null) continue;
                 def.Enemies[i].Attack = BuildEnemyAttack(e, projectiles, patterns);
+                // 걷기만 하는 적은 **사거리도 0** 이다 — 이동·감지·어그로가 「공격 수단이 있나」를
+                // 사거리로 묻는다(`AttackRange > 0`). 공격 루프는 `Unarmed` 로 따로 막는다.
+                if (def.Enemies[i].Attack.Unarmed) def.Enemies[i].AttackRange = 0f;
             }
 
             // 거점은 **탄 표를 유닛·적과 공유한다**(본능 포탑의 탄이 그 판의 탄 목록에 든다).
@@ -63,12 +69,15 @@ namespace Wassup.BattleCoreUnity
             // 가리켜 조용히 근접으로 접힌다.
             FillStructures(def, structures, projectiles, viewAssets);
 
-            def.Projectiles = new ProjectileDef[projectiles.Count];
-            for (int i = 0; i < projectiles.Count; i++) def.Projectiles[i] = ToDef(projectiles[i]);
-
+            // ⚠ **패턴을 먼저 굽고 탄 표를 나중에 굳힌다.** 패턴 변환이 자기 탄(barrel)을 탄 목록에
+            // 등록하므로, 표를 먼저 굳히면 그 뒤 등록된 탄은 **표 밖**을 가리킨다(조용히 「패턴에
+            // 탄이 없다」). 예전엔 `CollectPatterns` 의 선등록 한 줄이 가림막이었다 — 순서로 막는다.
             def.Patterns = new PatternDef[patterns.Count];
             for (int i = 0; i < patterns.Count; i++)
                 def.Patterns[i] = ToDef(patterns[i], projectiles);
+
+            def.Projectiles = new ProjectileDef[projectiles.Count];
+            for (int i = 0; i < projectiles.Count; i++) def.Projectiles[i] = ToDef(projectiles[i]);
 
             // unit 5a — 뷰가 `DefIndex` 로 프리팹을 되찾을 수 있게 **번호를 매긴 그 목록**을 넘긴다.
             viewAssets?.SetProjectiles(projectiles);
@@ -88,7 +97,9 @@ namespace Wassup.BattleCoreUnity
                                                      List<ProjectilePatternData> patterns)
         {
             var a = AttackDef.Default();
-            a.TargetLayers = (int)d.EffectiveAttackTargetLayers;
+            // 아군 대상(힐러)은 통행 층을 거르지 않는다(옛 `targetTraversalLayers = targetAllies ? 0 : …`).
+            // 대상 진영은 `MatchDefinitionBuilder.ToUnitDef` 가 아군 단독으로 이미 접었다.
+            a.TargetLayers = d.targetAllies ? 0 : (int)d.EffectiveAttackTargetLayers;
             a.ProjectileDefIndex = IndexOf(projectiles, d.projectile);
             a.Outputs = ToOutputs(d.outputs);
             a.KnockbackDistance = d.knockbackDistance;
@@ -103,8 +114,13 @@ namespace Wassup.BattleCoreUnity
             a.Mode = (int)TargetMode.Nearest;
 
             // 아키타입 → 정책 값. **타입 체크가 아니라 값**이다(census 「HasComponent 자연 분기」).
+            // 게이트 = 능력 에셋 존재 **+ 유효 비행 시간**(옛 `BattleBridge` 의 `travelSec > 0`).
+            // 0 이면 착지 시각이 없는 폭탄이다 — 폭탄맨으로 굽지 않고 평범한 공격자로 둔다.
             var bomb = d.GetAbility<BombThrowAbility>();
-            if (bomb != null)
+            if (bomb != null && bomb.travelSec <= 0f)
+                UnityEngine.Debug.LogWarning(
+                    $"[CombatDefinitionBuilder] {d.name}: 폭탄 능력의 travelSec 가 0 이다 — 폭탄맨으로 굽지 않는다.");
+            if (bomb != null && bomb.travelSec > 0f)
             {
                 a.Policy = (int)AttackPolicy.Bomb;
                 a.BombProjectileDefIndex = IndexOf(projectiles, d.projectile);
@@ -124,7 +140,7 @@ namespace Wassup.BattleCoreUnity
             }
 
             var volley = d.GetAbility<DirectionalVolleyAbility>();
-            if (volley != null) a.PatternDefIndices = CollectPatterns(volley, patterns, projectiles);
+            if (volley != null) a.PatternDefIndices = CollectPatterns(d, volley, patterns);
 
             return a;
         }
@@ -220,14 +236,29 @@ namespace Wassup.BattleCoreUnity
                                                   List<ProjectilePatternData> patterns)
         {
             var a = AttackDef.Default();
-            a.TargetLayers = (int)e.EffectiveTraversalLayers;
-            a.ProjectileDefIndex = IndexOf(projectiles, e.projectile);
+            // ⚠ **적의 공격은 통행 층을 거르지 않는다(0)** — 옛 `AttackState.targetTraversalLayers`
+            // 는 적에게 설정된 적이 없다. 「자기 통행 층」을 실으면 비행 적(하늘 4)이 지상|경로(3)
+            // 순찰병을 조준 후보에서 떨군다(2026-09-24 드리프트 감사 M7). 방어유닛 쪽은 저작
+            // 칸(`attackTargetLayers`)이 있어 근접이 하늘로 안 번지는 근거가 된다 — 비대칭이 의도다.
+            a.TargetLayers = 0;
+            // 공격 방식(옛 `BattleBridge` 적 베이크): `None` 또는 **산출물 없음** → 걷기만 한다
+            // (「피해 0 짜리 공격자」를 만들지 않는다). 탄은 `Projectile` 방식일 때만 붙는다 —
+            // 근접 적이 탄 참조를 들고 있어도 쏘지 않는다.
+            bool hasOutputs = e.outputs != null && e.outputs.Length > 0;
+            if (e.attackMethod != EnemyAttackMethod.None && !hasOutputs)
+                UnityEngine.Debug.LogWarning(
+                    $"[CombatDefinitionBuilder] {e.name}: attackMethod={e.attackMethod} 인데 outputs 가 비었다 — 걷기만 하는 적으로 굽는다.");
+            a.Unarmed = e.attackMethod == EnemyAttackMethod.None || !hasOutputs;
+            a.ProjectileDefIndex = !a.Unarmed && e.attackMethod == EnemyAttackMethod.Projectile
+                ? IndexOf(projectiles, e.projectile)
+                : -1;
             a.Outputs = ToOutputs(e.outputs);
-            a.Mode = (int)e.targetMode;
-            // `DefenderClass.None`(0) = 우선 없음 · `DefenderClassFlags.Everything`(~0) = 전부.
-            // 둘 다 정의표의 「0/전체 비트 = 제약 없음」 규약과 그대로 맞는다.
+            a.Mode = (int)ToCoreTargetMode(e.targetMode);
+            // `DefenderClass.None`(0) = 우선 없음. 직업 필터는 적에게 **저작 칸이 있으므로 늘 켜진다**
+            // — `Everything`(~0) = 전부, `None`(0) = 아무도 못 때린다(옛 `AttackSystem` 의 `hasFilter`).
             a.PriorityClass = (int)e.targetPriorityClass;
             a.ClassMask = (int)e.targetClassMask;
+            a.HasClassFilter = true;
             // **보스 면역은 등급에서 나온다** — 별도 토글을 만들지 않는다(옛 전투도 `tier` 가
             // 유일한 출처였고, 토글을 두면 「보스인데 면역이 아닌」 저작이 가능해진다).
             a.BossImmune = e.tier == EnemyTier.Boss;
@@ -235,22 +266,50 @@ namespace Wassup.BattleCoreUnity
             return a;
         }
 
-        private static int[] CollectPatterns(DirectionalVolleyAbility volley,
-                                             List<ProjectilePatternData> patterns,
-                                             List<ProjectileData> projectiles)
+        /// <summary>
+        /// 평타 다연발 패턴을 표에 모은다. **잘못된 저작은 붙이지 않는다**(loud) — 옛
+        /// `BakeDefenderDirectionalPattern` + `ProjectilePatternData.TryToSpec` 의 거절을 옮겼다.
+        /// 거절된 유닛은 패턴 없이 단발로 쏜다(옛 전투와 같은 귀결).
+        /// </summary>
+        private static int[] CollectPatterns(DefenderUnitData d, DirectionalVolleyAbility volley,
+                                             List<ProjectilePatternData> patterns)
         {
             var pat = volley != null ? volley.pattern : null;
-            if (pat == null) return System.Array.Empty<int>();
-            if (pat.barrel != null) IndexOf(projectiles, pat.barrel);
+            string why = RejectPattern(d, pat);
+            if (why != null)
+            {
+                UnityEngine.Debug.LogError($"[CombatDefinitionBuilder] {d.name}: 다연발 패턴 거절 — {why}");
+                return System.Array.Empty<int>();
+            }
             int i = patterns.IndexOf(pat);
             if (i < 0) { patterns.Add(pat); i = patterns.Count - 1; }
             return new[] { i };
         }
 
+        /// <summary>거절 사유. null = 유효.</summary>
+        private static string RejectPattern(DefenderUnitData d, ProjectilePatternData p)
+        {
+            if (p == null || p.barrel == null) return "패턴 또는 그 탄(barrel)이 비었다";
+            if (p.barrel != d.projectile) return "패턴의 탄이 유닛의 탄과 다르다";
+            int shots = p.shots != null ? p.shots.Length : 0;
+            if (shots == 0 || shots > ProjectilePatternData.MaxShotCount)
+                return $"발 수 {shots} 가 1~{ProjectilePatternData.MaxShotCount} 밖이다";
+            if (p.minAngleDeg > p.maxAngleDeg) return $"각도가 뒤집혔다({p.minAngleDeg} > {p.maxAngleDeg})";
+            if (p.randomizeShotsPerTrigger && p.randomIntervalMinSec > p.randomIntervalMaxSec)
+                return "무작위 간격의 최소가 최대보다 크다";
+            // 방향 탄 ↔ 대상 선정 없음은 **짝**이다. 한쪽만이면 방향 탄이 대상을 고르거나
+            // 대상 탄이 방향으로 나간다(한 탄에 조준이 둘).
+            bool direction = p.barrel.flightMode == ProjectileFlightMode.Directional;
+            bool noSelection = p.selection == PatternSelectionRule.None;
+            if (direction != noSelection)
+                return $"탄 궤적({p.barrel.flightMode})과 선정 규칙({p.selection})이 짝이 아니다";
+            return null;
+        }
+
         private static void Bake(AttackShape authored, ref AttackDef a)
         {
             var baked = AttackShapeBake.From(in authored, out bool ok);
-            a.ShapeKind = baked.kind;
+            a.ShapeKind = ToCoreShapeKind(baked.kind);
             a.ShapeSinHalf = baked.sinHalf;
             a.ShapeCosHalf = baked.cosHalf;
             a.ShapeHalfWidth = baked.halfWidth;
@@ -267,12 +326,13 @@ namespace Wassup.BattleCoreUnity
             for (int i = 0; i < src.Length; i++)
                 outp[i] = new AttackOutputDef
                 {
-                    Kind = (Wassup.BattleCore.AttackOutputKind)(int)src[i].kind,
+                    // ⚠ 번호 캐스트 금지 — 이름으로 옮긴다(아래 매핑 넷의 이유).
+                    Kind = ToCoreOutputKind(src[i].kind),
                     Magnitude = src[i].magnitude,
                     Duration = src[i].duration,
-                    Stat = (int)src[i].stat,
-                    Op = (int)src[i].op,
-                    StackKind = (int)src[i].stackKind,
+                    Stat = (int)ToCoreStat(src[i].stat),
+                    Op = (int)ToCoreOp(src[i].op),
+                    StackKind = (int)ToCoreStackKind(src[i].stackKind),
                     StackMaxStack = src[i].stackMaxStack,
                 };
             return outp;
@@ -298,7 +358,9 @@ namespace Wassup.BattleCoreUnity
             d.MinFlightTime = p.minFlightTime;
             d.Movement = (int)movement;
             d.Payload = (int)payload;
-            d.SplashRadius = p.splashRadius;
+            // 광역은 **토큰과 반경 둘 다**여야 한다(옛 `ProjectileHitSystem`: `onHitEffect == Splash
+            // && splashRadius > 0`). 코어의 스위치는 반경 하나라 토큰을 여기서 반경으로 접는다.
+            d.SplashRadius = p.onHitEffect == OnHitEffectType.Splash ? p.splashRadius : 0f;
             d.SplashDamageMul = p.splashDamageMul;
             d.ImpactTileRange = p.impactTileRange;
             d.PierceCount = p.pierceCount;
@@ -337,6 +399,145 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
+        // ── 저작 어휘 → 코어 어휘 ────────────────────────────────────────────
+        //
+        // ⚠ **전부 이름으로 옮긴다.** 번호가 지금 같다는 사실에 기대지 않는 이유는
+        // `PatternSelectionRule` 이 이미 그 함정에 빠졌기 때문이다 — 코어가 번호를 재배열하고
+        // 빌더가 통짜 캐스트로 옮겨서 12개 저작 중 11개가 다른 규칙으로 읽혔다.
+        // 두 어휘는 **다른 어셈블리**라 컴파일러가 어긋남을 못 잡고, 저작 값은 이미 에셋에
+        // byte 로 구워져 있어 한쪽이 앞에 값을 끼우는 순간 조용히 밀린다.
+        // (리뷰가 든 시나리오: `ThresholdMode` 앞에 값이 끼면 `Consume` 이 `Edge` 로 읽혀
+        //  소비형 임계가 스택을 안 깎고 **무한 발화**한다.)
+        // `BuilderEnumPinTests` 가 이 파일과 `MatchDefinitionBuilder` 의 매핑 전부(열거형 열 쌍 +
+        // 상수 집합 둘 — 도형 종류·층 비트)의 이름·개수 일치와 매핑의 이름 보존을 고정한다.
+
+        /// <summary>저작 지속 락 모드 → 코어 어휘. **이름으로 옮긴다.** 모르는 값은 락 없음으로 접는다.</summary>
+        public static TargetMode ToCoreTargetMode(EnemyTargetMode authored)
+        {
+            switch (authored)
+            {
+                case EnemyTargetMode.None: return TargetMode.None;
+                case EnemyTargetMode.Nearest: return TargetMode.Nearest;
+                case EnemyTargetMode.FocusUntilDead: return TargetMode.FocusUntilDead;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 지속 락 모드({authored}) — 락 없음으로 접는다.");
+                    return TargetMode.None;
+            }
+        }
+
+        /// <summary>
+        /// 저작 bake 도형 종류(`Wassup.Data.AttackShapeBaked` 상수) → 코어 상수. 두 쪽이 **상수 집합**
+        /// 이라 enum 핀이 못 잡는다 — 이름(상수)으로 옮기고 값 핀은 테스트가 진다. 모르는 값은
+        /// 전방위로 접는다(`bake` 가 정의역 밖을 전방위로 읽는 것과 같은 방향).
+        /// </summary>
+        public static int ToCoreShapeKind(byte authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Data.AttackShapeBaked.OmniKind: return Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind;
+                case Wassup.Data.AttackShapeBaked.SectorKind: return Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind;
+                case Wassup.Data.AttackShapeBaked.BandKind: return Wassup.BattleCore.Combat.AttackShapeBaked.BandKind;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 도형 종류({authored}) — 전방위로 접는다.");
+                    return Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind;
+            }
+        }
+
+        public static Wassup.BattleCore.AttackOutputKind ToCoreOutputKind(
+            Wassup.Data.AttackOutputKind authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Data.AttackOutputKind.Damage: return Wassup.BattleCore.AttackOutputKind.Damage;
+                case Wassup.Data.AttackOutputKind.Heal: return Wassup.BattleCore.AttackOutputKind.Heal;
+                case Wassup.Data.AttackOutputKind.ApplyStat: return Wassup.BattleCore.AttackOutputKind.ApplyStat;
+                case Wassup.Data.AttackOutputKind.ApplyStack: return Wassup.BattleCore.AttackOutputKind.ApplyStack;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 산출물 종류({authored}) — 피해로 접는다.");
+                    return Wassup.BattleCore.AttackOutputKind.Damage;
+            }
+        }
+
+        public static CoreStat ToCoreStat(Wassup.Battle.Effects.StatKind authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Battle.Effects.StatKind.DamageMul: return CoreStat.DamageMul;
+                case Wassup.Battle.Effects.StatKind.AttackSpeedMul: return CoreStat.AttackSpeedMul;
+                case Wassup.Battle.Effects.StatKind.DmgTakenMul: return CoreStat.DmgTakenMul;
+                case Wassup.Battle.Effects.StatKind.RegenPerSec: return CoreStat.RegenPerSec;
+                case Wassup.Battle.Effects.StatKind.MoveSpeedMul: return CoreStat.MoveSpeedMul;
+                case Wassup.Battle.Effects.StatKind.DamageVsCcMul: return CoreStat.DamageVsCcMul;
+                case Wassup.Battle.Effects.StatKind.MaxHealthMul: return CoreStat.MaxHealthMul;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 스탯({authored}) — 피해 배율로 접는다.");
+                    return CoreStat.DamageMul;
+            }
+        }
+
+        public static CoreOp ToCoreOp(Wassup.Battle.Effects.CombineOp authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Battle.Effects.CombineOp.Multiplicative: return CoreOp.Multiplicative;
+                case Wassup.Battle.Effects.CombineOp.Additive: return CoreOp.Additive;
+                case Wassup.Battle.Effects.CombineOp.Override: return CoreOp.Override;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 결합 연산자({authored}) — 곱셈으로 접는다.");
+                    return CoreOp.Multiplicative;
+            }
+        }
+
+        public static CoreStack ToCoreStackKind(Wassup.Battle.Effects.StackKind authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Battle.Effects.StackKind.None: return CoreStack.None;
+                case Wassup.Battle.Effects.StackKind.Fire: return CoreStack.Fire;
+                case Wassup.Battle.Effects.StackKind.Ice: return CoreStack.Ice;
+                case Wassup.Battle.Effects.StackKind.Bleed: return CoreStack.Bleed;
+                case Wassup.Battle.Effects.StackKind.Poison: return CoreStack.Poison;
+                case Wassup.Battle.Effects.StackKind.Fatigue: return CoreStack.Fatigue;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 스택 종류({authored}) — 없음으로 접는다.");
+                    return CoreStack.None;
+            }
+        }
+
+        /// <summary>
+        /// 저작 선정 규칙 → 코어 어휘. **이름으로 옮긴다.**
+        ///
+        /// ⚠ 통짜 캐스트(`(int)p.selection`)로 옮기던 시절, 코어 enum 이 번호를 재배열해
+        /// 두어서 **12개 저작 중 11개가 다른 규칙으로 읽혔다**(순회 폭격 → 선택 안 함,
+        /// 방향 발사 → 무작위 저격). 번호가 지금은 같아도 캐스트로 되돌리지 말 것 —
+        /// 한쪽이 append 하는 날 같은 일이 조용히 다시 난다.
+        /// </summary>
+        public static Wassup.BattleCore.Combat.Emission.PatternSelectionRule ToCoreSelection(
+            PatternSelectionRule authored)
+        {
+            switch (authored)
+            {
+                case PatternSelectionRule.RoundRobin:
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin;
+                case PatternSelectionRule.DeterministicShuffle:
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.DeterministicShuffle;
+                case PatternSelectionRule.None:
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.None;
+                case PatternSelectionRule.Nearest:
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.Nearest;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 선정 규칙({authored}) — 순회로 접는다.");
+                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin;
+            }
+        }
+
         private static PatternDef ToDef(ProjectilePatternData p, List<ProjectileData> projectiles)
         {
             var d = new PatternDef
@@ -344,25 +545,26 @@ namespace Wassup.BattleCoreUnity
                 Id = p.id,
                 BarrelProjectileDefIndex = IndexOf(projectiles, p.barrel),
                 Damage = p.damage,
-                Selection = (int)p.selection,
+                Selection = (int)ToCoreSelection(p.selection),
                 MinAngleDeg = p.minAngleDeg,
                 MaxAngleDeg = p.maxAngleDeg,
                 RandomizeShotsPerTrigger = p.randomizeShotsPerTrigger,
-                RandomIntervalMinSec = p.randomIntervalMinSec,
-                RandomIntervalMaxSec = p.randomIntervalMaxSec,
+                // 정의역 접기 — 옛 `TryToSpec` 의 클램프(음수 시간·반경 금지, 방향 0~1).
+                RandomIntervalMinSec = UnityEngine.Mathf.Max(0f, p.randomIntervalMinSec),
+                RandomIntervalMaxSec = UnityEngine.Mathf.Max(0f, p.randomIntervalMaxSec),
                 ReselectPerShot = p.reselectPerShot,
-                TelegraphSec = p.telegraphSec,
-                ScopeTileRange = p.scopeTileRange,
+                TelegraphSec = UnityEngine.Mathf.Max(0f, p.telegraphSec),
+                ScopeTileRange = UnityEngine.Mathf.Max(0, p.scopeTileRange),
                 FanOutToAllCandidates = p.fanOutToAllCandidates,
-                FanOutStaggerSec = p.fanOutStaggerSec,
+                FanOutStaggerSec = UnityEngine.Mathf.Max(0f, p.fanOutStaggerSec),
             };
             int shots = p.shots != null ? p.shots.Length : 0;
             d.Shots = new PatternShotDef[shots];
             for (int i = 0; i < shots; i++)
                 d.Shots[i] = new PatternShotDef
                 {
-                    DirectionT = p.shots[i].directionT,
-                    IntervalAfterPreviousSec = p.shots[i].intervalAfterPreviousSec,
+                    DirectionT = UnityEngine.Mathf.Clamp01(p.shots[i].directionT),
+                    IntervalAfterPreviousSec = UnityEngine.Mathf.Max(0f, p.shots[i].intervalAfterPreviousSec),
                 };
             return d;
         }

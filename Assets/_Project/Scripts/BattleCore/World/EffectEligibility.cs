@@ -12,13 +12,22 @@ namespace Wassup.BattleCore
     public static class EffectEligibility
     {
         /// <summary>
-        /// 군중 제어를 받나. 거절 둘: **거점**(F3) · **보스 면역**(기절·수면·넉백 출처 불문).
-        /// null 은 거절이다 — 이미 사라진 대상에 거는 것은 요청이 아니라 사고다.
+        /// 이 종류의 군중 제어를 받나. 거절 둘: **거점**(F3 — 종류 불문) · **보스 면역**
+        /// (기절·수면·넉백 출처 불문 — **감속은 받는다**). null 은 거절이다 — 이미 사라진
+        /// 대상에 거는 것은 요청이 아니라 사고다.
+        ///
+        /// ⚠ **종류를 반드시 묻는다.** 옛 `CcActionLock.IsBossImmune(kind) = IsLock(kind) ||
+        /// kind == Impulse` 였다. 종류 축을 잃은 술어가 감속까지 막아 보스에 둔화 카드가 안
+        /// 걸렸다(2026-09-24 드리프트 감사 M6) — 인자 없는 오버로드를 두지 않는 이유다.
         /// </summary>
-        public static bool AcceptsCc(Unit victim)
+        public static bool AcceptsCc(Unit victim, CcRequestKind kind)
             => victim != null
                && !victim.IsStructure
-               && !(victim.Attack != null && victim.Attack.BossImmune);
+               && !(victim.Attack != null && victim.Attack.BossImmune && IsBossImmuneKind(kind));
+
+        /// <summary>보스가 막는 종류 = 행동 잠금(기절·수면) + 넉백. 감속은 스탯 축이라 통과한다.</summary>
+        public static bool IsBossImmuneKind(CcRequestKind kind)
+            => kind == CcRequestKind.Stun || kind == CcRequestKind.Sleep || kind == CcRequestKind.Impulse;
 
         /// <summary>
         /// 스탯·스택 모디파이어를 받나. 거점은 안 받는다(F3) — 보스 면역은 **여기 없다**

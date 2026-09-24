@@ -351,25 +351,23 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
-        public void 효과_타일은_한_번만_소비된다()
+        public void 효과_타일_칸은_판_내내_남는다()
         {
+            // 옛 규칙 — 칸 목록은 맵 빌드 때만 채우고 지우지 않았다(`BattleBridge.cs:297·1492·9078`).
+            // 「1회」는 **개체당**이지 칸 소비가 아니다(`ApplyEffectTileOnce`, `:9126-9131`).
             var def = CoreMatchFixtures.Definition();
             def.EffectTileCount = 3;
             def.ConfigHash = def.ComputeConfigHash();
             var match = CoreMatchFixtures.BeginBattle(def);
-
-            int armed = match.Placement.ArmedEffectTiles.Count;
-            Assert.AreEqual(3, armed);
+            Assert.AreEqual(3, match.Placement.ArmedEffectTiles.Count);
 
             var cell = match.Placement.ArmedEffectTiles[0];
             Assert.IsTrue(match.Apply(Command.PlaceDefender(0, cell)).Accepted);
-            Assert.AreEqual(2, match.Placement.ArmedEffectTiles.Count, "회수도 재무장도 없다");
+            Assert.AreEqual(3, match.Placement.ArmedEffectTiles.Count, "놓아도 칸은 안 사라진다");
 
-            // 같은 자리에 다시 놓아도 재무장되지 않는다.
             match.Apply(Command.Retire(CoreMatchFixtures.PlacedDefender(match)));
             for (int t = 0; t < 300; t++) match.Tick();
-            match.Apply(Command.PlaceDefender(0, cell));
-            Assert.AreEqual(2, match.Placement.ArmedEffectTiles.Count);
+            Assert.AreEqual(3, match.Placement.ArmedEffectTiles.Count);
         }
     }
 }

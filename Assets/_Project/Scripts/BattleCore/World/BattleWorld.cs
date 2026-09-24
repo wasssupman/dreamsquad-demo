@@ -37,10 +37,175 @@ namespace Wassup.BattleCore
         /// <summary>id 오름차순 개체 목록. 순회 중 구조 변경 금지 — 소멸은 틱 단계가 모아서 한다.</summary>
         public IReadOnlyList<Unit> Units => _units;
 
-        // unit 2 — 판 위에 깔린 장(포탈·당김). 유닛이 아니라 여기 산다(UML §2).
-        // 이동이 매 틱 읽고, 생성·수명은 효과 레이어(unit 6)가 갖는다.
+        // unit 2 — 판 위에 깔린 장(포탈·당김·아군 버프). 유닛이 아니라 여기 산다(UML §2).
+        // 이동이 매 틱 읽고, 수명은 unit 6b 가 갖는다(`TickProjectilePhase` 끝 = 이동 뒤).
+        //
+        // unit 6b — **목록을 직접 못 고친다.** 계약 7(「모든 소멸은 소멸 이벤트를 낸다」)이
+        // 유닛·탄에만 걸려 있으면 뷰가 장만 폴링으로 지켜보게 된다. 문은 아래 둘뿐이다.
         private readonly List<FieldCarrier> _fields = new List<FieldCarrier>(8);
-        public List<FieldCarrier> Fields => _fields;
+        public IReadOnlyList<FieldCarrier> Fields => _fields;
+
+        // unit 6b — 판 위에 깔린 존 장판. 장과 같은 자리에 살지만 **정의표 줄을 가리킨다**
+        // (저작이 여럿이고 효과 배열이 그 줄에 있다). 순회는 발급 순서 = `SimEntityId` 오름차순.
+        private readonly List<Hazard> _hazards = new List<Hazard>(8);
+        private readonly Stack<Hazard> _hazardPool = new Stack<Hazard>(8);
+        public IReadOnlyList<Hazard> Hazards => _hazards;
+
+        /// <summary>
+        /// 존 장판 하나를 깐다. 반드시 `HazardSpawned` 를 낸다(소멸의 짝).
+        /// **판정은 없다** — 「어디에 깔 수 있나」는 까는 자(unit 7)의 질문이다.
+        /// </summary>
+        public Hazard SpawnHazard(int defIndex, int2 cell, float3 center, int radiusTiles, float lifetime,
+                                  SimEntityId source, Faction faction, byte targetLayers, int tick)
+        {
+            var h = _hazardPool.Count > 0 ? _hazardPool.Pop() : new Hazard();
+            h.Reset();
+            h.Id = new SimEntityId(_nextId++);
+            h.DefIndex = defIndex;
+            h.OriginCell = cell;
+            h.RadiusTiles = radiusTiles;
+            h.Center = center;
+            h.Remaining = lifetime;
+            h.Source = source;
+            h.Faction = faction;
+            h.TargetLayers = targetLayers;
+
+            _hazards.Add(h);   // id 단조 증가 → append 가 곧 오름차순
+            _bus.Publish(CoreEvent.HazardSpawned(tick, h));
+            return h;
+        }
+
+        /// <summary>
+        /// **존의 유일한 제거 경로.** 반드시 `HazardDestroyed` 를 낸다.
+        /// 사건은 **빼기 전에** 값을 읽어 만든다 — `Reset` 뒤에 읽으면 자리가 0 으로 샌다.
+        /// </summary>
+        public bool DestroyHazard(SimEntityId id, int tick)
+        {
+            for (int i = 0; i < _hazards.Count; i++)
+            {
+                if (_hazards[i].Id != id) continue;
+                var h = _hazards[i];
+                var ev = CoreEvent.HazardDestroyed(tick, h);
+                _hazards.RemoveAt(i);
+                h.Reset();
+                _hazardPool.Push(h);
+                _bus.Publish(ev);
+                return true;
+            }
+            return false;
+        }
+
+        // unit 6b2 — **판 위에 놓인 먹을 것(픽업)과 떨어진 사직서.** 존과 같은 자리에 살고 같은
+        // 규율이다: 목록을 직접 못 고치고, 문은 아래 넷뿐이며 **문마다 사건이 난다**(계약 7).
+        // 순회는 발급 순서 = `SimEntityId` 오름차순(계약 5).
+        private readonly List<Pickup> _pickups = new List<Pickup>(8);
+        private readonly Stack<Pickup> _pickupPool = new Stack<Pickup>(8);
+        public IReadOnlyList<Pickup> Pickups => _pickups;
+
+        private readonly List<Resignation> _resignations = new List<Resignation>(8);
+        private readonly Stack<Resignation> _resignationPool = new Stack<Resignation>(8);
+        public IReadOnlyList<Resignation> Resignations => _resignations;
+
+        /// <summary>픽업 하나를 놓는다. 반드시 `PickupSpawned` 를 낸다. 자리 검증은 `PickupSpawn` 이 한다.</summary>
+        public Pickup SpawnPickup(PickupKind kind, int2 cell, float3 center, float lifetime, int tick)
+        {
+            var p = _pickupPool.Count > 0 ? _pickupPool.Pop() : new Pickup();
+            p.Reset();
+            p.Id = new SimEntityId(_nextId++);
+            p.Kind = kind;
+            p.Cell = cell;
+            p.Center = center;
+            p.Remaining = lifetime;
+            p.SpawnTick = tick;
+            _pickups.Add(p);
+            _bus.Publish(CoreEvent.PickupSpawned(tick, p));
+            return p;
+        }
+
+        /// <summary>
+        /// **픽업의 유일한 제거 경로.** `taker` 가 있으면 `PickupTaken`(먹혔다), 없으면
+        /// `PickupExpired`(수명 만료) — 어느 쪽이든 사건이 난다(계약 7). 사건은 빼기 전에 만든다.
+        /// </summary>
+        public bool RemovePickup(SimEntityId id, Unit taker, int tick)
+        {
+            for (int i = 0; i < _pickups.Count; i++)
+            {
+                if (_pickups[i].Id != id) continue;
+                var p = _pickups[i];
+                var ev = taker != null ? CoreEvent.PickupTaken(tick, p, taker) : CoreEvent.PickupExpired(tick, p);
+                _pickups.RemoveAt(i);
+                p.Reset();
+                _pickupPool.Push(p);
+                _bus.Publish(ev);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 사직서 한 장을 떨어뜨린다. 반드시 `ResignationDropped` 를 내고, 그 사건이 **떨어뜨린 뒤의
+        /// 판 위 장수**를 값으로 나른다(HUD 가 되묻지 않게).
+        /// </summary>
+        public Resignation DropResignation(int2 cell, float3 center, SimEntityId source, Faction faction, int tick)
+        {
+            var r = _resignationPool.Count > 0 ? _resignationPool.Pop() : new Resignation();
+            r.Reset();
+            r.Id = new SimEntityId(_nextId++);
+            r.Cell = cell;
+            r.Center = center;
+            r.Source = source;
+            r.Faction = faction;
+            _resignations.Add(r);
+            _bus.Publish(CoreEvent.ResignationDropped(tick, r, _resignations.Count));
+            return r;
+        }
+
+        /// <summary>
+        /// 사직서를 **가장 오래된 것부터** `count` 장 소모한다(`SimEntityId` 오름차순 = 떨어진 순서).
+        /// 장마다 `ResignationConsumed` 가 난다(계약 7). 반환 = 실제로 소모한 장수.
+        /// </summary>
+        public int ConsumeResignations(int count, int tick)
+        {
+            int n = count < _resignations.Count ? count : _resignations.Count;
+            for (int i = 0; i < n; i++)
+            {
+                var r = _resignations[0];
+                var ev = CoreEvent.ResignationConsumed(tick, r);
+                _resignations.RemoveAt(0);
+                r.Reset();
+                _resignationPool.Push(r);
+                _bus.Publish(ev);
+            }
+            return n;
+        }
+
+        /// <summary>
+        /// 장 하나를 깐다. 반드시 `FieldSpawned` 를 낸다. 인자가 아니라 **완성된 개체**를 받는
+        /// 이유: 종류마다 읽는 필드가 달라(포탈 = 출구 · 당김 = 속도 · 아군 버프 = 스탯) 공용
+        /// 인자 목록을 만들면 절반이 언제나 의미 없는 0 이 된다.
+        /// </summary>
+        public FieldCarrier SpawnField(FieldCarrier field, int tick)
+        {
+            if (field == null) return null;
+            field.Id = new SimEntityId(_nextId++);
+            _fields.Add(field);
+            _bus.Publish(CoreEvent.FieldSpawned(tick, field));
+            return field;
+        }
+
+        /// <summary>**장의 유일한 제거 경로.** 반드시 `FieldDespawned` 를 낸다.</summary>
+        public bool DespawnField(SimEntityId id, int tick)
+        {
+            for (int i = 0; i < _fields.Count; i++)
+            {
+                if (_fields[i].Id != id) continue;
+                var ev = CoreEvent.FieldDespawned(tick, _fields[i]);
+                _fields.RemoveAt(i);
+                _bus.Publish(ev);
+                return true;
+            }
+            return false;
+        }
 
         // unit 2 — 어그로 **요청** 줄. 「누가 누구에게 끌렸다」를 말하는 것은 히트를 낸 쪽
         // (unit 3 의 공격 루프)과 도발을 건 쪽(unit 7)이고, **게이트·추격판·이벤트는 여기**가 한다.
@@ -75,13 +240,62 @@ namespace Wassup.BattleCore
         /// </summary>
         public bool RequestCc(in CcRequest req)
         {
-            if (!EffectEligibility.AcceptsCc(Find(req.Target))) return false;
+            if (!EffectEligibility.AcceptsCc(Find(req.Target), req.Kind)) return false;
             _ccRequests.Add(req);
             return true;
         }
 
         private readonly List<WakeRequest> _wakeRequests = new List<WakeRequest>(8);
         public List<WakeRequest> WakeRequests => _wakeRequests;
+
+        /// <summary>
+        /// unit 6b2 — **스택 누적 요청.** 주기 바인딩(unit 7 — 번아웃 피로)이 넣고, 소비는
+        /// `TickProjectilePhase` 의 **스탯 적용 뒤** 단계다. 그 자리 때문에 여기서 쌓은 피로가
+        /// **한 틱 뒤에** 임계를 본다 — 옛 `FatigueAccrualSystem`(`[UpdateAfter(ModifierApplySystem)]`)의
+        /// 1프레임 지연을 **단계 위치로** 박제한 것이다(rev 3 §4 「변경 없음」). 주기 바인딩이
+        /// `[Periodic]` seam(장 준비 끝)에서 곧바로 스택을 더하면 그 지연이 사라져 밸런스가 바뀐다.
+        /// </summary>
+        private readonly List<Effects.StackAccrual> _stackAccruals = new List<Effects.StackAccrual>(8);
+        public List<Effects.StackAccrual> StackAccruals => _stackAccruals;
+
+        /// <summary>
+        /// 실드를 건다. 반환 = **실제로 걸렸나.**
+        ///
+        /// ⚠ **이미 더 센 실드가 있으면 다시 걸지도 않고 사건도 안 낸다**(F20). 병합이
+        /// 최댓값이라 그 경우 무동작인데, 연출만 나가면 화면에서 헛발동으로 보인다.
+        /// 비교 대상은 **셋 다**다: 이미 든 슬롯 · 스테이징된 것(다음 틱 드레인 대기) ·
+        /// 이번 틱에 쌓인 것. 부여가 한 틱 늦게 들어서 «걸었는데 아직 슬롯에 없는» 구간이
+        /// 있고, 그 구간만 빼먹으면 약한 재부여가 그때만 통과해 헛발동이 난다.
+        ///
+        /// ⚠ **실드는 시간으로 사라지지 않는다.** 만료 경로가 «구조적으로 없는 것»이
+        /// 파열 판정(합 &gt; 0 → 0)의 전제다 — 수명을 열면 「아무도 안 때렸는데 파열이
+        /// 터진다」가 된다. 그래서 이 함수에 지속 인자가 없다.
+        ///
+        /// ⚠ 부여는 **한 틱 늦게** 든다(C17 · unit 3 결정). `ShieldPending` 에 쌓이고
+        /// 틱 끝에서 `Shield` 로 옮겨진다 — 그 비대칭을 만드는 자리는 `Inbox.StageShield` 다.
+        /// </summary>
+        public bool GrantShield(SimEntityId target, SimEntityId source, float amount, int tick)
+        {
+            if (amount <= 0f) return false;
+            var u = Find(target);
+            if (u == null || u.Dead) return false;
+
+            float already = Combat.ShieldMath.ValueFromSource(u.Shield.Slots, source);
+            already = Highest(u.Inbox.Shield, source, already);
+            already = Highest(u.Inbox.ShieldPending, source, already);
+            if (amount <= already) return false;
+
+            u.Inbox.ShieldPending.Add(new ShieldGrant { Source = source, Amount = amount });
+            _bus.Publish(CoreEvent.ShieldGranted(tick, u, source, amount));
+            return true;
+        }
+
+        private static float Highest(List<ShieldGrant> grants, SimEntityId source, float best)
+        {
+            for (int i = 0; i < grants.Count; i++)
+                if (grants[i].Source == source && grants[i].Amount > best) best = grants[i].Amount;
+            return best;
+        }
 
         public int Count => _units.Count;
 
@@ -195,6 +409,10 @@ namespace Wassup.BattleCore
             if (_projById.TryGetValue(id.Value, out var proj)) return DestroyProjectile(proj, tick);
             if (!_byId.TryGetValue(id.Value, out var u)) return false;
 
+            // 진행형 상태가 열린 채 사라지는 경로(유출 · 디버그 제거 등)도 닫힘을 알린다(계약 7).
+            // 죽음·퇴근은 그 앞에서 이미 자기 사유로 닫았으므로 여기서는 아무 일도 안 일어난다.
+            InterruptProgress(u, ProgressInterrupt.OwnerDestroyed, tick);
+
             // 소멸 이벤트는 **빼기 전에** 값을 읽어 만든다 — `Reset` 뒤에 읽으면 자리도
             // 몸 반경도 0 으로 새어 조용히 좁아진다(제약 13 의 사망 스냅샷과 같은 함정).
             var ev = CoreEvent.Destroyed(tick, u);
@@ -208,6 +426,44 @@ namespace Wassup.BattleCore
 
             _bus.Publish(ev);
             return true;
+        }
+
+        // ── 진행형 상태의 끝 ──────────────────────────────────────────────────
+        //
+        // 라스트런 창이 닫히는 문은 **둘뿐**이다 — 시간 끝(crash)과 중단 정책. 둘 다 여기를 지나고
+        // 닫힘 사건은 `PublishLastRunEnded` 한 곳에서만 난다. 문을 소비처(전투·퇴근·제거)로 흩으면
+        // 언젠가 한쪽이 사건을 빠뜨리고, 그 경로로 닫힌 창의 표식은 판이 끝날 때까지 떠 있는다.
+
+        /// <summary>
+        /// 중단 정책을 이행하고, 그 중단이 라스트런 창을 닫았으면 닫힘 사건을 낸다.
+        /// 정책(무엇이 무엇을 멈추나)은 `ProgressiveStates.Interrupt` 가 소유한다.
+        /// </summary>
+        public void InterruptProgress(Unit u, ProgressInterrupt reason, int tick)
+        {
+            if (u.Progressive == null || !u.Progressive.Interrupt(reason)) return;
+            PublishLastRunEnded(u, EndReasonOf(reason), tick);
+        }
+
+        /// <summary>라스트런 창의 시간이 끝났다. crash 피해는 부른 쪽(단계)이 인박스에 넣는다.</summary>
+        public void CrashLastRun(Unit u, int tick)
+        {
+            var pg = u.Progressive;
+            if (pg == null || !pg.LastRunActive) return;
+            pg.LastRunActive = false;
+            PublishLastRunEnded(u, LastRunEndReason.Crash, tick);
+        }
+
+        private void PublishLastRunEnded(Unit u, LastRunEndReason reason, int tick)
+            => _bus.Publish(CoreEvent.LastRunEnded(tick, u, reason));
+
+        private static LastRunEndReason EndReasonOf(ProgressInterrupt reason)
+        {
+            switch (reason)
+            {
+                case ProgressInterrupt.Death: return LastRunEndReason.Death;
+                case ProgressInterrupt.Retire: return LastRunEndReason.Retire;
+                default: return LastRunEndReason.Removed;   // OwnerDestroyed(군중 제어는 창을 안 닫는다)
+            }
         }
 
         private bool DestroyProjectile(Projectile p, int tick)
@@ -288,6 +544,29 @@ namespace Wassup.BattleCore
                 h = Fnv(h, Quantize(p.Position.z));
                 h = Fnv(h, Quantize(p.Elapsed));
                 h = Fnv(h, Quantize(p.Damage));
+            }
+            // unit 6b — 판 위에 깔린 것도 상태다. 빼면 「이벤트는 같은데 장판이 하나 더 남아
+            // 있다」를 못 잡는다. 깔린 것이 없는 판은 두 루프가 한 번도 안 돌아 앞 unit 들의
+            // 지문이 그대로 유지된다(탄 루프와 같은 규율).
+            for (int i = 0; i < _hazards.Count; i++)
+            {
+                var z = _hazards[i];
+                h = Fnv(h, z.Id.Value);
+                h = Fnv(h, z.DefIndex);
+                h = Fnv(h, z.OriginCell.x);
+                h = Fnv(h, z.OriginCell.y);
+                h = Fnv(h, Quantize(z.Remaining));
+                h = Fnv(h, z.TargetLayers);
+            }
+            for (int i = 0; i < _fields.Count; i++)
+            {
+                var f = _fields[i];
+                h = Fnv(h, f.Id.Value);
+                h = Fnv(h, (int)f.Kind);
+                h = Fnv(h, Quantize(f.Center.x));
+                h = Fnv(h, Quantize(f.Center.z));
+                h = Fnv(h, Quantize(f.Range));
+                h = Fnv(h, Quantize(f.Duration));
             }
             return h;
         }

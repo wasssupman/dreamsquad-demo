@@ -20,6 +20,25 @@ namespace Wassup.BattleCore.Map
         // 프랍 배치와 decorrelate 하는 XOR 상수.
         private const int SeedSalt = 0x51F15EED;
 
+        // unit 6b — 종류 배정 난수열의 소금. 옛 `BattleBridge` 의 `seed ^ 0x7EFFEC7` 그대로다 —
+        // 칸 뽑기와 **다른 난수열**이어야 한다(같으면 「몇 번째 칸」이 곧 「어느 종류」가 된다).
+        private const int KindSalt = 0x7EFFEC7;
+
+        /// <summary>
+        /// 뽑힌 칸마다 종류를 정한다(`kindCount` 개 중 하나). 옛 unit 4 규칙 — **칸마다 난수**다.
+        /// round-robin 은 종류 수 &gt; 칸 수면 뒤 종류가 영영 안 나온다. 종류가 없으면 전부 -1.
+        /// </summary>
+        public static void AssignKinds(int seed, int kindCount, int[] outKinds, int count)
+        {
+            if (kindCount <= 0)
+            {
+                for (int i = 0; i < count; i++) outKinds[i] = -1;
+                return;
+            }
+            var rng = Random.CreateFromIndex((uint)(seed ^ KindSalt) | 1u);
+            for (int i = 0; i < count; i++) outKinds[i] = rng.NextInt(0, kindCount);
+        }
+
         /// <summary>
         /// 배치 가능 칸 중 `count` 개를 뽑아 `outCells` 앞부분에 쓴다. 반환 = 실제로 뽑은 수.
         /// `scratch` 는 후보 수집 버퍼(길이 ≥ 칸 수) — 호출자가 들고 다닌다.

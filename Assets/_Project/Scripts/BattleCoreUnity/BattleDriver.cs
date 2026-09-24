@@ -50,6 +50,20 @@ namespace Wassup.BattleCoreUnity
         [Tooltip("적이 어떻게 서고 어떻게 퍼지나. 비우면 코어 기본값(= 옛 씬 값)이 쓰인다.")]
         [SerializeField] private MovementTuningConfig _movementTuning;
 
+        [Tooltip("스택 저작(불·얼음·출혈·피로도). 비우면 스택은 쌓이기만 하고 임계가 안 터진다.")]
+        [SerializeField] private StackModifierSO[] _stackModifiers = Array.Empty<StackModifierSO>();
+
+        [Tooltip("탄 부여 상한(한 발이 얼마까지 나르나). 줄이 없는 키의 부여는 관문이 거절한다.")]
+        [SerializeField] private ImbueCapConfig _imbueCaps;
+
+        [Tooltip("이 판에 깔릴 수 있는 존 장판 SO. 배열 순서 = 정의표 줄 번호. **까는 자는 unit 7** 이라 "
+                 + "오늘 라이브에서는 디버그 메뉴만 깐다(unit 6c). 비우면 장판 0.")]
+        [SerializeField] private HazardSO[] _hazards = Array.Empty<HazardSO>();
+
+        [Tooltip("탄이 참조하지 않는 길막 SO(디버그·unit 7 생산자 전용). 탄이 참조하는 것은 탄 표에서 자동으로 모인다.")]
+        [SerializeField] private Wassup.Battle.Effects.BlockingHazardSO[] _extraBlockers
+            = Array.Empty<Wassup.Battle.Effects.BlockingHazardSO>();
+
         [Tooltip("재현의 두 축 중 하나(나머지는 modeId). 같은 값이면 같은 판이다.")]
         [SerializeField] private int _seed = 1;
 
@@ -226,14 +240,29 @@ namespace Wassup.BattleCoreUnity
             // 조용히 실패한다. 이 인자를 지우지 말 것.
             // 적 목록은 **뷰도 같은 줄 번호로 읽어야** 해서 여기서도 한 번 모은다.
             // 순수 함수라 아래 `Build` 안의 호출과 같은 배열이 나온다(그래서 둘이 안 갈린다).
-            _enemyAssets = MatchDefinitionBuilder.CollectEnemies(_deck, _plan, _bonus)
+            // ⚠ 모드가 고른 덱·플랜을 **빌더와 같은 함수로** 푼다 — 여기서 드라이버 저작을 그대로
+            // 모으면 모드 덱을 쓰는 판에서 뷰의 적 줄 번호가 정의표와 갈린다.
+            _enemyAssets = MatchDefinitionBuilder.CollectEnemies(
+                               MatchDefinitionBuilder.ResolveDeck(mode, _deck),
+                               MatchDefinitionBuilder.ResolvePlan(mode, _plan), _bonus)
                            ?? Array.Empty<AttackUnitData>();
 
             var def = MatchDefinitionBuilder.Build(
                 mode, _defenders, _deck, _plan, _bonus, seed,
                 costRateMultiplier: 1f, map: in _map, tileSize: _tileSize,
                 structures: _stageStructures, viewAssets: _viewAssets,
-                movement: _movementTuning);
+                movement: _movementTuning, stackModifiers: _stackModifiers,
+                imbueCaps: _imbueCaps,
+                // unit 6b — 효과 타일은 **시즌 맵 테마**에서 온다(옛 `SeasonRuntime.Active.mapTheme`).
+                // 테마가 없으면(시즌 미바인딩 진입) 효과 타일 0 — 조용히 기본값을 지어내지 않는다.
+                board: new BoardEffectAuthoring
+                {
+                    Hazards = _hazards,
+                    ExtraBlockers = _extraBlockers,
+                    Theme = Wassup.Data.Season.SeasonRuntime.Active != null
+                        ? Wassup.Data.Season.SeasonRuntime.Active.mapTheme : null,
+                    SuppressEffectTiles = _stageInstance != null && _stageInstance.suppressEffectTiles,
+                });
 
             Begin(def);
         }

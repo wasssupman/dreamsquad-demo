@@ -165,8 +165,21 @@ namespace Wassup.BattleCore
 
         /// <summary>우선 클래스. **0 = 없음**(그 값이 곧 `DefenderClass.None` 이다).</summary>
         public int PriorityClass;
-        /// <summary>허용 클래스 비트. **0 = 전부**(미저작). 그 외는 허용 비트다.</summary>
+        /// <summary>
+        /// 허용 클래스 비트. **`HasClassFilter` 가 거짓이면 읽지 않는다**(제약 없음).
+        /// 필터가 있으면 **0 = 아무도 못 때린다** — 옛 `AttackSystem` 의 게이트는 필터의
+        /// **존재**였지 값 0 이 아니었다(2026-09-24 드리프트 감사). 값으로 「없음」을 겸하면
+        /// 저작자가 비트를 전부 끈 적이 「전부 허용」으로 뒤집힌다.
+        /// </summary>
         public int ClassMask;
+        /// <summary>직업 필터를 저작했나. 적은 저작 칸이 있어 참이고, 방어유닛은 축이 없어 거짓이다.</summary>
+        public bool HasClassFilter;
+        /// <summary>
+        /// **걷기만 하는 적**(무장 해제). 옛 `attackMethod: None` 또는 산출물 없음 → 공격 상태
+        /// 없이 구웠다(「피해 0 짜리 공격자」를 만들지 않는다). 공격·감지·어그로가 전부 닫힌다.
+        /// 공격 상태 자체는 남긴다 — 보스 면역이 그 자리에 산다.
+        /// </summary>
+        public bool Unarmed;
         /// <summary>지속 락 모드(`TargetMode`).</summary>
         public int Mode;
         /// <summary>정책(`AttackPolicy`).</summary>
@@ -232,6 +245,10 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "atkTargetLayers", TargetLayers, inv);
             MatchDefinition.Put(sb, "priorityClass", PriorityClass, inv);
             MatchDefinition.Put(sb, "classMask", ClassMask, inv);
+            // ⚠ 두 칸은 **기본값이면 줄을 안 쓴다** — 칸을 더했다는 사실만으로 저작을 안 건드린
+            // 판(골든 코퍼스)의 해시가 바뀌면 「조건 드리프트」 오보가 난다. 값이 켜지면 반응한다.
+            if (HasClassFilter) MatchDefinition.Put(sb, "classFilter", 1, inv);
+            if (Unarmed) MatchDefinition.Put(sb, "unarmed", 1, inv);
             MatchDefinition.Put(sb, "targetMode", Mode, inv);
             MatchDefinition.Put(sb, "policy", Policy, inv);
             MatchDefinition.Put(sb, "projectileDef", ProjectileDefIndex, inv);
@@ -269,6 +286,37 @@ namespace Wassup.BattleCore
             int patterns = PatternDefIndices != null ? PatternDefIndices.Length : 0;
             for (int i = 0; i < patterns; i++)
                 MatchDefinition.Put(sb, "pattern" + i.ToString(inv), PatternDefIndices[i], inv);
+        }
+    }
+
+    // battle-core-rebuild unit 6a2 — **한 발이 나를 수 있는 세기의 상한**(사용자 결정 ②).
+    //
+    // 스택 종류의 최대 중첩(`StackRuleDef.MaxStack`)과 **다른 축**이다: 저쪽은 「피해자에게
+    // 몇 개까지 쌓이나」이고 이쪽은 「한 발에 얼마까지 실리나」다. 카드 넷이 같은 불 부여를
+    // 걸면 합이 4가 되는데, 그 합을 막는 것이 여기이고 쌓인 뒤의 상한은 저쪽이다.
+    //
+    // ⚠ **값이 없으면 「상한 없음」이 아니라 부여 거절**이다(제약 6). 저작 없는 무한 부여가
+    // 조용히 성립하지 않게 하는 것이 이 표의 존재 이유다.
+    public struct ImbueCapDef
+    {
+        /// <summary>`Effects.ImbueKind` 의 int 값.</summary>
+        public int Kind;
+
+        /// <summary>`ApplyStat` = `StatKind` · `ApplyStack` = `StackKind` · `Cc` = `CcRequestKind`.</summary>
+        public int Target;
+
+        /// <summary>`ApplyStat` 전용 — `CombineOp` 의 int 값. 나머지 종류는 0.</summary>
+        public int Op;
+
+        /// <summary>한 발이 나르는 크기의 상한. 저작은 **양수**이고 빌더가 검증한다.</summary>
+        public float Cap;
+
+        internal void Canonicalize(StringBuilder sb, CultureInfo inv)
+        {
+            MatchDefinition.Put(sb, "kind", Kind, inv);
+            MatchDefinition.Put(sb, "target", Target, inv);
+            MatchDefinition.Put(sb, "op", Op, inv);
+            MatchDefinition.Put(sb, "cap", Cap, inv);
         }
     }
 }

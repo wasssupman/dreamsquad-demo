@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Wassup.Battle.Effects;
 using Wassup.Data;
 
 namespace Wassup.BattleCoreUnity
@@ -19,9 +20,15 @@ namespace Wassup.BattleCoreUnity
     {
         private readonly List<ProjectileData> _projectiles = new List<ProjectileData>();
         private readonly List<StructureData> _structures = new List<StructureData>();
+        // unit 6c — 판 위에 깔리는 것. 같은 규율이다: **`BoardEffectDefinitionBuilder.Fill` 이
+        // 줄 번호를 매긴 그 순회**가 이 목록도 채운다(존 = `Hazards`, 길막 = `BlockingHazards`).
+        private readonly List<HazardSO> _hazards = new List<HazardSO>();
+        private readonly List<BlockingHazardSO> _blockers = new List<BlockingHazardSO>();
 
         public IReadOnlyList<ProjectileData> Projectiles => _projectiles;
         public IReadOnlyList<StructureData> Structures => _structures;
+        public IReadOnlyList<HazardSO> Hazards => _hazards;
+        public IReadOnlyList<BlockingHazardSO> Blockers => _blockers;
 
         public void SetProjectiles(List<ProjectileData> rows)
         {
@@ -34,6 +41,24 @@ namespace Wassup.BattleCoreUnity
             _structures.Clear();
             if (rows != null) _structures.AddRange(rows);
         }
+
+        public void SetHazards(HazardSO[] rows)
+        {
+            _hazards.Clear();
+            if (rows != null) _hazards.AddRange(rows);
+        }
+
+        public void SetBlockers(List<BlockingHazardSO> rows)
+        {
+            _blockers.Clear();
+            if (rows != null) _blockers.AddRange(rows);
+        }
+
+        public HazardSO Hazard(int defIndex)
+            => defIndex >= 0 && defIndex < _hazards.Count ? _hazards[defIndex] : null;
+
+        public BlockingHazardSO Blocker(int defIndex)
+            => defIndex >= 0 && defIndex < _blockers.Count ? _blockers[defIndex] : null;
 
         public ProjectileData Projectile(int defIndex)
             => defIndex >= 0 && defIndex < _projectiles.Count ? _projectiles[defIndex] : null;

@@ -28,7 +28,7 @@ namespace Wassup.Tests.PlayMode.Core
         public void TearDown()
         {
             MatchEntryContext.Clear();
-            if (_mode != null) Object.DestroyImmediate(_mode);
+            DestroyMode(_mode);
             _mode = null;
         }
 
@@ -126,8 +126,8 @@ namespace Wassup.Tests.PlayMode.Core
             finally
             {
                 MatchEntryContext.Clear();
-                Object.DestroyImmediate(forced);
-                Object.DestroyImmediate(lobby);
+                DestroyMode(forced);
+                DestroyMode(lobby);
             }
         }
 
@@ -189,7 +189,18 @@ namespace Wassup.Tests.PlayMode.Core
             m.placementPhaseEnabled = false;   // 입력 없음
             m.autoStartCountdownSec = 0f;      // 기다릴 시간도 없음 → 배치 페이즈 자체가 없다
             m.gimmickEnabled = false;
+            // 배치 자원 저작은 **필수**다 — 없으면 빌더가 loud 오류를 낸다(2026-09-24 드리프트
+            // 감사: 옛 배치 창 폴백 30초가 SO 폴백 0초로 조용히 뒤집혀 있었다). 이 모드는 배치
+            // 입력이 꺼져 있어 창 길이는 카운트다운(0)이 정한다 — 값은 코드 기본값 그대로다.
+            m.costConfig = ScriptableObject.CreateInstance<CostConfig>();
             return m;
+        }
+
+        private static void DestroyMode(MatchModeData m)
+        {
+            if (m == null) return;
+            if (m.costConfig != null) Object.DestroyImmediate(m.costConfig);
+            Object.DestroyImmediate(m);
         }
 
         // 2초 판이라 프레임 상한은 넉넉히 준다(틱 발행은 실시간을 따른다).

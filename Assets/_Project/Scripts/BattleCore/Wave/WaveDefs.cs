@@ -86,6 +86,8 @@ namespace Wassup.BattleCore.Wave
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
             MatchDefinition.Put(sb, "id", Id);
+            // `DisplayName` 은 **의도적으로 뺀다** — 표시 전용 문자열이라 규칙 입력이 아니다(이름만 바꾼
+            // 같은 컨셉은 같은 판이어야 한다). 2026-09-24 드리프트 감사의 「누락」 지적은 오탐으로 종결.
             MatchDefinition.Put(sb, "weight", Weight, inv);
             MatchDefinition.Put(sb, "minWaveNumber", MinWaveNumber, inv);
             MatchDefinition.Put(sb, "countMul", CountMul, inv);

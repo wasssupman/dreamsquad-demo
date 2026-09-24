@@ -100,6 +100,98 @@ namespace Wassup.BattleCore
         /// **길이가 0 이어도 열림 신호는 난다** — 이 신호가 트레이를 만든다(census 계약 3).
         /// </summary>
         PlacementPhaseChanged = 33,
+
+        // ── unit 6a (효과 슬롯) ───────────────────────────────────────────────
+        // 전부 **부여·회수의 사건**이다. 「지금 얼마나 걸려 있나」를 묻는 질문에는 답하지
+        // 않는다 — 그것은 읽기 모델(`Unit.Modifiers` 외)의 몫이고, 사건으로 상태를
+        // 되묻기 시작하면 제약 4 가 무너진다.
+
+        /// <summary>스탯이 걸렸다. `Arg` = `StatKind`, `Amount` = 크기.</summary>
+        ModifierApplied = 34,
+        /// <summary>스탯이 **사라졌다**(만료·회수). `Arg` = `StatKind`. 오라가 꺼진 것을 뷰가 안다.</summary>
+        ModifierRevoked = 35,
+        /// <summary>스택이 움직였다. `Arg` = `StackKind`, `Amount` = 그 뒤의 중첩.</summary>
+        StackChanged = 36,
+        /// <summary>스택 임계가 **발화했다**. `Arg` = `StackKind`, `Amount` = 임계 중첩.</summary>
+        StackThreshold = 37,
+        /// <summary>군중 제어가 걸렸다. `Arg` = `CcSlotKind`, `Amount` = 지속(초).</summary>
+        CcApplied = 38,
+        /// <summary>군중 제어가 풀렸다. `Arg` = `CcSlotKind`, `Amount` = `CcClearReason`.</summary>
+        CcCleared = 39,
+        /// <summary>지속 피해가 걸렸다. `Arg` = (출처, 원소) 묶음, `Amount` = 값.</summary>
+        DotApplied = 40,
+        /// <summary>실드가 부여됐다. `Amount` = 양. **헛발동은 안 난다**(F20).</summary>
+        ShieldGranted = 41,
+        /// <summary>
+        /// 지속 피해 슬롯이 **사라졌다**(만료). `Arg` = (출처, 원소) 묶음.
+        /// 계약 7(「모든 소멸은 소멸 사건을 낸다」)의 이 축 이행 — 안 내면 오라를 켠 뷰가
+        /// 「언제 끄나」를 매 프레임 폴링으로 되묻게 되고, 그 폴링이 옛 뷰 풀 셋의 모양이다.
+        /// </summary>
+        DotCleared = 42,
+
+        // ── unit 6a2 (탄 부여) ────────────────────────────────────────────────
+        /// <summary>
+        /// **시전자의 탄이 나르는 것**이 바뀌었다(부여·회수). `A` = 건 쪽, `B` = 시전자,
+        /// `Arg` = `ImbueKey.Pack()`, `Amount` = 한 발이 실제로 나를 값(합을 상한으로 접은 것).
+        /// 회수는 **같은 종류에 줄어든 값**으로 온다 — 「부여가 사라졌다」는 별도 종류가 아니다
+        /// (슬롯이 하나도 안 남으면 0 이 온다).
+        /// </summary>
+        ImbueChanged = 43,
+
+        // ── unit 6b (판 위에 깔리는 것) ───────────────────────────────────────
+        //
+        // ⚠ 넷 다 **`SiteFired` 가 칸이다**(`OriginBody == 0`) — 존도 장도 「자리에 떨어지는
+        // 것」이라 깐 유닛의 몸이 붙지 않는다(제약 13). 그 0 이 곧 「이 자리는 칸이다」의
+        // 표현이고, 뷰는 그것을 보고 칸 반폭으로 그린다(새 필드가 필요 없다).
+
+        /// <summary>존 장판이 깔렸다. `Arg` = 반경(칸), `Amount` = 수명(초), `DefIndex` = 저작 줄.</summary>
+        HazardSpawned = 44,
+        /// <summary>존 장판이 사라졌다(수명 만료). `DefIndex` = 저작 줄.</summary>
+        HazardDestroyed = 45,
+        /// <summary>장이 깔렸다. `Arg` = `FieldKind`, `Amount` = 수명(초).</summary>
+        FieldSpawned = 46,
+        /// <summary>장이 사라졌다. `Arg` = `FieldKind`.</summary>
+        FieldDespawned = 47,
+
+        // ── unit 6b2 (기믹 셈판) ──────────────────────────────────────────────
+        //
+        // ⚠ 픽업·사직서도 **`SiteFired` 가 칸이다**(`OriginBody == 0`) — 둘 다 「자리에 떨어지는 것」.
+        // ⚠ 소멸 사건이 **문마다** 있다(계약 7): 픽업은 먹힘(49)·만료(52) 두 문, 사직서는 임계
+        // 소모(53) 한 문. 한 사건으로 접으면 뷰가 「먹혔나 사라졌나」를 되묻는다.
+
+        /// <summary>픽업이 놓였다. `Arg` = `PickupKind`, `Amount` = 수명(초).</summary>
+        PickupSpawned = 48,
+        /// <summary>픽업이 **먹혔다**. `A` = 픽업, `B` = 먹은 자, `SiteTarget` = 먹은 자의 몸, `Arg` = `PickupKind`.</summary>
+        PickupTaken = 49,
+        /// <summary>사직서가 떨어졌다. `B` = 떨어뜨린 자, `Arg` = **떨어진 뒤 판 위 장수**.</summary>
+        ResignationDropped = 50,
+        /// <summary>
+        /// 사직서 임계에 닿았다 — **임계마다 1건**(한 틱에 여러 번 넘으면 여러 건. 사양이다).
+        /// `A` = 판, `Arg` = 운석 발수(스냅샷), `Amount` = 임계. 운석 실행은 unit 7.
+        /// </summary>
+        ResignationThreshold = 51,
+        /// <summary>픽업이 수명 만료로 사라졌다. `Arg` = `PickupKind`.</summary>
+        PickupExpired = 52,
+        /// <summary>사직서 한 장이 임계로 소모됐다. 장마다 1건 — 뷰가 어느 장을 지울지 되묻지 않게.</summary>
+        ResignationConsumed = 53,
+
+        // ── unit 6c 후속 (상태의 끝) ──────────────────────────────────────────
+        //
+        // 켜는 사건만 있고 끄는 사건이 없으면 뷰가 「언제 끄나」를 폴링으로 되묻는다 — 계약 7 이
+        // 막는 모양이다. 그래서 **끝이 나는 자리마다** 사건을 낸다. 각 상태의 끝은 **한 함수**가
+        // 내고(해제 자리를 모은 뒤 그 함수만 부른다), 사유는 값으로 싣는다.
+
+        /// <summary>
+        /// 어그로가 **풀렸다**. `A` = 끌려갔던 적, `B` = 가디언, `Arg` = `AggroReleaseReason`.
+        /// ⚠ 적 자신의 소멸은 이 사건이 아니다(`UnitDestroyed` 가 그 몸의 표식을 거둔다) —
+        /// 도발이 다른 가디언으로 **갈아타는** 것도 풀림이 아니다(`AggroAcquired` 가 다시 온다).
+        /// </summary>
+        AggroReleased = 54,
+        /// <summary>
+        /// 라스트런 창이 **닫혔다**. `A` = 그 유닛, `Arg` = `LastRunEndReason`.
+        /// crash 피해는 이 사건과 별개로 `DamageApplied` 가 나른다.
+        /// </summary>
+        LastRunEnded = 55,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -180,9 +272,51 @@ namespace Wassup.BattleCore
         /// </summary>
         public readonly int DefIndex;
 
+        // ── unit 6c — 착탄의 광역 페이로드(`ProjectileHit` 전용, 그 외 사건은 0/기본값) ──
+        //
+        // 옛 `ProjectileHitEvent` 는 페이로드 종류와 광역 반경을 **값으로** 실어 뷰가 광역 폭발을
+        // 라우팅했다. 새 사건에 그 둘이 없으면 뷰가 탄 개체를 되물어야 하는데, 착탄 뒤 그 탄은
+        // 곧 소멸한다 — 계약 7 이 막는 되묻기가 정확히 그 모양이다. 그래서 **발화 시점 스냅샷**으로
+        // 싣는다. 트레이스에는 안 실린다(채널 여섯 칸이 포맷이다) — 골든 무변.
+
+        /// <summary>
+        /// 이 착탄의 **광역 반경(칸)** — 제약 13 산식의 「범위」 항. `TileAoe` 만 값이 있고 나머지는 0.
+        /// 원점 항은 여기 더하지 않는다 — 그것은 `SiteFired.OriginBody` 가 따로 나른다
+        /// (0 = 자리형 → 칸 반폭, &gt; 0 = 몸형 → 그 반경).
+        /// </summary>
+        public readonly int AreaTiles;
+
+        /// <summary>이 착탄의 페이로드 종류(`ProjectileHit` 전용). 뷰가 광역 폭발을 고르는 손잡이다.</summary>
+        public readonly Combat.Projectile.PayloadKind Payload;
+
+        // ── unit 6c 후속 — 공격의 도형(`AttackResolved` 전용, 그 외 사건은 기본값) ──
+        //
+        // 참격 자국은 **판정 도형 그대로** 그려야 한다(판정보다 작게 그린 참격은 규칙을 틀리게 가르친다).
+        // 사건에 도형이 없으면 뷰가 공격자를 되물어 `Attack.Shape`·`Attack.Range` 를 읽어야 하는데,
+        // 그것은 계약 4·7 이 막는 되묻기이고 드레인 시점엔 이미 다른 값일 수 있다(사거리 버프·퇴근).
+        // 그래서 **RESOLVE 시점 스냅샷**으로 싣는다. 트레이스에는 안 실린다(채널 여섯 칸) — 골든 무변.
+
+        /// <summary>
+        /// 이 공격의 **축**(월드 XZ, 정규화). 근접은 부가 타격 도형을 세운 방향(주 대상 쪽),
+        /// 탄은 조준 방향이다. 축이 없는 공격(폭탄·소환)은 0.
+        /// </summary>
+        public readonly float2 AttackDir;
+
+        /// <summary>이 공격의 판정 도형(bake 형 — 반각은 `sinHalf`/`cosHalf`, 띠는 `halfWidth`). 전방위 = 기본값.</summary>
+        public readonly Combat.AttackShapeBaked AttackShape;
+
+        /// <summary>
+        /// 이 공격의 **런타임 사거리(칸)** — 제약 13 산식의 「범위」 항. 원점 항(내 몸)은 여기 더하지 않는다 —
+        /// `SiteFired.OriginBody` 가 따로 나른다. 축이 없는 공격은 0.
+        /// </summary>
+        public readonly float AttackRange;
+
         private CoreEvent(CoreEventKind kind, int tick, SimEntityId a, SimEntityId b,
                           Site siteFired, Site siteTarget, Faction faction, int arg, float amount,
-                          int defIndex = -1)
+                          int defIndex = -1, int areaTiles = 0,
+                          Combat.Projectile.PayloadKind payload = default,
+                          float2 attackDir = default, Combat.AttackShapeBaked attackShape = default,
+                          float attackRange = 0f)
         {
             Kind = kind;
             Tick = tick;
@@ -194,6 +328,11 @@ namespace Wassup.BattleCore
             Arg = arg;
             Amount = amount;
             DefIndex = defIndex;
+            AreaTiles = areaTiles;
+            Payload = payload;
+            AttackDir = attackDir;
+            AttackShape = attackShape;
+            AttackRange = attackRange;
         }
 
         public static CoreEvent MatchStartedAt(int tick)
@@ -271,14 +410,20 @@ namespace Wassup.BattleCore
         // 살아 있어 되묻기가 «성립은» 하지만, 그 예외를 허용하면 다음 사람이 소멸 사건에도
         // 같은 모양을 쓴다 — 계약 7 이 막는 것이 그 습관이다(`Spawned` 가 같은 이유로 싣는다).
         // ⚠ 가리키는 표는 `Faction` 과 짝이다(적이면 적 표, 방어유닛이면 유닛 표).
+        // 6c 후속 — 축·도형·사거리(위 필드 주석)는 **축이 있는 공격**(근접 · 평타 탄)만 싣는다.
+        // 폭탄·소환은 「자리」나 「개체」를 내는 공격이라 기본값이다.
         public static CoreEvent AttackResolved(int tick, Unit attacker, SimEntityId target,
                                                float3 targetPos, float targetBody,
-                                               int hitCount, float period)
+                                               int hitCount, float period,
+                                               float2 attackDir = default,
+                                               Combat.AttackShapeBaked attackShape = default,
+                                               float attackRange = 0f)
             => new CoreEvent(CoreEventKind.AttackResolved, tick,
                              attacker.Id, target,
                              new Site(attacker.Position, attacker.HitRadius),
                              new Site(targetPos, targetBody),
-                             attacker.Faction, hitCount, period, attacker.DefIndex);
+                             attacker.Faction, hitCount, period, attacker.DefIndex,
+                             attackDir: attackDir, attackShape: attackShape, attackRange: attackRange);
 
         /// <summary>
         /// 탄 발사. `SiteFired.OriginBody` 가 **제약 13 의 원점 항**을 경계 너머로 나른다 —
@@ -298,13 +443,18 @@ namespace Wassup.BattleCore
                              Site.Nowhere,
                              p.OwnerFaction, (int)p.Payload, p.Elapsed);
 
+        // unit 6c — 광역 반경·페이로드 종류·탄 정의 줄을 **값으로** 싣는다(위 필드 주석).
+        // 광역 반경은 `TileAoe` 의 `ImpactTileRange` 뿐이다 — 옛 사건도 그 페이로드만 광역으로
+        // 라우팅했고, 비산(`SingleSplash`)은 한 번의 착탄 그림이었다(옛 이벤트 주석 그대로).
         public static CoreEvent ProjectileHit(int tick, Combat.Projectile.Projectile p,
                                               SimEntityId victim, int hitCount)
             => new CoreEvent(CoreEventKind.ProjectileHit, tick,
                              p.Id, victim,
                              new Site(p.Position, p.OriginBodyRadius),
                              Site.Nowhere,
-                             p.OwnerFaction, hitCount, p.Damage);
+                             p.OwnerFaction, hitCount, p.Damage, p.DefIndex,
+                             p.Payload == Combat.Projectile.PayloadKind.TileAoe ? p.ImpactTileRange : 0,
+                             p.Payload);
 
         /// <summary>
         /// 피해 적용. **체력 비율은 그 틱의 최종값**이다(C7) — 뷰가 계산하면 같은 틱의
@@ -418,5 +568,174 @@ namespace Wassup.BattleCore
 
         public static CoreEvent PlacementPhaseChanged(int tick, bool open, float windowSeconds)
             => Match(CoreEventKind.PlacementPhaseChanged, tick, open ? 1 : 0, windowSeconds);
+
+        // ── unit 6a (효과 슬롯) ───────────────────────────────────────────────
+        //
+        // ⚠ 제약 13 — 이 unit 은 새 도달 판정을 만들지 않는다(부여는 전부 unit 3 의 판정
+        // 결과를 받는다). 다만 **자리 짝의 형은 지킨다**: `SiteFired` = 건 쪽의 몸(몸에서
+        // 나오는 것), `SiteTarget` = 맞은 쪽의 몸. 건 쪽이 없으면(환경·스택 파생) `Nowhere` 다.
+
+        public static CoreEvent ModifierApplied(int tick, Unit target, SimEntityId source,
+                                                Effects.StatKind stat, float magnitude,
+                                                Unit sourceUnit = null)
+            => new CoreEvent(CoreEventKind.ModifierApplied, tick,
+                             source, target.Id,
+                             sourceUnit != null
+                                 ? new Site(sourceUnit.Position, sourceUnit.HitRadius) : Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, (int)stat, magnitude);
+
+        public static CoreEvent ModifierRevoked(int tick, Unit target, SimEntityId source,
+                                                Effects.StatKind stat)
+            => new CoreEvent(CoreEventKind.ModifierRevoked, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, (int)stat, 0f);
+
+        public static CoreEvent StackChanged(int tick, Unit target, SimEntityId source,
+                                             Effects.StackKind kind, int count)
+            => new CoreEvent(CoreEventKind.StackChanged, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, (int)kind, count);
+
+        public static CoreEvent StackThreshold(int tick, Unit target, Effects.StackKind kind, int atStack)
+            => new CoreEvent(CoreEventKind.StackThreshold, tick,
+                             target.Id, SimEntityId.None,
+                             new Site(target.Position, target.HitRadius), Site.Nowhere,
+                             target.Faction, (int)kind, atStack);
+
+        public static CoreEvent CcApplied(int tick, Unit target, SimEntityId source,
+                                          Effects.CcSlotKind kind, float seconds)
+            => new CoreEvent(CoreEventKind.CcApplied, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, (int)kind, seconds);
+
+        public static CoreEvent CcCleared(int tick, Unit target, Effects.CcSlotKind kind,
+                                          Effects.CcClearReason reason)
+            => new CoreEvent(CoreEventKind.CcCleared, tick,
+                             target.Id, SimEntityId.None,
+                             new Site(target.Position, target.HitRadius), Site.Nowhere,
+                             target.Faction, (int)kind, (int)reason);
+
+        public static CoreEvent DotApplied(int tick, Unit target, SimEntityId source,
+                                           Effects.DotOrigin origin, Effects.DotElement element,
+                                           float scalar)
+            => new CoreEvent(CoreEventKind.DotApplied, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, Effects.DotElementMap.PackArg(origin, element), scalar);
+
+        public static CoreEvent DotCleared(int tick, Unit target,
+                                           Effects.DotOrigin origin, Effects.DotElement element)
+            => new CoreEvent(CoreEventKind.DotCleared, tick,
+                             target.Id, SimEntityId.None,
+                             new Site(target.Position, target.HitRadius), Site.Nowhere,
+                             target.Faction, Effects.DotElementMap.PackArg(origin, element), 0f);
+
+        public static CoreEvent ShieldGranted(int tick, Unit target, SimEntityId source, float amount)
+            => new CoreEvent(CoreEventKind.ShieldGranted, tick,
+                             source, target.Id,
+                             Site.Nowhere,
+                             new Site(target.Position, target.HitRadius),
+                             target.Faction, 0, amount);
+
+        // ── unit 6a2 (탄 부여) ────────────────────────────────────────────────
+        //
+        // ⚠ `owner` 는 **맞는 쪽이 아니라 쏘는 쪽**이다. 그래서 `SiteTarget` 에 시전자의 몸이
+        // 실린다 — 이 사건이 가리키는 자리는 「부여가 얹힌 곳」이지 피격점이 아니다.
+        public static CoreEvent ImbueChanged(int tick, Unit owner, SimEntityId source,
+                                             Effects.ImbueKey key, float carried)
+            => new CoreEvent(CoreEventKind.ImbueChanged, tick,
+                             source, owner.Id,
+                             Site.Nowhere,
+                             new Site(owner.Position, owner.HitRadius),
+                             owner.Faction, key.Pack(), carried);
+
+        // ── unit 6b (판 위에 깔리는 것) ───────────────────────────────────────
+        //
+        // 값 스냅샷이다(계약 7) — 소멸 사건이 자리를 나르므로 뷰가 개체를 되묻지 않는다.
+
+        public static CoreEvent HazardSpawned(int tick, Hazard h)
+            => new CoreEvent(CoreEventKind.HazardSpawned, tick,
+                             h.Id, h.Source,
+                             Site.AtCell(h.Center), Site.Nowhere,
+                             h.Faction, h.RadiusTiles, h.Remaining, h.DefIndex);
+
+        public static CoreEvent HazardDestroyed(int tick, Hazard h)
+            => new CoreEvent(CoreEventKind.HazardDestroyed, tick,
+                             h.Id, SimEntityId.None,
+                             Site.AtCell(h.Center), Site.Nowhere,
+                             h.Faction, h.RadiusTiles, 0f, h.DefIndex);
+
+        public static CoreEvent FieldSpawned(int tick, FieldCarrier f)
+            => new CoreEvent(CoreEventKind.FieldSpawned, tick,
+                             f.Id, f.Source,
+                             Site.AtCell(f.Center), Site.Nowhere,
+                             (Faction)f.Faction, (int)f.Kind, f.Duration);
+
+        public static CoreEvent FieldDespawned(int tick, FieldCarrier f)
+            => new CoreEvent(CoreEventKind.FieldDespawned, tick,
+                             f.Id, SimEntityId.None,
+                             Site.AtCell(f.Center), Site.Nowhere,
+                             (Faction)f.Faction, (int)f.Kind, 0f);
+
+        // ── unit 6b2 (기믹 셈판) ──────────────────────────────────────────────
+
+        public static CoreEvent PickupSpawned(int tick, Pickup p)
+            => new CoreEvent(CoreEventKind.PickupSpawned, tick,
+                             p.Id, SimEntityId.None,
+                             Site.AtCell(p.Center), Site.Nowhere,
+                             Faction.None, (int)p.Kind, p.Remaining);
+
+        // 먹은 자의 몸을 **값으로** 싣는다 — 뷰가 「누가 먹었나」로 개체를 되묻지 않게(계약 7).
+        public static CoreEvent PickupTaken(int tick, Pickup p, Unit taker)
+            => new CoreEvent(CoreEventKind.PickupTaken, tick,
+                             p.Id, taker.Id,
+                             Site.AtCell(p.Center), new Site(taker.Position, taker.HitRadius),
+                             taker.Faction, (int)p.Kind, 0f);
+
+        public static CoreEvent PickupExpired(int tick, Pickup p)
+            => new CoreEvent(CoreEventKind.PickupExpired, tick,
+                             p.Id, SimEntityId.None,
+                             Site.AtCell(p.Center), Site.Nowhere,
+                             Faction.None, (int)p.Kind, 0f);
+
+        public static CoreEvent ResignationDropped(int tick, Resignation r, int onBoard)
+            => new CoreEvent(CoreEventKind.ResignationDropped, tick,
+                             r.Id, r.Source,
+                             Site.AtCell(r.Center), Site.Nowhere,
+                             r.Faction, onBoard, 0f);
+
+        public static CoreEvent ResignationConsumed(int tick, Resignation r)
+            => new CoreEvent(CoreEventKind.ResignationConsumed, tick,
+                             r.Id, SimEntityId.None,
+                             Site.AtCell(r.Center), Site.Nowhere,
+                             r.Faction, 0, 0f);
+
+        public static CoreEvent ResignationThreshold(int tick, int meteorCount, int threshold)
+            => Match(CoreEventKind.ResignationThreshold, tick, meteorCount, threshold);
+
+        // ── unit 6c 후속 (상태의 끝) ──────────────────────────────────────────
+
+        /// <summary>어그로 풀림. 자리 = 풀린 적의 몸(발화 시점 스냅샷).</summary>
+        public static CoreEvent AggroReleased(int tick, Unit enemy, SimEntityId guardian,
+                                              AggroReleaseReason reason)
+            => new CoreEvent(CoreEventKind.AggroReleased, tick,
+                             enemy.Id, guardian,
+                             new Site(enemy.Position, enemy.HitRadius), Site.Nowhere,
+                             enemy.Faction, (int)reason, 0f);
+
+        /// <summary>라스트런 창 닫힘. 자리 = 그 유닛의 몸(발화 시점 스냅샷 — 퇴근·제거 직전 값).</summary>
+        public static CoreEvent LastRunEnded(int tick, Unit u, LastRunEndReason reason)
+            => new CoreEvent(CoreEventKind.LastRunEnded, tick,
+                             u.Id, SimEntityId.None,
+                             new Site(u.Position, u.HitRadius), Site.Nowhere,
+                             u.Faction, (int)reason, 0f);
     }
 }

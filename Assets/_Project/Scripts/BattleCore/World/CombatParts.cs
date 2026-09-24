@@ -99,6 +99,16 @@ namespace Wassup.BattleCore
         public int PatternDefIndex = -1;
         public Combat.Emission.EmitterRuntime Runtime;
         public SimEntityId LockedTarget = SimEntityId.None;
+        /// <summary>
+        /// 이 버스트 전탄의 피해 — **트리거 시점 실효값 스냅샷**(공격 산출물 피해 합 × 배율).
+        /// 패턴 저작 피해(`PatternDef.Damage`)가 아니다(2026-09-24 드리프트 감사 H1).
+        /// </summary>
+        public float Damage;
+        /// <summary>
+        /// 트리거 시점의 **조준 방향**(XZ, 정규화). 발마다 대상을 고르지 않는 패턴(선정 규칙
+        /// 없음 = 방향 발사)의 기준 방향이다 — 옛 전투가 template 에 스냅샷한 `fireDir`.
+        /// </summary>
+        public Unity.Mathematics.float2 AimDirection;
         /// <summary>이 발사에 쓰는 탄막 난수 씨앗 — `hash(사수 SimEntityId, 발사 카운터)`.</summary>
         public uint Seed;
         /// <summary>이 인스턴스가 쓸 간격표. 난수 저작이면 씨앗에서 매 트리거 다시 뽑는다.</summary>
@@ -153,8 +163,11 @@ namespace Wassup.BattleCore
         public byte TargetLayers;
         /// <summary>우선 클래스(`DefenderClass` int). -1 = 없음.</summary>
         public int PriorityClass = -1;
-        /// <summary>허용 클래스 비트. -1 = 전부.</summary>
+        /// <summary>허용 클래스 비트. `HasClassFilter` 가 참일 때만 읽는다(그때 0 = 아무도 못 때림).</summary>
         public int ClassMask = -1;
+        public bool HasClassFilter;
+        /// <summary>걷기만 하는 적. 공격 루프·감지·어그로가 전부 건너뛴다.</summary>
+        public bool Unarmed;
         public AttackShapeBaked Shape;
         public AttackPolicy Policy;
         public TargetMode Mode;
@@ -237,6 +250,8 @@ namespace Wassup.BattleCore
             TargetLayers = 0;
             PriorityClass = -1;
             ClassMask = -1;
+            HasClassFilter = false;
+            Unarmed = false;
             Shape = default;
             Policy = AttackPolicy.Target;
             Mode = TargetMode.None;
@@ -364,10 +379,28 @@ namespace Wassup.BattleCore
     //   | 궁극기 도약   | **일어나지 않음**(C12 — 피해 버퍼를 비운다) | 취소·위치 복귀 | **면역**(잠금이 이미 걸려 있다) | N/A |
     //   | 치명 타이머   | 같이 사라진다   | 같이 사라진다     | 계속 흐른다     | N/A              |
     //   | 충전(더블파이어) | 같이 사라진다 | 같이 사라진다     | 유지(쿨은 CC 중에도 돈다) | N/A    |
+    //   | 라스트런(6b2) | 같이 사라진다   | 같이 사라진다     | **계속 흐른다**  | N/A              |
     //
     // ⚠ 「궁극기 도약 중 사망이 없다」가 **착지 보장의 근거**다(C12). 가드가 사라지면 착지 예고
     // 미해제 경로가 한꺼번에 열린다 — 그래서 피해 단계가 이탈 중인 개체의 인박스를 **비운다.**
     public enum ProgressInterrupt : byte { Death = 0, Retire = 1, Cc = 2, OwnerDestroyed = 3 }
+
+    /// <summary>
+    /// 라스트런 창이 닫힌 까닭(`CoreEvent.LastRunEnded.Arg`). 닫히는 문은 둘 — 시간 끝(crash)과
+    /// 중단 정책(`ProgressiveStates.Interrupt`) — 이고 둘 다 `BattleWorld` 가 사건을 낸다.
+    /// append-only — 트레이스 `i` 칸에 그대로 실린다.
+    /// </summary>
+    public enum LastRunEndReason : byte
+    {
+        /// <summary>창의 시간이 다 됐다 — crash 피해가 같은 틱에 들어간다.</summary>
+        Crash = 0,
+        /// <summary>창이 열린 채 죽었다(crash 없음).</summary>
+        Death = 1,
+        /// <summary>창이 열린 채 퇴근했다(crash 없음).</summary>
+        Retire = 2,
+        /// <summary>죽음·퇴근이 아닌 제거(적 유출 · 디버그 제거 등).</summary>
+        Removed = 3,
+    }
 
     public sealed class ProgressiveStates
     {
@@ -390,15 +423,43 @@ namespace Wassup.BattleCore
         /// <summary>다음 공격 한 번을 즉시 더 쏘는 충전. 각 발이 온전한 공격이다.</summary>
         public int Charge;
 
-        public bool Any => LeapActive || LethalActive || Charge > 0;
+        // unit 6b2 — 라스트런(레드불) **지연 crash 타이머.** 공속 버프는 스탯 슬롯이 따로 들고
+        // 스스로 만료된다 — 여기는 「시간이 끝나면 최대 체력의 일부를 스스로 깎는다」만 든다.
+        // 별도 타이머 타입을 만들지 않은 이유: 집이 하나여야 중단 정책이 하나다(UML §2 `+LastRun?`).
+        // ⚠ **켜져 있는 동안이 곧 재소비 락**이다 — 먹은 유닛은 crash 로 값을 치른 뒤에야 다시 먹는다.
+        public bool LastRunActive;
+        public float LastRunRemaining;
+        public float LastRunFraction;
 
-        /// <summary>중단 정책 표의 **유일한 이행 지점**. 분기를 소비처로 흩지 말 것.</summary>
-        public void Interrupt(ProgressInterrupt reason)
+        /// <summary>라스트런 개시. 락이 걸려 있으면 부르지 않는다(대상 필터가 먼저 거른다).</summary>
+        public void BeginLastRun(float seconds, float damageFraction)
+        {
+            LastRunActive = true;
+            LastRunRemaining = seconds;
+            LastRunFraction = damageFraction;
+        }
+
+        public bool Any => LeapActive || LethalActive || Charge > 0 || LastRunActive;
+
+        /// <summary>
+        /// 중단 정책 표의 **유일한 이행 지점**. 분기를 소비처로 흩지 말 것.
+        /// 돌려주는 값 = 이 중단이 **열려 있던 라스트런 창을 닫았나** — 닫힘 사건은 이 값을 받은
+        /// `BattleWorld.InterruptProgress` 가 낸다(여기는 버스를 모른다). 정책을 두 번 적지 않으려고
+        /// 「닫혔나」를 표에서 다시 유도하지 않고 전후 값을 비교한다.
+        /// </summary>
+        public bool Interrupt(ProgressInterrupt reason)
+        {
+            bool lastRunWasOpen = LastRunActive;
+            Apply(reason);
+            return lastRunWasOpen && !LastRunActive;
+        }
+
+        private void Apply(ProgressInterrupt reason)
         {
             switch (reason)
             {
                 case ProgressInterrupt.Cc:
-                    // 도약은 면역(잠금이 이미 걸려 있다) · 치명은 계속 흐른다 · 충전은 유지.
+                    // 도약은 면역(잠금이 이미 걸려 있다) · 치명·라스트런은 계속 흐른다 · 충전은 유지.
                     return;
 
                 case ProgressInterrupt.Death:
@@ -407,12 +468,14 @@ namespace Wassup.BattleCore
                     // 착지 없이 상태만 걷어 「시체가 잠긴 채」 남지 않게 한다.
                     LeapActive = false;
                     LethalActive = false;
+                    LastRunActive = false;
                     Charge = 0;
                     return;
 
                 case ProgressInterrupt.Retire:
                     LeapActive = false;
                     LethalActive = false;
+                    LastRunActive = false;
                     Charge = 0;
                     return;
             }
@@ -430,6 +493,9 @@ namespace Wassup.BattleCore
             LethalActive = false;
             LethalRemaining = 0f;
             LethalFraction = 0f;
+            LastRunActive = false;
+            LastRunRemaining = 0f;
+            LastRunFraction = 0f;
             Charge = 0;
         }
     }

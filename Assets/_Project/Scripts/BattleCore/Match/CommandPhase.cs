@@ -1,4 +1,5 @@
 using Unity.Mathematics;
+using Wassup.BattleCore.Combat.Projectile;
 using Wassup.BattleCore.Map;
 
 namespace Wassup.BattleCore
@@ -26,10 +27,13 @@ namespace Wassup.BattleCore
         private readonly CostLedger _cost;
         private readonly WaveScheduler _waves;
         private readonly HandDeck _hand;
+        private readonly GimmickHost _gimmick;
 
         public CommandPhase(BattleWorld world, MatchClock clock, MatchDefinition def, MapRuntime map,
-                            PlacementService placement, CostLedger cost, WaveScheduler waves, HandDeck hand)
+                            PlacementService placement, CostLedger cost, WaveScheduler waves, HandDeck hand,
+                            GimmickHost gimmick)
         {
+            _gimmick = gimmick;
             _world = world;
             _clock = clock;
             _def = def;
@@ -82,6 +86,13 @@ namespace Wassup.BattleCore
                 case CommandKind.DebugSpawnDefender: return DebugSpawnDefender(cmd, tick);
                 case CommandKind.DebugForceWave:
                     return _waves.ForceNext() ? Receipt.Ok : Receipt.Reject(RejectReason.NoMoreWaves);
+                case CommandKind.DebugFireProjectile: return DebugFire(cmd);
+                case CommandKind.DebugImbue: return DebugImbue(cmd);
+                case CommandKind.DebugSpawnHazard: return DebugHazard(cmd, tick);
+                case CommandKind.DebugSpawnBlocker: return DebugBlocker(cmd, tick);
+                case CommandKind.DebugSpawnPickup: return DebugPickup(cmd, tick);
+                case CommandKind.DebugDropResignation: return DebugResignation(cmd, tick);
+                case CommandKind.DebugSetStack: return DebugSetStack(cmd, tick);
 
                 default: return Receipt.Reject(RejectReason.UnknownCommand);
             }
@@ -128,6 +139,138 @@ namespace Wassup.BattleCore
             if (!_world.IsAlive(cmd.Target)) return Receipt.Reject(RejectReason.NoSuchEntity);
             _map.Occupancy.Release(cmd.Target);
             _world.Destroy(cmd.Target, tick);
+            return Receipt.Ok;
+        }
+
+        // unit 6a2 — **공격 루프 밖의 발사.** 요청 줄에 넣기만 한다(생산자는 자기가 무엇에
+        // 얹히는지 모른다). 접는 것은 관문 하나이고, 그 관문을 이 경로도 똑같이 지난다.
+        private Receipt DebugFire(in Command cmd)
+        {
+            if (cmd.ProjectileDefIndex < 0 || cmd.ProjectileDefIndex >= _def.Projectiles.Length)
+                return Receipt.Reject(RejectReason.InvalidUnit);
+            var caster = _world.Find(cmd.Target);
+            if (caster == null) return Receipt.Reject(RejectReason.NoSuchEntity);
+
+            ref var pd = ref _def.Projectiles[cmd.ProjectileDefIndex];
+            var req = ProjectileRequest.Empty;
+            req.DefIndex = cmd.ProjectileDefIndex;
+            req.Movement = (MovementKind)pd.Movement;
+            req.Payload = (PayloadKind)pd.Payload;
+            req.Owner = caster.Id;
+            req.OwnerFaction = caster.Faction;
+            req.TargetMask = caster.Attack != null ? caster.Attack.TargetMask : 0;
+            req.TargetLayers = caster.Attack != null ? caster.Attack.TargetLayers : (byte)0;
+            req.Origin = caster.Position;
+            req.Impact = _map != null ? _map.CenterOf(cmd.Cell)
+                                      : new float3(cmd.Cell.x, 0f, cmd.Cell.y);
+            req.Direction = math.normalizesafe((req.Impact - caster.Position).xz, new float2(0f, 1f));
+            req.Damage = cmd.Magnitude;
+            // 「자리에 떨어지는 것」이다 — 시전자가 **지정한 좌표**이지 그 몸이 아니다(제약 13).
+            req.OriginBodyRadius = 0f;
+            _world.ProjectileRequests.Add(req);
+            return Receipt.Ok;
+        }
+
+        // unit 6a2 — 부여의 생산자 자리. 진짜 생산자(카드·스킬)는 unit 7 이고, 그때도
+        // 이 함수가 아니라 **같은 관문**(`ImbueGate`)을 부른다.
+        private Receipt DebugImbue(in Command cmd)
+        {
+            var caster = _world.Find(cmd.Target);
+            if (caster == null) return Receipt.Reject(RejectReason.NoSuchEntity);
+
+            if (!cmd.Flag)
+            {
+                Effects.ImbueGate.Revoke(_ctx, caster, caster.Id, _revokedImbue);
+                return Receipt.Ok;
+            }
+            return Effects.ImbueGate.Grant(_ctx, caster, caster.Id, cmd.Key, cmd.Magnitude, cmd.Seconds)
+                ? Receipt.Ok : Receipt.Reject(RejectReason.Unclassified);
+        }
+
+        // 회수 사건의 순서를 순회 순서에 안 맡기려고 지운 슬롯을 받는 자리(6a 규율).
+        private readonly System.Collections.Generic.List<Effects.ImbueSlot> _revokedImbue
+            = new System.Collections.Generic.List<Effects.ImbueSlot>(4);
+
+        // unit 6b — 판 위에 깔리는 것의 생산자 자리. 진짜 생산자(카드·스킬)는 unit 7 이고,
+        // 그때도 이 함수가 아니라 **같은 조립 자리**(`HazardSpawn` · `BlockerSpawn`)를 부른다.
+        private Receipt DebugHazard(in Command cmd, int tick)
+        {
+            if (_map != null && !_map.Snapshot.InBounds(cmd.Cell)) return Receipt.Reject(RejectReason.OutOfBounds);
+            var h = HazardSpawn.Spawn(_world, _map, _def, cmd.HazardDefIndex, cmd.Cell,
+                                      SimEntityId.None, cmd.HazardFaction, targetLayers: 0, tick: tick);
+            return h != null ? Receipt.Ok : Receipt.Reject(RejectReason.InvalidUnit);
+        }
+
+        private Receipt DebugBlocker(in Command cmd, int tick)
+        {
+            var u = BlockerSpawn.TrySpawn(_world, _map, _def, cmd.HazardDefIndex, cmd.Cell, tick,
+                                          out var reason);
+            if (u != null) return Receipt.Ok;
+            switch (reason)
+            {
+                case BlockerSpawn.Reject.OutOfBounds: return Receipt.Reject(RejectReason.OutOfBounds);
+                case BlockerSpawn.Reject.NoDefinition: return Receipt.Reject(RejectReason.InvalidUnit);
+                default: return Receipt.Reject(RejectReason.Occupied);
+            }
+        }
+
+        // unit 6b2 — 기믹 셈판의 생산자 자리. 진짜 생산자(주기 바인딩·사망 seam)는 unit 7 이고,
+        // 그때도 이 함수가 아니라 **같은 조립 자리**(`PickupSpawn` · `ResignationDrop`)를 부른다.
+        private Receipt DebugPickup(in Command cmd, int tick)
+        {
+            if (_gimmick == null || !_gimmick.TryActive(GimmickKind.RedBull, out var g))
+                return Receipt.Reject(RejectReason.GimmickInactive);
+            if (!cmd.Flag && _map != null && !_map.Snapshot.InBounds(cmd.Cell))
+                return Receipt.Reject(RejectReason.OutOfBounds);
+            var p = cmd.Flag
+                ? PickupSpawn.TrySpawnRandom(_ctx, PickupKind.RedBull, in g.RedBull, tick)
+                : PickupSpawn.At(_world, _map, PickupKind.RedBull, cmd.Cell, g.RedBull.Lifetime, tick);
+            return p != null ? Receipt.Ok : Receipt.Reject(RejectReason.Occupied);
+        }
+
+        private Receipt DebugResignation(in Command cmd, int tick)
+        {
+            if (_gimmick == null || !_gimmick.TryActive(GimmickKind.ClockOut, out _))
+                return Receipt.Reject(RejectReason.GimmickInactive);
+            if (_map != null && !_map.Snapshot.InBounds(cmd.Cell)) return Receipt.Reject(RejectReason.OutOfBounds);
+            var src = _world.Find(cmd.Target);
+            var r = ResignationDrop.At(_world, _map, cmd.Cell, cmd.Target,
+                                       src != null ? src.Faction : Wassup.Battle.Units.Faction.None, tick);
+            return r != null ? Receipt.Ok : Receipt.Reject(RejectReason.OutOfBounds);
+        }
+
+        private Receipt DebugSetStack(in Command cmd, int tick)
+        {
+            var u = _world.Find(cmd.Target);
+            if (u == null) return Receipt.Reject(RejectReason.NoSuchEntity);
+
+            if (cmd.Flag)
+            {
+                if (_gimmick == null || !_gimmick.TryActive(GimmickKind.Onsen, out _))
+                    return Receipt.Reject(RejectReason.GimmickInactive);
+                u.Stacks.SetHeat(cmd.Count);
+                return Receipt.Ok;
+            }
+
+            if (cmd.Stack == Effects.StackKind.None) return Receipt.Reject(RejectReason.Unclassified);
+            int idx = u.Stacks.IndexOf(u.Id, cmd.Stack);
+            int have = idx >= 0 ? u.Stacks.Slots[idx].Count : 0;
+            if (cmd.Count > have)
+            {
+                // 올리는 쪽은 **부여 관문을 지난다** — 상한·지속·거점 면역이 라이브와 같다. 피로는 번아웃
+                // 기믹이 가리킨 저작 줄을 쓴다(F31).
+                int rule = cmd.Stack == Effects.StackKind.Fatigue
+                           && _gimmick != null && _gimmick.TryActive(GimmickKind.Burnout, out var g)
+                    ? g.Burnout.FatigueStackRule : -1;
+                return Effects.EffectApply.Stack(_ctx, u.Id, u, cmd.Stack, cmd.Count - have, 0,
+                                                 cmd.Seconds, rule) > 0
+                    ? Receipt.Ok : Receipt.Reject(RejectReason.Unclassified);
+            }
+            if (idx < 0) return Receipt.Ok;
+            // 내리는 쪽은 경계 캐시도 같이 내린다 — 다음에 다시 올라가면 **올라가는 길**이라 발화한다.
+            var slot = u.Stacks.Slots[idx];
+            u.Stacks.Commit(idx, cmd.Count, slot.LastTriggered < cmd.Count ? slot.LastTriggered : cmd.Count);
+            _ctx.Bus.Publish(CoreEvent.StackChanged(tick, u, u.Id, cmd.Stack, cmd.Count));
             return Receipt.Ok;
         }
 

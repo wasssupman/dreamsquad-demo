@@ -1,4 +1,5 @@
 using Unity.Mathematics;
+using Wassup.Battle.Units;
 
 namespace Wassup.BattleCore
 {
@@ -60,6 +61,56 @@ namespace Wassup.BattleCore
         /// no-op 으로 만들면 통합 스모크가 타임아웃한다.
         /// </summary>
         DebugForceWave = 14,
+
+        // ── unit 6a2 ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// **공격 루프를 거치지 않고** 탄을 쏜다. 카드탄·배치 스킬탄·포물선탄의 생산자는
+        /// unit 7 인데, 그 생산자들이 관문을 똑같이 지나는지를 지금 물을 수 있어야 한다 —
+        /// 「모든 탄」이 이 unit 의 전부이고, 평타로만 검증하면 그 말을 증언하지 못한다.
+        /// </summary>
+        DebugFireProjectile = 15,
+
+        /// <summary>
+        /// 시전자의 탄에 얹히는 부여를 걸거나(`Flag = true`) 회수한다. 생산자(카드·스킬)는
+        /// unit 7 이므로 그때까지의 유일한 생산자다.
+        /// </summary>
+        DebugImbue = 16,
+
+        // ── unit 6b ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 존 장판을 **판정 없이** 깐다. 까는 자(카드·스킬)는 unit 7 이라 그때까지의 유일한
+        /// 생산자이고, 메뉴(6c)도 담당자를 직접 부르지 않고 이 커맨드를 낸다(tools.md 원칙 —
+        /// 하네스·리플레이가 같은 길을 탄다).
+        /// </summary>
+        DebugSpawnHazard = 17,
+
+        /// <summary>
+        /// 길막 설치물을 세운다. 탄 착탄(`PayloadKind.SpawnBlocker`)과 **같은 문**
+        /// (`BlockerSpawn.TrySpawn`)을 지나므로 자리 검증도 같다.
+        /// </summary>
+        DebugSpawnBlocker = 18,
+
+        // ── unit 6b2 ──────────────────────────────────────────────────────────
+        // 기믹 셈판은 **그 기믹이 뽑힌 판에서만** 통한다(게이트는 `GimmickHost.TryActive` 하나).
+        // 생산자(주기·사망 seam)는 unit 7 이라 그때까지의 유일한 생산자이고, 메뉴(6c)도 이 커맨드를 낸다.
+
+        /// <summary>
+        /// 레드불을 놓는다. `Flag = false` 면 `Cell` 에, `true` 면 **시드로 고른 자리**에 —
+        /// 뒤쪽은 unit 7 의 주기 바인딩이 부를 것과 같은 함수(`PickupSpawn.TrySpawnRandom`)다.
+        /// </summary>
+        DebugSpawnPickup = 19,
+
+        /// <summary>사직서 한 장을 `Cell` 에 떨어뜨린다(드랍 계기 = unit 7 의 사망 seam).</summary>
+        DebugDropResignation = 20,
+
+        /// <summary>
+        /// `Target` 의 스택을 `Count` 로 놓는다. `Flag = false` 면 `Stack` 종류의 **자기 출처** 슬롯
+        /// (기믹 피로의 출처가 자기 자신이다), `true` 면 열기(온천이 뽑힌 판에서만). 임계는 다음
+        /// 스택 단계가 본다. 스택 종류 쪽은 게이트가 없다 — 6a 의 스택은 기믹 전용이 아니다.
+        /// </summary>
+        DebugSetStack = 21,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -119,6 +170,10 @@ namespace Wassup.BattleCore
         CardOnCooldown,
         /// <summary>그 유닛의 부착 상한이 찼다.</summary>
         AttachCapReached,
+
+        // ── unit 6b2 ──────────────────────────────────────────────────────────
+        /// <summary>그 기믹이 이번 판에 안 뽑혔다. 셈판은 뽑힌 판에서만 돈다.</summary>
+        GimmickInactive,
     }
 
     public struct Command
@@ -148,6 +203,36 @@ namespace Wassup.BattleCore
 
         /// <summary>unit 4 — `MatchDefinition.Cards` 의 인덱스(`AttachCard` · `CastActive`). -1 = 해당 없음.</summary>
         public int CardIndex;
+
+        // ── unit 6a2 디버그 ──────────────────────────────────────────────────
+        // 아래 넷은 **디버그 커맨드 둘만** 읽는다. 다른 종류의 값은 쓰이지 않으므로 기본값
+        // 그대로 흘러가고, 그래서 기존 팩토리를 한 줄도 안 고친다.
+
+        /// <summary>`MatchDefinition.Projectiles` 의 인덱스(`DebugFireProjectile`). -1 = 없음.</summary>
+        public int ProjectileDefIndex;
+
+        /// <summary>`DebugImbue` 가 거는 부여의 키.</summary>
+        public Effects.ImbueKey Key;
+
+        /// <summary>`DebugFireProjectile` = 피해 · `DebugImbue` = 부여 크기.</summary>
+        public float Magnitude;
+
+        /// <summary>`DebugImbue` 가 거는 효과의 지속(초).</summary>
+        public float Seconds;
+
+        // ── unit 6b 디버그 ───────────────────────────────────────────────────
+        /// <summary>`DebugSpawnHazard` = `MatchDefinition.Hazards` 줄 · `DebugSpawnBlocker` = `BlockingHazards` 줄.</summary>
+        public int HazardDefIndex;
+
+        /// <summary>`DebugSpawnHazard` — 깐 쪽의 진영(사건 스냅샷). 대상 진영은 저작이 정한다.</summary>
+        public Faction HazardFaction;
+
+        // ── unit 6b2 디버그 ──────────────────────────────────────────────────
+        /// <summary>`DebugSetStack` 의 종류(`Flag = false` 일 때).</summary>
+        public Effects.StackKind Stack;
+
+        /// <summary>`DebugSetStack` 이 놓을 중첩.</summary>
+        public int Count;
 
         // 스킬 파라미터(대상 자리·방향 등)는 unit 7(트리거 레이어)에서 붙는다.
 
@@ -306,6 +391,155 @@ namespace Wassup.BattleCore
             Target = SimEntityId.None,
             Lane = -1,
             CardIndex = -1,
+        };
+
+        // ── unit 6a2 ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 공격 루프 밖에서 탄 하나를 쏜다. `caster` 가 **발사자**(관문이 그의 착탄 출력과
+        /// 부여를 접는다)이고 조준은 `cell` 이다 — 카드탄·배치 스킬탄·포물선탄이 전부
+        /// 칸 바인딩이라 이 한 형태로 셋을 다 세울 수 있다.
+        /// </summary>
+        // ── unit 6b ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 존 장판 하나를 `cell` 에 깐다. `faction` 은 **깐 쪽**이다(사건이 값으로 나른다) —
+        /// 누가 맞는지는 저작의 `TargetFactions` 가 정하고 이 값과 무관하다.
+        /// </summary>
+        public static Command DebugSpawnHazard(int hazardDefIndex, int2 cell,
+                                               Faction faction = Faction.DefenderUnit) => new Command
+        {
+            Kind = CommandKind.DebugSpawnHazard,
+            DefIndex = -1,
+            HazardDefIndex = hazardDefIndex,
+            Cell = cell,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+            HazardFaction = faction,
+        };
+
+        /// <summary>길막 설치물 하나를 `cell` 에 세운다.</summary>
+        public static Command DebugSpawnBlocker(int blockerDefIndex, int2 cell) => new Command
+        {
+            Kind = CommandKind.DebugSpawnBlocker,
+            DefIndex = -1,
+            HazardDefIndex = blockerDefIndex,
+            Cell = cell,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+        };
+
+        // ── unit 6b2 ──────────────────────────────────────────────────────────
+
+        /// <summary>레드불 한 캔을 `cell` 에 놓는다.</summary>
+        public static Command DebugSpawnPickup(int2 cell) => new Command
+        {
+            Kind = CommandKind.DebugSpawnPickup,
+            DefIndex = -1,
+            Cell = cell,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+        };
+
+        /// <summary>레드불 한 캔을 **시드로 고른 자리**에 놓는다(`RngStreams.Pickup`).</summary>
+        public static Command DebugSpawnPickupSeeded() => new Command
+        {
+            Kind = CommandKind.DebugSpawnPickup,
+            DefIndex = -1,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+            Flag = true,
+        };
+
+        /// <summary>사직서 한 장을 `cell` 에 떨어뜨린다(떨어뜨린 자 없음).</summary>
+        public static Command DebugDropResignation(int2 cell) => DebugDropResignation(cell, SimEntityId.None);
+
+        /// <summary>
+        /// 사직서 한 장을 `cell` 에 떨어뜨린다. `source` 는 떨어뜨린 자(사건 스냅샷).
+        /// ⚠ 기본값 인자를 두지 않는다 — `default(SimEntityId)` 는 `None` 이 아니라 **판(0)** 이다.
+        /// </summary>
+        public static Command DebugDropResignation(int2 cell, SimEntityId source) => new Command
+        {
+            Kind = CommandKind.DebugDropResignation,
+            DefIndex = -1,
+            Cell = cell,
+            Target = source,
+            Lane = -1,
+            CardIndex = -1,
+        };
+
+        /// <summary>
+        /// `target` 의 `kind` 스택(자기 출처 슬롯)을 `count` 로 놓는다. 지속은 그 종류의 저작 줄이
+        /// 이기고, 줄이 없을 때만 `seconds` 다(6a 의 부여 규약 그대로).
+        /// </summary>
+        public static Command DebugSetStack(SimEntityId target, Effects.StackKind kind, int count,
+                                            float seconds = 0f) => new Command
+        {
+            Kind = CommandKind.DebugSetStack,
+            DefIndex = -1,
+            Target = target,
+            Lane = -1,
+            CardIndex = -1,
+            Stack = kind,
+            Count = count,
+            Seconds = seconds,
+        };
+
+        /// <summary>`target` 의 열기를 `count` 로 놓는다.</summary>
+        public static Command DebugSetHeat(SimEntityId target, int count) => new Command
+        {
+            Kind = CommandKind.DebugSetStack,
+            DefIndex = -1,
+            Target = target,
+            Lane = -1,
+            CardIndex = -1,
+            Flag = true,
+            Count = count,
+        };
+
+        public static Command DebugFireProjectile(int projectileDefIndex, SimEntityId caster,
+                                                  int2 cell, float damage = 0f) => new Command
+        {
+            Kind = CommandKind.DebugFireProjectile,
+            DefIndex = -1,
+            ProjectileDefIndex = projectileDefIndex,
+            Cell = cell,
+            Target = caster,
+            Lane = -1,
+            CardIndex = -1,
+            Magnitude = damage,
+        };
+
+        /// <summary>시전자의 탄에 부여를 건다. 출처는 **시전자 자신**이다(디버그의 단순화).</summary>
+        public static Command DebugImbue(SimEntityId caster, in Effects.ImbueKey key,
+                                         float magnitude, float seconds) => new Command
+        {
+            Kind = CommandKind.DebugImbue,
+            DefIndex = -1,
+            ProjectileDefIndex = -1,
+            Target = caster,
+            Lane = -1,
+            CardIndex = -1,
+            Key = key,
+            Magnitude = magnitude,
+            Seconds = seconds,
+            Flag = true,
+        };
+
+        /// <summary>그 시전자에게 자기가 건 부여를 전부 회수한다.</summary>
+        public static Command DebugRevokeImbue(SimEntityId caster) => new Command
+        {
+            Kind = CommandKind.DebugImbue,
+            DefIndex = -1,
+            ProjectileDefIndex = -1,
+            Target = caster,
+            Lane = -1,
+            CardIndex = -1,
+            Flag = false,
         };
     }
 

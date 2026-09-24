@@ -81,7 +81,7 @@ namespace Wassup.BattleCore
             _goal = MatchGoals.Create(_def.Mode.Goal);
             _goalCtx = new MatchGoalContext(_clock, _score, _waves, _heart, in _def.Mode);
 
-            _commands = new CommandPhase(_world, _clock, _def, _map, _placement, _cost, _waves, _hand);
+            _commands = new CommandPhase(_world, _clock, _def, _map, _placement, _cost, _waves, _hand, _gimmick);
 
             // 이동 단계는 **붙들어 둔다**(unit 5b). 거점 선택의 후보 배열이 그 안에 있고,
             // 예고선이 같은 답을 받아야 하기 때문이다(M18) — 배열을 밖으로 복제하는 대신
@@ -94,7 +94,7 @@ namespace Wassup.BattleCore
                 _commands,                              // phase 0 — Immediate seam
                 _fieldPrep,                             // unit 2 — 장애물·어그로·사냥판·순찰
                 _aiMove,                                // unit 2 — 상태·도발·거점·감지·이동·분리
-                new TickProjectilePhase(_map),          // unit 3 — 발사 요청·궤적·착탄
+                new TickProjectilePhase(_map, _gimmick), // unit 3 — 발사 요청·궤적·착탄 · 6b2 기믹 셈판
                 new CombatPhase(_map),                  // unit 3 — 공격·피해·사망·도약
                 // ── unit 4: 담당자 단계 ──
                 // 배치 활성화가 **맨 앞**인 이유: 이번 틱에 활성화된 유닛이 다음 틱의 전투에
@@ -130,6 +130,7 @@ namespace Wassup.BattleCore
             // 커맨드는 틱 밖에서 들어오는데 스폰 조립이 문맥을 요구한다. 판당 한 벌이라
             // 한 번 묶으면 끝이다(매 틱 다시 묶으면 「언제 묶였나」가 규칙이 된다).
             _commands.Bind(_ctx);
+            _placement.Bind(_ctx);
         }
 
         // 그 판에 나올 수 있는 유닛들의 통행 층. 0(미저작)은 기본 마스크로 접힌다.

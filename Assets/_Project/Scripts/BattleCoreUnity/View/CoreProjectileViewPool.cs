@@ -113,13 +113,56 @@ namespace Wassup.BattleCoreUnity.View
             Spawn(e.A, data, e.SiteFired.Pos, initialDrop, hasLaunchAnchor, launchAnchor);
         }
 
+        // unit 6c — 탄 정의 줄을 **사건이 나른다**(`DefIndex` — 착탄 뒤 그 탄은 곧 소멸한다). 5a 는 탄 개체를
+        // 되물었다. 프리팹이 없는 광역 착탄의 버스트는 `CoreVfxSpawner` 가 그린다(라우팅 = 프리팹 유무, 옛 규칙).
         private void PlayHitFromEvent(CoreEvent e)
         {
-            var proj = _driver != null ? _driver.Match?.World.FindProjectile(e.A) : null;
-            var data = DataOf(proj != null ? proj.DefIndex : -1);
+            var data = DataOf(e.DefIndex);
             if (data == null || data.hitPrefab == null) return;
-            PlayHit(data.hitPrefab, e.SiteFired.Pos, data.hitVfxLifetime,
-                    data.visualHeightOffset, data.hitVfxScale);
+            // unit 16 — 소켓을 저작한 대상이면 임팩트 VFX 를 몸통 높이에서(판정 무변).
+            float hitH = data.visualHeightOffset;
+            if (TryGetImpactSocketHeight(e.A, out var sock)) hitH = sock;
+            PlayHit(data.hitPrefab, e.SiteFired.Pos, data.hitVfxLifetime, hitH, data.hitVfxScale);
+        }
+
+        // unit 6c — 임팩트 소켓(5a 이월). 유도탄이 **마지막 두 칸**에서 대상 몸통 높이로 꽂힌다 —
+        // 판정·궤적 무변(뷰 전용). 「대상이 누구인가」는 탄의 조준 임자(`Target`)이고 소켓 높이는
+        // 그 대상의 **저작값**(`impactSocketHeight`)이다. 0 = 미저작 = 흡수 없음.
+        // 흡수 구간 2칸은 옛 브리지 상수 그대로다(뷰의 모양이지 규칙이 아니다).
+        private const float SocketBlendTiles = 2f;
+
+        private void FillImpactSocket(Wassup.BattleCore.Combat.Projectile.Projectile p,
+                                      ref CoreProjectileViewFrame frame)
+        {
+            if (p.Target.IsNone) return;
+            if (p.Movement != MovementKind.HomingToEntity && p.Movement != MovementKind.BezierHomingToEntity) return;
+            var target = _driver.Find(p.Target);
+            if (target == null) return;
+            float sock = SocketHeightOf(target);
+            if (sock <= 0f) return;
+            float dx = target.Position.x - p.Position.x;
+            float dz = target.Position.z - p.Position.z;
+            float dist = math.sqrt(dx * dx + dz * dz);
+            frame.targetSocketHeight = sock;
+            frame.targetSocketBlend = math.saturate(
+                1f - dist / (SocketBlendTiles * math.max(0.01f, _driver.TileSize)));
+        }
+
+        // ⚠ 가리키는 표는 **종류**가 정한다(적 = 적 표, 방어유닛 = 유닛 표 — `CoreEvent.DefIndex` 규약).
+        private float SocketHeightOf(Wassup.BattleCore.Unit u)
+        {
+            if (u.DefIndex < 0) return 0f;
+            if (u.Kind == Wassup.BattleCore.UnitKind.Enemy)
+            {
+                var enemies = _driver.EnemyAssets;
+                return u.DefIndex < enemies.Count && enemies[u.DefIndex] != null ? enemies[u.DefIndex].impactSocketHeight : 0f;
+            }
+            if (u.Kind == Wassup.BattleCore.UnitKind.Defender)
+            {
+                var units = _driver.DefenderAssets;
+                return u.DefIndex < units.Count && units[u.DefIndex] != null ? units[u.DefIndex].impactSocketHeight : 0f;
+            }
+            return 0f;
         }
 
         // 매 프레임 동기. 위치는 **코어 읽기 모델**에서 바로 읽는다 — 중개 스냅샷이 없다.
@@ -139,6 +182,7 @@ namespace Wassup.BattleCoreUnity.View
                     elapsed = p.Elapsed,
                     arcHeight = p.ArcHeight,
                 };
+                FillImpactSocket(p, ref frame);
                 SyncTransform(p.Id, frame);
             }
         }

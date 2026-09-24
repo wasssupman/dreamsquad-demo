@@ -11,7 +11,12 @@ namespace Wassup.BattleCoreUnity
     // 씬을 만진 날이 아니라 그 다음 플레이에서 나온다.
     //
     // 오늘의 전순서(X3 — 「뷰 갱신 직전에 도약 채널을 비워야 1프레임 팝이 없다」):
-    //   도약 연출 → 유닛 동기 → 투사체 → 숫자·히트바 → 오버헤드
+    //   도약 연출 → 바닥(해저드·픽업·사직서) → 유닛 동기 → 투사체 → 일반 VFX·빔
+    //   → 숫자·히트바 → 상태 표식·오라 → 오버헤드
+    //
+    // unit 6c — **바닥에 깔리는 것은 유닛 앞, 몸에 붙는 것은 유닛 뒤**다. 장판이 유닛 뒤에
+    // 서면 그 프레임에 태어난 유닛이 장판 밑에 깔리고, 표식이 유닛 앞에 서면 같은 틱에 태어난
+    // 유닛의 앵커가 아직 없어 표식이 첫 프레임을 놓친다.
     // 도약이 유닛 동기보다 **먼저**인 이유: 도약은 그 유닛의 뷰 위치를 덮어쓰고(비행),
     // 유닛 동기가 그 덮어쓴 값을 읽는다. 순서가 뒤집히면 비행이 한 프레임 늦어 착지점에서
     // 출발점으로 튀는 팝이 보인다.
@@ -25,14 +30,32 @@ namespace Wassup.BattleCoreUnity
         /// <summary>도약 연출. 비행 중 유닛 뷰 위치를 덮어쓴다(X3).</summary>
         public const int Leap = 10;
 
+        /// <summary>
+        /// 바닥에 깔리는 것 — 존 장판·길막·픽업·사직서(unit 6c). **유닛보다 먼저**: 같은 틱에
+        /// 장판이 깔리고 적이 태어나면, 장판이 먼저 서야 적이 그 위에 선다.
+        /// </summary>
+        public const int Board = 15;
+
         /// <summary>유닛 뷰 생성·회수·모션. 도약의 덮어쓰기를 읽는다.</summary>
         public const int Unit = 20;
 
         /// <summary>투사체 뷰 생성·회수.</summary>
         public const int Projectile = 30;
 
+        /// <summary>
+        /// 일반 VFX·빔(unit 6c) — 타격 이펙트·총구·배치 링·실드 원샷. 유닛·탄 뷰가 선 뒤라야
+        /// 앵커(손·총구)를 물을 수 있다.
+        /// </summary>
+        public const int Effect = 35;
+
         /// <summary>피해 숫자·히트바. 유닛 뷰가 선 뒤라야 앵커가 있다.</summary>
         public const int Damage = 40;
+
+        /// <summary>
+        /// 몸에 붙는 상태 표식·오라(unit 6c). **유닛 뒤**다 — 같은 틱에 태어난 유닛에게 거는
+        /// 표식은 그 유닛 뷰가 선 뒤에야 앵커가 있다.
+        /// </summary>
+        public const int Status = 45;
 
         /// <summary>오버헤드 UI·오라. 위의 결과를 읽어 화면에 얹는다.</summary>
         public const int Overhead = 50;

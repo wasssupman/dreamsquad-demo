@@ -23,10 +23,14 @@ namespace Wassup.Tests.PlayMode.Core
             var log = new List<string>();
 
             // 씬 순서를 뒤집은 상황 = 늦게 받아야 할 것이 **먼저** 구독한다.
+            // unit 6c — 바닥(장판)은 유닛 **앞**, 몸에 붙는 것(표식·오라)은 유닛 **뒤**다.
             driver.Subscribe(ViewOrder.Overhead, _ => log.Add("overhead"));
+            driver.Subscribe(ViewOrder.Status, _ => log.Add("status"));       // unit 6c
             driver.Subscribe(ViewOrder.Damage, _ => log.Add("damage"));
+            driver.Subscribe(ViewOrder.Effect, _ => log.Add("effect"));       // unit 6c
             driver.Subscribe(ViewOrder.Projectile, _ => log.Add("projectile"));
             driver.Subscribe(ViewOrder.Unit, _ => log.Add("unit"));
+            driver.Subscribe(ViewOrder.Board, _ => log.Add("board"));         // unit 6c
             driver.Subscribe(ViewOrder.Leap, _ => log.Add("leap"));
 
             // 판 하나를 걸면 `Begin` 이 그 자리에서 `MatchStarted` 를 배달한다 — 사건 하나면 충분하다.
@@ -34,7 +38,7 @@ namespace Wassup.Tests.PlayMode.Core
             yield return null;
 
             CollectionAssert.AreEqual(
-                new[] { "leap", "unit", "projectile", "damage", "overhead" }, log,
+                new[] { "leap", "board", "unit", "projectile", "effect", "damage", "status", "overhead" }, log,
                 "구독 순서가 아니라 ViewOrder 순서로 방출돼야 한다");
 
             Object.DestroyImmediate(go);

@@ -41,24 +41,56 @@ namespace Wassup.BattleCoreUnity
                                             float tileSize = 1f,
                                             System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
                                             MatchViewAssets viewAssets = null,
-                                            MovementTuningConfig movement = null)
+                                            MovementTuningConfig movement = null,
+                                            StackModifierSO[] stackModifiers = null,
+                                            ImbueCapConfig imbueCaps = null,
+                                            BoardEffectAuthoring board = default)
         {
+            // 모드가 고른 저작이 호출자(드라이버)의 것을 이긴다 — 모드는 「어느 자산을 쓸지」를 고른다.
+            deck = ResolveDeck(mode, deck);
+            plan = ResolvePlan(mode, plan);
             var enemies = CollectEnemies(deck, plan, bonus);
             var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
-                            viewAssets, movement);
+                            viewAssets, movement, stackModifiers, imbueCaps, board);
 
             def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
             def.WaveDeck = ToDeckDef(deck, enemies);
             def.WavePlan = ToPlanDef(plan, enemies);
             def.Bonus = ToBonusDef(bonus, enemies);
             def.Heart = ToHeartConfig(deck);
-            def.Gimmicks = ToGimmickDefs(mode);
+            def.Gimmicks = ToGimmickDefs(mode, def);
             def.Roster = RosterOf(defenders);
 
             // ⚠ 정의표가 다 찬 **뒤에** 굽는다. 먼저 구우면 「덱을 바꿨는데 해시가 그대로」가 된다.
             def.ConfigHash = def.ComputeConfigHash();
+
+            // 모드 × 저작의 유효성을 **판 밖에서 한 번** 묻는다. 안 물으면 「12웨이브를 막으라는데
+            // 플랜이 비었다」가 판 중간에야 드러난다(그 판은 영영 안 끝난다). 판은 짓되 문제를
+            // 전부 한 번에 loud 하게 적는다 — 저작을 고치는 사람이 한 번에 봐야 한다.
+            var problems = new System.Collections.Generic.List<string>();
+            if (!ModeValidation.Validate(def, problems))
+                foreach (var why in problems)
+                    Debug.LogError($"[MatchDefinitionBuilder] 모드 검증 실패('{def.Mode.ModeId}'): {why}", mode);
             return def;
         }
+
+        /// <summary>
+        /// 이 판의 덱. **모드가 덱을 골랐으면 그것**, 비었으면 호출자의 덱이다. 툴팁의 「비우면 맵
+        /// 풀이 짝지은 덱」 중 맵 풀 짝은 아직 배선 전이라 그 자리를 호출자 덱이 채운다 — 맵 풀
+        /// 로테이션(`mapPool`·`fixedMapSeed`)의 귀속은 `docs/spec/battle-core-rebuild/` 가 정한다.
+        /// ⚠ 드라이버도 적 목록을 모을 때 **같은 함수**를 지나야 한다(적 인덱스가 갈린다).
+        /// </summary>
+        public static AttackDeck ResolveDeck(MatchModeData mode, AttackDeck fallback)
+            => mode != null && mode.deck != null ? mode.deck : fallback;
+
+        /// <summary>
+        /// 이 판의 저작 플랜. 모드가 **저작 플랜 모드**이고 플랜을 골랐으면 그것, 아니면 호출자의 것.
+        /// 덱 생성 모드는 모드의 플랜을 읽지 않는다(툴팁 계약).
+        /// </summary>
+        public static WavePlanAsset ResolvePlan(MatchModeData mode, WavePlanAsset fallback)
+            => mode != null && mode.waveSourceKind == WaveSourceKind.AuthoredPlan && mode.plan != null
+                ? mode.plan
+                : fallback;
 
         /// <summary>
         /// 모드 선택 3단: **테스트 모드 강제 &gt; 로비/서버 지정 &gt; 기본 모드**.
@@ -86,7 +118,10 @@ namespace Wassup.BattleCoreUnity
                                             float tileSize = 1f,
                                             System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null,
                                             MatchViewAssets viewAssets = null,
-                                            MovementTuningConfig movement = null)
+                                            MovementTuningConfig movement = null,
+                                            StackModifierSO[] stackModifiers = null,
+                                            ImbueCapConfig imbueCaps = null,
+                                            BoardEffectAuthoring board = default)
         {
             var def = new MatchDefinition
             {
@@ -98,11 +133,25 @@ namespace Wassup.BattleCoreUnity
             };
             // unit 3 — 전투 저작(공격·탄·발사 명세)을 같은 줄에 채워 넣는다. **해시를 굽기 전**
             // 이어야 한다 — 뒤에 두면 「스탯을 바꿨는데 해시가 그대로」가 된다.
-            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, viewAssets);
+            // unit 6b — 탄 SO 목록을 **번호를 매긴 그 순회에서** 받는다(길막 역참조가 그 번호를 쓴다).
+            // 뷰가 없는 판(테스트·헤드리스)에서도 필요하므로 없으면 로컬 한 벌을 만든다.
+            var assets = viewAssets ?? new MatchViewAssets();
+            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets);
+            // unit 6b — 판 위에 깔리는 것(존 장판 · 길막 · 효과 타일). **해시를 굽기 전**이다.
+            BoardEffectDefinitionBuilder.Fill(def, assets, in board);
             // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
             // 저작이 없으면 코어 기본값(= 옛 씬 값)을 그대로 둔다. 0 으로 덮지 않는다 —
             // 그러면 몸 반지름 0(충돌 소멸)과 레인 1(분산 없음)이 조용히 성립한다.
             if (movement != null) def.Movement = ToMovementDef(movement);
+            // unit 6a — 스택 저작. **해시를 굽기 전**이어야 한다(뒤에 두면 「임계를 바꿨는데
+            // 해시가 그대로」가 된다). 안 넘기면 빈 표이고, 그러면 스택은 폴백 상한 5 로
+            // 쌓이기만 하고 **임계가 하나도 안 터진다** — 그 상태를 조용히 두지 않으려고
+            // `ToStackRuleDefs` 가 잘못된 저작을 loud 하게 거절한다.
+            def.StackRules = ToStackRuleDefs(stackModifiers);
+            // unit 6a2 — 탄 부여 상한. 같은 이유로 **해시를 굽기 전**이다. 안 넘기면 빈 표이고,
+            // 그러면 부여가 **하나도 안 걸린다**(관문이 상한 없는 키를 거절한다) — 「저작이
+            // 없다」가 「상한이 없다」로 읽히지 않게 하는 것이 그 거절의 뜻이다.
+            def.ImbueCaps = ToImbueCapDefs(imbueCaps);
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }
@@ -130,7 +179,7 @@ namespace Wassup.BattleCoreUnity
             snap.CellLayers = new byte[n];
             for (int i = 0; i < n; i++)
             {
-                var tile = (MapTile)(byte)map.tiles[i];
+                var tile = ToCoreTile(map.tiles[i]);
                 snap.Tiles[i] = tile;
                 snap.PlaceMask[i] = map.placeMask.IsCreated
                     ? PlacementLayers.Sanitize(map.placeMask[i])
@@ -228,7 +277,13 @@ namespace Wassup.BattleCoreUnity
                 TraversalLayers = (int)d.EffectiveTraversalLayers,
                 Role = (int)d.role,
                 AggroCapacity = d.aggroCapacity,
-                TargetFactions = (int)d.targetFactions,
+                // ⚠ **`targetAllies` 가 저작 마스크를 이긴다** — 힐러는 어떤 마스크가 저작돼 있어도
+                // 아군(방어유닛) 단독이다(옛 `DefenderTargetDefaults.Resolve`). 라이브 힐러가
+                // `targetFactions: 98`(적 전부)을 들고 있어 raw 로 실으면 **적을 회복시킨다**
+                // (2026-09-24 드리프트 감사 H4). 거점까지 넓히지 않는다 — 마음이 회복을 받는다.
+                TargetFactions = d.targetAllies
+                    ? (int)Wassup.Battle.Units.Faction.DefenderUnit
+                    : (int)d.targetFactions,
                 MoveSpeed = d.moveSpeed,
 
                 // ── unit 4 배치 저작 ──────────────────────────────────────────
@@ -256,6 +311,12 @@ namespace Wassup.BattleCoreUnity
         public static ModeDef ToModeDef(MatchModeData m)
         {
             if (m == null) return ModeDef.Default();
+            // 배치 자원 저작이 없으면 **값을 지어내지 않고** 크게 알린다. 옛 배치 창 폴백은 30초
+            // (`PlacementPhaseView`)였는데 SO 폴백은 0초라 조용히 뒤집혀 있었다 — 숫자를 하나 더
+            // 두는 대신 「저작이 없다」를 오류로 만든다(코스트 시작·상한·재생 폴백도 같은 SO 몫이다).
+            if (m.costConfig == null)
+                Debug.LogError($"[MatchDefinitionBuilder] 모드 '{m.modeId}' 에 costConfig(배치 자원 저작)가 없다 — "
+                               + "배치 창·코스트가 코드 폴백으로 돈다. 저작을 연결한다.", m);
             return new ModeDef
             {
                 ModeId = m.modeId,
@@ -496,7 +557,16 @@ namespace Wassup.BattleCoreUnity
                     KillHealPerAwakening = deck.killHealPerAwakening,
                 };
 
-        private static GimmickDef[] ToGimmickDefs(MatchModeData mode)
+        /// <summary>
+        /// unit 6b2 — 기믹 SO → 정의표 줄. **종류는 SO 의 구체 타입**이 정하고 수치는 전량 옮긴다(제약 6).
+        /// 옛 브리지의 `CreateGimmickConfigIfActive` 가 하던 복사의 후계이고, 게이트(존재 = 활성)는
+        /// 안 옮긴다 — 활성은 `GimmickHost` 가 「그 기믹이 뽑혔나」로 판정한다.
+        ///
+        /// ⚠ 번아웃의 피로 스택 자산은 **스택 규칙 표에 줄로 들어간다**(F31 — 줄의 주인은 저작 자산).
+        /// 이미 같은 자산의 줄이 있으면 그 줄을 가리키고, 없으면 끝에 붙인다. 그래서 `def` 의 스택
+        /// 표가 **먼저** 차 있어야 한다(`Build` 안의 순서).
+        /// </summary>
+        public static GimmickDef[] ToGimmickDefs(MatchModeData mode, MatchDefinition def)
         {
             if (mode == null || !mode.gimmickEnabled || mode.gimmickPool == null)
                 return System.Array.Empty<GimmickDef>();
@@ -505,7 +575,256 @@ namespace Wassup.BattleCoreUnity
             {
                 var g = mode.gimmickPool[i];
                 if (g == null) continue;
-                list.Add(new GimmickDef { Id = g.gimmickId });
+                list.Add(ToGimmickDef(g, def));
+            }
+            return list.ToArray();
+        }
+
+        public static GimmickDef ToGimmickDef(GimmickData g, MatchDefinition def)
+        {
+            var row = new GimmickDef { Id = g.gimmickId, Kind = GimmickKind.None };
+            switch (g)
+            {
+                case RedBullGimmickData rb:
+                    row.Kind = GimmickKind.RedBull;
+                    row.RedBull = new RedBullSpec
+                    {
+                        SpawnInterval = rb.redbullSpawnInterval,
+                        Lifetime = rb.redbullLifetime,
+                        MaxActive = rb.maxActivePickups,
+                        LastRunAttackSpeedMul = rb.lastRunAttackSpeedMul,
+                        LastRunDuration = rb.lastRunDuration,
+                        LastRunDamageFraction = rb.lastRunDamageFraction,
+                    };
+                    break;
+                case OnsenGimmickData on:
+                    row.Kind = GimmickKind.Onsen;
+                    row.Onsen = new OnsenSpec
+                    {
+                        HeatInterval = on.heatInterval,
+                        FlipThreshold = on.flipThreshold,
+                        HealPercent = on.healPercent,
+                        LossPercent = on.lossPercent,
+                        HeatMaxStack = on.heatMaxStack,
+                    };
+                    break;
+                case BurnoutGimmickData bo:
+                    row.Kind = GimmickKind.Burnout;
+                    row.Burnout = new BurnoutSpec
+                    {
+                        FatigueInterval = bo.fatigueInterval,
+                        FatigueAmount = bo.fatigueAmount,
+                        FatigueStackRule = StackRuleRowOf(bo.fatigueStack, def),
+                    };
+                    if (bo.fatigueStack == null)
+                        Debug.LogError($"[MatchDefinitionBuilder] 번아웃 기믹 '{g.gimmickId}' 에 피로 스택 자산이 없다 — " +
+                                       "스택 폴백(상한 5 · 지속 0)으로 떨어진다.", g);
+                    break;
+                case ClockOutGimmickData co:
+                    row.Kind = GimmickKind.ClockOut;
+                    row.ClockOut = new ClockOutSpec
+                    {
+                        ResignationThreshold = co.resignationThreshold,
+                        MeteorCount = co.meteorCount,
+                        MeteorDamage = co.meteorDamage,
+                        MeteorTileRange = co.meteorTileRange,
+                        MeteorWarningSec = co.meteorWarningSec,
+                        MeteorStaggerSec = co.meteorStaggerSec,
+                    };
+                    break;
+                default:
+                    // 모르는 SO 는 고르기·알리기만 된다(셈판 없음). loud 하게 — 새 기믹을 만들고 여기를
+                    // 안 고치면 「뽑혔는데 아무 일도 안 일어나는」 판이 된다.
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 기믹 종류 {g.GetType().Name}('{g.gimmickId}') — " +
+                                   "셈판이 안 돈다.", g);
+                    break;
+            }
+            return row;
+        }
+
+        // 그 스택 자산의 줄. 이미 있으면(같은 이름) 그 줄, 없으면 끝에 붙인다. null 이면 -1.
+        private static int StackRuleRowOf(StackModifierSO so, MatchDefinition def)
+        {
+            if (so == null || def == null) return -1;
+            var rows = def.StackRules ?? System.Array.Empty<StackRuleDef>();
+            for (int i = 0; i < rows.Length; i++)
+                if (rows[i].Id == so.name) return i;
+            var added = ToStackRuleDefs(new[] { so });
+            if (added.Length == 0) return -1;
+            var grown = new StackRuleDef[rows.Length + 1];
+            System.Array.Copy(rows, grown, rows.Length);
+            grown[rows.Length] = added[0];
+            def.StackRules = grown;
+            return rows.Length;
+        }
+
+        /// <summary>
+        /// 저작 칸 종류 → 코어 칸 종류. **이름으로 옮긴다**(`CombatDefinitionBuilder` 의 매핑들과
+        /// 같은 이유 — 두 어휘는 다른 어셈블리라 한쪽이 값을 끼우면 컴파일러가 못 잡는다).
+        /// 모르는 값은 **장식(못 걷는 칸)**으로 접고 loud 하다 — 통로로 접으면 벽이 길이 된다.
+        /// </summary>
+        public static MapTile ToCoreTile(MapTileType authored)
+        {
+            switch (authored)
+            {
+                case MapTileType.Walk: return MapTile.Walk;
+                case MapTileType.Place: return MapTile.Place;
+                case MapTileType.Env: return MapTile.Env;
+                case MapTileType.Deco: return MapTile.Deco;
+                default:
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 칸 종류({authored}) — 장식으로 접는다.");
+                    return MapTile.Deco;
+            }
+        }
+
+        /// <summary>저작 교전 이동 → 코어 어휘. **이름으로 옮긴다.** 모르는 값은 멈춤(Halt)으로 접고 loud 하다.</summary>
+        public static Wassup.BattleCore.EngageMovement ToCoreEngage(Wassup.Data.EngageMovement authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Data.EngageMovement.Halt: return Wassup.BattleCore.EngageMovement.Halt;
+                case Wassup.Data.EngageMovement.Advance: return Wassup.BattleCore.EngageMovement.Advance;
+                case Wassup.Data.EngageMovement.Pulse: return Wassup.BattleCore.EngageMovement.Pulse;
+                default:
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 교전 이동({authored}) — 멈춤으로 접는다.");
+                    return Wassup.BattleCore.EngageMovement.Halt;
+            }
+        }
+
+        /// <summary>
+        /// 저작 임계 모드 → 코어 어휘. **이름으로 옮긴다**(`CombatDefinitionBuilder` 의 매핑 넷과 같은 이유).
+        /// </summary>
+        public static StackThresholdMode ToCoreThresholdMode(ThresholdMode authored)
+        {
+            switch (authored)
+            {
+                case ThresholdMode.Edge: return StackThresholdMode.Edge;
+                case ThresholdMode.Consume: return StackThresholdMode.Consume;
+                default:
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 임계 모드({authored}) — Edge 로 접는다.");
+                    return StackThresholdMode.Edge;
+            }
+        }
+
+        /// <summary>저작 파생 효과 → 코어 어휘. **이름으로 옮긴다.**</summary>
+        public static StackDerivedKind ToCoreDerivedKind(DerivedEffectKind authored)
+        {
+            switch (authored)
+            {
+                case DerivedEffectKind.ApplyDot: return StackDerivedKind.ApplyDot;
+                case DerivedEffectKind.ApplyStun: return StackDerivedKind.ApplyStun;
+                case DerivedEffectKind.ApplyStat: return StackDerivedKind.ApplyStat;
+                default:
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 파생 효과({authored}) — 지속 피해로 접는다.");
+                    return StackDerivedKind.ApplyDot;
+            }
+        }
+
+        /// <summary>
+        /// 스택 저작 SO → 정의표. **자산당 한 줄**이다(F31) — 옛 전투는 `StackKind` 당 전역
+        /// 한 벌이라 드래곤과 킨들러가 불 스택 규칙을 물리적으로 공유했고, 한쪽을 올리면
+        /// 다른 쪽이 같이 올라갔다. 줄이 갈리면 그 결합이 사라진다.
+        ///
+        /// ⚠ **임계 배열의 비내림차순은 여기서 fail-closed 로 검증한다**(F13). 옛 전투는
+        /// 「저작자 책임」으로 두고 검증하지 않았고, 어긋난 저작은 **조용히** 임계 일부를
+        /// 건너뛴다. 같은 임계를 여러 줄 쓰는 것은 정상이다(라이브 피로도가 5·5·5 로 세
+        /// 스탯을 한꺼번에 건다) — 그래서 「엄격 증가」가 아니라 「비내림차순」이다.
+        /// </summary>
+        public static StackRuleDef[] ToStackRuleDefs(StackModifierSO[] src)
+        {
+            if (src == null || src.Length == 0) return System.Array.Empty<StackRuleDef>();
+
+            var list = new System.Collections.Generic.List<StackRuleDef>(src.Length);
+            for (int i = 0; i < src.Length; i++)
+            {
+                var so = src[i];
+                if (so == null) continue;
+
+                var authored = so.thresholds;
+                int n = authored != null ? authored.Length : 0;
+                var rows = n > 0 ? new StackThresholdDef[n] : System.Array.Empty<StackThresholdDef>();
+                for (int t = 0; t < n; t++)
+                {
+                    var a = authored[t];
+                    rows[t] = new StackThresholdDef
+                    {
+                        AtStack = a.atStack,
+                        // ⚠ 번호 캐스트 금지 — 이름으로 옮긴다. 앞에 값이 끼면 `Consume` 이
+                        // `Edge` 로 읽혀 소비형 임계가 스택을 안 깎고 **무한 발화**한다.
+                        Mode = ToCoreThresholdMode(a.mode),
+                        Derived = ToCoreDerivedKind(a.derivedKind),
+                        Magnitude = a.magnitude,
+                        Duration = a.duration,
+                        Stat = (int)CombatDefinitionBuilder.ToCoreStat(a.stat),
+                        Op = (int)CombatDefinitionBuilder.ToCoreOp(a.op),
+                        TickInterval = a.tickInterval,
+                    };
+                }
+
+                if (!Wassup.BattleCore.Effects.StackRules.IsAscending(rows))
+                {
+                    Debug.LogError(
+                        $"[MatchDefinitionBuilder] 스택 저작 '{so.name}' 의 임계가 비내림차순이 아니다 — "
+                        + "이 줄을 버린다(어긋난 저작은 임계 일부를 조용히 건너뛴다).", so);
+                    continue;
+                }
+
+                list.Add(new StackRuleDef
+                {
+                    Id = so.name,
+                    // ⚠ 번호 캐스트 금지 — 산출물 스택 종류와 **같은 매핑**을 쓴다.
+                    Kind = (int)CombatDefinitionBuilder.ToCoreStackKind(so.kind),
+                    MaxStack = so.maxStack,
+                    PerAppDuration = so.perAppDuration,
+                    Thresholds = rows,
+                });
+            }
+            return list.ToArray();
+        }
+
+        /// <summary>
+        /// 부여 상한 SO → 정의표. **키 하나에 한 줄**이다.
+        ///
+        /// ⚠ 거절 둘 다 loud 하다(제약 6): ⑴ 상한이 **0 이하**인 줄 — 「값을 안 적었다」가
+        /// 「상한이 없다」로 읽히면 근거 없는 무한 부여가 조용히 성립한다. ⑵ **같은 키가 두 줄** —
+        /// 먼저 찾은 줄이 이기므로 저작자가 고친 줄이 안 먹는 침묵이 난다.
+        /// </summary>
+        public static ImbueCapDef[] ToImbueCapDefs(ImbueCapConfig src)
+        {
+            var rows = src != null ? src.Rows : System.Array.Empty<ImbueCapConfig.Row>();
+            if (rows.Length == 0) return System.Array.Empty<ImbueCapDef>();
+
+            var list = new System.Collections.Generic.List<ImbueCapDef>(rows.Length);
+            var seen = new System.Collections.Generic.List<Wassup.BattleCore.Effects.ImbueKey>(rows.Length);
+            for (int i = 0; i < rows.Length; i++)
+            {
+                var key = rows[i].Key();
+                if (key.IsNone)
+                {
+                    Debug.LogError($"[MatchDefinitionBuilder] 부여 상한 저작 '{src.name}' 의 {i}번 줄이 "
+                                   + "종류를 안 골랐다 — 이 줄을 버린다.", src);
+                    continue;
+                }
+                if (rows[i].cap <= 0f)
+                {
+                    Debug.LogError($"[MatchDefinitionBuilder] 부여 상한 저작 '{src.name}' 의 {i}번 줄에 "
+                                   + "상한 값이 없다 — 「상한 없음」이 아니라 오류다(이 줄을 버린다).", src);
+                    continue;
+                }
+                if (seen.Contains(key))
+                {
+                    Debug.LogError($"[MatchDefinitionBuilder] 부여 상한 저작 '{src.name}' 의 {i}번 줄이 "
+                                   + "앞줄과 같은 키다 — 뒤 줄은 영영 안 읽힌다(이 줄을 버린다).", src);
+                    continue;
+                }
+                seen.Add(key);
+                list.Add(new ImbueCapDef
+                {
+                    Kind = (int)key.Kind,
+                    Target = key.Target,
+                    Op = key.Op,
+                    Cap = rows[i].cap,
+                });
             }
             return list.ToArray();
         }
@@ -552,7 +871,7 @@ namespace Wassup.BattleCoreUnity
                     StabilityDamage = e.stabilityDamage,
                     DetectionRange = e.detectionRange,
                     AwakeningReward = e.awakeningReward,
-                    EngageMovement = (int)e.engageMovement,
+                    EngageMovement = (int)ToCoreEngage(e.engageMovement),
                     TargetFactions = (int)e.targetFactions,
                     WaypointPathIndex = e.waypointPathIndex,
                 };

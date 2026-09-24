@@ -43,8 +43,14 @@ namespace Wassup.BattleCore.Combat.Projectile
 
         public int ImpactTileRange;
         public int AoeTargetCap;
-        public CcRequestKind AoeCc;
-        public float AoeCcSeconds;
+
+        /// <summary>
+        /// 이 탄이 **맞은 놈에게 거는** 군중 제어. unit 6a2 에서 이름이 `AoeCc` → `OnHitCc`
+        /// 로 바뀌었다 — 칸 광역 전용이 아니라 **착탄 전부**(직격·비산·경로 스윕)가 건다.
+        /// ⚠ **요청이 명시한 값은 부여가 덮지 않는다** — 관문이 이 칸을 먼저 잠근다.
+        /// </summary>
+        public CcRequestKind OnHitCc;
+        public float OnHitCcSeconds;
 
         public float ImpactKnockbackDistance;
         public float ImpactKnockbackDuration;

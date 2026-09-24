@@ -33,6 +33,22 @@ namespace Wassup.BattleCore
         public string Id
             => _index >= 0 && _index < _def.Gimmicks.Length ? _def.Gimmicks[_index].Id : "";
 
+        /// <summary>
+        /// unit 6b2 — **활성 게이트는 이것 하나다.** 「그 종류의 기믹이 이번 판에 뽑혔나」와
+        /// 그 수치. 옛 config 싱글턴 4개(존재 = 활성)의 후계이고, 셈판(픽업·사직서)과 디버그
+        /// 커맨드가 전부 여기를 지난다 — 게이트가 둘이면 「뽑히지도 않았는데 사직서가 쌓인다」가 난다.
+        /// </summary>
+        public bool TryActive(GimmickKind kind, out GimmickDef gimmick)
+        {
+            if (_index >= 0 && _index < _def.Gimmicks.Length && _def.Gimmicks[_index].Kind == kind)
+            {
+                gimmick = _def.Gimmicks[_index];
+                return true;
+            }
+            gimmick = default;
+            return false;
+        }
+
         public void Begin(bool enabled, int matchSeed)
         {
             _index = enabled

@@ -80,6 +80,33 @@ namespace Wassup.BattleCore
             match.Bus.Subscribe(CoreEventKind.HeartCollapsed, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.GimmickAssigned, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.PlacementPhaseChanged, 0, trace.Record);
+            // unit 6a — 효과 슬롯의 사건. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.ModifierApplied, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ModifierRevoked, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.StackChanged, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.StackThreshold, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CcApplied, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CcCleared, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.DotApplied, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ShieldGranted, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.DotCleared, 0, trace.Record);
+            // unit 6a2 — 탄 부여. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.ImbueChanged, 0, trace.Record);
+            // unit 6b — 판 위에 깔리는 것. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.HazardSpawned, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.HazardDestroyed, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.FieldSpawned, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.FieldDespawned, 0, trace.Record);
+            // unit 6b2 — 기믹 셈판. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.PickupSpawned, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.PickupTaken, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ResignationDropped, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ResignationThreshold, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.PickupExpired, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ResignationConsumed, 0, trace.Record);
+            // unit 6c 후속 — 상태의 끝. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.AggroReleased, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.LastRunEnded, 0, trace.Record);
 
             int kills = 0;
             match.Bus.Subscribe(CoreEventKind.UnitSlain, 1, _ => kills++);

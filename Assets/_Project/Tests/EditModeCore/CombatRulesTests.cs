@@ -3,6 +3,8 @@ using Unity.Mathematics;
 using Wassup.Battle.Units;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat.Projectile;
+using Wassup.BattleCore.Effects;
+using Wassup.BattleCore.Map;
 using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
 
 namespace Wassup.Tests.EditMode.Core
@@ -368,12 +370,11 @@ namespace Wassup.Tests.EditMode.Core
             e.Move.LastMoveDir = float2.zero;
 
             Tick(m, 1);
-            Assert.AreEqual(0, CountCc(m, CcRequestKind.Impulse));
+            Assert.AreEqual(0, CountCc(m, CcSlotKind.Impulse));
 
             e.Move.LastMoveDir = new float2(1f, 0f);
-            m.World.CcRequests.Clear();
-            Tick(m, 61);
-            Assert.AreEqual(1, CountCc(m, CcRequestKind.Impulse), "방향이 있으면 반대로 민다");
+            Tick(m, 61);   // 쿨 1초 뒤의 다음 공격
+            Assert.AreEqual(1, CountCc(m, CcSlotKind.Impulse), "방향이 있으면 반대로 민다");
         }
 
         // ── C9 · 내 피해가 내 수면을 안 깨운다 ──────────────────────────────
@@ -392,20 +393,30 @@ namespace Wassup.Tests.EditMode.Core
             m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
 
             Tick(m, 1);
-            Assert.AreEqual(1, CountCc(m, CcRequestKind.Sleep), "때린 틱에 잠이 걸린다");
-            Assert.AreEqual(0, m.World.WakeRequests.Count,
-                "같은 틱에 건 수면은 그 피해로 깨우지 않는다");
+            // unit 6a — 요청 줄은 이제 같은 틱에 소비된다. 그래서 「줄에 뭐가 남았나」가
+            // 아니라 **「그 적이 실제로 자고 있나」**를 묻는다. 가드가 깨지면 같은 틱의
+            // 피해가 방금 건 잠을 도로 풀어 여기서 0 이 된다.
+            Assert.AreEqual(1, CountCc(m, CcSlotKind.Sleep), "때린 틱에 걸린 잠이 살아남는다");
         }
 
         [Test]
-        public void 수면이_없는_피격은_기상_요청을_낸다()
+        public void 지난_틱에_걸린_잠은_피격이_깨운다()
         {
-            var m = Match(Definition(defenderDamage: 5f));
+            // 같은 틱 가드의 반대편. 이것까지 막으면 잠든 적이 한 대 더 맞고도 안 깬다(F25).
+            var m = Match(Definition(defenderDamage: 5f, defenderCooldown: 0.2f));
             m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
             m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var e = First(m, UnitKind.Enemy);
 
+            m.World.RequestCc(CcRequest.Of(e.Id, CcRequestKind.Sleep, 10f, SimEntityId.None));
             Tick(m, 1);
-            Assert.AreEqual(1, m.World.WakeRequests.Count);
+            Assert.IsTrue(e.Cc.IsActive(CcSlotKind.Sleep));
+
+            var cleared = Listen(m, CoreEventKind.CcCleared);
+            Tick(m, 30);
+            Assert.IsFalse(e.Cc.IsActive(CcSlotKind.Sleep), "맞으면 깬다");
+            Assert.AreEqual(1, cleared.Count);
+            Assert.AreEqual((int)CcClearReason.WokeUp, (int)cleared[0].Amount);
         }
 
         // ── C14 · 골을 지난 적도 유효 대상 ──────────────────────────────────
@@ -521,6 +532,39 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(units[3].MaxHealth, units[3].Health, 1e-3f, "도형 밖은 안 맞는다");
         }
 
+        [Test]
+        public void 공격_성사_사건은_판정한_도형_축_사거리를_값으로_싣는다()
+        {
+            // 6c 후속 — 참격 자국은 이 스냅샷으로만 그린다(뷰가 공격자를 되묻지 않는다). 사거리는
+            // **런타임 값**이라 저작값이 아니라 RESOLVE 시점의 `Attack.Range` 여야 한다.
+            var def = Definition(defenderDamage: 5f, defenderRange: 4f, defenderTargetCount: 3);
+            def.Units[0].Attack.ShapeKind = Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind;
+            def.Units[0].Attack.ShapeSinHalf = math.sin(math.radians(15f));
+            def.Units[0].Attack.ShapeCosHalf = math.cos(math.radians(15f));
+            def.ConfigHash = def.ComputeConfigHash();
+
+            var m = Match(def);
+            var resolved = Listen(m, CoreEventKind.AttackResolved);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 2)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(4, 5)));   // 주 대상 — +Z 축
+            foreach (var u in m.World.Units) if (u.Move != null) u.Move.Speed = 0f;
+
+            Tick(m, 1);
+            CoreEvent e = default;
+            bool found = false;
+            foreach (var r in resolved)
+                if (r.Faction == Faction.DefenderUnit) { e = r; found = true; break; }
+            Assert.IsTrue(found, "방어유닛의 공격이 성사돼야 한다");
+
+            var attacker = m.World.Units[0];
+            Assert.AreEqual(Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind, e.AttackShape.kind);
+            Assert.AreEqual(attacker.Attack.Shape.sinHalf, e.AttackShape.sinHalf, 1e-6f, "반각 = 판정 bake 그대로");
+            Assert.AreEqual(attacker.Attack.Range, e.AttackRange, 1e-6f, "사거리 = 런타임 값");
+            Assert.AreEqual(0f, e.AttackDir.x, 1e-5f, "축 = 주 대상 방향(+Z)");
+            Assert.AreEqual(1f, e.AttackDir.y, 1e-5f);
+            Assert.AreEqual(attacker.HitRadius, e.SiteFired.OriginBody, 1e-6f, "원점 항 = 내 몸(따로 나른다)");
+        }
+
         // ── strict lapse ────────────────────────────────────────────────────
 
         [Test]
@@ -601,7 +645,7 @@ namespace Wassup.Tests.EditMode.Core
 
             Tick(m, 1);
             Assert.AreEqual(2, knockups.Count, "넉업은 전원");
-            Assert.AreEqual(1, CountCc(m, CcRequestKind.Sleep), "수면은 주 대상 1체");
+            Assert.AreEqual(1, CountCc(m, CcSlotKind.Sleep), "수면은 주 대상 1체");
         }
 
         [Test]
@@ -618,7 +662,8 @@ namespace Wassup.Tests.EditMode.Core
             m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
 
             Tick(m, 1);
-            Assert.AreEqual(0, m.World.CcRequests.Count, "출처를 묻지 않는다 — 면역은 대상의 성질이다");
+            Assert.AreEqual(0, CountCc(m, CcSlotKind.Sleep) + CountCc(m, CcSlotKind.Stun),
+                "출처를 묻지 않는다 — 면역은 대상의 성질이다");
         }
 
         // ── 히트 구동 어그로 ────────────────────────────────────────────────
@@ -635,6 +680,93 @@ namespace Wassup.Tests.EditMode.Core
 
             Tick(m, 3);
             Assert.AreEqual(d.Id.Value, e.Aggro != null ? e.Aggro.Target.Value : -1);
+        }
+
+        [Test]
+        public void 유닛을_노리지_않는_적은_가디언에게_끌려가지_않는다()
+        {
+            // 2026-09-24 드리프트 감사 H5 — 마음사냥꾼(`targetFactions` = 방벽·마음·본능, 유닛
+            // 비트 없음)이 가디언에게 맞으면 끌려가 **마음을 향한 행진을 멈췄다.** 옛 전투는
+            // 부착 한 곳(`AggroStateSystem`)에서 「유닛을 노리지 않는 적은 유인으로 못 막는다」
+            // 로 거절했다 — 죽여야만 막히는 적이 이 규칙의 존재 이유다.
+            var def = Definition(defenderDamage: 1f, aggroCapacity: 2);
+            def.Enemies[0].TargetFactions = (int)(Faction.BlockingHazard | Faction.DefenderCore
+                                                  | Faction.DefenderInstinct);
+            def.ConfigHash = def.ComputeConfigHash();
+            var m = Match(def);
+            var acquired = Listen(m, CoreEventKind.AggroAcquired);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var e = First(m, UnitKind.Enemy);
+
+            Tick(m, 3);
+            Assert.IsTrue(e.Aggro == null || e.Aggro.Target.IsNone,
+                "마음사냥꾼이 가디언에게 유인됐다 — 유닛을 노리지 않는 적은 도발·히트 어그로를 안 받는다");
+            Assert.AreEqual(0, acquired.Count);
+        }
+
+        // ── 적 공격 저작의 의미(2026-09-24 드리프트 감사) ────────────────────
+
+        private static float DefenderDamageTaken(MatchDefinition def, int ticks = 120)
+        {
+            var m = Match(def);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var d = First(m, UnitKind.Defender);
+            float before = d.Health;
+            Tick(m, ticks);
+            return before - d.Health;
+        }
+
+        [Test]
+        public void 비행_적은_지상을_걷는_아군을_멈춰_서서_때린다()
+        {
+            // 2026-09-24 드리프트 감사 M7 — 적의 공격·정지·감지는 통행 층을 거르지 않는다(옛
+            // `targetTraversalLayers` 0). 「자기 통행 층」(하늘)을 대상 층으로 읽으면 경로를
+            // 걷는 순찰병이 후보에서 빠지고, 정지 조건도 거짓이라 **옆에 두고 멈추지도 않는다.**
+            var def = Definition(defenderDamage: 0f, enemyDamage: 10f);
+            def.Enemies[0].TraversalLayers = LayerBits.Air;
+            def.Enemies[0].Attack.TargetLayers = 0;
+            def.ConfigHash = def.ComputeConfigHash();
+            var m = Match(def);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var d = First(m, UnitKind.Defender);
+            // 경로를 걷는 아군(순찰병)의 이동 상태 — 흐름장 슬롯이 있는 층(경로)을 준다.
+            d.Move = new MoveState { Speed = 0f, TraversalLayers = LayerBits.Path };
+            float before = d.Health;
+            Tick(m, 120);
+            Assert.Less(d.Health, before, "비행 적이 옆의 지상 순찰병을 안 때렸다");
+        }
+
+        [Test]
+        public void 걷기만_하는_적은_산출물이_있어도_때리지_않는다()
+        {
+            var def = Definition(defenderDamage: 0f, enemyDamage: 10f);
+            Assert.Greater(DefenderDamageTaken(def), 0f, "전제: 무장한 적은 옆의 방어유닛을 때린다");
+
+            def.Enemies[0].Attack.Unarmed = true;
+            def.ConfigHash = def.ComputeConfigHash();
+            Assert.AreEqual(0f, DefenderDamageTaken(def), 1e-4f);
+        }
+
+        [Test]
+        public void 직업_필터는_존재가_게이트다_마스크_0_은_아무도_못_때린다()
+        {
+            var def = Definition(defenderDamage: 0f, enemyDamage: 10f);
+            def.Units[0].Role = 3;
+            def.Enemies[0].Attack.ClassMask = 0;
+            def.Enemies[0].Attack.HasClassFilter = false;
+            def.ConfigHash = def.ComputeConfigHash();
+            Assert.Greater(DefenderDamageTaken(def), 0f, "필터가 없으면 직업을 묻지 않는다");
+
+            def.Enemies[0].Attack.HasClassFilter = true;
+            def.ConfigHash = def.ComputeConfigHash();
+            Assert.AreEqual(0f, DefenderDamageTaken(def), 1e-4f, "필터가 있고 마스크 0 = 아무도 못 때린다");
+
+            def.Enemies[0].Attack.ClassMask = 1 << 3;
+            def.ConfigHash = def.ComputeConfigHash();
+            Assert.Greater(DefenderDamageTaken(def), 0f, "허용 비트의 직업은 때린다");
         }
 
         // ── 헬퍼 ─────────────────────────────────────────────────────────────
@@ -656,11 +788,14 @@ namespace Wassup.Tests.EditMode.Core
             return n;
         }
 
-        private static int CountCc(BattleMatch m, CcRequestKind kind)
+        // unit 6a — 요청 줄은 **같은 틱에 소비된다**(`CombatPhase.FlushCc`). 그래서 이 헬퍼는
+        // 「줄에 몇 건이 남았나」가 아니라 **「그 슬롯이 실제로 걸렸나」**를 센다. 요청을 세던
+        // 시절의 단언은 소비자가 생긴 순간 전부 0 이 되고, 그 0 은 규칙을 증언하지 않는다.
+        private static int CountCc(BattleMatch m, CcSlotKind kind)
         {
             int n = 0;
-            var reqs = m.World.CcRequests;
-            for (int i = 0; i < reqs.Count; i++) if (reqs[i].Kind == kind) n++;
+            var units = m.World.Units;
+            for (int i = 0; i < units.Count; i++) if (units[i].Cc.IsActive(kind)) n++;
             return n;
         }
     }

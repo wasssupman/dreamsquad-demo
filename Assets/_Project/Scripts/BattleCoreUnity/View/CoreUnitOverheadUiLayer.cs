@@ -18,6 +18,14 @@ namespace Wassup.BattleCoreUnity.View
     //
     // ⚠ **부착 카드는 아직 없다.** 그 사건(부착)이 코어에 없어서(unit 7) 카드 줄은 옮기지
     // 않았다 — 빈 카드 슬롯을 먼저 만들면 「카드가 안 뜬다」를 사건이 아니라 UI 에서 찾게 된다.
+    //
+    // unit 6c 가 개통한 것 셋(5a 가 0/`null` 로 흘린 자리):
+    //   · **실드 비율** = 실드 합 / 최대 체력. 정규화(체력+실드 > 100% 압축)는 뷰(`UnitOverheadView`)가 한다.
+    //     진영 무관이다 — 옛 브리지는 적 분기에 리터럴 0 을 넘겨 적 실드가 안 그려졌다(boss-mamemo 정정).
+    //   · **스택 아이콘** — 피로(스택 슬롯마다 한 줄) · 열기(개체당 한 줄). 옛 매핑 그대로 이 둘만 아이콘화.
+    //   · **길막 게이지** — 설치물 저작 `overheadHeight` 가 0 보다 클 때만(0 = 바 없음, 옛 옵트인).
+    //     플레이어가 놓은 물건이라 방어유닛 스킨이다(옛 판단).
+    // 셋 다 **읽기 모델**을 매 프레임 읽는다(체력 바와 같은 규약) — 사건이 아니라 연속값이다.
     [DisallowMultipleComponent]
     public sealed class CoreUnitOverheadUiLayer : MonoBehaviour
     {
@@ -26,6 +34,14 @@ namespace Wassup.BattleCoreUnity.View
         [SerializeField] private UnitOverheadUiStyle _style;
         [SerializeField] private CharacterViewConfig _characterView;
         [SerializeField] private int _sortingOrder = 3;
+
+        [Tooltip("스택 아이콘 등록부의 주인(unit 6c). 비어 있으면 아이콘을 생략한다.")]
+        [SerializeField] private StatusFxConfig _statusFx;
+
+        [Tooltip("길막 게이지의 저작 높이를 묻는 풀(unit 6c). 비어 있으면 길막 바가 안 뜬다.")]
+        [SerializeField] private CoreHazardViewPool _hazards;
+
+        private readonly List<OverheadStackEntry> _stackScratch = new List<OverheadStackEntry>(2);
 
         private readonly Dictionary<int, UnitOverheadView> _active = new Dictionary<int, UnitOverheadView>();
         private readonly Queue<UnitOverheadView> _idle = new Queue<UnitOverheadView>();
@@ -64,6 +80,7 @@ namespace Wassup.BattleCoreUnity.View
                 if (u.Dead || u.MaxHealth <= 0f) continue;
                 // 거점 바는 골 안정도 게이지라 성격이 다르다 — 5b 의 HUD 몫이다.
                 if (u.Kind == UnitKind.Structure) continue;
+                if (u.Kind == UnitKind.BlockingHazard) { SetBlocker(cam, u); continue; }
                 if (!_units.TryGet(u.Id, out var view) || !view.TryGetScreenRect(cam, out var rect)) continue;
 
                 var anchor = view.transform;
@@ -71,22 +88,63 @@ namespace Wassup.BattleCoreUnity.View
                     cam.WorldToScreenPoint(anchor.position).x, rect);
                 SetUnit(u.Id, ((int)u.Faction & Wassup.Battle.Units.Factions.AnyDefender) != 0,
                         Mathf.Clamp01(u.Health / u.MaxHealth),
-                        screenAnchor, ProjectTileScreenWidth(cam, anchor));
+                        screenAnchor, ProjectTileScreenWidth(cam, anchor.position),
+                        ShieldRatioOf(u), GatherStacks(u));
             }
             EndFrame();
         }
 
-        private float ProjectTileScreenWidth(Camera cam, Transform anchor)
+        private float ProjectTileScreenWidth(Camera cam, Vector3 anchor)
         {
-            if (cam == null || anchor == null) return 1f;
+            if (cam == null) return 1f;
             Vector3 half = Vector3.right * (_driver.TileSize * 0.5f);
-            Vector3 a = cam.WorldToScreenPoint(anchor.position - half);
-            Vector3 b = cam.WorldToScreenPoint(anchor.position + half);
+            Vector3 a = cam.WorldToScreenPoint(anchor - half);
+            Vector3 b = cam.WorldToScreenPoint(anchor + half);
             return Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
         }
 
+        // 실드 합 / 최대 체력. 합은 슬롯을 더할 뿐이다(FIFO 소모 순서는 코어 규칙이고 여기엔 무관).
+        private static float ShieldRatioOf(Unit u)
+        {
+            if (u.MaxHealth <= 0f || !u.Shield.Any) return 0f;
+            float sum = 0f;
+            var slots = u.Shield.Slots;
+            for (int i = 0; i < slots.Count; i++) sum += slots[i].Value;
+            return sum / u.MaxHealth;
+        }
+
+        // 옛 `GatherOverheadStacks` 그대로 — 피로는 **스택 슬롯마다** 한 줄(출처가 둘이면 둘), 열기는 개체당 한 줄.
+        // 다른 종류(불·얼음·출혈)는 아이콘이 없다(옛 매핑이 피로만 아이콘화 — 나머지는 상태 표식이 말한다).
+        private List<OverheadStackEntry> GatherStacks(Unit u)
+        {
+            _stackScratch.Clear();
+            var slots = u.Stacks.Slots;
+            for (int i = 0; i < slots.Count; i++)
+                if (slots[i].Kind == Wassup.BattleCore.Effects.StackKind.Fatigue && slots[i].Count > 0)
+                    _stackScratch.Add(new OverheadStackEntry { kind = OverheadStackKind.Fatigue, count = slots[i].Count });
+            if (u.Stacks.Heat > 0)
+                _stackScratch.Add(new OverheadStackEntry { kind = OverheadStackKind.Heat, count = u.Stacks.Heat });
+            return _stackScratch;
+        }
+
+        // 길막 게이지. 높이는 **설치물 자신의 저작값**이다(1칸 배럴 ↔ 3×3 방벽 — 덩치가 다르다).
+        private void SetBlocker(Camera cam, Unit u)
+        {
+            if (_hazards == null) return;
+            var so = _hazards.BlockerAuthoringOf(u.Id);
+            if (so == null || so.overheadHeight <= 0f) return;   // 0 = 바 없음(옛 옵트인)
+            var baseView = (Vector3)Wassup.Core.BoardSpace.ToView(
+                new Unity.Mathematics.float3(u.Position.x, 0f, u.Position.z));
+            Vector3 baseScreen = cam.WorldToScreenPoint(baseView);
+            Vector3 topScreen = cam.WorldToScreenPoint(baseView + Vector3.up * so.overheadHeight);
+            SetUnit(u.Id, true, Mathf.Clamp01(u.Health / u.MaxHealth),
+                    new Vector2(baseScreen.x, topScreen.y), ProjectTileScreenWidth(cam, baseView),
+                    ShieldRatioOf(u), null);
+        }
+
         private void SetUnit(SimEntityId id, bool defender, float healthRatio,
-                             Vector2 screenAnchor, float tileScreenWidth)
+                             Vector2 screenAnchor, float tileScreenWidth,
+                             float shieldRatio, IReadOnlyList<OverheadStackEntry> stacks)
         {
             if (float.IsNaN(screenAnchor.x) || float.IsNaN(screenAnchor.y)) return;
             _seen.Add(id.Value);
@@ -103,7 +161,8 @@ namespace Wassup.BattleCoreUnity.View
             view.Show(local, tileScreenWidth / scale,
                       defender ? OverheadBarSkin.Defender : OverheadBarSkin.Enemy,
                       healthRatio, null, _style, _sprites, resetHealth,
-                      shieldRatio: 0f, stacks: null, stackIcons: null, barScale: 1f);
+                      shieldRatio: shieldRatio, stacks: stacks,
+                      stackIcons: _statusFx != null ? _statusFx.StackIcons : null, barScale: 1f);
         }
 
         private void EndFrame()

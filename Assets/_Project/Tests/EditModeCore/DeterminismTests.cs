@@ -88,6 +88,103 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(spawnedEnemies, slain, "전부 **피해로** 죽었다");
         }
 
+        // unit 6a — **쿨다운·스택이 여럿 걸린 판**의 결정론. 키 스냅샷 없이 도는 순회가
+        // 셋(모디파이어 슬롯·스택 슬롯·지속 피해 슬롯) 늘었고, 전부 리스트 삽입 순서에
+        // 기대고 있다. 그 주장을 주석이 아니라 실행으로 묻는다.
+        private static MatchDefinition EffectFixture(int seed)
+        {
+            var def = CoreGoldenCorpus.KillRaceFixture(seed);
+
+            // 방어유닛 — 피해 + 감속 + 불 스택. 한 공격이 세 종류를 한꺼번에 낸다.
+            def.Units[0].Attack.Outputs = new[]
+            {
+                new AttackOutputDef { Kind = AttackOutputKind.Damage, Magnitude = 12f },
+                new AttackOutputDef
+                {
+                    Kind = AttackOutputKind.ApplyStat,
+                    Stat = (int)Wassup.BattleCore.Effects.StatKind.MoveSpeedMul,
+                    Op = (int)Wassup.BattleCore.Effects.CombineOp.Multiplicative,
+                    Magnitude = 0.7f,
+                    Duration = 2f,
+                },
+                new AttackOutputDef
+                {
+                    Kind = AttackOutputKind.ApplyStack,
+                    StackKind = (int)Wassup.BattleCore.Effects.StackKind.Fire,
+                    Magnitude = 1f,
+                },
+            };
+            // 적 — 맞으면 방어유닛의 공속을 깎는다(양쪽에 슬롯이 생긴다).
+            def.Enemies[0].Attack.Outputs = new[]
+            {
+                new AttackOutputDef { Kind = AttackOutputKind.Damage, Magnitude = 5f },
+                new AttackOutputDef
+                {
+                    Kind = AttackOutputKind.ApplyStat,
+                    Stat = (int)Wassup.BattleCore.Effects.StatKind.AttackSpeedMul,
+                    Op = (int)Wassup.BattleCore.Effects.CombineOp.Multiplicative,
+                    Magnitude = 0.9f,
+                    Duration = 1.5f,
+                },
+            };
+            def.StackRules = new[]
+            {
+                new StackRuleDef
+                {
+                    Id = "determinism_fire",
+                    Kind = (int)Wassup.BattleCore.Effects.StackKind.Fire,
+                    MaxStack = 5,
+                    PerAppDuration = 3f,
+                    Thresholds = new[]
+                    {
+                        // ⚠ 임계를 3 으로 둔다 — 방어유닛마다 **자기 슬롯**이라(출처가 키다)
+                        // 5 를 쓰면 적이 먼저 죽어 임계가 한 번도 안 터지고, 그러면 이
+                        // 테스트가 파생 경로에 대해 아무것도 증언하지 않는다.
+                        new StackThresholdDef
+                        {
+                            AtStack = 3,
+                            Mode = StackThresholdMode.Consume,
+                            Derived = StackDerivedKind.ApplyDot,
+                            Magnitude = 10f,
+                            Duration = 4f,
+                            TickInterval = 1f,
+                        },
+                    },
+                },
+            };
+            def.ConfigHash = def.ComputeConfigHash();
+            return def;
+        }
+
+        [Test]
+        public void 효과가_잔뜩_걸린_판도_두_실행이_같다()
+        {
+            var sc = CoreGoldenCorpus.ByName("kill_race_basic");
+            var a = CoreHarness.Run(EffectFixture(3001), sc.BuildSchedule(), sc.Ticks, "effects");
+            var b = CoreHarness.Run(EffectFixture(3001), sc.BuildSchedule(), sc.Ticks, "effects");
+
+            Assert.IsNull(a.Trace.DiffAgainst(b.Trace), "효과가 걸린 판에서 트레이스가 갈렸다");
+            Assert.AreEqual(a.Trace.Serialize(), b.Trace.Serialize());
+            Assert.AreEqual(a.Trace.finalStateHash, b.Trace.finalStateHash,
+                "이벤트는 같은데 상태가 갈렸다면 슬롯 순회 순서를 의심한다");
+
+            int applied = 0, stacks = 0, thresholds = 0, cc = 0;
+            for (int i = 0; i < a.Trace.events.Count; i++)
+            {
+                switch (a.Trace.events[i].channel)
+                {
+                    case CoreTraceChannel.ModifierApplied: applied++; break;
+                    case CoreTraceChannel.StackChanged: stacks++; break;
+                    case CoreTraceChannel.StackThreshold: thresholds++; break;
+                    case CoreTraceChannel.CcApplied: cc++; break;
+                }
+            }
+            Assert.Greater(applied, 0, "모디파이어가 한 번도 안 걸렸으면 이 테스트는 아무것도 증언하지 않는다");
+            Assert.Greater(stacks, 0);
+            Assert.Greater(thresholds, 0, "임계가 안 터지면 파생 경로가 안 돌았다");
+            Assert.AreEqual(0, cc, "이 판에는 군중 제어 저작이 없다");
+        }
+
         [Test]
         public void 거절_receipt_도_두_실행이_같다()
         {

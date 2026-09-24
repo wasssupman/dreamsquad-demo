@@ -66,6 +66,12 @@ namespace Wassup.BattleCoreUnity.Input
         [Tooltip("배치 비행 프리젠터. 비어 있으면 착지는 즉시다(헤드리스와 같다).")]
         [SerializeField] private CoreDeployFlightPresenter _deployFlight;
 
+        [Header("드래그 실루엣")]
+        // 고스트 칸과 **같은 수명**이다(옛 계약 「실루엣 수명 = hover 수명」) — 그래서 고스트를
+        // 밀 때 같이 민다. 비어 있으면 고스트만 그린다.
+        [Tooltip("판 위에 끄는 유닛의 그림을 세우는 프리젠터. 비어 있으면 고스트 칸만 보인다.")]
+        [SerializeField] private CoreDragPreviewPresenter _dragPreview;
+
         private int _defIndex = -1;
         private bool _pressing;
         private bool _promoted;
@@ -126,6 +132,7 @@ namespace Wassup.BattleCoreUnity.Input
             _snap = default;
             if (_tray != null) _tray.DraggingDefIndex = -1;
             HideGhost();
+            if (_dragPreview != null) _dragPreview.End();
         }
 
         /// <summary>
@@ -199,6 +206,11 @@ namespace Wassup.BattleCoreUnity.Input
                 return;
             }
             _overlay.ShowPlacement(_armedDefIndex, anchor, valid);
+            // 실루엣은 **드래그로 승격된 뒤에만**(옛 `:1130` — 탭·호버 경로 무변 계약).
+            // `sticky` 가 곧 승격 여부다(`StepBoardGesture` 가 `_boardDragging` 을 넘긴다).
+            if (_dragPreview == null) return;
+            if (sticky) _dragPreview.Show(_armedDefIndex, anchor, armed: true);
+            else _dragPreview.Hide();
         }
 
         private void OnEnable()
@@ -265,7 +277,18 @@ namespace Wassup.BattleCoreUnity.Input
             // 버튼 위의 누름은 버튼의 것이다. 트레이 칸은 레이캐스트 대상이 아니라 여기 안 걸린다.
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
             if (!_tray.TryPickSlot(screen, null, out int defIndex)) return false;
+            BeginPress(defIndex, screen);
+            return true;
+        }
 
+        /// <summary>
+        /// 그 트레이 칸을 `screen` 에서 **눌렀다**(칸 판정은 끝났다). 포인터 제스처의 첫 단계이고,
+        /// 뒤는 `StepDrag`(누른 채 이동) · `Release`(뗌)다 — `ToggleArm`·`ReleaseArmedAt` 처럼
+        /// 제스처가 부르는 창구를 열어 둔 것은 테스트가 **포인터 장치 없이** 같은 경로를 타게
+        /// 하기 위해서다(가상 마우스는 에디터 포커스에 따라 이벤트가 안 흐른다).
+        /// </summary>
+        public void BeginPress(int defIndex, Vector2 screen)
+        {
             _defIndex = defIndex;
             _pressing = true;
             _promoted = false;
@@ -274,11 +297,11 @@ namespace Wassup.BattleCoreUnity.Input
             _cell = null;
             _snap = default;
             _anchorValid = false;
-            return true;
         }
 
         // ── 끌기 ─────────────────────────────────────────────────────────────
-        private void StepDrag(Vector2 screen)
+        /// <summary>누른 채 `screen` 으로 옮겼다(매 프레임). `BeginPress` 헤더 참조.</summary>
+        public void StepDrag(Vector2 screen)
         {
             _travelPx = Mathf.Max(_travelPx, Vector2.Distance(screen, _pressScreen));
             if (!_promoted)
@@ -307,6 +330,7 @@ namespace Wassup.BattleCoreUnity.Input
             _anchor = anchor;
             _anchorValid = true;
             if (_overlay != null) _overlay.ShowPlacement(_defIndex, anchor, valid);
+            if (_dragPreview != null) _dragPreview.Show(_defIndex, anchor, armed: false);
         }
 
         /// <summary>
@@ -384,7 +408,8 @@ namespace Wassup.BattleCoreUnity.Input
         }
 
         // ── 놓기 ─────────────────────────────────────────────────────────────
-        private void Release(Vector2 screen)
+        /// <summary>`screen` 에서 뗐다. `BeginPress` 헤더 참조.</summary>
+        public void Release(Vector2 screen)
         {
             bool promoted = _promoted;
             int defIndex = _defIndex;
@@ -446,11 +471,13 @@ namespace Wassup.BattleCoreUnity.Input
             _anchorValid = false;
             if (_tray != null) _tray.DraggingDefIndex = -1;
             HideGhost();
+            if (_dragPreview != null) _dragPreview.End();
         }
 
         private void HideGhost()
         {
             if (_overlay != null) _overlay.HidePlacement();
+            if (_dragPreview != null) _dragPreview.Hide();
         }
 
         private Camera EnsureCamera()
