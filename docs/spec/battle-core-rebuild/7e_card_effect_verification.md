@@ -56,7 +56,7 @@
 - [ ] **③ 메뉴** Play 중 실행 → 콘솔 표 52행 · 사용자 판 무변(틱·개체 수 전후 동일 단언은 PlayMode 스모크 1건).
 - [x] **④ 부족분** 목록과 테스트(있으면). 없으면 「없음」과 근거.
 - [x] 코어 변경은 `EffectWitness`·`CardProbe`(둘 다 판정·상태를 갖지 않는 순수 도구) 외 0. `Unity.Entities` 0 · 매니저 0.
-- [x] 헤드리스 export 3종 초록 · Unity EditMode 코어+Assets · PlayMode 코어 초록 · 골든 무변 · `check_ledgers.py` exit 0(미정 0 유지).
+- [ ] 헤드리스 export 3종 초록 · Unity EditMode 코어+Assets · PlayMode 코어 초록 · 골든 무변 · `check_ledgers.py` exit 0(미정 0 유지). — PlayMode 코어만 미충족(선행 빨강 4, 구현 기록)
 - [ ] `core-reviewer` APPROVE.
 - [x] README 작업 표에 7e 행 · 상태 라인에 「카드 52장 자동 증언」 · `docs/reference/test-procedure.md` 에 Assets lane 의 이 두 테스트와 스냅샷 갱신 절차 한 줄.
 
