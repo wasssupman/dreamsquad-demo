@@ -254,9 +254,27 @@ namespace Wassup.BattleCore
         /// </summary>
         public readonly int DefIndex;
 
+        // ── unit 6c — 착탄의 광역 페이로드(`ProjectileHit` 전용, 그 외 사건은 0/기본값) ──
+        //
+        // 옛 `ProjectileHitEvent` 는 페이로드 종류와 광역 반경을 **값으로** 실어 뷰가 광역 폭발을
+        // 라우팅했다. 새 사건에 그 둘이 없으면 뷰가 탄 개체를 되물어야 하는데, 착탄 뒤 그 탄은
+        // 곧 소멸한다 — 계약 7 이 막는 되묻기가 정확히 그 모양이다. 그래서 **발화 시점 스냅샷**으로
+        // 싣는다. 트레이스에는 안 실린다(채널 여섯 칸이 포맷이다) — 골든 무변.
+
+        /// <summary>
+        /// 이 착탄의 **광역 반경(칸)** — 제약 13 산식의 「범위」 항. `TileAoe` 만 값이 있고 나머지는 0.
+        /// 원점 항은 여기 더하지 않는다 — 그것은 `SiteFired.OriginBody` 가 따로 나른다
+        /// (0 = 자리형 → 칸 반폭, &gt; 0 = 몸형 → 그 반경).
+        /// </summary>
+        public readonly int AreaTiles;
+
+        /// <summary>이 착탄의 페이로드 종류(`ProjectileHit` 전용). 뷰가 광역 폭발을 고르는 손잡이다.</summary>
+        public readonly Combat.Projectile.PayloadKind Payload;
+
         private CoreEvent(CoreEventKind kind, int tick, SimEntityId a, SimEntityId b,
                           Site siteFired, Site siteTarget, Faction faction, int arg, float amount,
-                          int defIndex = -1)
+                          int defIndex = -1, int areaTiles = 0,
+                          Combat.Projectile.PayloadKind payload = default)
         {
             Kind = kind;
             Tick = tick;
@@ -268,6 +286,8 @@ namespace Wassup.BattleCore
             Arg = arg;
             Amount = amount;
             DefIndex = defIndex;
+            AreaTiles = areaTiles;
+            Payload = payload;
         }
 
         public static CoreEvent MatchStartedAt(int tick)
@@ -372,13 +392,18 @@ namespace Wassup.BattleCore
                              Site.Nowhere,
                              p.OwnerFaction, (int)p.Payload, p.Elapsed);
 
+        // unit 6c — 광역 반경·페이로드 종류·탄 정의 줄을 **값으로** 싣는다(위 필드 주석).
+        // 광역 반경은 `TileAoe` 의 `ImpactTileRange` 뿐이다 — 옛 사건도 그 페이로드만 광역으로
+        // 라우팅했고, 비산(`SingleSplash`)은 한 번의 착탄 그림이었다(옛 이벤트 주석 그대로).
         public static CoreEvent ProjectileHit(int tick, Combat.Projectile.Projectile p,
                                               SimEntityId victim, int hitCount)
             => new CoreEvent(CoreEventKind.ProjectileHit, tick,
                              p.Id, victim,
                              new Site(p.Position, p.OriginBodyRadius),
                              Site.Nowhere,
-                             p.OwnerFaction, hitCount, p.Damage);
+                             p.OwnerFaction, hitCount, p.Damage, p.DefIndex,
+                             p.Payload == Combat.Projectile.PayloadKind.TileAoe ? p.ImpactTileRange : 0,
+                             p.Payload);
 
         /// <summary>
         /// 피해 적용. **체력 비율은 그 틱의 최종값**이다(C7) — 뷰가 계산하면 같은 틱의

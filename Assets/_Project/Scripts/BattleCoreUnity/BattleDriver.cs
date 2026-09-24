@@ -56,6 +56,14 @@ namespace Wassup.BattleCoreUnity
         [Tooltip("탄 부여 상한(한 발이 얼마까지 나르나). 줄이 없는 키의 부여는 관문이 거절한다.")]
         [SerializeField] private ImbueCapConfig _imbueCaps;
 
+        [Tooltip("이 판에 깔릴 수 있는 존 장판 SO. 배열 순서 = 정의표 줄 번호. **까는 자는 unit 7** 이라 "
+                 + "오늘 라이브에서는 디버그 메뉴만 깐다(unit 6c). 비우면 장판 0.")]
+        [SerializeField] private HazardSO[] _hazards = Array.Empty<HazardSO>();
+
+        [Tooltip("탄이 참조하지 않는 길막 SO(디버그·unit 7 생산자 전용). 탄이 참조하는 것은 탄 표에서 자동으로 모인다.")]
+        [SerializeField] private Wassup.Battle.Effects.BlockingHazardSO[] _extraBlockers
+            = Array.Empty<Wassup.Battle.Effects.BlockingHazardSO>();
+
         [Tooltip("재현의 두 축 중 하나(나머지는 modeId). 같은 값이면 같은 판이다.")]
         [SerializeField] private int _seed = 1;
 
@@ -249,6 +257,8 @@ namespace Wassup.BattleCoreUnity
                 // 테마가 없으면(시즌 미바인딩 진입) 효과 타일 0 — 조용히 기본값을 지어내지 않는다.
                 board: new BoardEffectAuthoring
                 {
+                    Hazards = _hazards,
+                    ExtraBlockers = _extraBlockers,
                     Theme = Wassup.Data.Season.SeasonRuntime.Active != null
                         ? Wassup.Data.Season.SeasonRuntime.Active.mapTheme : null,
                     SuppressEffectTiles = _stageInstance != null && _stageInstance.suppressEffectTiles,

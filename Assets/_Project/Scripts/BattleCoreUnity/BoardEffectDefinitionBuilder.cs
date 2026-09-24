@@ -41,8 +41,16 @@ namespace Wassup.BattleCoreUnity
         public static void Fill(MatchDefinition def, MatchViewAssets assets, in BoardEffectAuthoring board)
         {
             def.Hazards = ToHazardDefs(board.Hazards);
+            // unit 6c — 줄 번호를 매긴 **같은 순회**가 뷰의 되찾기 표도 채운다(`MatchViewAssets` 규율).
+            // 뷰 쪽에서 다시 모으면 두 벌이 갈려 장판·길막이 엉뚱한 프리팹으로 선다.
+            var blockerAssets = assets != null ? new List<BlockingHazardSO>(4) : null;
             def.BlockingHazards = ToBlockingHazardDefs(assets != null ? assets.Projectiles : null,
-                                                       board.ExtraBlockers, def.Projectiles);
+                                                       board.ExtraBlockers, def.Projectiles, blockerAssets);
+            if (assets != null)
+            {
+                assets.SetHazards(board.Hazards);
+                assets.SetBlockers(blockerAssets);
+            }
             FillEffectTiles(def, board.Theme, board.SuppressEffectTiles);
         }
 
@@ -143,7 +151,8 @@ namespace Wassup.BattleCoreUnity
         /// </summary>
         public static BlockingHazardDef[] ToBlockingHazardDefs(IReadOnlyList<ProjectileData> projectiles,
                                                                BlockingHazardSO[] extra,
-                                                               ProjectileDef[] projectileRows)
+                                                               ProjectileDef[] projectileRows,
+                                                               List<BlockingHazardSO> assetsOut = null)
         {
             var rows = new List<BlockingHazardDef>(4);
             if (projectiles != null)
@@ -154,10 +163,15 @@ namespace Wassup.BattleCoreUnity
                     var row = ToBlockingHazardDef(blocker, projectileRows);
                     row.SpawnedByProjectile = i;
                     rows.Add(row);
+                    assetsOut?.Add(blocker);
                 }
             if (extra != null)
                 for (int i = 0; i < extra.Length; i++)
-                    if (extra[i] != null) rows.Add(ToBlockingHazardDef(extra[i], projectileRows));
+                    if (extra[i] != null)
+                    {
+                        rows.Add(ToBlockingHazardDef(extra[i], projectileRows));
+                        assetsOut?.Add(extra[i]);
+                    }
             return rows.Count == 0 ? System.Array.Empty<BlockingHazardDef>() : rows.ToArray();
         }
 

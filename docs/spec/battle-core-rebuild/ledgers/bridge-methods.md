@@ -181,11 +181,11 @@
 | 79 | `ResolveBattleSimGroup/0` | 삭제 | ECS 시스템 그룹이 없다 — 순서는 `TickPipeline` 나열이다 |
 | 80 | `LateUpdate/0` | 뷰 풀(각자) | 뷰 동기는 풀마다 자기 `LateUpdate` 다(계약 12 — 통합 뷰 없음) |
 | 81 | `SyncProjectileViews/0` | 뷰 풀 |  |
-| 82 | `ReconcileStatusFx/0` | 미정 |  |
-| 83 | `ReconcilePickupViews/0` | GimmickHost |  |
-| 84 | `ClearPickupVisuals/0` | GimmickHost |  |
-| 85 | `ReconcileResignationViews/0` | GimmickHost |  |
-| 86 | `ClearResignationVisuals/0` | GimmickHost |  |
+| 82 | `ReconcileStatusFx/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) | 6c — `CoreStatusFxSpawner`(군중 제어·지속 피해·번아웃·라스트런) + `CoreDcAuraVisualPool`(강화 오라). 매 프레임 월드 폴링 → 걸림/풀림/숙주 소멸 사건 |
+| 83 | `ReconcilePickupViews/0` | 뷰 풀 | 6c 주인 정정 — `CorePickupViewPool`(`PickupSpawned`/`PickupTaken`/`PickupExpired`). 셈판은 `GimmickHost`, 그림은 풀이다 |
+| 84 | `ClearPickupVisuals/0` | 뷰 풀 | 6c — `CorePickupViewPool.Clear`(판 경계 `MatchStarted`) |
+| 85 | `ReconcileResignationViews/0` | 뷰 풀 | 6c 주인 정정 — `CoreResignationViewPool`(`ResignationDropped`/`ResignationConsumed`) |
+| 86 | `ClearResignationVisuals/0` | 뷰 풀 | 6c — `CoreResignationViewPool.Clear` |
 | 87 | `PushBattleTimeScaleToEcs/0` | 삭제 | 코어는 배율을 모른다 — 느려지는 것은 **틱 발행률**이다(계약 5) |
 | 88 | `SyncMonoUnitViews/0` | 뷰 풀 |  |
 | 89 | `SyncPatrolViews/3` | 뷰 풀 |  |
@@ -209,13 +209,13 @@
 | 107 | `DrainKnockupVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 108 | `DrainShieldBreakEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 109 | `FactionOfEntity/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 110 | `HostBodyRadiusOf/1` | 미정 |  |
+| 110 | `HostBodyRadiusOf/1` | 삭제 (사건이 몸을 값으로 나른다) | 6c — 숙주 몸 반경은 사건의 `SiteFired.OriginBody` 스냅샷이다(제약 13 · 계약 7). 뷰는 `CoreDrawRadius` 로 짝을 합칠 뿐 다시 되묻지 않는다 |
 | 111 | `DrainUnitAttackVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) | 이 드레인 안의 공격 SFX 는 `CoreBattleAudio`(`AttackResolved`) — 구독자가 둘이다 |
 | 112 | `TickPendingHitVfx/1` | 뷰 풀 |  |
 | 113 | `DotAuraKind/1` | DotSlot.Element (뷰 = 6c) | 오라가 읽는 축은 **원소**다(출처가 아니다) — `DotSet` 이 그 값을 슬롯에 들고 있다 |
 | 114 | `FindDefenderData/1` | BattleDriver.DefenderAssets | 엔티티→SO 조회가 **줄 번호 되찾기**로 바뀌었다. 사건이 `DefIndex` 를 값으로 나른다(5a·5c) |
 | 115 | `DrainAttackOutputLogEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
-| 116 | `TrySpawnCastVfx/2` | BindingRegistry / TriggerDispatcher |  |
+| 116 | `TrySpawnCastVfx/2` | 뷰 풀 | 6c 주인 정정 — `CoreVfxSpawner`(`ProjectileSpawned` → 탄 저작 `castPrefab`). 규칙이 아니라 총구 그림이다 |
 | 117 | `PushStagePostVolume/0` | 5b(스테이지 뷰) | 스테이지 포스트 볼륨은 카메라 쪽 배선이다 |
 | 118 | `EnsureCameraDirector/0` | 5b(카메라) | `CameraDirector` 는 재사용한다 — 배선 지점만 옮긴다 |
 | 119 | `ImpactSocketHeightOf/1` | CoreUnitViewPool | 뷰 앵커 조회. 5a 는 소비처가 없어 열지 않았다(이식 제외) |
@@ -347,7 +347,7 @@
 | 245 | `FlashPlacementReject/1` | PlacementService |  |
 | 246 | `PlayDeploymentPresentation/3` | CoreUnitViewPool (`DefenderActivated` → PlayDeploy) | 모션만 옮겼다. 컷신 프레임은 저작 자산이고 그 소비처는 unit 6 의 VFX 풀 |
 | 247 | `PlayFallbackDeploymentPulse/3` | unit 6 VFX 풀 | 배치 펄스는 VFX 사건이 열리는 unit 6 의 것이다 |
-| 248 | `PlayDeploymentRingPulse/2` | unit 6 VFX 풀 | 같은 이유 |
+| 248 | `PlayDeploymentRingPulse/2` | 뷰 풀 | 6c — `CoreVfxSpawner`(`Placed` → 착지 = 비행 키 소멸 프레임) |
 | 249 | `CreateDefenderEntity/3` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 250 | `CreatePatrolEntity/5` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 251 | `TryGetPatrolHomeCell/4` | MapRuntime (코어) |  |
@@ -358,7 +358,7 @@
 | 256 | `AddEffectTile/2` | PlacementService | unit 6b 정정 — 칸 목록의 주인은 **뽑는 자**다(`Begin` 이 칸·종류를 함께 뽑고 판 내내 불변). 맵은 그 칸을 모른다 |
 | 257 | `ApplyEffectTileIfAny/2` | PlacementService | unit 6b 정정 — `ApplyArmedTile`(활성화 엣지 · 저작 연산자 그대로 · 칸 `SlotKind.Tile`) |
 | 258 | `ApplyEffectTileOnce/2` | PlacementService | unit 6b 정정 — **개체당** 1회: `ArmTileFor`(앵커 칸 하나 · 칸 소비 없음) → 활성화 엣지 `ApplyArmedTile`, 회수는 `RevokeTile`(퇴근 · F33). 배치 스킬 표식과 비공유(F19) |
-| 259 | `FireOnPlaceCameraShake/1` | CameraDirector.Shake | 호출부는 unit 6(배치 VFX) — 세기는 유닛 저작값이라 5b 가 지어낼 수 없다 |
+| 259 | `FireOnPlaceCameraShake/1` | CameraDirector.Shake | 호출부 = `CoreVfxSpawner`(`DefenderActivated`, 6c). 세기·길이 = `DefenderUnitData.onPlaceShake*` |
 | 260 | `MarkJustDeployedForRules/1` | `DefenderActivated` 사건 | 표식 컴포넌트를 남기지 않는다 — 남으면 다음 배치 사건과 섞인다(E6) |
 | 261 | `DebugSpawnObstacleAt/2` | 디버그/로그 (도구 처분표) |  |
 | 262 | `SpawnHazardWithVisual/3` | 뷰 풀 |  |

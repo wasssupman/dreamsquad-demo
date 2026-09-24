@@ -15,6 +15,7 @@ namespace Wassup.Tests.PlayMode.Core
     //   ① 콘솔 에러 0
     //   ② 판이 **끝까지** 돈다(3분 판이 종료 사유를 달고 끝난다)
     //   ③ **매 초** 뷰 수 = 코어 유닛 수 — 「소멸 사건을 안 낸 경로」가 있으면 여기서 갈린다
+    //      (unit 6c: 장판·길막·픽업·사직서 풀도 같은 식으로)
     //   ④ 스테이지 저작 거점 수 = 월드의 거점 유닛 수
     //
     // 3분을 실시간으로 기다리지 않는다. 발행률을 올려 **틱을 몰아 준다** — 코어의 `dt` 는
@@ -36,6 +37,13 @@ namespace Wassup.Tests.PlayMode.Core
 
             var pool = Object.FindAnyObjectByType<CoreUnitViewPool>();
             Assert.IsNotNull(pool, "씬에 CoreUnitViewPool 이 있어야 한다");
+            // unit 6c — 바닥에 놓이는 것의 풀 셋. 「뷰 수 = 코어 개체 수」를 이 셋에도 건다.
+            var hazards = Object.FindAnyObjectByType<CoreHazardViewPool>();
+            var pickups = Object.FindAnyObjectByType<CorePickupViewPool>();
+            var resignations = Object.FindAnyObjectByType<CoreResignationViewPool>();
+            Assert.IsNotNull(hazards, "씬에 CoreHazardViewPool 이 있어야 한다");
+            Assert.IsNotNull(pickups, "씬에 CorePickupViewPool 이 있어야 한다");
+            Assert.IsNotNull(resignations, "씬에 CoreResignationViewPool 이 있어야 한다");
 
             // ④ 저작 거점 = 월드 거점. 방어 마음은 골(`Goals`)이 정본이라 이 축에서 빠진다 —
             //    세우는 자가 다르므로(마음은 `HeartMeter`) 같은 수로 세면 항상 어긋난다.
@@ -66,6 +74,7 @@ namespace Wassup.Tests.PlayMode.Core
                     if (Time.unscaledTime < nextCheck) continue;
                     nextCheck = Time.unscaledTime + 1f;
                     AssertViewCount(driver, pool);
+                    AssertBoardViewCounts(driver, hazards, pickups, resignations);
                 }
 
                 Assert.IsTrue(driver.Match.Clock.Ended,
@@ -89,11 +98,28 @@ namespace Wassup.Tests.PlayMode.Core
             int live = 0;
             var units = driver.Units;
             for (int i = 0; i < units.Count; i++)
-                if (units[i].Kind != UnitKind.Structure) live++;
+                // 길막은 **해저드 풀**의 것이다(unit 6c) — 여기서 세면 두 풀이 같은 개체를 센다.
+                if (units[i].Kind != UnitKind.Structure && units[i].Kind != UnitKind.BlockingHazard) live++;
 
             Assert.AreEqual(live, pool.ViewCount,
-                $"틱 {driver.Match.Clock.Tick}: 뷰 수 = 코어 유닛 수(거점 제외). "
+                $"틱 {driver.Match.Clock.Tick}: 뷰 수 = 코어 유닛 수(거점·길막 제외). "
                 + "어긋나면 소멸 사건을 안 낸 경로가 있다(계약 7)");
+        }
+
+        // unit 6c — 장판·길막·픽업·사직서. 라이브 판에서는 놓는 자가 unit 7 이라 대개 0 = 0 이지만,
+        // 그 0 이 「뷰가 없어서」가 아니라 「개체가 없어서」인지를 같은 식이 증언한다.
+        private static void AssertBoardViewCounts(BattleDriver driver, CoreHazardViewPool hazards,
+                                                  CorePickupViewPool pickups, CoreResignationViewPool resignations)
+        {
+            var world = driver.Match.World;
+            int blockers = 0;
+            for (int i = 0; i < world.Units.Count; i++)
+                if (world.Units[i].Kind == UnitKind.BlockingHazard) blockers++;
+            int tick = driver.Match.Clock.Tick;
+            Assert.AreEqual(world.Hazards.Count, hazards.ZoneViewCount, $"틱 {tick}: 장판 뷰 수 = 코어 장판 수");
+            Assert.AreEqual(blockers, hazards.BlockerViewCount, $"틱 {tick}: 길막 뷰 수 = 코어 길막 수");
+            Assert.AreEqual(world.Pickups.Count, pickups.ViewCount, $"틱 {tick}: 픽업 뷰 수 = 코어 픽업 수");
+            Assert.AreEqual(world.Resignations.Count, resignations.ViewCount, $"틱 {tick}: 사직서 뷰 수 = 코어 사직서 수");
         }
 
         private static int CountStructures(BattleDriver driver, bool excludeDefenderCore)

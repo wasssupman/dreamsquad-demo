@@ -142,6 +142,9 @@ namespace Wassup.BattleCoreUnity.View
             var kind = (UnitKind)e.Arg;
             // 거점은 이 풀의 것이 아니다 — 프랍은 **맵 수명**이라 `CoreStructurePropLayer` 가 든다.
             if (kind == UnitKind.Structure) return;
+            // unit 6c — 길막 설치물은 **바닥에 놓인 물건**이라 `CoreHazardViewPool` 이 든다.
+            // 여기서 받으면 그 줄 번호(`BlockingHazards`)를 유닛 표로 읽어 엉뚱한 스켈레톤이 선다.
+            if (kind == UnitKind.BlockingHazard) return;
             if (_byId.ContainsKey(e.A.Value) || _quadById.ContainsKey(e.A.Value)) return;
 
             var visual = ResolveVisual(kind, e.Faction, e.DefIndex);
@@ -225,6 +228,32 @@ namespace Wassup.BattleCoreUnity.View
             return false;
         }
 
+        /// <summary>
+        /// unit 6c — 그 유닛의 **지금 화면 자리**(view 공간). 빔·총구·표식이 같은 질문을 하므로
+        /// 한 곳에서 답한다. `useAnchor` = 캐스트 앵커(손·총구) 우선. 스파인·스프라이트 → 쿼드 폴백
+        /// → 읽기 모델 순이다 — 뷰 풀에 없는 유닛이 끝점이면 빔이 통째로 죽는다(옛 브리지의 함정).
+        /// </summary>
+        public bool TryResolveViewPosition(SimEntityId id, bool useAnchor, out Vector3 pos)
+        {
+            if (TryGet(id, out var view))
+            {
+                pos = useAnchor ? view.ResolveCastAnchor() : view.transform.position;
+                return true;
+            }
+            if (TryGetQuad(id, out var quad))
+            {
+                pos = quad.transform.position;
+                return true;
+            }
+            if (_driver != null && _driver.TryGetRenderPosition(id, out var sim))
+            {
+                pos = (Vector3)Wassup.Core.BoardSpace.ToView(sim);
+                return true;
+            }
+            pos = default;
+            return false;
+        }
+
         public void Despawn(SimEntityId id)
         {
             if (_byId.TryGetValue(id.Value, out var view))
@@ -264,7 +293,7 @@ namespace Wassup.BattleCoreUnity.View
             for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
-                if (u.Kind == UnitKind.Structure) continue;
+                if (u.Kind == UnitKind.Structure || u.Kind == UnitKind.BlockingHazard) continue;
 
                 // 뷰 위치를 덮어쓰는 축은 **닫혀 있다 — 둘뿐**이다(도약 · 배치 비행). 둘은
                 // 좌표계가 달라 한 질문으로 접히지 않는다: 도약은 sim 좌표 + view 높이라

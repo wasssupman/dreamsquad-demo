@@ -140,8 +140,8 @@ namespace Wassup.BattleCoreUnity.Hud
             var row = _rows[index];
             row.Value.text = valueText;
 
-            // **변화가 없으면 칩을 그리지 않는다.** 항상 ▲0 을 띄우면 노이즈이고, 지금은
-            // 모디파이어 생산자가 없어(unit 6) 언제나 0 이다 — 그 축이 열리면 여기가 그대로 산다.
+            // **변화가 없으면 칩을 그리지 않는다.** 항상 ▲0 을 띄우면 노이즈다. unit 6c 부터
+            // `ReadoutOf` 가 실효 값을 싣는다 — 버프·디버프가 걸리면 여기서 칩이 선다.
             int sign = UnitStatMath.ResolveDelta(baseValue, effValue,
                                                  UnitStatMath.DefaultDeltaEpsilon, out float magnitude);
             if (sign == 0) { row.Chip.enabled = false; return; }
@@ -202,9 +202,17 @@ namespace Wassup.BattleCoreUnity.Hud
         // ── 읽기 모델 ────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 코어의 개체 + 정의표 → 화면이 읽는 값. **실효 = 정의표 × 살아 있는 모디파이어**인데
-        /// 지금은 그 생산자가 없어(unit 6) 기본값과 같다 — 그래서 델타 칩이 안 그려진다.
-        /// 그 축이 열리면 이 함수만 바뀐다.
+        /// 코어의 개체 + 정의표 → 화면이 읽는 값. **실효 = 정의표 × 살아 있는 모디파이어**다(unit 6c 개통 —
+        /// 5b 는 생산자가 없어 기본값과 같았다).
+        ///
+        /// ⚠ **재곱 금지.** 최대 체력은 `unit.MaxHealth` 를 **그대로** 읽는다 — 최대체력 배율이 이미
+        /// 반영돼 있다(6a 구현 14 · `MaxHealthScale`). 여기서 `MaxHealthMul` 을 한 번 더 곱하면 칩이
+        /// 두 배로 거짓말한다.
+        /// ⚠ **조건부 배율은 뺀다** — 「군중 제어에 걸린 적에게」(`DamageVsCcMul`) · 최전방 · 바운스 감쇠는
+        /// 대상·시점에 달린 값이라, 한 숫자로 접으면 거짓 표시가 된다. 그래서 공격력은 무조건 배율
+        /// `DamageMul` 만, 공격 속도는 `AttackSpeedMul` 만 곱한다(선딜 바닥은 보이지 않는다 — 초당 횟수는
+        /// 간격 기준이다, 옛 규약).
+        /// 배율 결합은 코어가 이미 했다(`ModifierSet.Effective`) — 여기는 **읽고 곱할 뿐**이다.
         /// </summary>
         public static UnitStatReadout ReadoutOf(Unit unit, in UnitDef def)
         {
@@ -217,14 +225,17 @@ namespace Wassup.BattleCoreUnity.Hud
             // 큰 숫자 = 빠름이 직관적이라 쿨다운 초가 아니라 초당 발사 횟수로 낸다(옛 규약).
             float rate = def.AttackCooldown > 0f ? 1f / def.AttackCooldown : 0f;
 
+            var eff = unit != null ? unit.Modifiers.Effective : Wassup.BattleCore.Effects.EffectiveStats.Identity;
+            float speed = eff.AttackSpeedMul > 0f ? eff.AttackSpeedMul : 1f;   // 코어 `IntervalMul` 과 같은 접기
+
             return new UnitStatReadout
             {
                 hp = unit != null ? unit.Health : 0f,
-                hpMax = def.Health,
+                hpMax = unit != null && unit.MaxHealth > 0f ? unit.MaxHealth : def.Health,
                 hpMaxBase = def.Health,
-                damage = damage,
+                damage = damage * eff.DamageMul,
                 damageBase = damage,
-                attackRate = rate,
+                attackRate = rate * speed,
                 attackRateBase = rate,
             };
         }
