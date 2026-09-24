@@ -113,6 +113,118 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsEmpty(CoreSceneFixture.Errors, string.Join("\n", CoreSceneFixture.Errors));
         }
 
+        // 6c 후속 2 — **마크 후보 자격 = 옛 규칙**(`BattleBridge.cs:8141-8158`). 5b 가 「적 진영 + 생존」으로 좁혀
+        // 옮겨, 지상 전용 근접을 끌 때 **때릴 수 없는 비행 적**에 「이놈이 맞는다」가 켜졌고 가이드도 그쪽을 봤다.
+        // 비행 적을 **더 가깝게**, 지상 적을 더 멀게 세운다 — 필터가 없으면 최근접이 비행 적이라 빨갛다.
+        [UnityTest]
+        public IEnumerator 지상_전용_말파이트를_끌면_비행_적에_마크가_안_켜지고_가이드도_그쪽을_안_본다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return CoreSceneFixture.LoadAndBoot(d => driver = d);
+            Assert.IsNotNull(driver, "BattleCoreScene 에 BattleDriver 가 없다");
+            driver.Apply(Command.FinishPlacement());
+            driver.Pause(true);
+            var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
+            Assert.IsNotNull(overlay);
+            Assert.IsNotNull(overlay.TileSet, "오버레이에 타일셋이 없다 — 마크 색의 출처가 없다");
+
+            var def = driver.Definition;
+            int shaped = -1;
+            for (int i = 0; i < def.Units.Length && shaped < 0; i++)
+                if (def.Units[i].Attack.ShapeKind == AttackShapeBaked.SectorKind && def.Units[i].AttackRange > 0f)
+                    shaped = i;
+            Assert.GreaterOrEqual(shaped, 0, "로스터에 부채꼴 유닛(말파이트)이 없다");
+            var su = def.Units[shaped];
+
+            int air = -1, ground = -1;
+            for (int i = 0; i < def.Enemies.Length; i++)
+            {
+                bool flies = (def.Enemies[i].TraversalLayers & Wassup.BattleCore.Map.LayerBits.Air) != 0;
+                if (flies && air < 0) air = i;
+                if (!flies && def.Enemies[i].TraversalLayers != 0 && ground < 0) ground = i;
+            }
+            Assert.GreaterOrEqual(air, 0, "적 정의표에 비행 적이 없다 — 증언할 수 없다");
+            Assert.GreaterOrEqual(ground, 0, "적 정의표에 지상 적이 없다");
+            Assert.IsFalse(Wassup.BattleCore.Map.LayerBits.CanTarget((byte)su.Attack.TargetLayers,
+                                                                     (byte)def.Enemies[air].TraversalLayers),
+                "이 부채꼴 유닛은 비행 적을 때릴 수 있다 — 전제(지상 전용)가 깨졌다");
+            Assert.IsTrue(Wassup.BattleCore.Map.LayerBits.CanTarget((byte)su.Attack.TargetLayers,
+                                                                    (byte)def.Enemies[ground].TraversalLayers),
+                "이 부채꼴 유닛이 지상 적도 못 때린다 — 대조군이 없다");
+
+            // 판 가운데 앵커. 비행 적 = 발밑 옆 2칸(가깝다) · 지상 적 = 발밑 위 3칸(멀다). 둘 다 사거리 안이어야 한다.
+            var size = driver.GridSize;
+            var anchor = new int2(size.x / 2 - 1, size.y / 2 - 1);
+            Assert.IsTrue(driver.Apply(Command.DebugSpawnEnemy(air, new int2(anchor.x + 2, anchor.y))).Accepted, "비행 적 스폰 거절");
+            Unit flyer = LatestEnemy(driver);
+            Assert.IsTrue(driver.Apply(Command.DebugSpawnEnemy(ground, new int2(anchor.x, anchor.y + 3))).Accepted, "지상 적 스폰 거절");
+            Unit walker = LatestEnemy(driver);
+            Assert.AreNotSame(flyer, walker);
+            yield return null;
+
+            float ts = driver.TileSize;
+            int w = math.max(1, su.FootprintWidth);
+            var foot = new float3((anchor.x + (w - 1) * 0.5f) * ts, 0f, anchor.y * ts);
+            Assert.IsTrue(AttackReach.InReach(foot, flyer.Position, su.AttackRange, ts, su.BodyRadiusTiles, flyer.HitRadius),
+                "비행 적이 기하상 사거리 밖이다 — 이 배치로는 필터를 증언할 수 없다");
+            Assert.IsTrue(AttackReach.InReach(foot, walker.Position, su.AttackRange, ts, su.BodyRadiusTiles, walker.HitRadius),
+                "지상 적이 사거리 밖이다");
+
+            overlay.ShowPlacement(shaped, anchor, true);
+            yield return null;
+            yield return null;
+
+            Vector3 flyerView = BoardSpace.ToView(flyer.Position);
+            Vector3 walkerView = BoardSpace.ToView(walker.Position);
+            bool flyerMarked = false, walkerMarked = false;
+            for (int i = 0; i < overlay.ActiveMarkCount; i++)
+            {
+                Assert.IsTrue(overlay.TryGetMark(i, out var p, out var c));
+                if (PlanarDistance(p, flyerView) < 0.05f) flyerMarked = true;
+                if (PlanarDistance(p, walkerView) < 0.05f) walkerMarked = true;
+                var want = overlay.TileSet.rangeTargetMarkColor;
+                Assert.AreEqual(want.r, c.r, 1e-4f, "마크 색이 TileSetData.rangeTargetMarkColor 에서 나오지 않았다");
+                Assert.AreEqual(want.g, c.g, 1e-4f);
+                Assert.AreEqual(want.b, c.b, 1e-4f);
+                Assert.AreEqual(want.a, c.a, 1e-4f);
+            }
+            Assert.IsFalse(flyerMarked, "지상 전용 유닛인데 비행 적에 「이놈이 맞는다」가 켜졌다");
+            Assert.IsTrue(walkerMarked, "때릴 수 있는 지상 적에 마크가 없다");
+
+            Assert.IsTrue(overlay.TryGetShapeGuide(out _, out var origin, out var dirView), "가이드가 없다");
+            var toWalker = walkerView - (Vector3)BoardSpace.ToView(foot);
+            Assert.Greater(Vector3.Dot(dirView.normalized, toWalker.normalized), 0.999f,
+                "가이드가 때릴 수 있는 지상 적이 아니라 다른 쪽(더 가까운 비행 적)을 본다");
+
+            // 무효 배치 — 마크는 내려가고(고스트 빨강과 시간 분리) 가이드는 남는다(옛 `ApplyTargetMarkVisibility`).
+            overlay.ShowPlacement(shaped, anchor, false);
+            yield return null;
+            yield return null;
+            Assert.AreEqual(0, overlay.ActiveMarkCount, "배치가 무효인데 마크가 켜져 있다 — 빨강 둘이 한 화면에 뜬다");
+            Assert.IsTrue(overlay.TryGetShapeGuide(out _, out _, out _), "무효 배치에서 가이드까지 사라졌다(옛 것은 남았다)");
+
+            overlay.HidePlacement();
+            CoreSceneFixture.EndErrorWatch();
+            Assert.IsEmpty(CoreSceneFixture.Errors, string.Join("\n", CoreSceneFixture.Errors));
+        }
+
+        private static Unit LatestEnemy(BattleDriver driver)
+        {
+            Unit e = null;
+            var us = driver.Match.World.Units;
+            for (int i = 0; i < us.Count; i++)
+                if (us[i].Kind == UnitKind.Enemy && (e == null || us[i].Id.Value > e.Id.Value)) e = us[i];
+            return e;
+        }
+
+        private static float PlanarDistance(Vector3 a, Vector3 b)
+        {
+            var n = BoardSpace.RaycastPlane().normal;
+            var d = a - b;
+            return (d - Vector3.Dot(d, n) * n).magnitude;
+        }
+
         // 적이 그 유닛의 사거리 안에 드는 앵커. 도달은 **정본 진입점**으로 묻는다(테스트도 자를 새로 안 만든다).
         // 발밑 = 오버레이·배치와 같은 점(`CoreMapOverlay.PaintRange` — 앵커 x + (폭−1)/2, 앵커 y).
         private static bool TryAnchorInReach(BattleDriver driver, int defIndex, Unit enemy,

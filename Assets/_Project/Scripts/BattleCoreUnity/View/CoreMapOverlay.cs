@@ -4,6 +4,7 @@ using UnityEngine;
 using Wassup.Battle.Units;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat;
+using Wassup.BattleCore.Map;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Presentation;
@@ -58,7 +59,6 @@ namespace Wassup.BattleCoreUnity.View
         [SerializeField] private Color _ringColor = new Color(0.55f, 0.95f, 1f, 0.85f);
         [SerializeField, Min(0.005f)] private float _ringWidth = 0.05f;
         [SerializeField, Min(8)] private int _ringSegments = 64;
-        [SerializeField] private Color _markColor = new Color(1f, 0.72f, 0.25f, 0.8f);
 
         [Tooltip("보드 평면 법선(카메라 쪽) 띄움. 바닥과의 z-fighting 회피 전용.")]
         [SerializeField, Min(0f)] private float _surfaceOffset = 0.05f;
@@ -308,24 +308,43 @@ namespace Wassup.BattleCoreUnity.View
             // `NearestTargeting.RanksBefore`(= 옛 `NearestTargeting.RanksBefore`, 옛 `:8172`)를 **부르기만** 한다.
             // 거리는 발밑→대상 XZ 제곱(옛 `AttackSystem.DistanceSqToTarget`, `:8166`). 배치 전이라 락·도발·
             // 우선 클래스·최전방은 없다(옛 unit 6 규칙).
+            //
+            // **후보 자격은 옛 `BattleBridge.cs:8141-8158` 그대로**이고, 전부 코어의 기존 진입점을 **부르기만** 한다
+            // (5b 가 「적 진영 + 생존」으로 좁혀 옮긴 드리프트를 6c 후속에서 되돌렸다):
+            //   · 마스크 = `TargetDefaults.ResolveDefender`(옛 `DefenderTargetDefaults.Resolve`, `:8138`) — 적 거점도 후보다
+            //   · 통행 층 = `LayerBits.CanTarget`(옛 `:8149`) — 지상 전용 근접은 비행 적을 못 본다. 대상 층은 코어 후보
+            //     스냅샷과 같은 읽기(`CombatPhase.BuildCandidates` — 이동 상태가 없으면 0 = 무필터)
+            //   · 제외 = `Unit.IsTargetable`(옛 `:8151` 도약 이탈 제외의 후계 — 코어 후보 스냅샷과 같은 술어)
+            //   · 지원형(아군 마스크 — 힐러)은 마크도 가이드도 없다(옛 `:8062` `!unit.targetAllies`).
+            int mask = TargetDefaults.ResolveDefender(unit.TargetFactions);
+            byte atkLayers = (byte)unit.Attack.TargetLayers;
+            bool attacksFoes = (mask & Factions.AnyEnemy) != 0;
+            // 마크는 배치가 **유효할 때만** 보인다 — 무효일 땐 고스트의 빨강과 시간으로 갈린다(옛
+            // `TilemapMapView.ApplyTargetMarkVisibility` `:811-816`). 가이드는 그 스위치를 안 탄다(옛 것도 그랬다).
+            bool showMarks = _dragValid && _tileSet != null;
             bool guideHas = false;
             var guideBest = default(NearestTargeting.Candidate);
             float3 guidePos = default;
             int used = 0;
             var units = _driver.Units;
-            for (int i = 0; i < units.Count; i++)
+            for (int i = 0; attacksFoes && i < units.Count; i++)
             {
                 var u = units[i];
-                if (u.Dead || u.Faction != Faction.EnemyUnit) continue;
+                if (!u.IsTargetable()) continue;
+                if (((int)u.Faction & mask) == 0) continue;
+                if (!LayerBits.CanTarget(atkLayers, u.Move != null ? u.Move.TraversalLayers : LayerBits.None)) continue;
                 if (!AttackReach.InReach(foot, u.Position, unit.AttackRange, ts,
                                          unit.BodyRadiusTiles, u.HitRadius)) continue;
 
-                var sr = Rent(_marks, used++, BoardSortOrder.RangeTargetMarkOrder);
-                sr.sprite = MarkSprite();
-                Tint(sr, _markColor);
-                sr.transform.position = ViewOf(u.Position);
-                sr.transform.rotation = PlaneRotation();
-                sr.transform.localScale = Vector3.one * (ts * 0.7f);
+                if (showMarks)
+                {
+                    var sr = Rent(_marks, used++, BoardSortOrder.RangeTargetMarkOrder);
+                    sr.sprite = MarkSprite();
+                    Tint(sr, _tileSet.rangeTargetMarkColor);   // 옛 `TilemapMapView.cs:766` — 코드 색 리터럴 없음(제약 6)
+                    sr.transform.position = ViewOf(u.Position);
+                    sr.transform.rotation = PlaneRotation();
+                    sr.transform.localScale = Vector3.one * (ts * 0.7f);
+                }
 
                 float dx = u.Position.x - foot.x, dz = u.Position.z - foot.z;
                 var cand = new NearestTargeting.Candidate { SqDist = dx * dx + dz * dz, SimId = u.Id.Value };
@@ -411,6 +430,36 @@ namespace Wassup.BattleCoreUnity.View
         {
             if (_shapeFill != null && _shapeFill.enabled) _shapeFill.enabled = false;
             if (_shapeRim != null && _shapeRim.enabled) _shapeRim.enabled = false;
+        }
+
+        /// <summary>테스트 창구 — 지금 켜진 사정권 표식 수.</summary>
+        public int ActiveMarkCount
+        {
+            get
+            {
+                int n = 0;
+                for (int i = 0; i < _marks.Count; i++) if (_marks[i] != null && _marks[i].enabled) n++;
+                return n;
+            }
+        }
+
+        /// <summary>테스트 창구 — 켜진 표식 하나의 뷰 위치와 색(프로퍼티 블록에 민 값 그대로).</summary>
+        public bool TryGetMark(int index, out Vector3 viewPos, out Color color)
+        {
+            viewPos = default; color = default;
+            int n = 0;
+            for (int i = 0; i < _marks.Count; i++)
+            {
+                var sr = _marks[i];
+                if (sr == null || !sr.enabled) continue;
+                if (n++ != index) continue;
+                viewPos = sr.transform.position;
+                if (_mpb == null) _mpb = new MaterialPropertyBlock();
+                sr.GetPropertyBlock(_mpb);
+                color = _mpb.GetColor(CoreOverlayMaterial.BaseColorId);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>
