@@ -51,6 +51,7 @@ namespace Wassup.BattleCore
         private readonly Trigger.CoreSkillContext _skills;
         private readonly Trigger.TriggerDispatcher _triggers;
         private readonly Trigger.ResignationBarrage _barrage;
+        private readonly Trigger.GimmickBindings _gimmickRules;
 
         private readonly IMatchGoal _goal;
         private readonly MatchGoalContext _goalCtx;
@@ -102,6 +103,9 @@ namespace Wassup.BattleCore
             _hand.Bind(_bindings, _triggers, _map);
             // unit 7b — 사직서 임계 → 운석(`ResignationThreshold` 사건의 소비자). 판정(어느 칸)과 발사는 이 담당자의 것이다.
             _barrage = new Trigger.ResignationBarrage(_bus, _world, _def, _map, _gimmick, _rng, _intents);
+            // unit 7d — 시즌 기믹이 판에 얹는 규칙(레드불 주기 · 온천 열기 · 번아웃 피로 · 사직서 드랍). 규칙은 등록부에 붙고
+            // 레일은 디스패처다 — 이 담당자는 「누구에게 무엇을 붙이나」와 실행 한 줄씩만 든다.
+            _gimmickRules = new Trigger.GimmickBindings(_bus, _world, _map, _gimmick, _bindings);
 
             // 이동 단계는 **붙들어 둔다**(unit 5b). 거점 선택의 후보 배열이 그 안에 있고,
             // 예고선이 같은 답을 받아야 하기 때문이다(M18) — 배열을 밖으로 복제하는 대신
@@ -212,6 +216,7 @@ namespace Wassup.BattleCore
                 _skills.Report = value;
                 _intents.Report = value;
                 _barrage.Report = value;
+                _gimmickRules.Report = value;
             }
         }
 
@@ -278,6 +283,8 @@ namespace Wassup.BattleCore
             // unit 7b — 판 호스트의 판 수명 규칙(드림스톤 — 판 진입 장비). 배치 사건으로 상속된다.
             _bindings.AttachMatchRows(_def.MatchBindings, 0);
             _gimmick.Begin(mode.GimmickEnabled, _def.Seed);
+            // unit 7d — 판 호스트 기믹 규칙은 **고른 뒤** 판 시작 1회(구현 6). 유닛 호스트 규칙은 스폰·활성화 사건이 붙인다.
+            _gimmickRules.Begin(0);
             _goal.OnBegin(_goalCtx);
 
             _bus.Flush();

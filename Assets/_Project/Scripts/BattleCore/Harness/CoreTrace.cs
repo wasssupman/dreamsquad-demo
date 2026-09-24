@@ -93,6 +93,8 @@ namespace Wassup.BattleCore
         CardAttached = 57,
         CardDetached = 58,
         CardCast = 59,
+        // unit 7d — 시즌 기믹. `a` = 주인, `b` = 만든 개체, `i` = `GimmickKind`, `f` = 종류별 값.
+        GimmickTriggered = 60,
         // ⚠ `SkillVisual` 은 채널이 없다 — 뷰 전용 연출 신호라 규칙을 증언하지 않는다(위 `TryChannel` 주석).
         // ⚠ `ScoreChanged` 는 **채널이 없다.** 처치 사건과 1:1 이라 새 정보가 0 이고
         // (`UnitSlain` + 진영으로 정확히 재구성된다) 총점은 아래 `finalScore` 가 증언한다.
@@ -227,6 +229,7 @@ namespace Wassup.BattleCore
                 case CoreEventKind.CardAttached: channel = CoreTraceChannel.CardAttached; return true;
                 case CoreEventKind.CardDetached: channel = CoreTraceChannel.CardDetached; return true;
                 case CoreEventKind.CardCast: channel = CoreTraceChannel.CardCast; return true;
+                case CoreEventKind.GimmickTriggered: channel = CoreTraceChannel.GimmickTriggered; return true;
                 default: channel = default; return false;
             }
         }

@@ -31,6 +31,13 @@ namespace Wassup.BattleCore.Trigger
         /// <summary>주인의 체력(게이트 `Self` — 피격 N회는 **이 피격을 적용한 뒤**의 값).</summary>
         public float SubjectHp;
         public float SubjectMaxHp;
+        /// <summary>
+        /// unit 7d — 주인의 **점유 앵커**(min 코너 칸) 스냅샷. 점유가 없는 주인(적·순찰·Match)은 `HasSubjectAnchor = false`.
+        /// 사직서가 그 방어유닛의 **배치 칸**에 떨어진다(옛 `DefenderFootprint.anchor`) — 드레인 시점엔 주인이 없어 되물을 수 없다.
+        /// ⚠ 발밑 좌표(`SubjectPos`)에서 되짚지 말 것 — 2칸 폭이면 발밑이 두 칸 사이에 서서 칸이 한 칸 밀린다.
+        /// </summary>
+        public Unity.Mathematics.int2 SubjectAnchor;
+        public bool HasSubjectAnchor;
 
         /// <summary>사건의 대상(공격의 대표 대상). 없으면 None.</summary>
         public SimEntityId Target;

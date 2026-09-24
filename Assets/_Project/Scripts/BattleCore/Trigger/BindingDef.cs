@@ -31,6 +31,10 @@ namespace Wassup.BattleCore.Trigger
         /// 직업 비트와 **곱(∧)** 으로 읽는다. 둘 다 0 = 전원(축 `All`).
         /// </summary>
         public int SubjectCost;
+        /// <summary>
+        /// unit 7d — `Any` 바인딩의 코어 내부 주어 필터(저작 노출 없음). 위 둘과 곱(∧). `None` = 없음.
+        /// </summary>
+        public BindingSubjectFilter SubjectFilter;
 
         // ── 트리거 상태의 저작값 ──
         /// <summary>`AttackN`·`OnDamagedN` — N 번째마다. 0 = 발동 안 함(순수 함수 가드).</summary>
@@ -48,6 +52,15 @@ namespace Wassup.BattleCore.Trigger
         // ── 효과(Effect) ──
         /// <summary>실행자. **무상태** concrete 라 한 벌을 공유한다. null = 스킬 아님(bake 가 이미 거절했다).</summary>
         public ISkill Effect;
+
+        /// <summary>
+        /// unit 7d — **코어가 직접 실행하는 효과**(시즌 기믹 4종). `Wassup.Skills` 의 의도 어휘에 없는 일
+        /// (열기 한 걸음 · 피로 요청 · 픽업 놓기 · 사직서 떨어뜨리기)이라 `ISkill` 로 못 싣는다 — 그 어셈블리는
+        /// 무변이 계약이다(7a). 이 칸이 차 있으면 디스패처가 `Effect` 대신 이것을 부른다.
+        /// ⚠ 정의표(`MatchDefinition.Bindings`)의 줄에는 **서지 않는다** — 판 규칙이 런타임에 조립하는 줄(`DefIndex = -1`)
+        /// 만 든다. 그래서 해시에도 안 실린다(값은 이미 `GimmickDef` 가 싣는다).
+        /// </summary>
+        public ICoreEffect CoreEffect;
 
         // 수치 — `SkillParams` 의 원시 칸과 같은 이름. 읽는 쪽이 payload 별 뷰로 이름을 붙인다.
         public float Magnitude;
@@ -103,6 +116,9 @@ namespace Wassup.BattleCore.Trigger
 
         public int SkillId => Effect != null ? Effect.SkillId : SkillRouting.NotRouted;
 
+        /// <summary>실행자가 있나 — 스킬이든 코어 효과든.</summary>
+        public bool HasEffect => Effect != null || CoreEffect != null;
+
         /// <summary>
         /// 이번 발동의 params. 사건 스냅샷(자리·몸·층)은 호출부가 넘긴다 — **드레인 시점에 다시 읽지 않는다**.
         /// `patternIndex` 는 정의표 줄 번호다(코어에는 host 버퍼가 없다 — 슬롯은 바인딩이 든다).
@@ -125,6 +141,8 @@ namespace Wassup.BattleCore.Trigger
             MatchDefinition.Put(sb, "subjectClass", SubjectClassMask, inv);
             // unit 7b — 기본값이면 안 쓴다(7a 까지의 규칙 줄 해시 무변).
             if (SubjectCost != 0) MatchDefinition.Put(sb, "subjectCost", SubjectCost, inv);
+            // unit 7d — 기본값이면 안 쓴다(7c 까지의 규칙 줄 해시 무변).
+            if (SubjectFilter != BindingSubjectFilter.None) MatchDefinition.Put(sb, "subjectFilter", (int)SubjectFilter, inv);
             MatchDefinition.Put(sb, "period", Period, inv);
             MatchDefinition.Put(sb, "periodSec", PeriodSeconds, inv);
             MatchDefinition.Put(sb, "fraction", Fraction, inv);

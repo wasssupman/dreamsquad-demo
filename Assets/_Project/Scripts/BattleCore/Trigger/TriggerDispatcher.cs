@@ -185,6 +185,8 @@ namespace Wassup.BattleCore.Trigger
             SubjectBody = u.HitRadius,
             SubjectHp = u.Health,
             SubjectMaxHp = u.MaxHealth,
+            SubjectAnchor = u.Footprint != null ? u.Footprint.Anchor : default,
+            HasSubjectAnchor = u.Footprint != null,
             Target = SimEntityId.None,
         };
 
@@ -255,6 +257,10 @@ namespace Wassup.BattleCore.Trigger
         /// </summary>
         public static bool SubjectPasses(in BindingDef d, Unit subject, MatchDefinition def)
         {
+            // unit 7d — 코어 내부 주어 필터(저작 노출 없음). 직업·코스트와 곱(∧).
+            if (d.SubjectFilter == BindingSubjectFilter.PlacedDefender
+                && (subject == null || subject.Kind != UnitKind.Defender || subject.Footprint == null))
+                return false;
             int mask = d.SubjectClassMask;
             if (mask == 0 && d.SubjectCost == 0) return true;
             if (subject == null || subject.Kind != UnitKind.Defender) return false;
@@ -445,6 +451,11 @@ namespace Wassup.BattleCore.Trigger
             // 떨어진 규칙은 버린다 — 단 **주인이 사라지는 사건**(자기 죽음 · 퇴근)은 떨어진 뒤가 정상이다.
             if (b.Detached && !e.SubjectGone) return;
             if (d.FireCap > 0 && b.FireCount >= d.FireCap) return;
+            if (d.CoreEffect != null)
+            {
+                ExecuteCore(b, in e, ctx);
+                return;
+            }
             if (d.Effect == null)
             {
                 Warn($"[Trigger] '{d.Label}' 에 실행자가 없다 — bake 가 거절했어야 한다. 발동을 버린다.");
@@ -492,6 +503,30 @@ namespace Wassup.BattleCore.Trigger
                 _skills.End();
             }
 
+            if (d.Lifetime == BindingLifetime.UntilFireCap && d.FireCap > 0 && b.FireCount >= d.FireCap)
+                _registry.Detach(b, BindingDetachReason.FireCapReached, ctx.Tick);
+        }
+
+        // unit 7d — 코어 효과(시즌 기믹). 레일(감지·카운터·줄·수명·발동 상한)은 스킬과 같고 실행자만 다르다.
+        // ⚠ `TriggerFired` 를 내지 않는다 — 효과가 실제로 일을 했을 때 자기 사건(`GimmickTriggered`)을 낸다.
+        // 유닛마다 주기로 도는 규칙이라, 헛발(상한에 막힌 픽업 주기)까지 사건을 내면 트레이스가 그 소음으로 찬다.
+        private void ExecuteCore(Binding b, in TriggerEvent e, TickContext ctx)
+        {
+            ref var d = ref b.Def;
+            if (!e.SubjectGone && e.Subject.IsEntity && _world.Find(e.Subject) == null)
+            {
+                Warn($"[Trigger] '{d.Label}' 의 주인이 드레인 전에 사라졌다 — 발동을 버린다.");
+                return;
+            }
+            b.FireCount++;
+            try
+            {
+                d.CoreEffect.Fire(b, in e, ctx);
+            }
+            catch (System.Exception ex)
+            {
+                Warn($"[Trigger] '{d.Label}' 코어 효과가 던졌다 — 이 발동만 버린다. {ex.Message}");
+            }
             if (d.Lifetime == BindingLifetime.UntilFireCap && d.FireCap > 0 && b.FireCount >= d.FireCap)
                 _registry.Detach(b, BindingDetachReason.FireCapReached, ctx.Tick);
         }

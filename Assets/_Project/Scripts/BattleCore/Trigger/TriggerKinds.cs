@@ -101,6 +101,22 @@ namespace Wassup.BattleCore.Trigger
         Manual = 4,
     }
 
+    /// <summary>
+    /// unit 7d — `Any` 바인딩의 **주어 필터**(코어 내부 축 · 저작 노출 없음 — rev 3 §1). 직업·코스트 필터
+    /// (`SubjectClassMask`·`SubjectCost`)와 **곱(∧)** 으로 읽는다. 닫힌 집합이라 제약 8 에 맞는다.
+    /// ⚠ append-only(트레이스·해시에 번호로 실린다).
+    /// </summary>
+    public enum BindingSubjectFilter : byte
+    {
+        /// <summary>필터 없음 — 누구의 사건이든.</summary>
+        None = 0,
+        /// <summary>
+        /// **판에 배치된 방어유닛**만(점유가 있는 방어유닛 — 순찰 소환물·거점 제외). 사직서 드랍의 대상이다 —
+        /// 옛 `ResignationDropSystem` 이 `DefenderFootprint` + `DefenderUnitTag` 를 함께 물었다(순찰은 점유가 없다).
+        /// </summary>
+        PlacedDefender = 1,
+    }
+
     /// <summary>바인딩의 출처 꼬리표 — 진단·7c 카드 펄스가 읽는다. 병합 키가 아니다.</summary>
     public enum BindingOrigin : byte
     {

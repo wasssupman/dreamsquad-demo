@@ -235,6 +235,15 @@ namespace Wassup.BattleCore
         /// 한 칸 조준이면 첫 칸과 같다), `Faction` = 플레이어 진영.
         /// </summary>
         CardCast = 62,
+
+        // ── unit 7d (시즌 기믹이 판에 얹는 일) ────────────────────────────────
+        /// <summary>
+        /// 시즌 기믹이 **일을 했다**(규칙이 발동해 실제로 무언가를 바꿨다 — 헛발은 안 난다). `A` = 주인(유닛 · 판),
+        /// `B` = 그 일이 만든 개체(픽업·사직서 — 없으면 None), `Arg` = `GimmickKind`, `Amount` = 종류별 값
+        /// (열기 = 체력 델타 · 피로 = 요청량 · 그 외 0), `SiteTarget` = 그 일이 일어난 자리(0 몸 = 칸).
+        /// 트레이스·도구(「왜 안 터졌나」)가 듣는다 — 뷰는 결과 사건(`PickupSpawned` 등)을 이미 받는다.
+        /// </summary>
+        GimmickTriggered = 63,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -833,6 +842,11 @@ namespace Wassup.BattleCore
                              hostUnit != null ? new Site(hostUnit.Position, hostUnit.HitRadius) : Site.Nowhere,
                              Site.Nowhere, hostUnit != null ? hostUnit.Faction : Faction.None,
                              entryId, handle, cardIndex);
+
+        public static CoreEvent GimmickTriggered(int tick, SimEntityId owner, SimEntityId made, GimmickKind kind,
+                                                 float amount, Site at, Faction faction)
+            => new CoreEvent(CoreEventKind.GimmickTriggered, tick, owner, made, Site.Nowhere, at, faction,
+                             (int)kind, amount);
 
         public static CoreEvent CardCast(int tick, int entryId, int cardIndex, float3 cellA, float3 cellB, int handle)
             => new CoreEvent(CoreEventKind.CardCast, tick, SimEntityId.Match, SimEntityId.None,

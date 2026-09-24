@@ -45,6 +45,11 @@ namespace Wassup.BattleCore
         /// <summary>안정도가 움직인 **뒤** 보너스를 다시 판정한다(③).</summary>
         public const int BonusOffer = 30;
 
+        /// <summary>
+        /// unit 7d — 스폰·활성화 → 시즌 기믹 규칙 부착(유닛 호스트 per-unit 타이머). 다른 담당자의 상태를
+        /// 읽지도 바꾸지도 않으므로 차례가 규칙을 안 바꾼다 — 관측·담당자 뒤에 둔다.
+        /// </summary>
+        public const int GimmickAttach = 40;
         /// <summary>목표는 담당자들이 상태를 갱신한 뒤에 읽는다.</summary>
         public const int Goal = 90;
     }

@@ -82,5 +82,66 @@ namespace Wassup.Tests.EditMode.Core
             }
             CollectionAssert.AreEqual(Run(), Run());
         }
+    
+        // ── unit 7d — 드랍 계기(사망 seam) ─────────────────────────────────────
+
+        private static void Kill(Unit u) => u.Inbox.Damage.Add(new DamageEntry { Amount = 1e6f, Source = SimEntityId.None });
+
+        [Test]
+        public void 방어유닛이_죽으면_그_배치_칸에_사직서가_떨어진다()
+        {
+            // 2칸 폭 — 발밑 좌표는 두 칸 사이에 선다. 사직서는 **점유 앵커**(옛 `DefenderFootprint.anchor`)에 떨어진다.
+            var def = CoreCombatFixtures.Definition(defenderDamage: 0f);
+            def.Units[0].FootprintWidth = 2;
+            CoreGimmickFixtures.With(def, CoreGimmickFixtures.ClockOut(threshold: 10));
+            var m = CoreMatchFixtures.BeginBattle(def);
+            var u = CoreTriggerFixtures.SpawnDefender(m, new int2(4, 1));
+            Kill(u);
+            CoreCombatFixtures.Tick(m, 3);
+
+            Assert.AreEqual(1, m.World.Resignations.Count);
+            Assert.AreEqual(new int2(4, 1), m.World.Resignations[0].Cell);
+        }
+
+        [Test]
+        public void 퇴근한_방어유닛은_사직서를_안_떨어뜨린다()
+        {
+            var def = CoreGimmickFixtures.With(CoreCombatFixtures.Definition(defenderDamage: 0f),
+                                               CoreGimmickFixtures.ClockOut(threshold: 10));
+            var m = CoreMatchFixtures.BeginBattle(def);
+            var u = CoreTriggerFixtures.SpawnDefender(m, new int2(4, 1));
+            Assert.IsTrue(m.Apply(Command.Retire(u.Id)).Accepted);
+            CoreCombatFixtures.Tick(m, 3);
+
+            Assert.IsEmpty(m.World.Resignations, "퇴근은 사망이 아니다(불변식 11 — 배제 코드 0줄)");
+        }
+
+        [Test]
+        public void 적이_죽어도_사직서는_안_떨어진다()
+        {
+            var def = CoreGimmickFixtures.With(CoreCombatFixtures.Definition(defenderDamage: 0f),
+                                               CoreGimmickFixtures.ClockOut(threshold: 10));
+            var m = CoreMatchFixtures.BeginBattle(def);
+            Kill(CoreTriggerFixtures.SpawnEnemy(m, new int2(4, 1)));
+            CoreCombatFixtures.Tick(m, 3);
+            Assert.IsEmpty(m.World.Resignations);
+        }
+
+        [Test]
+        public void 증상_방어유닛_다섯이_죽으면_운석이_쏟아진다()
+        {
+            var def = CoreCombatFixtures.Definition(defenderDamage: 0f);
+            int proj = CoreTriggerFixtures.AddBlastProjectile(def);
+            CoreGimmickFixtures.With(def, CoreGimmickFixtures.ClockOut(threshold: 5, meteorCount: 10, meteorProjectile: proj));
+            var m = CoreMatchFixtures.BeginBattle(def);
+            var spawned = CoreCombatFixtures.Listen(m, CoreEventKind.ProjectileSpawned);
+            for (int i = 0; i < 5; i++) Kill(CoreTriggerFixtures.SpawnDefender(m, new int2(2 + i, 2)));
+            CoreCombatFixtures.Tick(m, 5);
+
+            Assert.AreEqual(10, spawned.Count, "임계 5 → 운석 10발");
+            foreach (var e in spawned)
+                Assert.AreEqual(0f, e.SiteFired.OriginBody, 1e-6f, "자리에 떨어지는 것 — 몸 0(제약 13)");
+            Assert.IsEmpty(m.World.Resignations, "임계로 소모됐다");
+        }
     }
 }
