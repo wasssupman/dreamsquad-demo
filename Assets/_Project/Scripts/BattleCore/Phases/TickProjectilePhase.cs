@@ -42,8 +42,8 @@ namespace Wassup.BattleCore
         private Unit[] _victims = new Unit[64];
         private float[] _victimDistSq = new float[64];
         private int[] _victimPick = new int[64];
-        // unit 6a2 — 관문이 이번 발사에서 «이미 찬 칸»을 세는 자리. 발사마다 비운다.
-        private readonly List<ImbueKey> _foldKeys = new List<ImbueKey>(4);
+        // unit 6a2 — 관문이 이번 발사에서 접는 칸들. 발사마다 비운다.
+        private readonly List<FoldSlot> _foldSlots = new List<FoldSlot>(4);
 
         public TickProjectilePhase(MapRuntime map) => _map = map;
 
@@ -293,68 +293,144 @@ namespace Wassup.BattleCore
         // 구조는 포물선탄·카드탄·배치 스킬탄을 원천 배제했고, 생산자마다 접으면 그 배제가
         // 다른 모양으로 되돌아온다.
         //
-        // **순서 = 정의표 → 요청 → 부여이고, 뒤에 오는 것이 앞의 것을 덮지 않는다.**
-        // 한 키에 한 값이다. 이 규율이 없으면 저작 감속과 부여 감속이 같은 4키 슬롯으로
-        // 가서 **나중 것이 먼저 것을 조용히 지운다**(6a `ModifierSet.Apply` 는 같은 키면
-        // 크기를 덮어쓴다). 「요청이 명시한 값은 부여가 덮지 않는다」가 그 규율의 이름이다.
+        // **같은 칸은 합으로 접는다**(사용자 결정 ② · 리뷰 F2). 한 키의 최종 크기는
+        // `min(상한, 저작 + 부여 전부의 합)` 이고 지속은 긴 쪽이며 **행은 하나**다.
+        // ⚠ 초판은 「먼저 온 쪽이 이긴다」로 잠갔는데, 그러면 킨들러 저작 불 1 + 카드 부여
+        // 불 3 이 **1만 실려** 「합이라면서 왜 안 더해지나」가 된다. 덮어쓰기로 저작이
+        // 사라지던 위험(6a `ModifierSet.Apply` 는 같은 키면 크기를 덮어쓴다)은 **행이 하나**
+        // 라는 사실이 이미 막는다 — 잠글 이유가 없었다.
         //
-        // 겹치는 것은 **부여끼리**다: 같은 키에 여럿이 걸면 **합**이고 상한은 정의표가 준다
-        // (사용자 결정 ②). 상한 저작이 없는 키는 부여 시점에 이미 거절됐지만, 정의표가
-        // 중간에 바뀌는 경로는 없어도 여기서 한 번 더 확인한다 — 못 찾으면 **안 싣는다**.
+        // **예외는 요청 명시값 하나**다. 그 발사에만 적용되는 덮어쓰기(`req.OnHitCc`)는
+        // 칸을 통째로 가져가고 부여는 얹지 않는다.
+        //
+        // ⚠ **상한은 부여가 기여한 칸에만 건다.** 저작만 있는 칸에 상한을 걸면 ⑴ 줄이 없는
+        // 키의 저작이 통째로 떨어지고 ⑵ 있어도 「한 발이 나르는 부여의 상한」이 저작 밸런스를
+        // 조용히 깎는다. 상한 줄이 없으면 **부여분만 탈락하고 저작은 남는다.**
         private void FoldOnHit(TickContext ctx, Unit owner, in ProjectileRequest req, Projectile p)
         {
             p.OnHitCount = 0;
-            _foldKeys.Clear();
+            _foldSlots.Clear();
 
-            // ① 정의표 — 시전자가 저작한 착탄 출력. **피해는 뺀다**(요청이 이미 스냅샷했다).
+            // ① 정의표 — 시전자가 저작한 착탄 출력. **`Damage` 만 뺀다**(요청이 발사 시점에
+            //    배율까지 접어 이미 스냅샷했다). `Heal` 은 칸이 없어 그대로 실린다 — 결정 ①의
+            //    귀결이고, 그 전까지 탄을 쏘는 힐러는 아무도 못 고쳤다.
             var authored = owner != null && owner.Attack != null ? owner.Attack.Outputs : null;
             if (authored != null)
                 for (int o = 0; o < authored.Length; o++)
                 {
                     if (authored[o].Kind == AttackOutputKind.Damage) continue;
                     var key = ImbueKey.OfOutput(in authored[o]);
-                    if (!key.IsNone && !Claim(in key)) continue;
-                    Carry(p, in authored[o]);
+                    if (key.IsNone) { Carry(p, in authored[o]); continue; }
+                    Accumulate(in key, in authored[o], authored[o].Magnitude, authored[o].Duration);
                 }
 
-            // ② 요청 — 오늘 요청이 «명시하는» 착탄 출력은 군중 제어 하나다. 값은 이미
-            //    `p.OnHitCc` 에 실렸으므로 여기서는 **칸만 잠근다.**
-            if (req.OnHitCc != CcRequestKind.None && req.OnHitCcSeconds > 0f)
-                Claim(ImbueKey.Cc(req.OnHitCc));
+            // ② 요청 — 그 발사에만 적용되는 덮어쓰기. 칸이 하나뿐이라 **종류를 가리지 않고**
+            //    부여를 막는다(같은 종류만 막으면 부여가 다른 종류로 그 칸을 가져간다).
+            bool ccFromRequest = req.OnHitCc != CcRequestKind.None && req.OnHitCcSeconds > 0f;
 
-            // ③ 부여 — 빈 칸에만 얹는다.
+            // ③ 부여 — 같은 칸에 더한다.
             var imbue = owner != null ? owner.Imbue : null;
-            if (imbue == null || !imbue.Any) return;
-            for (int i = 0; i < imbue.Count; i++)
+            if (imbue != null && imbue.Any)
+                for (int i = 0; i < imbue.Count; i++)
+                {
+                    var key = imbue.Slots[i].Key;
+                    if (key.Kind == ImbueKind.Cc)
+                    {
+                        // 탄의 군중 제어 칸은 **하나**다 — 요청이 썼거나 앞 부여가 썼으면 끝이다.
+                        if (ccFromRequest || p.OnHitCc != CcRequestKind.None) continue;
+                        if (!Capped(ctx, in key, imbue.SumOf(in key), out float seconds)) continue;
+                        p.OnHitCc = (CcRequestKind)key.Target;
+                        // 군중 제어의 «세기»는 곧 지속이다(`StackDerivedKind.ApplyStun` 과 같은 규약).
+                        p.OnHitCcSeconds = seconds;
+                        continue;
+                    }
+
+                    int at = IndexOfKey(in key);
+                    // 같은 키의 둘째 슬롯은 여기서 걸러진다 — 합은 `SumOf` 가 이미 냈다.
+                    if (at >= 0 && _foldSlots[at].Folded) continue;
+
+                    var line = at >= 0 ? _foldSlots[at].Line : ImbueGate.ToOutput(in key, 0f, 0f);
+                    float authoredMag = at >= 0 ? _foldSlots[at].Magnitude : 0f;
+                    if (!Capped(ctx, in key, authoredMag + imbue.SumOf(in key), out float magnitude))
+                        continue;   // 상한 줄이 없다 — **부여분만** 떨어지고 저작은 남는다
+
+                    Accumulate(in key, in line, magnitude - authoredMag, imbue.SecondsOf(in key));
+                    MarkFolded(in key);
+                }
+
+            for (int i = 0; i < _foldSlots.Count; i++)
             {
-                var key = imbue.Slots[i].Key;
-                // 같은 키의 둘째 슬롯은 여기서 걸러진다 — 합은 `SumOf` 가 이미 냈다.
-                if (!Claim(in key)) continue;
-                if (!ImbueGate.TryCapOf(ctx.Def.ImbueCaps, in key, out float cap))
-                {
-                    ctx.Warn("[Imbue] 상한 저작이 없는 부여가 탄에 실리려 했다 — 안 싣는다.");
-                    continue;
-                }
-                float magnitude = math.min(cap, imbue.SumOf(in key));
-                float seconds = imbue.SecondsOf(in key);
-                if (key.Kind == ImbueKind.Cc)
-                {
-                    p.OnHitCc = (CcRequestKind)key.Target;
-                    // 군중 제어의 «세기»는 곧 지속이다(`StackDerivedKind.ApplyStun` 과 같은 규약).
-                    p.OnHitCcSeconds = magnitude;
-                    continue;
-                }
-                var line = ImbueGate.ToOutput(in key, magnitude, seconds);
-                if (line.Kind != AttackOutputKind.Damage || line.Magnitude > 0f) Carry(p, in line);
+                var slot = _foldSlots[i];
+                var line = slot.Line;
+                line.Magnitude = slot.Magnitude;
+                line.Duration = slot.Seconds;
+                Carry(p, in line);
             }
         }
 
-        /// <summary>이번 발사에서 그 칸을 처음 차지했나. 이미 찼으면 false(덮지 않는다).</summary>
-        private bool Claim(in ImbueKey key)
+        /// <summary>
+        /// 합을 상한으로 접는다. 반환 = **실을 수 있나**(상한 줄이 없으면 false).
+        /// 「저작이 없다」가 「상한이 없다」로 읽히면 근거 없는 무한 부여가 조용히 성립한다.
+        /// </summary>
+        private static bool Capped(TickContext ctx, in ImbueKey key, float sum, out float capped)
         {
-            for (int i = 0; i < _foldKeys.Count; i++) if (_foldKeys[i] == key) return false;
-            _foldKeys.Add(key);
+            if (!ImbueGate.TryCapOf(ctx.Def.ImbueCaps, in key, out float cap))
+            {
+                ctx.Warn("[Imbue] 상한 저작이 없는 부여가 탄에 실리려 했다 — 부여분은 안 싣는다.");
+                capped = 0f;
+                return false;
+            }
+            capped = math.min(cap, sum);
             return true;
+        }
+
+        // 한 칸에 더한다. 칸의 «모양»(종류·스탯·연산자·스택 종류·최대 중첩)은 **첫 기여자**의
+        // 것이고, 뒤에 오는 것은 크기와 지속만 보탠다.
+        private void Accumulate(in ImbueKey key, in AttackOutputDef line, float magnitude, float seconds)
+        {
+            int at = IndexOfKey(in key);
+            if (at < 0)
+            {
+                _foldSlots.Add(new FoldSlot
+                {
+                    Key = key,
+                    Line = line,
+                    Magnitude = magnitude,
+                    Seconds = seconds,
+                });
+                return;
+            }
+            var slot = _foldSlots[at];
+            slot.Magnitude += magnitude;
+            slot.Seconds = math.max(slot.Seconds, seconds);
+            _foldSlots[at] = slot;
+        }
+
+        private int IndexOfKey(in ImbueKey key)
+        {
+            for (int i = 0; i < _foldSlots.Count; i++) if (_foldSlots[i].Key == key) return i;
+            return -1;
+        }
+
+        private void MarkFolded(in ImbueKey key)
+        {
+            int at = IndexOfKey(in key);
+            if (at < 0) return;
+            var slot = _foldSlots[at];
+            slot.Folded = true;
+            _foldSlots[at] = slot;
+        }
+
+        /// <summary>접는 중인 한 칸. 발사 하나의 수명이고 재사용 버퍼에 산다(틱 중 할당 0).</summary>
+        private struct FoldSlot
+        {
+            public ImbueKey Key;
+            /// <summary>첫 기여자의 «모양». 크기·지속은 아래 둘이 이긴다.</summary>
+            public AttackOutputDef Line;
+            public float Magnitude;
+            public float Seconds;
+            /// <summary>부여를 이미 접었나. 같은 키의 둘째 슬롯을 두 번 더하지 않게 한다.</summary>
+            public bool Folded;
         }
 
         // 탄의 표에 한 줄 얹는다. 배열은 **탄이 들고 돌려쓴다** — 발사마다 정확한 크기로

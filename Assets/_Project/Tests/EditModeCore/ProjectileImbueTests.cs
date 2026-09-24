@@ -214,20 +214,50 @@ namespace Wassup.Tests.EditMode.Core
         // ── ④ 순서 — 앞에 온 것을 부여가 덮지 않는다 ─────────────────────────
 
         [Test]
-        public void 저작이_찬_칸은_부여가_덮지_않는다()
+        public void 저작과_부여는_같은_칸에서_합해지고_상한이_접는다()
         {
-            // 「정의표 → 요청 → 부여」의 실체. 덮게 두면 두 줄이 같은 4키 슬롯으로 가서
-            // **나중 것이 먼저 것을 조용히 지운다**(6a `ModifierSet.Apply` 가 크기를 덮어쓴다).
+            // 리뷰 F2. 초판은 「먼저 온 쪽이 이긴다」로 잠가서 킨들러 저작 불 1 + 카드 부여
+            // 불 3 이 **1만** 실렸다 — 「합이라면서 왜 안 더해지나」가 된다.
+            // 저작 1 + 부여 3 = 4, 상한 2 → **2**(잠김도 아니고 4 도 아니다).
             var key = ImbueKey.Stack(StackKind.Fire);
-            var m = Match(Fixture(MovementKind.SkyFall, FireStack(), Caps(key, 5f)));
+            var m = Match(Fixture(MovementKind.SkyFall, FireStack(), Caps(key, 2f)));
             var e = Stage(m, new int2(2, 2), new int2(8, 1));
 
-            m.Apply(Command.DebugImbue(new SimEntityId(Caster), in key, 4f, 10f));
+            m.Apply(Command.DebugImbue(new SimEntityId(Caster), in key, 3f, 10f));
             m.Apply(Command.DebugFireProjectile(0, new SimEntityId(Caster), new int2(8, 1)));
             Tick(m, 10);
 
-            Assert.AreEqual(1, e.Stacks.CountOf(StackKind.Fire),
-                "저작이 실린 칸을 부여가 덮었다(1 이 아니라 4 나 5 가 나온다)");
+            Assert.AreEqual(2, e.Stacks.CountOf(StackKind.Fire),
+                "1 이면 잠긴 것이고 4 면 상한이 안 걸린 것이다");
+        }
+
+        [Test]
+        public void 상한_줄이_없으면_부여분만_떨어지고_저작은_남는다()
+        {
+            // 상한을 저작 칸에도 걸면 여기서 저작이 통째로 사라진다.
+            var m = Match(Fixture(MovementKind.SkyFall, FireStack()));
+            var e = Stage(m, new int2(2, 2), new int2(8, 1));
+
+            m.Apply(Command.DebugFireProjectile(0, new SimEntityId(Caster), new int2(8, 1)));
+            Tick(m, 10);
+
+            Assert.AreEqual(1, e.Stacks.CountOf(StackKind.Fire), "저작은 상한 표와 무관하다");
+        }
+
+        [Test]
+        public void 피해가_0_인_착탄도_출력을_적용한다()
+        {
+            // 리뷰 F3 — 순수 디버프 탄이 그 모양이다. 「피해가 없으면 착탄도 없다」로
+            // 되돌리면 여기서 빨개진다(주석만으로는 다음 사람이 되돌린다).
+            var m = Match(Fixture(MovementKind.SkyFall, FireStack()));
+            var e = Stage(m, new int2(2, 2), new int2(8, 1));
+            float before = e.Health;
+
+            m.Apply(Command.DebugFireProjectile(0, new SimEntityId(Caster), new int2(8, 1), 0f));
+            Tick(m, 10);
+
+            Assert.AreEqual(before, e.Health, 1e-3f, "이 탄은 피해가 0 이다");
+            Assert.AreEqual(1, e.Stacks.CountOf(StackKind.Fire), "피해가 0 이어도 스택은 걸린다");
         }
 
         [Test]
