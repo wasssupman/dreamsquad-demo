@@ -91,7 +91,7 @@ spec 은 「코어로 가는 값은 `MatchDefinitionBuilder` 입력 → 정의�
 | 52 | `unitOverheadUiLayer` | BattleBridge.cs | ○ | 씬 배선 참조 | 오버헤드 **레이어 컴포넌트**. 새 주인 = `CoreUnitOverheadUiLayer` |
 | 53 | `beamPresenter` | BattleBridge.cs | ○ | 씬 배선 참조 | 빔 **프리젠터 컴포넌트**. 사건이 unit 6 에서 열린다(씬 값도 비어 있다) |
 | 54 | `scoreHud` | BattleBridge.cs | ○ | 씬 배선 참조 | 점수 **HUD 컴포넌트**. 5b |
-| 55 | `_bossWarning` | BattleBridge.cs | ○ | 씬 배선 참조 | 보스 경보 **뷰 컴포넌트**. 값이 아니라 띄울 UI — 구동 신호는 `WaveStarted` 이고 5b 가 잇는다 |
+| 55 | `_bossWarning` | BattleBridge.cs | ○ | 씬 배선 참조 | 보스 경보 **뷰 컴포넌트**. 값이 아니라 띄울 UI — 구동 신호는 **보스 스폰 순간**(`BattleBridge.cs:10116~10121`, `tier == Boss`)이다 — 2026-09-25 정정(초판 「`WaveStarted`」는 오기). 5b 가 잇지 않았다 → 8a |
 | 56 | `_projectileViewPool` | BattleBridge.cs | ○ | 씬 배선 참조 | 투사체 뷰 **풀 컴포넌트**. 새 주인 = `CoreProjectileViewPool` |
 | 57 | `placementInput` | BattleBridge.cs | ○ | 씬 배선 참조 | 배치 입력 **컴포넌트**. 커맨드로 바뀐다 — 5b |
 | 58 | `tilemapMapView` | BattleBridge.cs | ○ | 씬 배선 참조 | 맵 뷰 **컴포넌트**. 5a 는 그중 **평면 선언만** 갖는다(`CoreBoardPlane`), 오버레이·범위 타일은 5b |
