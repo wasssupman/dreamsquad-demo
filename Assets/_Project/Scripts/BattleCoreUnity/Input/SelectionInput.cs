@@ -44,6 +44,9 @@ namespace Wassup.BattleCoreUnity.Input
         [SerializeField, Min(8)] private int _ringSegments = 48;
         [SerializeField, Min(0f)] private float _surfaceOffset = 0.06f;
 
+        // unit 7c — 손패. 선택이 손패를 **연다**(2026-08-19 사용자 결정 — 손패 진입구는 유닛 선택뿐이다). 선택의 주인은 여기다.
+        private Cards.CoreHandView _hand;
+
         private SimEntityId _selected = SimEntityId.None;
         private Vector2 _pressScreen;
         private bool _pressing;
@@ -131,14 +134,47 @@ namespace Wassup.BattleCoreUnity.Input
                     ? _driver.Definition.Units[unit.DefIndex].Id : "");
 
             _panel.Show(label, asset != null ? asset.portrait : null, Retire);
+            _panel.ShowAttachedCardsOf(id);
             Feed();
+            // unit 7c — 선택이 손패를 연다(선택 전환 A→B 는 재딜 없이 대상만 바꾼다 — 옛 selection-hand-attach 1·17).
+            if (_hand != null)
+            {
+                _hand.SetSelectionTarget(id);
+                _hand.OpenForSelection();
+            }
         }
 
-        /// <summary>빈 곳 탭·드래그 시작·판 종료·대상 소멸의 공용 출구. 멱등이다.</summary>
+        /// <summary>빈 곳 탭·드래그 시작·판 종료·대상 소멸의 공용 출구. 멱등이다. 손패도 같이 닫는다(선택 기인 손패).</summary>
         public void CloseSelection()
         {
             _selected = SimEntityId.None;
             if (_panel != null) _panel.Hide();
+            if (_hand != null)
+            {
+                _hand.ClearSelectionTarget();
+                _hand.CloseFromSelection();
+            }
+        }
+
+        /// <summary>손패가 자기를 알린다(손패 `OnEnable`).</summary>
+        public void BindHand(Cards.CoreHandView hand) => _hand = hand;
+
+        /// <summary>
+        /// 비-부착 조준(액티브·표식)이 드래그로 확정됐다 — **선택만** 놓는다(패널·링). 손패와 감속은 그대로다
+        /// (옛 `DcInspectController.ReleaseSelectionKeepHand` · active-ally-zone 3).
+        /// </summary>
+        public void ReleaseKeepHand()
+        {
+            _selected = SimEntityId.None;
+            if (_panel != null) _panel.Hide();
+            if (_hand != null) _hand.ClearSelectionTarget();
+        }
+
+        /// <summary>손패가 열린 동안의 보드 탭(손패의 바깥 탭 캐처가 넘긴다). 유닛이면 갈아타고, 빈 곳이면 둘 다 닫는다.</summary>
+        public void TapFromHand(Vector2 screen)
+        {
+            if (TryPickDefender(screen, out var id)) SelectAt(id);
+            else CloseSelection();
         }
 
         // ── 매 프레임 ────────────────────────────────────────────────────────

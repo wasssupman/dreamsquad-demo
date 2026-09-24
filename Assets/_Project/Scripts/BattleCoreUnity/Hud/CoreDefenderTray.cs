@@ -59,6 +59,12 @@ namespace Wassup.BattleCoreUnity.Hud
 
         public int SlotCount => _slots.Count;
 
+        /// <summary>
+        /// unit 7c — 칸 줄. 손패가 열릴 때 **이 줄이 접히고** 그 자리에 부채가 선다(옛 「트레이 ↔ 손패 뒤집기」 — 둘은 배타다).
+        /// 접힌 동안은 칸 픽이 안 된다(`TryPickSlot`).
+        /// </summary>
+        public RectTransform StripRect => _row;
+
         private void OnEnable()
         {
             if (_driver != null) _driver.Subscribe(ViewOrder.Overhead, OnCoreEvent);
@@ -292,6 +298,8 @@ namespace Wassup.BattleCoreUnity.Hud
         public bool TryPickSlot(Vector2 screenPos, Camera uiCamera, out int defIndex)
         {
             defIndex = -1;
+            // 손패가 칸 줄을 접어 둔 동안은 그 자리에 칸이 없다 — 보이지 않는 칸을 집으면 부채 밑에서 배치가 시작된다.
+            if (_row == null || !_row.gameObject.activeInHierarchy) return false;
             for (int i = 0; i < _slots.Count; i++)
             {
                 if (!RectTransformUtility.RectangleContainsScreenPoint(_slots[i].Root, screenPos, uiCamera))

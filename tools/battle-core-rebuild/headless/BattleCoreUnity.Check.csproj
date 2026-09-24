@@ -37,6 +37,8 @@
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\MovementTuningConfig.cs" />
     <!-- 6a2 — 탄 부여 상한 SO. 같은 이유(에디터가 아직 컴파일한 적 없는 새 타입). -->
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\ImbueCapConfig.cs" />
+    <!-- 7c — 카드면 구김 머티리얼 창구(`CreateCardCrumpleUi`)를 새로 연 공용 팩토리. 같은 이유(에디터가 아직 컴파일한 적 없는 새 메서드). -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Rendering\RuntimeMaterialFactory.cs" />
   </ItemGroup>
 
   <ItemGroup>

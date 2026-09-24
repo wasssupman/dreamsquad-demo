@@ -6,6 +6,8 @@ namespace Wassup.Rendering
     {
         private const string OpaqueMaterialPath = "RuntimeMaterials/SolidOpaque";
         private const string TransparentMaterialPath = "RuntimeMaterials/SolidTransparent";
+        // battle-core-rebuild unit 7c — 손패 카드면 구김(UI 셰이더 `Wassup/UI/CardCrumple`). always-included 머티리얼 하나다.
+        private const string CardCrumpleUiPath = "RuntimeMaterials/CardCrumpleUI";
         private static bool _loggedMissingRuntimeMaterial;
 
         public static Material CreateOpaque(Color color)
@@ -88,6 +90,16 @@ namespace Wassup.Rendering
         public static Material CreateTransparent(Color color)
         {
             return Create(TransparentMaterialPath, color);
+        }
+
+        /// <summary>
+        /// 카드면 구김 머티리얼의 **인스턴스**(카드마다 `_Unfold` 가 다르다). 리소스가 없으면 null — 호출부는 기본 UI 머티리얼로
+        /// 떨어진다(구김만 없다). ⚠ `Shader.Find` 폴백을 두지 않는다 — 모바일 셰이더 스트리핑에서 그 폴백이 null 로 조용히 깨진다.
+        /// </summary>
+        public static Material CreateCardCrumpleUi()
+        {
+            var source = Resources.Load<Material>(CardCrumpleUiPath);
+            return source != null ? new Material(source) { name = "CardCrumpleInst", hideFlags = HideFlags.HideAndDontSave } : null;
         }
 
         public static void ApplyColor(Material material, Color color)

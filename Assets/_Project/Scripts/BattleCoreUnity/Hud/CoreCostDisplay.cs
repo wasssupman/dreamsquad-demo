@@ -37,6 +37,17 @@ namespace Wassup.BattleCoreUnity.Hud
             if (_driver != null) _driver.Unsubscribe(OnCoreEvent);
         }
 
+        private bool _suppressed;
+
+        /// <summary>
+        /// unit 7c — 손패가 열린 동안 배지를 물린다(옛 `CostDisplay.SetSuppressed` — 중앙 부채와 겹친다). 표시 여부의 주인은 여기다.
+        /// </summary>
+        public void SetSuppressed(bool suppressed)
+        {
+            _suppressed = suppressed;
+            if (_root != null) _root.gameObject.SetActive(!suppressed);
+        }
+
         private void OnCoreEvent(CoreEvent e)
         {
             if (e.Kind != CoreEventKind.CostChanged) return;
@@ -48,7 +59,7 @@ namespace Wassup.BattleCoreUnity.Hud
         private void Update()
         {
             if (_driver == null || !_driver.Running) return;
-            if (!_built) Build();
+            if (!_built) { Build(); _root.gameObject.SetActive(!_suppressed); }
 
             var cost = _driver.Match.Cost;
             _value.text = $"{cost.CurrentInt} / {Mathf.FloorToInt(cost.Max)}";
