@@ -72,7 +72,7 @@
 | G8 | 편성이 유닛 0으로 풀리면 뽑기로 떨어진다 | `StartSquadMatch` | 삭제 | G6 과 같은 통로 |
 | G9 | 장착한 돌 중 **코스트 계열이 아닌 것만** 유닛 버프로 들어간다 | `ResolveEquippedStones` | MatchDefinitionBuilder | |
 | G10 | 코스트 계열 돌은 코스트가 차는 속도 배율(1 + 합계%/100)이 되고, **판에 들어갈 때만** 설정된다 | `ResolveCostRateMultiplier` → `CostRuntime.SetRegenRateMultiplier` | CostLedger | ⚠ 배치 진입마다 도는 초기화가 이 값을 건드리면 판 안 재시작이 플레이어의 돌 버프를 조용히 지운다 · **중복 4** |
-| G11 | 온보딩 판은 쉬운 저작 웨이브로 돌고 첫 손패가 정해져 있다 — 판정 소비처를 늘리지 않으려고 **여기서** 둘 다 밀어 넣는다 | `StartSquadMatch` → `FirstRunTutorialConfig.ShouldRun` | MatchDefinitionBuilder | 온보딩 콘텐츠는 철거됐고 도구만 남아 있다 — 이식 대상인지 `rules.md` 에서 재판정 |
+| G11 | 온보딩 판은 쉬운 저작 웨이브로 돌고 첫 손패가 정해져 있다 — 판정 소비처를 늘리지 않으려고 **여기서** 둘 다 밀어 넣는다 | `StartSquadMatch` → `FirstRunTutorialConfig.ShouldRun` | MatchDefinitionBuilder | ⚠ 2026-09-25 정정: 76038c26(08-18)이 옛 온보딩을 철거한 **뒤** `first-run-tutorial`(08-19~24)이 새로 지어져 라이브다 — 완료 기록 `firstRunTutorialDone` 을 쓰는 곳이 그 컨트롤러 하나(`FirstRunTutorialController.cs:719`)라 이식 여부가 토너먼트 참가를 가른다 · README 조각 E 결정 ① |
 | G12 | 보너스 당김 억제 스위치는 **조건 밖에서 무조건** 설정한다 — 조건 안에 두면 온보딩 다음 판이 켜진 값을 물려받는다 | `StartSquadMatch` → `SetBonusPullSuppressed` | WaveScheduler | 순서 의존: 분기 앞 |
 | G13 | 테스트 모드는 뽑기·편성을 건너뛰고 저작 웨이브 + 저장 편성(비면 프리셋)으로 배치에 들어가며, 그 문맥은 **한 번만** 소비된다 | `StartTestModeMatch` → `TestModeContext.Clear` | MatchDefinitionBuilder | |
 | G14 | 스킬은 유닛과 독립이다 — 판마다 새로 굴린다 | `StartSquadMatch` · `StartTestModeMatch` → `skillLoadout.Roll` | MatchDefinitionBuilder | **중복 5**(세 번째 호출처는 `DraftController.BeginDraft`) |
