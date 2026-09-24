@@ -194,16 +194,18 @@ namespace Wassup.Tests.EditMode
         public void 아군을_겨누는_유닛은_아군만_본다()
         {
             // 놓친 결함 H4: 라이브 힐러 `targetFactions` 가 적 전부라 raw 로 실려 **적을 회복시켰다.**
+            // 씬 편성은 조각 C 플레이 확인용으로 바뀔 수 있어(2026-09-24 힐러가 빠졌다) 발사 명세와
+            // 같이 **카탈로그 전체**로 묻는다 — 편성이 아니라 라이브 에셋 전부가 증언 대상이다.
             int allies = 0;
-            for (int i = 0; i < _live.Defenders.Length; i++)
+            for (int i = 0; i < _catalog.Length; i++)
             {
-                if (!_live.Defenders[i].targetAllies) continue;
+                if (!_catalog[i].targetAllies) continue;
                 allies++;
-                Assert.AreEqual((int)Faction.DefenderUnit, _def.Units[i].TargetFactions,
-                    $"{_def.Units[i].Id}: 아군 대상 유닛의 대상 진영이 아군 단독이 아니다");
-                Assert.AreEqual(0, _def.Units[i].Attack.TargetLayers, $"{_def.Units[i].Id}: 아군 대상은 층을 거르지 않는다");
+                Assert.AreEqual((int)Faction.DefenderUnit, _catalogDef.Units[i].TargetFactions,
+                    $"{_catalogDef.Units[i].Id}: 아군 대상 유닛의 대상 진영이 아군 단독이 아니다");
+                Assert.AreEqual(0, _catalogDef.Units[i].Attack.TargetLayers, $"{_catalogDef.Units[i].Id}: 아군 대상은 층을 거르지 않는다");
             }
-            Assert.Greater(allies, 0, "라이브 편성에 아군 대상 유닛(힐러)이 없다 — 이 단언이 아무것도 증언하지 않는다");
+            Assert.Greater(allies, 0, "카탈로그에 아군 대상 유닛(힐러)이 없다 — 이 단언이 아무것도 증언하지 않는다");
         }
 
         [Test]

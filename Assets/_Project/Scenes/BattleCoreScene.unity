@@ -415,12 +415,12 @@ MonoBehaviour:
   _defenders:
   - {fileID: 11400000, guid: 1b476721523af4fd68b6d3d6e1dd265a, type: 2}
   - {fileID: 11400000, guid: f60cd7372f634487c90afc428f71e237, type: 2}
+  - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef207, type: 2}
+  - {fileID: 11400000, guid: b7e098ab385c4cf4b047890f0d0818cc, type: 2}
+  - {fileID: 11400000, guid: 66962e511148d4b63b7294cfa234d68a, type: 2}
+  - {fileID: 11400000, guid: cd6a7140f394c4a7696c89dc281c43fb, type: 2}
+  - {fileID: 11400000, guid: 1e4901e0148ef4c43afac48475436aed, type: 2}
   - {fileID: 11400000, guid: 3e2a6f274a4954751931565017cca44f, type: 2}
-  - {fileID: 11400000, guid: b85c355d149cb422c857405f5474decc, type: 2}
-  - {fileID: 11400000, guid: 2299a006fce83496b97de8a84524787b, type: 2}
-  - {fileID: 11400000, guid: c11b47b970d9e4e1a8c177e518aee4d8, type: 2}
-  - {fileID: 11400000, guid: 5874294b56d2c4b11a9ba2ea9401f466, type: 2}
-  - {fileID: 11400000, guid: 070bca996c4ad4ee9bbd571d1b5de06f, type: 2}
   _deck: {fileID: 11400000, guid: 1abe2cece6714a389e662ab64976a8b2, type: 2}
   _plan: {fileID: 0}
   _bonus: {fileID: 11400000, guid: 2a8af2c0d1f44a8694c9d67690cd4ba2, type: 2}
