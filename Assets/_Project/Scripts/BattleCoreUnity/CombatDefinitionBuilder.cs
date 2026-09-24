@@ -91,7 +91,9 @@ namespace Wassup.BattleCoreUnity
                                                      List<ProjectilePatternData> patterns)
         {
             var a = AttackDef.Default();
-            a.TargetLayers = (int)d.EffectiveAttackTargetLayers;
+            // 아군 대상(힐러)은 통행 층을 거르지 않는다(옛 `targetTraversalLayers = targetAllies ? 0 : …`).
+            // 대상 진영은 `MatchDefinitionBuilder.ToUnitDef` 가 아군 단독으로 이미 접었다.
+            a.TargetLayers = d.targetAllies ? 0 : (int)d.EffectiveAttackTargetLayers;
             a.ProjectileDefIndex = IndexOf(projectiles, d.projectile);
             a.Outputs = ToOutputs(d.outputs);
             a.KnockbackDistance = d.knockbackDistance;

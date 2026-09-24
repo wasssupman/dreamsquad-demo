@@ -241,7 +241,13 @@ namespace Wassup.BattleCoreUnity
                 TraversalLayers = (int)d.EffectiveTraversalLayers,
                 Role = (int)d.role,
                 AggroCapacity = d.aggroCapacity,
-                TargetFactions = (int)d.targetFactions,
+                // ⚠ **`targetAllies` 가 저작 마스크를 이긴다** — 힐러는 어떤 마스크가 저작돼 있어도
+                // 아군(방어유닛) 단독이다(옛 `DefenderTargetDefaults.Resolve`). 라이브 힐러가
+                // `targetFactions: 98`(적 전부)을 들고 있어 raw 로 실으면 **적을 회복시킨다**
+                // (2026-09-24 드리프트 감사 H4). 거점까지 넓히지 않는다 — 마음이 회복을 받는다.
+                TargetFactions = d.targetAllies
+                    ? (int)Wassup.Battle.Units.Faction.DefenderUnit
+                    : (int)d.targetFactions,
                 MoveSpeed = d.moveSpeed,
 
                 // ── unit 4 배치 저작 ──────────────────────────────────────────
