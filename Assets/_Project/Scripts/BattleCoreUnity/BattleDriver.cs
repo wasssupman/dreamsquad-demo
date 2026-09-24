@@ -260,13 +260,16 @@ namespace Wassup.BattleCoreUnity
             // unit 7c — 덱. 개발용 덮어쓰기가 비었으면 프로필 확정 덱 + 판 시드로 굴린 액티브(판 밖에서 한 번).
             // ⚠ 모드에 각성 저작이 없으면 카드 **값**을 모른다(값의 주인 = `AwakeningConfig`) — 그 모드는 카드 없는 판이다.
             // 짓다가 카드마다 에러를 내지 않고 한 번 말한다(테스트 모드 SO · 각성 없는 모드).
+            // ⚠ 각성 가드가 **먼저**다 — 개발용 덮어쓰기(`_cards`)도 이 가드를 지난다. 덮어쓰기 분기를 앞에 두면 각성 없는
+            // 모드(테스트 모드 SO)에서 카드마다 빌더 에러가 난다(dev 덱 `d06ae0bcd` 이 그 구멍을 열었다).
             IReadOnlyList<DreamcatcherCard> cards;
-            if (_cards != null && _cards.Length > 0) cards = _cards;
-            else if (mode.awakeningConfig == null)
+            if (mode.awakeningConfig == null)
             {
-                Debug.LogWarning($"[BattleDriver] 모드 '{mode.name}' 에 각성 저작(AwakeningConfig)이 없다 — 드림캐쳐 덱 없이 짓는다.", this);
+                Debug.LogWarning($"[BattleDriver] 모드 '{mode.name}' 에 각성 저작(AwakeningConfig)이 없다 — 드림캐쳐 덱 없이 짓는다"
+                                 + (_cards != null && _cards.Length > 0 ? "(개발용 덱 덮어쓰기도 버린다)." : "."), this);
                 cards = Array.Empty<DreamcatcherCard>();
             }
+            else if (_cards != null && _cards.Length > 0) cards = _cards;
             else cards = Cards.CoreDeckComposition.Compose(_profile, _cardCatalog, _activePool, _activeCount, _activeCards,
                                                            seed, msg => Debug.LogWarning(msg, this));
 

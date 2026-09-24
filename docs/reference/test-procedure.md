@@ -38,6 +38,7 @@
 | 작업 단위 완료·커밋 전 | `assembly_names` 생략 = EditMode 전체 + 관련 PlayMode 파일 | 분 단위 |
 | spec 종료·머지 전 | `mode="PlayMode"` 전체 | ~8분 |
 
+- **카드(시트·SO) 편집 후** Assets lane 의 `CardEffectWitnessTests`(카드 한 장 = 케이스 하나 · 붙이고/시전하고 강제 발동해 효과 종류가 걸리나)와 `CardBakeSnapshotTests`(굳힌 굽기 텍스트와 같나)를 본다. 스냅샷이 빨갛고 **의도한 변경이면** 메뉴 `Wassup/BattleCore/Debug/카드 스냅샷 갱신` → `Tests/EditModeAssets/Fixtures/card_bake_snapshot.txt` diff 를 같은 커밋에 싣는다(테스트는 파일을 쓰지 않는다).
 - `include_failed_tests=true` 로 돌리고 `failures_so_far` 를 읽는다. `failures_capped=false` 면
   거기 없는 테스트는 전부 통과다.
 - **PlayMode 판정은 에디터 실행으로 한다.** 배치(`-batchmode -nographics`)는 `EntitiesAssetGC`
