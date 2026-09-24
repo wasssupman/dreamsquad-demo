@@ -95,6 +95,6 @@
 - [x] `ledgers/rules.md` **F11·F12 · F15~F19 · F23 · F32~F36** 이 코드 포인터로 매핑.
 - [x] `ledgers/bridge-methods.md` 미정 **51 → 46**: `RegisterBlockingHazardSO/1` · `RegisterZoneHazardSO/1` · `RecordHazardSpawn/2` · `RecordBlockingHazard/4` · `RecordBlockingHazardDestroyed/2` 가 닫힌다. ⚠ 효과 타일 3행(`AddEffectTile`·`ApplyEffectTileIfAny`·`ApplyEffectTileOnce`)은 **이미 배정된 행의 주인 정정**이라 잔량을 줄이지 않는다.
 - [ ] **골든 체크박스를 여기서 들지 않는다** — 정의표가 6b2 에서 한 번 더 바뀐다. 재굽기는 6b2.
-- [ ] `core-reviewer` APPROVE — **매니저 0**(`HazardManager` 없음 · 해저드는 `BattleWorld` 의 목록이고 규칙은 phase 가 든다) · **값 하드코딩 0** · 제약 13 진입점만 호출(인라인 거리 계산 0건, grep 으로 확인).
+- [x] `core-reviewer` APPROVE(2026-09-24 · MEDIUM 1 → a3798db83 로 해소 · LOW 1 문면) — **매니저 0**(`HazardManager` 없음 · 해저드는 `BattleWorld` 의 목록이고 규칙은 phase 가 든다) · **값 하드코딩 0** · 제약 13 진입점만 호출(인라인 거리 계산 0건, grep 으로 확인).
 
-확인 2026-09-24 — 헤드리스·Unity EditMode 코어·Assets·PlayMode 코어 lane(수치는 커밋 보고). 골든 무변(재굽기 없음). 커밋 해시는 리드 재검증 뒤 기록.
+확인 2026-09-24 — 커밋 `cd390e511`(6b) · `a3798db83`(효과 타일 옛 규칙 복구). 리드 export 재검증: build 0 · test 483 · Check 0. Unity EditMode 코어 496/497(빨강 1 = 병행 감사 WIP, export 에서 초록) · PlayMode 코어 40/40. 골든 무변(재굽기 없음).
