@@ -735,7 +735,8 @@ namespace Wassup.BattleCore
                     if (c.U == u) continue;
                     if ((c.Faction & atk.TargetMask) == 0) continue;
                     if (!LayerBits.CanTarget(atk.TargetLayers, c.Layers)) continue;
-                    if (!ClassAllowed(atk, c.Class)) continue;
+                    // 직업 필터는 **여기서 안 거른다** — 필터는 주 대상 획득(`PickTarget`)만의
+                    // 규칙이다. 옛 pass 루프도 진영·층·자기·도형만 봤다(`AttackSystem.cs:1525~1537`).
                     if (!AttackReach.InReachShaped(u.Position, c.Pos, atk.Range, tileSize,
                                                    u.HitRadius, c.Body, in atk.Shape, dir)) continue;
                     float d2 = SqXZ(u.Position, c.Pos);

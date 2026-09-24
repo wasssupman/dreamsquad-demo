@@ -7,10 +7,11 @@ using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
 namespace Wassup.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 3 「나중에 고친 것」 — **부가 타격(2번째 이후 대상) 선정**이 옛 규칙과
-    // 갈렸던 자리(2026-09-24 도달 패리티 감사). 옛 정본 = `Battle/Combat/AttackSystem.cs` 의
+    // 갈렸던 두 자리(2026-09-24 도달 패리티 감사). 옛 정본 = `Battle/Combat/AttackSystem.cs` 의
     // 비가디언 다중 타격 루프(pass 루프).
     //
     //   D1 — 힐러의 부가 대상도 **가장 다친 순**이다(옛 `rankByHealth` 분기 → `LowestHealthTargeting`).
+    //   D2 — 직업 필터는 **주 대상 획득만** 거른다. 부가 타격 루프에는 필터가 없다.
     //
     // ⚠ 픽스처 수치는 게임 값이 아니다 — 묻는 것은 「순위·자격이 어느 규칙을 따르나」다.
     public class SecondaryTargetingTests
@@ -116,6 +117,55 @@ namespace Wassup.Tests.EditMode.Core
             Assert.Less(units[1].Health, units[1].MaxHealth);
             Assert.Less(units[2].Health, units[2].MaxHealth);
             Assert.AreEqual(units[3].MaxHealth, units[3].Health, 1e-3f);
+        }
+
+        [Test]
+        public void 직업_필터가_있는_적의_부가_타격은_필터를_안_거른다()
+        {
+            // 옛 `AttackSystem`: 직업 필터(`hasFilter`·`filterMask`)는 **주 대상 획득 루프에만** 있다.
+            // 다중 타격 pass 루프는 진영·층·자기·도형만 본다. 그래서 필터가 허용한 직업을
+            // 주 대상으로 문 적의 광역은 옆의 **불허 직업**도 함께 친다.
+            var def = Definition(defenderDamage: 0f, enemyDamage: 10f, enemyRange: 1f);
+            def.Units[0].Role = 3;
+            def.Enemies[0].AttackTargetCount = 2;
+            def.Enemies[0].Attack.HasClassFilter = true;
+            def.Enemies[0].Attack.ClassMask = 1 << 3;
+            AddPassiveUnit(def, role: 2);
+            def.ConfigHash = def.ComputeConfigHash();
+
+            var m = Match(def);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 2)));   // 허용 직업(3)
+            m.Apply(Command.DebugSpawnDefender(2, new int2(6, 2)));   // 불허 직업(2)
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 2)));
+            var allowed = DefenderAt(m, new int2(4, 2));
+            var barred = DefenderAt(m, new int2(6, 2));
+            Assert.AreNotSame(allowed, barred);
+            float allowed0 = allowed.Health, barred0 = barred.Health;
+
+            Tick(m, 120);
+
+            Assert.Less(allowed.Health, allowed0, "주 대상 = 허용 직업");
+            Assert.Less(barred.Health, barred0, "부가 타격은 직업 필터를 거치지 않는다(옛 pass 루프)");
+        }
+
+        [Test]
+        public void 직업_필터는_주_대상에서는_여전히_거른다()
+        {
+            // 짝 — 불허 직업만 사거리에 있으면 주 대상이 없고, 주 대상이 없으면 부가 타격도 없다.
+            var def = Definition(defenderDamage: 0f, enemyDamage: 10f, enemyRange: 1f);
+            def.Units[0].Role = 2;
+            def.Enemies[0].AttackTargetCount = 2;
+            def.Enemies[0].Attack.HasClassFilter = true;
+            def.Enemies[0].Attack.ClassMask = 1 << 3;
+            def.ConfigHash = def.ComputeConfigHash();
+
+            var m = Match(def);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 2)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 2)));
+            var d = First(m, UnitKind.Defender);
+            float before = d.Health;
+            Tick(m, 120);
+            Assert.AreEqual(before, d.Health, 1e-3f);
         }
     }
 }
