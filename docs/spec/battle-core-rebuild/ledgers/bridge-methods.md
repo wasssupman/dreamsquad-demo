@@ -234,7 +234,7 @@
 | 132 | `GridCellToViewCenter/1` | MapRuntime (코어) |  |
 | 133 | `TryGetDefenderRestViewPos/2` | 뷰 풀 |  |
 | 134 | `FootprintAnchorToFoot/1` | PlacementService |  |
-| 135 | `GridAnchorToViewCenter/2` | 뷰 풀 |  |
+| 135 | `GridAnchorToViewCenter/2` | CoreDragPreviewPresenter | 드래그 실루엣의 자리(옛 `DefenderDragPlacementController.cs:1216`). 규칙(발밑 = 하단 행 가로 중앙)은 코어 `Footprint.FootPosition` 을 **호출만** 하고 `BoardSpace.ToView` 로 옮긴다 — 브리지의 `FootprintAnchorToFoot` 복제는 안 옮겼다 |
 | 136 | `DrainEnemyKilledEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 137 | `DrainProjectileSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) | 안의 발사 SFX 는 `CoreBattleAudio`(`ProjectileSpawned`, 방어유닛 탄만) |
 | 138 | `DrainMeteorBarrageRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |

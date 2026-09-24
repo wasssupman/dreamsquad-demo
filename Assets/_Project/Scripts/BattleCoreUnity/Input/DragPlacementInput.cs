@@ -66,6 +66,12 @@ namespace Wassup.BattleCoreUnity.Input
         [Tooltip("배치 비행 프리젠터. 비어 있으면 착지는 즉시다(헤드리스와 같다).")]
         [SerializeField] private CoreDeployFlightPresenter _deployFlight;
 
+        [Header("드래그 실루엣")]
+        // 고스트 칸과 **같은 수명**이다(옛 계약 「실루엣 수명 = hover 수명」) — 그래서 고스트를
+        // 밀 때 같이 민다. 비어 있으면 고스트만 그린다.
+        [Tooltip("판 위에 끄는 유닛의 그림을 세우는 프리젠터. 비어 있으면 고스트 칸만 보인다.")]
+        [SerializeField] private CoreDragPreviewPresenter _dragPreview;
+
         private int _defIndex = -1;
         private bool _pressing;
         private bool _promoted;
@@ -126,6 +132,7 @@ namespace Wassup.BattleCoreUnity.Input
             _snap = default;
             if (_tray != null) _tray.DraggingDefIndex = -1;
             HideGhost();
+            if (_dragPreview != null) _dragPreview.End();
         }
 
         /// <summary>
@@ -199,6 +206,11 @@ namespace Wassup.BattleCoreUnity.Input
                 return;
             }
             _overlay.ShowPlacement(_armedDefIndex, anchor, valid);
+            // 실루엣은 **드래그로 승격된 뒤에만**(옛 `:1130` — 탭·호버 경로 무변 계약).
+            // `sticky` 가 곧 승격 여부다(`StepBoardGesture` 가 `_boardDragging` 을 넘긴다).
+            if (_dragPreview == null) return;
+            if (sticky) _dragPreview.Show(_armedDefIndex, anchor, armed: true);
+            else _dragPreview.Hide();
         }
 
         private void OnEnable()
@@ -307,6 +319,7 @@ namespace Wassup.BattleCoreUnity.Input
             _anchor = anchor;
             _anchorValid = true;
             if (_overlay != null) _overlay.ShowPlacement(_defIndex, anchor, valid);
+            if (_dragPreview != null) _dragPreview.Show(_defIndex, anchor, armed: false);
         }
 
         /// <summary>
@@ -446,11 +459,13 @@ namespace Wassup.BattleCoreUnity.Input
             _anchorValid = false;
             if (_tray != null) _tray.DraggingDefIndex = -1;
             HideGhost();
+            if (_dragPreview != null) _dragPreview.End();
         }
 
         private void HideGhost()
         {
             if (_overlay != null) _overlay.HidePlacement();
+            if (_dragPreview != null) _dragPreview.Hide();
         }
 
         private Camera EnsureCamera()
