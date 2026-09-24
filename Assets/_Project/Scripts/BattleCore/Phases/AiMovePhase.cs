@@ -205,7 +205,10 @@ namespace Wassup.BattleCore
 
                 // 공격 수단이 없으면 가디언을 때릴 수 없으므로 거부한다 — 안 그러면
                 // 「못 때리는데 끌려가서 영원히 서 있는」 적이 생긴다.
-                int tileRange = AggroChaseMath.ResolveTileRange(def.AttackRange > 0f, def.AttackRange, false, 0f);
+                // 평타가 없어도 **도발 공격 프로필**이 있으면 때릴 수단이 있다(옛 `ResolveTileRange` 의
+                // 두 번째 인자 쌍). 프로필도 없으면 거부 — 「못 때리는데 끌려가 서 있는」 적을 막는다.
+                int tileRange = AggroChaseMath.ResolveTileRange(def.AttackRange > 0f, def.AttackRange,
+                                                                def.Attack.TauntDamage > 0f, def.Attack.TauntRange);
                 if (tileRange == AggroChaseMath.NoAttack) continue;
 
                 // 도발은 **수용량과 선점 둘만** 우회한다. 도달 불가는 그대로 막는다 —

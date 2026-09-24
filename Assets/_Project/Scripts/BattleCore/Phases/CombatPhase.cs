@@ -144,7 +144,9 @@ namespace Wassup.BattleCore
             {
                 var u = units[i];
                 var atk = u.Attack;
-                if (atk == null || atk.Unarmed) continue;
+                if (atk == null) continue;
+                if (u.Kind == UnitKind.Enemy) StepTauntGrant(u, atk);
+                if (atk.Unarmed && !atk.GrantedByTaunt) continue;
                 // 배치 중·사망 대기는 공격자가 아니다(옛 쿼리 랭크 `WithNone` 의 후계).
                 if (u.Deploying || u.Dead) continue;
 
@@ -186,6 +188,44 @@ namespace Wassup.BattleCore
 
                 // ⒠ 대상 선정 → START / RESOLVE
                 StepTargetPolicy(ctx, u, atk, actionLocked, canStart, tileSize);
+            }
+        }
+
+        /// <summary>
+        /// 도발 공격의 부여·회수(옛 `TauntAttackGrantSystem`, aggro-targeting unit 1·8). **상태에서
+        /// 파생한다** — 유인이 풀리는 자리가 여럿(만료·가디언 사망·장애물 재구축)이라 사건을 따라가면
+        /// 하나를 놓친다. 매 틱 「지금 유인됐나」만 보고 붙이거나 벗는다.
+        ///
+        /// 붙이는 대상은 **평타가 없고 프로필이 있는 적**뿐이다. 평타가 있는 적(러너·스위프트 포함)은
+        /// 유인되면 제 공격으로 가디언을 때린다 — 대상 진영은 어그로 고정(`PickTarget`)이 이미
+        /// 가디언으로 좁히므로 옛 두 번째 분기(마스크에 방어유닛 비트 OR)가 따로 필요 없다.
+        /// </summary>
+        private static void StepTauntGrant(Unit u, AttackState atk)
+        {
+            bool aggroed = u.Aggro != null && !u.Aggro.Target.IsNone;
+            if (aggroed && !atk.GrantedByTaunt && atk.Unarmed && atk.TauntOutputs.Length > 0)
+            {
+                atk.GrantedByTaunt = true;
+                atk.PreviousTargetMask = atk.TargetMask;
+                atk.TargetMask = (int)Faction.DefenderUnit;
+                atk.Range = atk.TauntRange;
+                atk.Interval = atk.TauntCooldown;
+                atk.HitDelay = 0f;
+                atk.TargetCount = 1;
+                atk.Outputs = atk.TauntOutputs;
+                atk.CooldownRemaining = 0f;
+            }
+            else if (!aggroed && atk.GrantedByTaunt)
+            {
+                // 통째로 벗는다 — 평타 없는 적으로 돌아간다(루프가 다시 건너뛴다).
+                atk.GrantedByTaunt = false;
+                atk.TargetMask = atk.PreviousTargetMask;
+                atk.Range = 0f;
+                atk.Outputs = System.Array.Empty<AttackOutputDef>();
+                atk.CooldownRemaining = 0f;
+                atk.HitDelayRemaining = 0f;
+                atk.Lock = SimEntityId.None;
+                atk.CommittedTarget = SimEntityId.None;
             }
         }
 
@@ -1461,6 +1501,12 @@ namespace Wassup.BattleCore
             s.ClassMask = a.ClassMask;
             s.HasClassFilter = a.HasClassFilter;
             s.Unarmed = a.Unarmed;
+            // 도발 공격 프로필은 **평타 없는 적**에게만 의미가 있다. 출력은 여기서 한 번 짓는다.
+            s.TauntRange = a.TauntRange;
+            s.TauntCooldown = a.TauntCooldown;
+            s.TauntOutputs = a.Unarmed && a.TauntDamage > 0f
+                ? new[] { new AttackOutputDef { Kind = AttackOutputKind.Damage, Magnitude = a.TauntDamage } }
+                : System.Array.Empty<AttackOutputDef>();
             s.Mode = (TargetMode)a.Mode;
             s.Policy = (AttackPolicy)a.Policy;
             s.ProjectileDefIndex = ClampRef(a.ProjectileDefIndex, projectiles);

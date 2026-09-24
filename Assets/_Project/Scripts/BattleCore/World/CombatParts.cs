@@ -221,6 +221,10 @@ namespace Wassup.BattleCore
 
         /// <summary>도발로 **붙여 준** 공격인가. 해제 시 원복/제거를 가르는 유일한 표시다.</summary>
         public bool GrantedByTaunt;
+        /// <summary>도발 공격 프로필(평타 없는 적 전용). `TauntOutputs` 는 스폰 때 한 번 짓는다(틱 중 할당 0).</summary>
+        public float TauntRange;
+        public float TauntCooldown;
+        public AttackOutputDef[] TauntOutputs = System.Array.Empty<AttackOutputDef>();
         /// <summary>도발 전 원래 마스크(원복용). `GrantedByTaunt` 일 때만 의미 있다.</summary>
         public int PreviousTargetMask;
 
@@ -252,6 +256,9 @@ namespace Wassup.BattleCore
             ClassMask = -1;
             HasClassFilter = false;
             Unarmed = false;
+            TauntRange = 0f;
+            TauntCooldown = 0f;
+            TauntOutputs = System.Array.Empty<AttackOutputDef>();
             Shape = default;
             Policy = AttackPolicy.Target;
             Mode = TargetMode.None;

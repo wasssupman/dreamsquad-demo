@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEditor;
@@ -23,6 +24,7 @@ namespace Wassup.Tests.EditMode
     public class CoreBuilderDriftTests
     {
         private const string DefendersDir = "Assets/_Project/Data/Defenders/";
+        private const string EnemiesDir = "Assets/_Project/Data/Enemies/";
 
         /// <summary>적 칸을 채우는 무해한 사본(적이 주제가 아닌 테스트용). 테스트마다 새로 만든다.</summary>
         private AttackUnitData dummy;
@@ -441,6 +443,66 @@ namespace Wassup.Tests.EditMode
                 Assert.AreNotEqual("drift_plan", def.WavePlan.DisplayName, "덱 생성 모드가 모드의 플랜을 읽었다");
             }
             finally { DropMode(mode); Object.DestroyImmediate(plan); }
+        }
+
+        // ── H6 · 도발 공격 프로필 ────────────────────────────────────────────
+
+        /// <summary>가디언 옆에 적 하나. 가디언이 때려 유인한 뒤, 적이 가디언에게 준 한 방씩의 피해.</summary>
+        private static List<float> HitsOnGuardian(AttackUnitData enemy, int ticks)
+        {
+            var guardian = Load<DefenderUnitData>(DefendersDir + "Defender_Guardian.asset");
+            var def = MatchDefinitionBuilder.Build(new[] { guardian }, new[] { enemy }, 1, ModeDef.Default());
+            var m = Run(def);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(6, 4)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(8, 4)));
+            m.Tick();
+            var g = Nth(m, UnitKind.Defender, 0);
+            var e = Nth(m, UnitKind.Enemy, 0);
+            if (e.Move != null) e.Move.Speed = 0f;   // 제자리 — 주제는 「유인된 뒤 무엇으로 때리나」다
+            var hits = new List<float>();
+            m.Bus.Subscribe(CoreEventKind.DamageApplied, 0, ev =>
+            {
+                if (ev.B == g.Id && ev.A == e.Id) hits.Add(ev.Amount);
+            });
+            for (int t = 0; t < ticks; t++) m.Tick();
+            return hits;
+        }
+
+        [Test]
+        public void 평타_없는_적은_유인되면_도발_공격_프로필로_가디언을_때린다()
+        {
+            // 옛 `TauntAttackGrantSystem`(aggro-targeting unit 1·8): 평타 없는 적 + 프로필 → 유인되는
+            // 동안 임시 공격. 빌더가 `aggroAttack*` 을 안 실어 이 적은 **유인조차 안 됐다.**
+            var walker = Dummy(health: 100000f);
+            walker.attackMethod = EnemyAttackMethod.None;
+            walker.aggroAttackDamage = 5f;
+            walker.aggroAttackCooldown = 1f;
+            walker.aggroAttackRange = 1f;
+            try
+            {
+                var hits = HitsOnGuardian(walker, 150);
+                Assert.Greater(hits.Count, 0, "유인된 평타 없는 적이 도발 공격으로 가디언을 안 때렸다");
+                foreach (var h in hits) Assert.AreEqual(walker.aggroAttackDamage, h, 1e-3f, "도발 공격 한 방이 프로필 피해가 아니다");
+            }
+            finally { Object.DestroyImmediate(walker); }
+        }
+
+        [Test]
+        public void 평타가_있는_러너는_유인되면_제_공격으로_때린다()
+        {
+            // 라이브 러너는 프로필(`aggroAttackDamage`)을 저작했지만 **평타가 있다**. 옛 부여는 공격 상태가
+            // 없는 적만 대상이었으므로(`WithNone<AttackState>`) 러너는 유인되면 평타로 때린다 — 프로필은
+            // 쓰이지 않는다. 이 단언이 그 옛 거동을 못박는다(프로필로 갈아끼우면 빨개진다).
+            var runner = Load<AttackUnitData>(EnemiesDir + "Enemy_Runner.asset");
+            float attack = 0f;
+            foreach (var o in runner.outputs)
+                if (o.kind == Wassup.Data.AttackOutputKind.Damage) attack += o.magnitude;
+            Assert.Greater(runner.aggroAttackDamage, 0f, "전제: 라이브 러너는 도발 공격 프로필을 저작했다");
+            Assert.Greater(attack, 0f, "전제: 라이브 러너는 평타가 있다");
+
+            var hits = HitsOnGuardian(runner, 90);
+            Assert.Greater(hits.Count, 0, "유인된 러너가 가디언을 안 때렸다");
+            foreach (var h in hits) Assert.AreEqual(attack, h, 1e-3f, "러너가 평타 대신 다른 피해로 때렸다");
         }
     }
 }

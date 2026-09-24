@@ -736,6 +736,53 @@ namespace Wassup.Tests.EditMode.Core
             Assert.Greater(DefenderDamageTaken(def), 0f, "허용 비트의 직업은 때린다");
         }
 
+        [Test]
+        public void 평타_없는_적은_가디언에게_끌려가면_도발_공격으로_때리고_풀리면_다시_걷기만_한다()
+        {
+            // 2026-09-24 드리프트 감사 H6 — 옛 `TauntAttackGrantSystem`(aggro-targeting unit 1·8).
+            // 평타가 없는 적이 도발 공격 프로필을 저작했으면, 유인되는 동안 그 프로필로 **임시 공격**
+            // (대상 = 방어유닛 · 1체 · 피해 1출력)을 얻고, 풀리면 통째로 벗는다.
+            var def = Definition(defenderDamage: 1f, defenderCooldown: 0.5f, enemyDamage: 0f, aggroCapacity: 2);
+            ref var e = ref def.Enemies[0];
+            e.AttackRange = 0f;                    // 빌더가 걷기만 하는 적에게 싣는 값
+            e.Attack.Unarmed = true;
+            e.Attack.TauntDamage = 5f;
+            e.Attack.TauntCooldown = 1f;
+            e.Attack.TauntRange = 1f;
+            def.ConfigHash = def.ComputeConfigHash();
+            var m = Match(def);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var guardian = First(m, UnitKind.Defender);
+            var enemy = First(m, UnitKind.Enemy);
+
+            float before = guardian.Health;
+            Tick(m, 150);   // 2.5초 — 도발 공격은 1초 간격이다
+            Assert.IsTrue(enemy.Aggro != null && !enemy.Aggro.Target.IsNone, "프로필이 있는 적이 유인되지 않았다");
+            float dealt = before - guardian.Health;
+            Assert.Greater(dealt, 0f, "유인된 적이 도발 공격으로 가디언을 때리지 않았다");
+            Assert.AreEqual(0f, dealt % 5f, 1e-3f, $"도발 공격 한 방은 저작 피해(5)다 — 받은 피해 {dealt}");
+
+            // 가디언이 사라지면 유인이 풀린다 → 임시 공격을 통째로 벗는다.
+            m.Apply(Command.DebugDestroy(guardian.Id));
+            Tick(m, 2);
+            m.Apply(Command.DebugSpawnDefender(1, new int2(4, 3)));   // 공격 없는 옆 유닛(가디언 아님)
+            var bystander = FindDefender(m, 1);
+            enemy.Position = new float3(bystander.Position.x + 1f, 0f, bystander.Position.z);
+            float calm = bystander.Health;
+            Tick(m, 180);
+            Assert.AreEqual(calm, bystander.Health, 1e-3f, "풀린 뒤에도 도발 공격이 남아 옆 유닛을 때렸다");
+            Assert.IsFalse(enemy.Attack.GrantedByTaunt, "풀린 뒤에도 도발 공격 표시가 남았다");
+        }
+
+        private static Unit FindDefender(BattleMatch m, int defIndex)
+        {
+            var units = m.World.Units;
+            for (int i = 0; i < units.Count; i++)
+                if (units[i].Kind == UnitKind.Defender && units[i].DefIndex == defIndex && !units[i].Dead) return units[i];
+            return null;
+        }
+
         // ── 헬퍼 ─────────────────────────────────────────────────────────────
 
         private static int CountProjectiles(BattleMatch m) => m.World.Projectiles.Count;

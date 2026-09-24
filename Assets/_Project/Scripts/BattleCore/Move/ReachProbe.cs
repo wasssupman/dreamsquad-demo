@@ -48,7 +48,12 @@ namespace Wassup.BattleCore.Move
             if (self.Aggro == null || self.Aggro.Target.IsNone) return false;
             var g = world.Find(self.Aggro.Target);
             if (g == null || !g.IsTargetable()) return false;
-            return AttackReach.InReach(self.Position, g.Position, def.AttackRange, tileSize,
+            // 평타가 없는 적은 유인되는 동안 **도발 공격 사거리**로 멈춘다 — 공격 루프가 붙여 주는
+            // 사거리와 같은 값이어야 「멈췄는데 못 때리는」 교착이 안 난다(옛: 부여가 이동 앞에 돈다).
+            float range = def.AttackRange > 0f ? def.AttackRange
+                        : def.Attack.TauntDamage > 0f ? def.Attack.TauntRange : 0f;
+            if (range <= 0f) return false;
+            return AttackReach.InReach(self.Position, g.Position, range, tileSize,
                                        self.HitRadius, g.HitRadius);
         }
 
