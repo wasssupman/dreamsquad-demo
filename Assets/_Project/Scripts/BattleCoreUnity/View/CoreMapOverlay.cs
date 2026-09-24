@@ -138,9 +138,12 @@ namespace Wassup.BattleCoreUnity.View
         // (`SkillMath.TryOriginRadius`)을 **부르기만** 한다. 대상 몸은 더하지 않는다(대상 그림자가 링에 닿으면 걸린다 = 판정식과 동치).
         // 조준 원의 반경은 드래그 슬롯이 같은 함수로 낸 값이다. 스타일은 저작(`DreamcatcherFocusConfig.attachRangeStyle` ·
         // `TileSetData.aimRingStyle` — 옛 두 채널의 값 그대로).
-        private enum AreaKind : byte { None = 0, Attach = 1, AimRing = 2, AimCells = 3 }
+        // unit 7d — `Telegraph` = 낙하탄 착탄 예고(옛 `PinSkillTelegraph` — 옛 범위 채널의 `SkillTelegraph` 몫). 같은 채널이라
+        // 「마지막에 쓴 자가 이긴다」·「반납은 주인만」이 옛 `SetRangeOwner`/`ClearRange` 규칙 그대로다.
+        private enum AreaKind : byte { None = 0, Attach = 1, AimRing = 2, AimCells = 3, Telegraph = 4 }
         private AreaKind _area;
         private SimEntityId _areaHost = SimEntityId.None;
+        private SimEntityId _telegraphId = SimEntityId.None;
         private RangeSpec _areaSpec = RangeSpec.None;
         private RangeRingStyle _areaStyle;
         private float3 _areaCenter;
@@ -185,6 +188,28 @@ namespace Wassup.BattleCoreUnity.View
             if (cells != null) _aimCellList.AddRange(cells);
         }
 
+        /// <summary>
+        /// unit 7d — 착탄 예고 링. 반경은 호출부가 사건 값(`ProjectileSpawned.AreaTiles`)으로 `CoreDrawRadius` 를 지나 낸 값이다.
+        /// `projectile` = 그 탄 — 반납은 **그 탄의 착탄·소멸**만 한다(옛: 남의 착탄이 예고를 지우면 안 된다).
+        /// </summary>
+        public void ShowTelegraph(SimEntityId projectile, float3 centerSim, float radiusTiles)
+        {
+            if (radiusTiles <= 0f || _tileSet == null) return;
+            _area = AreaKind.Telegraph;
+            _telegraphId = projectile;
+            _areaCenter = centerSim;
+            _areaRadius = radiusTiles;
+            _areaStyle = _tileSet.aimRingStyle;
+        }
+
+        public void HideTelegraph(SimEntityId projectile)
+        {
+            if (_area == AreaKind.Telegraph && _telegraphId == projectile) ClearArea();
+        }
+
+        /// <summary>테스트 창구 — 지금 예고 중인 탄(없으면 None).</summary>
+        public SimEntityId TelegraphProjectile => _area == AreaKind.Telegraph ? _telegraphId : SimEntityId.None;
+
         public void HideAim()
         {
             if (_area == AreaKind.AimRing || _area == AreaKind.AimCells) ClearArea();
@@ -211,6 +236,7 @@ namespace Wassup.BattleCoreUnity.View
         {
             _area = AreaKind.None;
             _areaHost = SimEntityId.None;
+            _telegraphId = SimEntityId.None;
             _aimCellList.Clear();
         }
 
@@ -232,6 +258,7 @@ namespace Wassup.BattleCoreUnity.View
                         break;
                     }
                     case AreaKind.AimRing: ring = true; break;
+                    case AreaKind.Telegraph: ring = true; break;
                     case AreaKind.AimCells: cells = _aimCellList.Count > 0; break;
                 }
             }

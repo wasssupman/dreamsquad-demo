@@ -62,6 +62,14 @@ namespace Wassup.BattleCoreUnity.View
         [Tooltip("드림캐쳐 발동 임팩트 코얼레스 간격의 주인(5a 가 소비처 0 으로 세워 둔 자산).")]
         [SerializeField] private Wassup.Data.BattleView.DcVisualConfig _dcVisual;
 
+        [Header("브레스 · 착탄 예고 (unit 7d — 옛 VfxSpawner 브레스 슬롯 · 브리지 PinSkillTelegraph)")]
+        [SerializeField] private GameObject _areaBreathPrefab;
+        [SerializeField] private float _areaBreathScalePerTile = 0.55f;
+        [SerializeField] private float _areaBreathScaleMax = 2.4f;
+        [SerializeField] private float _areaBreathForwardFactor = 0.45f;
+        [SerializeField] private float _areaBreathAngleOffset = 90f;
+        [SerializeField] private CoreMapOverlay _overlay;
+
         [Header("배치 링 펄스 (옛 브리지 코루틴)")]
         [SerializeField] private Color _deployRingColor = new Color(0.2f, 0.95f, 1f, 0.7f);
         [SerializeField] private float _deployRingStartScale = 0.2f;
@@ -109,6 +117,7 @@ namespace Wassup.BattleCoreUnity.View
                     _procLastImpact.Clear();
                     SpawnedCount = 0;
                     ProcImpactCount = 0;
+                    _telegraphProjectile = SimEntityId.None;
                     break;
 
                 case CoreEventKind.TriggerFired: OnTriggerFired(e); break;
@@ -116,7 +125,8 @@ namespace Wassup.BattleCoreUnity.View
 
                 case CoreEventKind.AttackResolved: OnAttackResolved(e); break;
                 case CoreEventKind.ProjectileSpawned: OnProjectileSpawned(e); break;
-                case CoreEventKind.ProjectileHit: OnProjectileHit(e); break;
+                case CoreEventKind.ProjectileHit: ReleaseTelegraph(e.A); OnProjectileHit(e); break;
+                case CoreEventKind.ProjectileDespawned: ReleaseTelegraph(e.A); break;
 
                 case CoreEventKind.HealApplied:
                     OneShot(_healAppliedPrefab, nameof(_healAppliedPrefab), e.SiteFired.Pos, 0.08f, 1f, 1.1f, oneShot: false);
@@ -245,6 +255,7 @@ namespace Wassup.BattleCoreUnity.View
         // 하늘에서 떨어지는 탄은 쏜 유닛의 손에서 나오지 않으므로 캐스트가 없다(옛 앵커 규칙과 같은 판단).
         private void OnProjectileSpawned(CoreEvent e)
         {
+            if (e.AreaTiles > 0) PinTelegraph(e);
             if (_projectiles == null || _units == null || e.B.IsNone) return;
             var movement = (MovementKind)e.Arg;
             if (movement == MovementKind.SkyFall || movement == MovementKind.SkyFallOnEntity) return;
@@ -280,6 +291,53 @@ namespace Wassup.BattleCoreUnity.View
             var go = Instantiate(_meteorBurstPrefab, view + Vector3.up * 0.05f, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * Mathf.Max(0.1f, radiusWorld);
             Destroy(go, 1.2f);
+            SpawnedCount++;
+        }
+
+        // ── 착탄 예고 · 브레스 (unit 7d) ─────────────────────────────────────
+        //
+        // 착탄 예고(옛 `BattleBridge.cs:5456` `PinSkillTelegraph`): 예고 반경은 **스킬 intent 값**이고(7a — 탄 정의표 값이
+        // 아니다) `ProjectileSpawned.AreaTiles` 가 싣는다(0 = 예고 없음). 중심 = 착탄점의 칸 중심 · 반경 = 칸 수 + 칸 반폭
+        // (자리형 — `CoreDrawRadius`). 칸 하나에 예고 하나(옛 단일 슬롯 — 마지막 탄이 이긴다). 반납은 **그 탄의** 착탄·소멸.
+        private SimEntityId _telegraphProjectile = SimEntityId.None;
+
+        private void PinTelegraph(CoreEvent e)
+        {
+            var map = _driver != null ? _driver.Match?.Map : null;
+            if (map == null) return;
+            if (_overlay == null) _overlay = FindAnyObjectByType<CoreMapOverlay>();
+            if (_overlay == null) { MissingSlot(nameof(_overlay)); return; }
+            var center = map.CenterOf(map.CellOf(e.SiteTarget.Pos));
+            _overlay.ShowTelegraph(e.A, center, CoreDrawRadius.AreaTiles(e.AreaTiles, 0f));
+            _telegraphProjectile = e.A;
+        }
+
+        private void ReleaseTelegraph(SimEntityId projectile)
+        {
+            if (_telegraphProjectile.IsNone || _telegraphProjectile != projectile) return;
+            if (_overlay != null) _overlay.HideTelegraph(projectile);
+            _telegraphProjectile = SimEntityId.None;
+        }
+
+        // 브레스(옛 `VfxSpawner.SpawnAreaBreath` 그대로): 그림은 공격 도형이 아니라 **스킬의 콘**이다 — `TriggerFired` 가 축
+        // (`AttackDir` = 시전자→대상)·부채꼴(`AttackShape`)·사거리(칸, `AttackRange`)를 싣는다(7a). 크기는 **저작값**
+        // (콘 기하를 그대로 쓰면 화면을 덮는다 — 옛 주석). 슬롯이 비면 옛 폴백(발동 지점 링 펄스)도 없이 에러 한 번.
+        private void SpawnAreaBreath(CoreEvent e)
+        {
+            if (_areaBreathPrefab == null) { MissingSlot(nameof(_areaBreathPrefab)); return; }
+            if (_units == null || !_units.TryResolveViewPosition(e.A, useAnchor: true, out var origin)) return;
+            float rangeWorld = e.AttackRange * (_driver != null ? _driver.TileSize : 1f);
+            Vector3 ahead = (Vector3)Wassup.Core.BoardSpace.ToViewVector(new Vector3(e.AttackDir.x, 0f, e.AttackDir.y));
+            if (ahead.sqrMagnitude < 1e-6f) ahead = Vector3.right;
+            ahead.Normalize();
+            float angle = Mathf.Atan2(ahead.y, ahead.x) * Mathf.Rad2Deg;
+            var pos = origin + ahead * (rangeWorld * _areaBreathForwardFactor);
+            var go = Instantiate(_areaBreathPrefab, pos, Quaternion.Euler(0f, 0f, angle + _areaBreathAngleOffset), transform);
+            go.transform.localScale = Vector3.one * Mathf.Clamp(rangeWorld * _areaBreathScalePerTile, 0.1f,
+                                                                Mathf.Max(0.1f, _areaBreathScaleMax));
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++) renderers[i].sortingOrder += BoardSortOrder.AreaBreathOrder;
+            Destroy(go, ConfigureOneShot(go));
             SpawnedCount++;
         }
 
@@ -319,6 +377,9 @@ namespace Wassup.BattleCoreUnity.View
         // 옛 결정). 유닛 저작 스킬(배치 스킬 등)은 카드가 아니다 — 규칙 줄의 출처로 가른다.
         private void OnTriggerFired(CoreEvent e)
         {
+            if ((Wassup.BattleCore.Trigger.TriggerPayload)(int)e.Amount == Wassup.BattleCore.Trigger.TriggerPayload.AreaBreath
+                && e.AttackShape.kind == Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind)
+                SpawnAreaBreath(e);
             var def = _driver != null ? _driver.Definition : null;
             int row = e.DefIndex;
             if (def == null || row < 0 || row >= def.Bindings.Length
