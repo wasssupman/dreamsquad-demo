@@ -328,7 +328,7 @@
 | 226 | `SetRangeOwner/1` | CoreMapOverlay.ShowPlacement | 링의 주인 = 지금 끌고 있는 유닛 |
 | 227 | `BakeAttackShape/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 228 | `SetPlacementRange/2` | PlacementService |  |
-| 229 | `RefreshRangeTargetMarks/3` | CoreMapOverlay.PaintRange | 표식 판정은 `AttackReach.InReach` **호출만**(제약 13) |
+| 229 | `RefreshRangeTargetMarks/3` | CoreMapOverlay.PaintRange | 표식 판정은 `AttackReach.InReach` **호출만**(제약 13). 같은 루프의 도형 가이드(`SetShapeGuide` 호출, 옛 `:8176-8183`)는 `CoreMapOverlay.PaintShapeGuide`(6c 후속) — 최근접은 코어 `NearestTargeting.RanksBefore` |
 | 230 | `ClearPlacementRange/0` | PlacementService |  |
 | 231 | `SetSkillAimRange/2` | BindingRegistry / TriggerDispatcher |  |
 | 232 | `ClearSkillAimRange/0` | BindingRegistry / TriggerDispatcher |  |
