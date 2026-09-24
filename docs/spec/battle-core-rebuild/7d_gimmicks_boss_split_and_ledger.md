@@ -104,7 +104,7 @@ $ python3 tools/battle-core-rebuild/check_ledgers.py
 [bridge-methods] 미정 0 (조각 E 진입 조건: 0)
 ```
 
-28행 처분: 새 주인 7(`CoreUnitView.PlayLandingSquash` · `EnemySpawn` · `CombatDefinitionBuilder` ×2 · `WaveScheduler.FieldClear` · `EnemySplit`) · 삭제 21(재배치 7 · 수명 8 · 유출 한도 3 · 휴면 1 · 재시작 1 · 환경 게이트 1). 각 행의 비고에 이유 한 줄.
+28행 처분: 새 주인 6(`CoreUnitView.PlayLandingSquash` · `EnemySpawn` · `CombatDefinitionBuilder` ×2 · `WaveScheduler.FieldClear` · `EnemySplit`) · 삭제 22(재배치 7 · 수명·ECS 정리 9 · 유출 한도 3 · 휴면 1 · 재시작 1 · 환경 게이트 1). 각 행의 비고에 이유 한 줄.
 
 ## 완료 기준
 
