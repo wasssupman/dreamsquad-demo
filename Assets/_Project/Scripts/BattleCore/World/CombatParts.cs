@@ -385,6 +385,23 @@ namespace Wassup.BattleCore
     // 미해제 경로가 한꺼번에 열린다 — 그래서 피해 단계가 이탈 중인 개체의 인박스를 **비운다.**
     public enum ProgressInterrupt : byte { Death = 0, Retire = 1, Cc = 2, OwnerDestroyed = 3 }
 
+    /// <summary>
+    /// 라스트런 창이 닫힌 까닭(`CoreEvent.LastRunEnded.Arg`). 닫히는 문은 둘 — 시간 끝(crash)과
+    /// 중단 정책(`ProgressiveStates.Interrupt`) — 이고 둘 다 `BattleWorld` 가 사건을 낸다.
+    /// append-only — 트레이스 `i` 칸에 그대로 실린다.
+    /// </summary>
+    public enum LastRunEndReason : byte
+    {
+        /// <summary>창의 시간이 다 됐다 — crash 피해가 같은 틱에 들어간다.</summary>
+        Crash = 0,
+        /// <summary>창이 열린 채 죽었다(crash 없음).</summary>
+        Death = 1,
+        /// <summary>창이 열린 채 퇴근했다(crash 없음).</summary>
+        Retire = 2,
+        /// <summary>죽음·퇴근이 아닌 제거(적 유출 · 디버그 제거 등).</summary>
+        Removed = 3,
+    }
+
     public sealed class ProgressiveStates
     {
         // 궁극기 도약 — 이탈(피격 불가 · 잠금 + 무적 **원자 개시**) → 예고 → 강습 → 착지 슬램.
@@ -424,8 +441,20 @@ namespace Wassup.BattleCore
 
         public bool Any => LeapActive || LethalActive || Charge > 0 || LastRunActive;
 
-        /// <summary>중단 정책 표의 **유일한 이행 지점**. 분기를 소비처로 흩지 말 것.</summary>
-        public void Interrupt(ProgressInterrupt reason)
+        /// <summary>
+        /// 중단 정책 표의 **유일한 이행 지점**. 분기를 소비처로 흩지 말 것.
+        /// 돌려주는 값 = 이 중단이 **열려 있던 라스트런 창을 닫았나** — 닫힘 사건은 이 값을 받은
+        /// `BattleWorld.InterruptProgress` 가 낸다(여기는 버스를 모른다). 정책을 두 번 적지 않으려고
+        /// 「닫혔나」를 표에서 다시 유도하지 않고 전후 값을 비교한다.
+        /// </summary>
+        public bool Interrupt(ProgressInterrupt reason)
+        {
+            bool lastRunWasOpen = LastRunActive;
+            Apply(reason);
+            return lastRunWasOpen && !LastRunActive;
+        }
+
+        private void Apply(ProgressInterrupt reason)
         {
             switch (reason)
             {

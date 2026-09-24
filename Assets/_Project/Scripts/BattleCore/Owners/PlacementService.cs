@@ -504,6 +504,8 @@ namespace Wassup.BattleCore
             RevokeTile(u, tick);
 
             _map.Occupancy.Release(id);
+            // 중단 정책의 「퇴근」 열. 제거 **앞**에 불러야 닫힘 사건의 사유가 「제거」가 아니라 「퇴근」이다.
+            _world.InterruptProgress(u, ProgressInterrupt.Retire, tick);
             // ⚠ `Dead` 를 켜지 않는다. 퇴근은 죽음이 아니다.
             _world.Destroy(id, tick);
             return Receipt.Ok;

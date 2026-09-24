@@ -697,5 +697,12 @@ namespace Wassup.BattleCore
                              enemy.Id, guardian,
                              new Site(enemy.Position, enemy.HitRadius), Site.Nowhere,
                              enemy.Faction, (int)reason, 0f);
+
+        /// <summary>라스트런 창 닫힘. 자리 = 그 유닛의 몸(발화 시점 스냅샷 — 퇴근·제거 직전 값).</summary>
+        public static CoreEvent LastRunEnded(int tick, Unit u, LastRunEndReason reason)
+            => new CoreEvent(CoreEventKind.LastRunEnded, tick,
+                             u.Id, SimEntityId.None,
+                             new Site(u.Position, u.HitRadius), Site.Nowhere,
+                             u.Faction, (int)reason, 0f);
     }
 }

@@ -27,11 +27,10 @@ namespace Wassup.BattleCoreUnity.View
     //   · 어그로 `AggroAcquired`/`AggroReleased` — 끌려간 적(`A`)의 머리 위 표식. 도발이 다른 가디언으로
     //     갈아타도 표식은 적의 것이라 그대로다(획득 사건이 한 번 더 올 뿐). 풀림 사건이 코어의 해제 함수
     //     하나에서 나오므로 여기서는 받기만 한다 — 옛 것은 `Aggroed` 보유를 매 프레임 폴링했다.
-    //   · 라스트런 `PickupTaken`(레드불을 먹은 자) — 창의 정본은 코어 진행형 상태(`LastRunActive`)다.
-    //     ⚠ **창이 닫히는 사건이 코어에 없다**(crash 는 사건을 안 낸다). 그래서 끄는 쪽만 계기가 둘이다:
-    //     같은 몸의 스탯 회수 사건(라스트런 공속 버프가 창과 같은 틱에 만료된다) + 초당 한 번 그 정본
-    //     플래그 확인. 이것은 폴링의 부활이 아니라 **사건 부재의 임시 다리**이고 6c 에 적었다(코어 사건
-    //     추가 = 리드 결정).
+    //   · 라스트런 `PickupTaken`(레드불)/`LastRunEnded` — 먹은 자(`B`)에 켜고, 창이 닫히면(crash · 사망 ·
+    //     퇴근 · 제거) 끈다. 레드불을 먹는 것이 곧 창의 개시다 — 코어의 소비자 필터가 창이 열린 유닛을
+    //     이미 거르므로 「먹었는데 창이 안 열린」 경우가 없다. 닫힘 사건은 코어의 한 곳(`BattleWorld`)에서
+    //     나온다. 6c 의 임시 다리(스탯 회수 계기 + 초당 정본 플래그 확인)는 이 사건으로 대체됐다.
     //
     // ⚠ **자가 치유는 정상 경로가 아니다.** 초당 한 번 숙주가 아직 판 위에 있나를 보고, 없는데
     // 표식이 남아 있으면 **경고를 남기고** 거둔다 — 그것은 어떤 소멸 경로가 소멸 사건을 안 냈다는
@@ -129,7 +128,6 @@ namespace Wassup.BattleCoreUnity.View
                 case CoreEventKind.ModifierApplied:
                 case CoreEventKind.ModifierRevoked:
                     RefreshBurnout(e.B);
-                    RefreshLastRun(e.B);
                     break;
 
                 case CoreEventKind.AggroAcquired:
@@ -141,8 +139,12 @@ namespace Wassup.BattleCoreUnity.View
                     break;
 
                 case CoreEventKind.PickupTaken:
-                    // `B` = 먹은 자. 먹는 순간 코어가 창을 열었다 — 정본 플래그로 확인만 한다.
-                    RefreshLastRun(e.B);
+                    // `B` = 먹은 자. 레드불을 먹은 순간이 창의 개시다(헤더).
+                    if (e.Arg == (int)PickupKind.RedBull) _wanted.Add(new Key(e.B.Value, StatusFxKind.LastRun));
+                    break;
+
+                case CoreEventKind.LastRunEnded:
+                    Unwant(new Key(e.A.Value, StatusFxKind.LastRun));
                     break;
 
                 // 숙주가 사라지면 그 몸의 표식은 **전부** 간다. 피해로 죽은 순간(`UnitSlain`)에도 거둔다 —
@@ -197,15 +199,6 @@ namespace Wassup.BattleCoreUnity.View
                 && ModifierAuraClassifier.HasAnyFromOrigin(u.Modifiers.Slots, ModifierOrigin.Burnout))
                 _wanted.Add(key);
             else Unwant(key);
-        }
-
-        private void RefreshLastRun(SimEntityId host)
-        {
-            var key = new Key(host.Value, StatusFxKind.LastRun);
-            var u = _driver != null ? _driver.Find(host) : null;
-            bool on = u != null && !u.Dead && u.Progressive != null && u.Progressive.LastRunActive;
-            if (on) _wanted.Add(key);
-            else if (_wanted.Contains(key)) Unwant(key);
         }
 
         private void Unwant(in Key key)
@@ -287,13 +280,6 @@ namespace Wassup.BattleCoreUnity.View
         {
             if (Time.unscaledTime < _nextSweep) return;
             _nextSweep = Time.unscaledTime + 1f;
-
-            // 라스트런 창의 닫힘(헤더 — 사건 부재의 임시 다리). 숙주가 살아 있는데 창이 닫혔으면 조용히 끈다 —
-            // 이것은 유령이 아니라 상태의 끝이다.
-            _scratch.Clear();
-            foreach (var k in _wanted)
-                if (k.Kind == StatusFxKind.LastRun && _driver.IsAlive(new SimEntityId(k.Host))) _scratch.Add(k);
-            for (int i = 0; i < _scratch.Count; i++) RefreshLastRun(new SimEntityId(_scratch[i].Host));
 
             _scratch.Clear();
             foreach (var k in _wanted)

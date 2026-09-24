@@ -144,7 +144,7 @@ namespace Wassup.BattleCore
                 if (pg == null || !pg.LastRunActive || u.Dead) continue;
                 pg.LastRunRemaining -= ctx.Dt;
                 if (pg.LastRunRemaining > 0f) continue;
-                pg.LastRunActive = false;
+                ctx.World.CrashLastRun(u, ctx.Tick);
                 float amount = u.MaxHealth * pg.LastRunFraction;
                 if (amount > 0f)
                     u.Inbox.Damage.Add(new DamageEntry { Amount = amount, Source = SimEntityId.None });

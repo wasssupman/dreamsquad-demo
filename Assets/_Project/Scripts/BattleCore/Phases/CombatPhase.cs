@@ -1119,7 +1119,7 @@ namespace Wassup.BattleCore
                 // **피해로 죽었을 때만** 낸다 — 분열·처치 보상의 사건이다.
                 // 출처 없는 죽음(지속 피해·자해·환경)은 미귀속이고 이 사건이 안 난다(의도).
                 if (!killer.IsNone) ctx.Bus.Publish(CoreEvent.UnitSlain(ctx.Tick, killer, u));
-                u.Progressive?.Interrupt(ProgressInterrupt.Death);
+                ctx.World.InterruptProgress(u, ProgressInterrupt.Death, ctx.Tick);
             }
         }
 

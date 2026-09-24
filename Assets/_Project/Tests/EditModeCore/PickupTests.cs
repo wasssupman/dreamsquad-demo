@@ -116,6 +116,65 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsFalse(pg.LastRunActive, "퇴근이면 같이 사라진다");
         }
 
+        // ── 6c 후속 — 라스트런의 끝도 사건이다(계약 7) ────────────────────────
+        //
+        // 켜짐은 `PickupTaken` 이 알리는데 닫힘이 사건이 없으면 표식을 끄는 쪽이 정본 플래그를
+        // 폴링한다(6c 의 임시 다리). 닫히는 경로마다 **정확히 한 건**인지 본다.
+
+        private static System.Collections.Generic.List<CoreEvent> LastRunOn(out BattleMatch m, out Unit d,
+                                                                              float duration = 1f)
+        {
+            var (mm, dd) = Board(CoreGimmickFixtures.RedBull(duration: duration));
+            m = mm; d = dd;
+            var ended = CoreCombatFixtures.Listen(m, CoreEventKind.LastRunEnded);
+            m.Apply(Command.DebugSpawnPickup(DefenderCell));
+            m.Tick();
+            Assert.IsTrue(d.Progressive != null && d.Progressive.LastRunActive, "라스트런이 열려야 한다");
+            return ended;
+        }
+
+        [Test]
+        public void 라스트런이_시간으로_끝나면_crash_사유로_닫힘_사건이_한_번_난다()
+        {
+            var ended = LastRunOn(out var m, out var d);
+            CoreCombatFixtures.Tick(m, Ticks(1f) + 5);
+            Assert.AreEqual(1, ended.Count, "닫힘은 한 번");
+            Assert.AreEqual(d.Id.Value, ended[0].A.Value);
+            Assert.AreEqual((int)LastRunEndReason.Crash, ended[0].Arg);
+        }
+
+        [Test]
+        public void 라스트런_중에_죽으면_사망_사유로_닫힘_사건이_한_번_난다()
+        {
+            var ended = LastRunOn(out var m, out var d, duration: 30f);
+            d.Inbox.Damage.Add(new DamageEntry { Amount = d.MaxHealth * 10f, Source = SimEntityId.None });
+            CoreCombatFixtures.Tick(m, 5);
+            Assert.AreEqual(1, ended.Count, "사망에서 한 번 — 이어지는 제거에서 또 나지 않는다");
+            Assert.AreEqual((int)LastRunEndReason.Death, ended[0].Arg);
+        }
+
+        [Test]
+        public void 라스트런_중에_퇴근하면_퇴근_사유로_닫힘_사건이_한_번_난다()
+        {
+            var ended = LastRunOn(out var m, out var d, duration: 30f);
+            var id = d.Id;
+            Assert.IsTrue(m.Apply(Command.Retire(id)).Accepted, "퇴근 거절");
+            CoreCombatFixtures.Tick(m, 2);
+            Assert.AreEqual(1, ended.Count);
+            Assert.AreEqual(id.Value, ended[0].A.Value);
+            Assert.AreEqual((int)LastRunEndReason.Retire, ended[0].Arg);
+        }
+
+        [Test]
+        public void 라스트런_중에_죽음도_퇴근도_아닌_제거면_제거_사유로_닫힘_사건이_한_번_난다()
+        {
+            var ended = LastRunOn(out var m, out var d, duration: 30f);
+            Assert.IsTrue(m.Apply(Command.DebugDestroy(d.Id)).Accepted);
+            CoreCombatFixtures.Tick(m, 2);
+            Assert.AreEqual(1, ended.Count);
+            Assert.AreEqual((int)LastRunEndReason.Removed, ended[0].Arg);
+        }
+
         [Test]
         public void 레드불이_안_뽑힌_판에서는_픽업을_못_놓는다()
         {

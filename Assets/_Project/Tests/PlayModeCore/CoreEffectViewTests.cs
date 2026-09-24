@@ -197,6 +197,47 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsEmpty(CoreSceneFixture.Errors, string.Join("\n", CoreSceneFixture.Errors));
         }
 
+        // 6c 후속 — **라스트런 표식은 코어의 닫힘 사건에 꺼진다**(초당 플래그 확인 없음).
+        // 라이브 모드는 기믹이 0 이라 소비 단계가 돌지 않는다 — 먹힘은 월드의 **제거 문**으로 내고
+        // (그 문이 `PickupTaken` 을 낸다), 창은 진행형 상태에 직접 연다. 닫힘은 코어의 crash 시계가 낸다.
+        [UnityTest]
+        public IEnumerator 라스트런_표식은_레드불_먹힘에_켜지고_코어의_닫힘_사건에_꺼진다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return Boot(d => driver = d);
+            var fx = Object.FindAnyObjectByType<CoreStatusFxSpawner>();
+            Assert.IsNotNull(fx, "씬에 CoreStatusFxSpawner 가 없다");
+
+            var world = driver.Match.World;
+            var map = driver.Match.Map;
+            Assert.IsTrue(driver.Apply(Command.DebugSpawnEnemyInLane(0, 0)).Accepted, "적 스폰 거절");
+            Unit taker = null;
+            for (int i = 0; i < world.Units.Count; i++)
+                if (world.Units[i].Kind == UnitKind.Enemy) taker = world.Units[i];
+            Assert.IsNotNull(taker, "적이 안 섰다");
+            yield return Ticks(driver, 0);
+
+            var ended = new System.Collections.Generic.List<CoreEvent>();
+            driver.Match.Bus.Subscribe(CoreEventKind.LastRunEnded, 0, ended.Add);
+
+            var cell = PathCell(map, 3);
+            var p = world.SpawnPickup(PickupKind.RedBull, cell, map.CenterOf(cell), 30f, driver.Match.Clock.Tick);
+            if (taker.Progressive == null) taker.Progressive = world.Parts.RentProgressive();
+            taker.Progressive.BeginLastRun(0.25f, 0f);   // 비율 0 — crash 피해로 숙주가 죽지 않게
+            world.RemovePickup(p.Id, taker, driver.Match.Clock.Tick);
+            yield return Ticks(driver, 1);
+            Assert.IsTrue(fx.IsShown(taker.Id, StatusFxKind.LastRun), "레드불 먹힘 → 라스트런 표식");
+
+            yield return Ticks(driver, 30);
+            Assert.AreEqual(1, ended.Count, "창의 시간이 끝나면 닫힘 사건이 한 번 난다");
+            Assert.IsTrue(world.IsAlive(taker.Id), "숙주는 살아 있다 — 표식이 내려가는 까닭은 소멸이 아니다");
+            Assert.IsFalse(fx.IsShown(taker.Id, StatusFxKind.LastRun), "닫힘 사건 → 라스트런 표식 회수");
+
+            CoreSceneFixture.EndErrorWatch();
+            Assert.IsEmpty(CoreSceneFixture.Errors, string.Join("\n", CoreSceneFixture.Errors));
+        }
+
         [UnityTest]
         public IEnumerator 픽업과_사직서는_코어_개체를_따라_서고_사라진다()
         {

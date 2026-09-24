@@ -66,7 +66,7 @@
 | 옛 **타이밍 VFX 큐**(`_pendingHitVfx` · `hitDelaySec` 지연) | 옛 시각 사건은 공격 **START** 에 나와 RESOLVE 까지 미뤘다. 새 `AttackResolved` 는 **그 자체가 RESOLVE** 라 미룰 것이 없다(미루면 타격보다 늦게 터진다). 공격 **애니**가 RESOLVE 에 시작하는 것은 위 「공격음을 START 로」와 같은 축이다 | 제거(사건이 이미 그 시점) |
 | **착탄 예고 표식**(「추가」 절 1) | spec 전제가 틀렸다 — 예고 반경은 `ProjectileData` 필드가 **아니라** 스킬 intent 값이다(옛 `EcsSkillContext.cs:1121` `telegraphTileRange = intent.Telegraph ? intent.TileRange : 0`). 탄 정의표에 옮길 저작이 없고, 생산자(운석·스킬 조준)가 전부 unit 7 이다. 반경 없이 칠하면 규칙을 지어낸다 | 보류 · unit 7(7a intent) |
 | **어그로 표식**(`StatusFxKind.Aggro`) | 켜는 사건(`AggroAcquired`)은 있는데 **풀리는 사건이 없다**. 옛 표식은 `Aggroed` 컴포넌트 보유를 매 프레임 폴링했다 — 풀림을 폴링으로 되살리면 이 unit 이 없애는 모양이 돌아온다 | **완료**(6c 후속 · 리드 결정) — 코어 `AggroReleased`(54) 구독으로 끈다. 「고친 것」 행 |
-| 라스트런 표식의 **닫힘 사건** | 켜짐은 `PickupTaken`, 닫힘(crash)은 사건이 없다. 임시 다리 = 같은 몸의 스탯 회수 사건 + 초당 1회 정본 플래그(`LastRunActive`) 확인 | 임시 · 코어 사건 필요 — **리드 결정** |
+| 라스트런 표식의 **닫힘 사건** | 켜짐은 `PickupTaken`, 닫힘(crash)은 사건이 없다. 임시 다리 = 같은 몸의 스탯 회수 사건 + 초당 1회 정본 플래그(`LastRunActive`) 확인 | **완료**(6c 후속 · 리드 결정) — 코어 `LastRunEnded`(55) 구독으로 끈다. 임시 다리 철거. 「고친 것」 행 |
 | **살찌운 제물 표식**(`Marked`) | 표식 등록부의 주인이 unit 7(저주 카드)이다 | 보류 · unit 7 |
 | **실드 파열 원샷 VFX** | 옛 코드에 **없다**(옛 파열 드레인은 페이로드 실행·카드 펄스뿐). 파열의 그림은 오버헤드 실드 칸이 0 이 되는 것이다. 새 원샷은 신규 저작 | 제거(범위 밖) |
 | 드래곤 **화염 브레스** VFX | 새 `AttackResolved` 에 브레스 축(방향·반각·사거리)이 없다 — 옛 것은 전용 플래그 사건(`hasAreaBreath`)이었다 | 보류 · 코어 사건 축 — **리드 결정** |
@@ -93,6 +93,7 @@
 | 배치 링 펄스 = **착지** 프레임 | 사건 `Placed` 는 드롭 순간이고 비행이 그 뒤다. 옛 연출은 착지에 났다 → 비행 키가 사라지는 프레임에 난다(비행 없는 경로는 다음 프레임). 흔들기는 `DefenderActivated`(옛: 배치 스킬 발화 시점) |
 | `ViewOrder` += `Board 15` · `Effect 35` · `Status 45` | 구현 7. `CoreViewOrderTests` 가 씬 순서를 뒤집어 확인 |
 | **어그로 풀림 = 사건**(6c 후속 · 리드 결정 1) — `CoreEvent.AggroReleased`(**54**, 트레이스 **52**, `Arg` = `AggroReleaseReason`{`Expired` · `GuardianGone` · `Rebuilt`}). 해제 자리 셋(시한 · 가디언 부재 · 추격판 무효화)이 `FieldPrepPhase.Release` **한 함수**를 부르고 그 함수가 낸다. 상태 표식 풀이 `AggroAcquired`/`AggroReleased` 로 어그로 표식을 켜고 끈다 | 이식 제외 「어그로 표식」 행. 옛 것은 `Aggroed` 보유를 매 프레임 폴링했다(`BattleBridge.cs:3525`). 적 자신의 소멸은 풀림이 아니다(`UnitDestroyed` 가 거둔다) · 도발 갈아타기도 아니다(획득이 한 번 더 온다). ⚠ 가디언이 빠지면 그 몸(장애물)이 풀려 **같은 틱의 추격판 무효화가 먼저** 히트 어그로를 푼다 — 사유가 `Rebuilt` 인 것이 그 순서의 증언이다(`DetectionRulesTests` 3건 · PlayMode `CoreEffectViewTests` 어그로 표식 1건). 골든 코퍼스는 어그로 획득 0건이라 무변 |
+| **라스트런 닫힘 = 사건**(6c 후속 · 리드 결정 2) — `CoreEvent.LastRunEnded`(**55**, 트레이스 **53**, `Arg` = `LastRunEndReason`{`Crash` · `Death` · `Retire` · `Removed`}). 닫히는 문 둘(시간 끝 `CrashLastRun` · 중단 정책 `InterruptProgress`)이 `BattleWorld` 에 있고 사건은 거기 한 곳에서 난다. `ProgressiveStates.Interrupt` 는 「이 중단이 창을 닫았나」를 **전후 값 비교**로 돌려준다(정책 표를 두 번 적지 않는다). 퇴근은 제거 **앞**에 `Retire` 로 닫고, 그 밖의 제거(유출 등)는 `Destroy` 가 `Removed` 로 닫는다 | 이식 제외 「라스트런 닫힘」 행. 6c 의 임시 다리(스탯 회수 계기 + 초당 `LastRunActive` 확인)를 철거했다 — 표식은 레드불 `PickupTaken` 에 켜지고 이 사건에 꺼진다. 퇴근 경로는 전에는 중단 정책을 **안 불렀다**(`Reset` 이 대신 지웠다) — 규칙 결과는 같고, 사유가 「퇴근」으로 남는 것만 달라졌다(`PickupTests` 4건 · PlayMode `CoreEffectViewTests` 라스트런 1건). 골든 코퍼스는 픽업 0건이라 무변 |
 
 ## 완료 기준
 
@@ -119,7 +120,7 @@
 | **착탄 예고 표식** | 예고 반경이 스킬 intent 값(7a) | 없음(반경 없이 칠하면 규칙을 지어낸다) |
 | **강화 오라**(드림캐쳐 출처 스탯) · 카드 페이로드 오라 | 카드 부착·시전(7b) | `CoreDcAuraVisualPool` 섬(판정 = 코어 순수 함수) |
 | **살찌운 제물 표식** | 저주 카드(7b) | 등록부 `Marked` 줄만 |
-| 라스트런 닫힘 · 드래곤 브레스 | 코어 **사건 부재**(위 이식 제외) — 리드 결정 | 라스트런은 임시 다리로 뜬다 |
+| 드래곤 브레스 | 코어 **사건 부재**(위 이식 제외) — 리드 결정 | 없음 |
 
 
 ## 추가 (2026-09-24 투사체 이식 감사)

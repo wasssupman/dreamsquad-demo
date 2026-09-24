@@ -409,6 +409,10 @@ namespace Wassup.BattleCore
             if (_projById.TryGetValue(id.Value, out var proj)) return DestroyProjectile(proj, tick);
             if (!_byId.TryGetValue(id.Value, out var u)) return false;
 
+            // 진행형 상태가 열린 채 사라지는 경로(유출 · 디버그 제거 등)도 닫힘을 알린다(계약 7).
+            // 죽음·퇴근은 그 앞에서 이미 자기 사유로 닫았으므로 여기서는 아무 일도 안 일어난다.
+            InterruptProgress(u, ProgressInterrupt.OwnerDestroyed, tick);
+
             // 소멸 이벤트는 **빼기 전에** 값을 읽어 만든다 — `Reset` 뒤에 읽으면 자리도
             // 몸 반경도 0 으로 새어 조용히 좁아진다(제약 13 의 사망 스냅샷과 같은 함정).
             var ev = CoreEvent.Destroyed(tick, u);
@@ -422,6 +426,44 @@ namespace Wassup.BattleCore
 
             _bus.Publish(ev);
             return true;
+        }
+
+        // ── 진행형 상태의 끝 ──────────────────────────────────────────────────
+        //
+        // 라스트런 창이 닫히는 문은 **둘뿐**이다 — 시간 끝(crash)과 중단 정책. 둘 다 여기를 지나고
+        // 닫힘 사건은 `PublishLastRunEnded` 한 곳에서만 난다. 문을 소비처(전투·퇴근·제거)로 흩으면
+        // 언젠가 한쪽이 사건을 빠뜨리고, 그 경로로 닫힌 창의 표식은 판이 끝날 때까지 떠 있는다.
+
+        /// <summary>
+        /// 중단 정책을 이행하고, 그 중단이 라스트런 창을 닫았으면 닫힘 사건을 낸다.
+        /// 정책(무엇이 무엇을 멈추나)은 `ProgressiveStates.Interrupt` 가 소유한다.
+        /// </summary>
+        public void InterruptProgress(Unit u, ProgressInterrupt reason, int tick)
+        {
+            if (u.Progressive == null || !u.Progressive.Interrupt(reason)) return;
+            PublishLastRunEnded(u, EndReasonOf(reason), tick);
+        }
+
+        /// <summary>라스트런 창의 시간이 끝났다. crash 피해는 부른 쪽(단계)이 인박스에 넣는다.</summary>
+        public void CrashLastRun(Unit u, int tick)
+        {
+            var pg = u.Progressive;
+            if (pg == null || !pg.LastRunActive) return;
+            pg.LastRunActive = false;
+            PublishLastRunEnded(u, LastRunEndReason.Crash, tick);
+        }
+
+        private void PublishLastRunEnded(Unit u, LastRunEndReason reason, int tick)
+            => _bus.Publish(CoreEvent.LastRunEnded(tick, u, reason));
+
+        private static LastRunEndReason EndReasonOf(ProgressInterrupt reason)
+        {
+            switch (reason)
+            {
+                case ProgressInterrupt.Death: return LastRunEndReason.Death;
+                case ProgressInterrupt.Retire: return LastRunEndReason.Retire;
+                default: return LastRunEndReason.Removed;   // OwnerDestroyed(군중 제어는 창을 안 닫는다)
+            }
         }
 
         private bool DestroyProjectile(Projectile p, int tick)
