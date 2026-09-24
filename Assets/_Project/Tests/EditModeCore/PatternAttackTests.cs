@@ -89,5 +89,20 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(Shots, spawned.Count,
                 "한 번의 공격에 패턴 발수만큼만 나가야 한다 — 단발탄이 한 발 더 섞였다");
         }
+
+        [Test]
+        public void 방향_발사_연발의_기준은_조준_방향이다()
+        {
+            var (m, _) = FirstVolley();
+            var ps = m.World.Projectiles;
+            Assert.Greater(ps.Count, 0, "연발이 안 나갔다");
+            float2 sum = float2.zero;
+            for (int i = 0; i < ps.Count; i++) sum += ps[i].Direction;
+            float2 center = math.normalizesafe(sum);
+            Assert.AreEqual(-1f, center.x, 1e-3f,
+                $"연발 중심이 적(서쪽)을 향해야 한다 — 실제 {center}(북쪽 +Z 면 적 위치와 무관하게 쏜 것)");
+            for (int i = 0; i < ps.Count; i++)
+                Assert.Less(ps[i].Direction.x, 0f, $"{i}번 탄이 적 반대편으로 나갔다: {ps[i].Direction}");
+        }
     }
 }

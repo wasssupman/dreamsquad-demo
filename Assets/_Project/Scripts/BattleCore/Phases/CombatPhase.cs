@@ -618,7 +618,7 @@ namespace Wassup.BattleCore
                     EmitProjectile(ctx, u, atk, primary, primaryPos, tileSize);
                 ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, primary, primaryPos,
                                                          primaryBody, 1, atk.Period(IntervalMul(u))));
-                FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary));
+                FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary), AimDirection(u, atk, primaryPos));
                 return;
             }
 
@@ -657,7 +657,7 @@ namespace Wassup.BattleCore
 
             ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, primary, primaryPos,
                                                      primaryBody, hitCount, atk.Period(IntervalMul(u))));
-            FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary));
+            FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary), AimDirection(u, atk, primaryPos));
         }
 
         // 주 대상 + 부가 타격. **획득은 원, 부가 타격만 도형**이다 — 도형은 넓히지 못한다.
@@ -770,6 +770,15 @@ namespace Wassup.BattleCore
             return damage;
         }
 
+        /// <summary>
+        /// 이번 공격의 조준 방향(XZ). 커밋된 방향이 있으면 그것, 없으면 주 대상 쪽.
+        /// 단발탄의 진행 방향이자 방향 발사 연발의 기준 방향이다.
+        /// </summary>
+        private static float2 AimDirection(Unit u, AttackState atk, float3 targetPos)
+            => atk.HasCommittedDirection
+                ? atk.CommittedDirection
+                : math.normalizesafe((targetPos - u.Position).xz, new float2(0f, 1f));
+
         private void EmitProjectile(TickContext ctx, Unit u, AttackState atk,
                                     SimEntityId target, float3 targetPos, float tileSize)
         {
@@ -797,9 +806,7 @@ namespace Wassup.BattleCore
             // 일반 공격의 탄은 **자리에 떨어지는 것**이다 — 던져서 도달한 좌표이지
             // 누군가의 몸이 아니다. 몸에서 나오는 즉발 폭발(unit 7)이 0 이 아닌 값을 싣는다.
             req.OriginBodyRadius = 0f;
-            req.Direction = atk.HasCommittedDirection
-                ? atk.CommittedDirection
-                : math.normalizesafe((targetPos - u.Position).xz, new float2(0f, 1f));
+            req.Direction = AimDirection(u, atk, targetPos);
             req.DistanceOverride = pd.MaxDistance > 0f ? pd.MaxDistance : atk.Range * tileSize;
             req.ImpactKnockbackDistance = atk.Cc.KnockbackDistance;
             req.ImpactKnockbackDuration = atk.Cc.KnockbackDuration;
@@ -815,7 +822,11 @@ namespace Wassup.BattleCore
         // (`PatternDef.Damage`)는 보스·스킬 경로의 값이고 공격 루프는 읽지 않는다 — unit 7 이
         // 그 경로를 스킬 문맥으로 옮길 때 그쪽에서 읽는다. 라이브 머신거너 패턴 저작이 0 이라
         // 이걸 읽으면 연발 전탄이 피해 0 이 된다(2026-09-24 드리프트 감사 H1).
-        private void FirePatterns(TickContext ctx, Unit u, AttackState atk, float damage)
+        //
+        // ⚠ **발마다 대상을 안 고르는 패턴(방향 발사)의 기준 방향은 `aim`(트리거 시점 조준)**이다.
+        // 대상이 없을 때 「대상 쪽」을 재면 사수 자신의 자리가 나와 기준이 늘 +Z(북쪽)로 접힌다
+        // — 적 위치와 무관하게 북쪽으로 쏜다(2026-09-24 드리프트 감사 H3).
+        private void FirePatterns(TickContext ctx, Unit u, AttackState atk, float damage, float2 aim)
         {
             if (atk.PatternSlots.Count == 0) return;
 
@@ -839,6 +850,7 @@ namespace Wassup.BattleCore
                 inst.PatternDefIndex = slot.PatternDefIndex;
                 inst.LockedTarget = SimEntityId.None;
                 inst.Damage = damage;
+                inst.AimDirection = aim;
                 for (int i = 0; i < shots; i++)
                 {
                     inst.Directions[i] = pat.Shots[i].DirectionT;
@@ -983,7 +995,10 @@ namespace Wassup.BattleCore
             req.SwingIndex = shotIndex;
             req.FlightTime = pat.TelegraphSec;
             float t = shotIndex < inst.Directions.Length ? inst.Directions[shotIndex] : 0f;
-            float2 baseDir = math.normalizesafe((targetPos - u.Position).xz, new float2(0f, 1f));
+            // 고른 대상이 있으면 그쪽, 없으면(선정 규칙 없음 · 후보 0) 트리거 시점 조준 방향.
+            float2 baseDir = tu != null
+                ? math.normalizesafe((targetPos - u.Position).xz, inst.AimDirection)
+                : inst.AimDirection;
             req.Direction = PatternDirection.Resolve(baseDir, pat.MinAngleDeg, pat.MaxAngleDeg, t);
             req.DistanceOverride = bd.MaxDistance > 0f ? bd.MaxDistance : atk.Range * tileSize;
             ctx.World.ProjectileRequests.Add(req);

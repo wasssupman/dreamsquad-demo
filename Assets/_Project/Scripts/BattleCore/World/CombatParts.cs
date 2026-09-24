@@ -104,6 +104,11 @@ namespace Wassup.BattleCore
         /// 패턴 저작 피해(`PatternDef.Damage`)가 아니다(2026-09-24 드리프트 감사 H1).
         /// </summary>
         public float Damage;
+        /// <summary>
+        /// 트리거 시점의 **조준 방향**(XZ, 정규화). 발마다 대상을 고르지 않는 패턴(선정 규칙
+        /// 없음 = 방향 발사)의 기준 방향이다 — 옛 전투가 template 에 스냅샷한 `fireDir`.
+        /// </summary>
+        public Unity.Mathematics.float2 AimDirection;
         /// <summary>이 발사에 쓰는 탄막 난수 씨앗 — `hash(사수 SimEntityId, 발사 카운터)`.</summary>
         public uint Seed;
         /// <summary>이 인스턴스가 쓸 간격표. 난수 저작이면 씨앗에서 매 트리거 다시 뽑는다.</summary>
