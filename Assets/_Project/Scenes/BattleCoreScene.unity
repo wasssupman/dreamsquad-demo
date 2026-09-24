@@ -1628,6 +1628,7 @@ GameObject:
   m_Component:
   - component: {fileID: 678589400}
   - component: {fileID: 678589399}
+  - component: {fileID: 678589401}
   m_Layer: 0
   m_Name: Vfx
   m_TagString: Untagged
@@ -1662,12 +1663,12 @@ MonoBehaviour:
   _cardAbsorbPrefab: {fileID: 1190586612074608, guid: 37f1dda35c3982a428263da65fbd3888, type: 3}
   _cardAbsorbScale: 0.6
   _dcVisual: {fileID: 11400000, guid: 381fd605e17f4850a5377e7cbbfcf438, type: 2}
-  _areaBreathPrefab: {fileID: 0}
+  _areaBreathPrefab: {fileID: 7251879486380165639, guid: 5a2d78f3c61b49e8b4137ac9e0d562b1, type: 3}
   _areaBreathScalePerTile: 0.55
   _areaBreathScaleMax: 2.4
   _areaBreathForwardFactor: 0.45
   _areaBreathAngleOffset: 90
-  _overlay: {fileID: 0}
+  _overlay: {fileID: 1402320339}
   _deployRingColor: {r: 0.2, g: 0.95, b: 1, a: 0.7}
   _deployRingStartScale: 0.2
   _deployRingEndScale: 1.35
@@ -1688,6 +1689,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &678589401
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 678589398}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9121a923c5ac4801a93cc1c9245aede2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreFieldPresenter
+  _driver: {fileID: 302}
+  _tornadoPrefab: {fileID: 207745087118991948, guid: ae85f8af7e5c6c44c91e2f6966a4354b, type: 3}
+  _portalPrefab: {fileID: 6817788139784616374, guid: 8a018bf2f3cb64a26b5a382a6bfc6d73, type: 3}
 --- !u!1 &725576253
 GameObject:
   m_ObjectHideFlags: 0
