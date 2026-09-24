@@ -355,9 +355,9 @@
 | 253 | `DebugTryGetPatrolAnchorCell/2` | MapRuntime (코어) |  |
 | 254 | `RegisterPatrolUnitSO/1` | 미정 |  |
 | 255 | `DrainPatrolSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
-| 256 | `AddEffectTile/2` | PlacementService | unit 6b 정정 — 칸 목록의 주인은 **뽑고 소비하는 자**다(`Begin` 이 칸·종류를 함께 뽑는다). 맵은 그 칸을 모른다 |
+| 256 | `AddEffectTile/2` | PlacementService | unit 6b 정정 — 칸 목록의 주인은 **뽑는 자**다(`Begin` 이 칸·종류를 함께 뽑고 판 내내 불변). 맵은 그 칸을 모른다 |
 | 257 | `ApplyEffectTileIfAny/2` | PlacementService | unit 6b 정정 — `ApplyArmedTile`(활성화 엣지 · 저작 연산자 그대로 · 칸 `SlotKind.Tile`) |
-| 258 | `ApplyEffectTileOnce/2` | PlacementService | unit 6b 정정 — 1회 가드는 `ConsumeEffectTile`(unit 4), 회수는 `RevokeTile`(퇴근 · F33). 배치 스킬 표식과 비공유(F19) |
+| 258 | `ApplyEffectTileOnce/2` | PlacementService | unit 6b 정정 — **개체당** 1회: `ArmTileFor`(앵커 칸 하나 · 칸 소비 없음) → 활성화 엣지 `ApplyArmedTile`, 회수는 `RevokeTile`(퇴근 · F33). 배치 스킬 표식과 비공유(F19) |
 | 259 | `FireOnPlaceCameraShake/1` | CameraDirector.Shake | 호출부는 unit 6(배치 VFX) — 세기는 유닛 저작값이라 5b 가 지어낼 수 없다 |
 | 260 | `MarkJustDeployedForRules/1` | `DefenderActivated` 사건 | 표식 컴포넌트를 남기지 않는다 — 남으면 다음 배치 사건과 섞인다(E6) |
 | 261 | `DebugSpawnObstacleAt/2` | 디버그/로그 (도구 처분표) |  |

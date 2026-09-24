@@ -11,7 +11,7 @@ namespace Wassup.Tests.EditMode.Core
     [TestFixture]
     public class EffectTileTests
     {
-        private static MatchDefinition Def(float deployMotion = 0f)
+        private static MatchDefinition Def(float deployMotion = 0f, int footprintWidth = 1)
         {
             var def = CoreMatchFixtures.Definition();
             def.EffectTileCount = 3;
@@ -27,6 +27,7 @@ namespace Wassup.Tests.EditMode.Core
                 },
             };
             def.Units[0].DeployMotionSeconds = deployMotion;
+            def.Units[0].FootprintWidth = footprintWidth;
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }
@@ -123,6 +124,46 @@ namespace Wassup.Tests.EditMode.Core
             var seen = new HashSet<int>(kinds);
             Assert.IsTrue(seen.IsSubsetOf(new[] { 0, 1, 2 }));
             Assert.Greater(seen.Count, 1, "칸마다 난수 — round-robin 이 아니다");
+        }
+
+        [Test]
+        public void 증상_퇴근_뒤_같은_칸에_다시_놓으면_다시_받는다()
+        {
+            // 칸은 판 내내 남고(옛 규칙) 효과는 개체에 걸렸다가 퇴근 때 거둔다(F33) —
+            // 그래서 다음 유닛이 같은 타일을 다시 받는다. 옛 전투가 못 하던 것(6b 계약 11).
+            var m = CoreMatchFixtures.BeginBattle(Def());
+            var cell = m.Placement.ArmedEffectTiles[0];
+            m.Apply(Command.PlaceDefender(0, cell));
+            var first = CoreMatchFixtures.PlacedDefender(m);
+            Assert.AreEqual(1.5f, m.World.Find(first).Modifiers.Effective.DamageMul, 1e-5f);
+
+            m.Apply(Command.Retire(first));
+            CoreCombatFixtures.Tick(m, 600);
+            Assert.IsTrue(m.Apply(Command.PlaceDefender(0, cell)).Accepted);
+            var second = m.World.Find(CoreMatchFixtures.PlacedDefender(m));
+            Assert.AreNotEqual(first, second.Id);
+            Assert.AreEqual(1.5f, second.Modifiers.Effective.DamageMul, 1e-5f, "같은 칸 = 같은 타일을 다시 받는다");
+        }
+
+        [Test]
+        public void 증상_앵커가_아닌_칸의_타일은_안_받는다()
+        {
+            // 판정 칸은 대표 칸(앵커) 하나다(옛 `:7867`, defender-footprint unit 1).
+            var m = CoreMatchFixtures.BeginBattle(Def(footprintWidth: 2));
+            int2 tile = default, anchor = default;
+            bool found = false;
+            foreach (var c in m.Placement.ArmedEffectTiles)
+            {
+                var a = new int2(c.x - 1, c.y);   // 타일이 **오른쪽 칸**에 오게
+                if (m.Placement.EffectTileKindAt(a) >= 0) continue;
+                if (m.Placement.Judge(0, a) != RejectReason.None) continue;
+                tile = c; anchor = a; found = true;
+                break;
+            }
+            Assert.IsTrue(found, "앵커 왼쪽이 비고 타일이 오른쪽인 자리가 없다");
+            Assert.IsTrue(m.Apply(Command.PlaceDefender(0, anchor)).Accepted);
+            var u = m.World.Find(CoreMatchFixtures.PlacedDefender(m));
+            Assert.AreEqual(1f, u.Modifiers.Effective.DamageMul, 1e-5f, $"타일 {tile} 은 앵커 {anchor} 가 아니다");
         }
     }
 }

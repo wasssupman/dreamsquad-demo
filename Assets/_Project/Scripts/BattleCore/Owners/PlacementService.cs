@@ -74,7 +74,7 @@ namespace Wassup.BattleCore
         private readonly List<int2> _effectTiles = new List<int2>(8);
         // unit 6b — 칸마다 어느 종류냐(`MatchDefinition.EffectTiles` 줄). `_effectTiles` 와 **쌍으로** 바뀐다.
         private readonly List<int> _effectTileKinds = new List<int>(8);
-        // unit 6b — 소비했지만 아직 활성화 전인 유닛의 타일 종류. 효과는 **활성화 엣지**에 건다
+        // unit 6b — 타일 칸에 놓였지만 아직 활성화 전인 유닛의 타일 종류. 효과는 **활성화 엣지**에 건다
         // (옛 `ApplyEffectTileOnce` 가 배치 스킬 seam 안에 있었다). 표식을 배치 스킬과 공유하지
         // 않는 것이 F19 다 — 이 표는 이 담당자 혼자 쓴다.
         private readonly List<ArmedTile> _tileOnActivate = new List<ArmedTile>(4);
@@ -143,8 +143,8 @@ namespace Wassup.BattleCore
         public int PendingActivations => _pending.Count;
 
         /// <summary>
-        /// 효과 타일이 아직 남아 있는 칸들. 소비되면 목록에서 빠진다(칸 재무장 없음 — unit 4).
-        /// 그 칸이 **준 효과**는 퇴근 때 회수된다(unit 6b — F33).
+        /// 효과 타일 칸들. **판 시작에 한 번 뽑고 판 내내 안 바뀐다**(옛 규칙 — 칸 소비 없음).
+        /// 그 칸이 개체에게 **준 효과**는 퇴근 때 회수된다(unit 6b — F33).
         /// </summary>
         public IReadOnlyList<int2> ArmedEffectTiles => _effectTiles;
 
@@ -238,8 +238,7 @@ namespace Wassup.BattleCore
                 _pending.Add(new Pending { Id = u.Id, DefIndex = defIndex, Remaining = motionTicks });
 
             StartCooldown(defIndex, d.PlacementCooldown, CooldownSource.Place);
-            int tileKind = ConsumeEffectTile(anchor, w, h, tick);
-            if (tileKind >= 0) _tileOnActivate.Add(new ArmedTile { Id = u.Id, Kind = tileKind });
+            ArmTileFor(u, anchor, tick);
 
             _bus.Publish(CoreEvent.Placed(tick, u, defIndex, d.Cost));
             // 배치 페이즈가 없는 유닛은 **그 자리에서** 활성화된다. 배치 스킬의 엣지가
@@ -621,26 +620,19 @@ namespace Wassup.BattleCore
 
         // ── 효과 타일 ────────────────────────────────────────────────────────
 
-        // **1회 소비 · 칸 재무장 없음.** 반환 = 소비한 칸의 종류(없으면 -1). 효과는 활성화 엣지에
-        // 걸고(`ApplyArmedTile`) 퇴근 때 거둔다(`RevokeTile`, unit 6b).
-        private int ConsumeEffectTile(int2 anchor, int w, int h, int tick)
+        // **칸은 판 내내 남는다**(옛 `_effectTilesByCell` — 맵 빌드 때만 채우고 지우지 않았다,
+        // `BattleBridge.cs:297·1492·9078`). 그 칸에 놓이는 **개체마다** 한 번 건다 — 옛
+        // `ApplyEffectTileOnce` 는 「개체당 1회」 가드였지 칸 소비가 아니었다(`:9126-9131`).
+        // 판정 칸은 **대표 칸(앵커) 하나**다 — 「효과 타일·배치 스킬은 대표 셀에서 발동」
+        // (`:7867`, defender-footprint unit 1). footprint 의 다른 칸이 타일 위여도 안 받는다.
+        // 효과는 활성화 엣지에 건다(`ApplyArmedTile`), 끝은 퇴근 회수(`RevokeTile`) — 그래서
+        // 다음 유닛이 같은 칸에서 다시 받는다(옛 전투가 못 하던 것, 6b 계약 11).
+        private void ArmTileFor(Unit u, int2 anchor, int tick)
         {
-            if (_effectTiles.Count == 0) return -1;
-            for (int dy = 0; dy < h; dy++)
-            for (int dx = 0; dx < w; dx++)
-            {
-                var c = new int2(anchor.x + dx, anchor.y + dy);
-                for (int i = 0; i < _effectTiles.Count; i++)
-                {
-                    if (!_effectTiles[i].Equals(c)) continue;
-                    int kind = _effectTileKinds[i];
-                    _effectTiles.RemoveAt(i);
-                    _effectTileKinds.RemoveAt(i);
-                    Report?.Invoke($"[PlacementService] 효과 타일 ({c.x},{c.y}) 소비 — 종류 {kind}(tick {tick}).");
-                    return kind;
-                }
-            }
-            return -1;
+            int kind = EffectTileKindAt(anchor);
+            if (kind < 0) return;
+            _tileOnActivate.Add(new ArmedTile { Id = u.Id, Kind = kind });
+            Report?.Invoke($"[PlacementService] 효과 타일 ({anchor.x},{anchor.y}) 종류 {kind} — 활성화 때 건다(tick {tick}).");
         }
 
         /// <summary>진단 통로. 연결하지 않으면 버려진다 — 코어는 로거를 소유하지 않는다.</summary>
