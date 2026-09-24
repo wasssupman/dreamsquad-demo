@@ -30,7 +30,8 @@ namespace Wassup.BattleCoreUnity
                                 DefenderUnitData[] defenders,
                                 AttackUnitData[] enemies,
                                 IReadOnlyList<StructureEntry> structures = null,
-                                MatchViewAssets viewAssets = null)
+                                MatchViewAssets viewAssets = null,
+                                HazardSO[] hazards = null)
         {
             var projectiles = new List<ProjectileData>();
             var patterns = new List<ProjectilePatternData>();
@@ -63,6 +64,10 @@ namespace Wassup.BattleCoreUnity
                 // 사거리로 묻는다(`AttackRange > 0`). 공격 루프는 `Unarmed` 로 따로 막는다.
                 if (def.Enemies[i].Attack.Unarmed) def.Enemies[i].AttackRange = 0f;
             }
+
+            // unit 7a — 유닛·적이 **저작으로 든 규칙**(배치 스킬 · 적 악몽 · 실드 캐스트). 탄·패턴 표를 굳히기 **전**이다 —
+            // 규칙이 가리키는 탄·패턴이 같은 표에 들어야 한다.
+            BindingDefinitionBuilder.Fill(def, unitList, enemies, projectiles, patterns, hazards);
 
             // 거점은 **탄 표를 유닛·적과 공유한다**(본능 포탑의 탄이 그 판의 탄 목록에 든다).
             // 표를 굳히기 **전**에 채우는 이유가 이것이다 — 뒤로 미루면 본능의 탄만 표 밖을
@@ -338,7 +343,7 @@ namespace Wassup.BattleCoreUnity
             return outp;
         }
 
-        private static int IndexOf(List<ProjectileData> table, ProjectileData asset)
+        internal static int IndexOf(List<ProjectileData> table, ProjectileData asset)
         {
             if (asset == null) return -1;
             int i = table.IndexOf(asset);
@@ -376,7 +381,7 @@ namespace Wassup.BattleCoreUnity
 
         // 저작 토큰 → (궤적, 페이로드). **전사가 아니다** — 같은 궤적이 다른 페이로드와
         // 짝지으면 다른 토큰이고, 궤도·수류탄은 저작 토큰이 없다(코드 경로가 직접 고른다).
-        private static (MovementKind, PayloadKind) Translate(ProjectileFlightMode mode)
+        internal static (MovementKind, PayloadKind) Translate(ProjectileFlightMode mode)
         {
             switch (mode)
             {

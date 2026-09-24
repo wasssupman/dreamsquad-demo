@@ -136,7 +136,8 @@ namespace Wassup.BattleCoreUnity
             // unit 6b — 탄 SO 목록을 **번호를 매긴 그 순회에서** 받는다(길막 역참조가 그 번호를 쓴다).
             // 뷰가 없는 판(테스트·헤드리스)에서도 필요하므로 없으면 로컬 한 벌을 만든다.
             var assets = viewAssets ?? new MatchViewAssets();
-            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets);
+            // unit 7a — 장판 표(규칙의 `SpawnHazard` 가 가리킨다)를 함께 넘긴다.
+            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets, board.Hazards);
             // unit 6b — 판 위에 깔리는 것(존 장판 · 길막 · 효과 타일). **해시를 굽기 전**이다.
             BoardEffectDefinitionBuilder.Fill(def, assets, in board);
             // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
