@@ -292,7 +292,7 @@ namespace Wassup.BattleCoreUnity
         }
 
         // 발사 명세 — 옛 `TryBuildPatternSlot` 의 거절을 옮겼다(규칙 경로 전용 — 평타 다연발은 따로 굽는다).
-        private static bool BindPattern(ref BindingDef b, ProjectilePatternData pattern, int tileRange, string label,
+        internal static bool BindPattern(ref BindingDef b, ProjectilePatternData pattern, int tileRange, string label,
                                         List<ProjectileData> projectiles, List<ProjectilePatternData> patterns)
         {
             if (pattern == null || pattern.barrel == null) { Warn($"{label}: EmitProjectilePattern 에 탄(barrel) 있는 패턴이 필요하다 — 건너뛴다."); return false; }

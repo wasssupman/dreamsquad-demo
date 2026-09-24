@@ -64,6 +64,13 @@ namespace Wassup.BattleCoreUnity
         [SerializeField] private Wassup.Battle.Effects.BlockingHazardSO[] _extraBlockers
             = Array.Empty<Wassup.Battle.Effects.BlockingHazardSO>();
 
+        [Tooltip("이 판의 드림캐쳐 덱(구성 순서 그대로 — 저장 부착 + 공용 액티브). 비우면 카드 없는 판이다. "
+                 + "프로필 저장 덱·액티브 롤 연결과 손패 화면은 7c 다 — 오늘은 디버그 커맨드로 확인한다.")]
+        [SerializeField] private DreamcatcherCard[] _cards = Array.Empty<DreamcatcherCard>();
+
+        [Tooltip("판 진입 드림스톤(스탯 돌 = 배치 유닛 상속 · 코스트 돌 = 재생 배율). 비우면 없음.")]
+        [SerializeField] private DreamstoneData[] _dreamstones = Array.Empty<DreamstoneData>();
+
         [Tooltip("재현의 두 축 중 하나(나머지는 modeId). 같은 값이면 같은 판이다.")]
         [SerializeField] private int _seed = 1;
 
@@ -262,7 +269,8 @@ namespace Wassup.BattleCoreUnity
                     Theme = Wassup.Data.Season.SeasonRuntime.Active != null
                         ? Wassup.Data.Season.SeasonRuntime.Active.mapTheme : null,
                     SuppressEffectTiles = _stageInstance != null && _stageInstance.suppressEffectTiles,
-                });
+                },
+                cards: _cards, dreamstones: _dreamstones);
 
             Begin(def);
         }

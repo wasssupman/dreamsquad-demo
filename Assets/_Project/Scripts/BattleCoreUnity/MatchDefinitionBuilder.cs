@@ -44,7 +44,9 @@ namespace Wassup.BattleCoreUnity
                                             MovementTuningConfig movement = null,
                                             StackModifierSO[] stackModifiers = null,
                                             ImbueCapConfig imbueCaps = null,
-                                            BoardEffectAuthoring board = default)
+                                            BoardEffectAuthoring board = default,
+                                            System.Collections.Generic.IReadOnlyList<DreamcatcherCard> cards = null,
+                                            System.Collections.Generic.IReadOnlyList<DreamstoneData> dreamstones = null)
         {
             // 모드가 고른 저작이 호출자(드라이버)의 것을 이긴다 — 모드는 「어느 자산을 쓸지」를 고른다.
             deck = ResolveDeck(mode, deck);
@@ -52,9 +54,11 @@ namespace Wassup.BattleCoreUnity
             var enemies = CollectEnemies(deck, plan, bonus);
             var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
                             viewAssets, movement, stackModifiers, imbueCaps, board,
-                            extraProjectiles: GimmickProjectilesOf(mode));
+                            extraProjectiles: GimmickProjectilesOf(mode),
+                            cards: new CardAuthoring { Cards = cards, Awakening = mode.awakeningConfig, Dreamstones = dreamstones });
 
-            def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
+            // unit 7b — 드림스톤 코스트 배율은 **반입이 정한다**(모드가 아니다). 호출자 배율과 곱한다(둘 다 1 이면 무변).
+            def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier * CardDefinitionBuilder.CostRateOf(dreamstones));
             def.WaveDeck = ToDeckDef(deck, enemies);
             def.WavePlan = ToPlanDef(plan, enemies);
             def.Bonus = ToBonusDef(bonus, enemies);
@@ -123,8 +127,11 @@ namespace Wassup.BattleCoreUnity
                                             StackModifierSO[] stackModifiers = null,
                                             ImbueCapConfig imbueCaps = null,
                                             BoardEffectAuthoring board = default,
-                                            System.Collections.Generic.IReadOnlyList<ProjectileData> extraProjectiles = null)
+                                            System.Collections.Generic.IReadOnlyList<ProjectileData> extraProjectiles = null,
+                                            CardAuthoring cards = default)
         {
+            // unit 7b — 카드가 까는 장판(잿불)도 장판 표에 든다. 표를 짓기 **전**이다(규칙이 줄 번호로 가리킨다).
+            board.Hazards = CardDefinitionBuilder.WithCardHazards(board.Hazards, cards.Cards);
             var def = new MatchDefinition
             {
                 Seed = seed,
@@ -139,7 +146,7 @@ namespace Wassup.BattleCoreUnity
             // 뷰가 없는 판(테스트·헤드리스)에서도 필요하므로 없으면 로컬 한 벌을 만든다.
             var assets = viewAssets ?? new MatchViewAssets();
             // unit 7a — 장판 표(규칙의 `SpawnHazard` 가 가리킨다)를 함께 넘긴다.
-            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets, board.Hazards, extraProjectiles);
+            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets, board.Hazards, extraProjectiles, cards);
             // unit 6b — 판 위에 깔리는 것(존 장판 · 길막 · 효과 타일). **해시를 굽기 전**이다.
             BoardEffectDefinitionBuilder.Fill(def, assets, in board);
             // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
