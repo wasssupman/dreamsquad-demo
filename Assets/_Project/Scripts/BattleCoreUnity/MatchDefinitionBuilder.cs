@@ -46,6 +46,9 @@ namespace Wassup.BattleCoreUnity
                                             ImbueCapConfig imbueCaps = null,
                                             BoardEffectAuthoring board = default)
         {
+            // 모드가 고른 저작이 호출자(드라이버)의 것을 이긴다 — 모드는 「어느 자산을 쓸지」를 고른다.
+            deck = ResolveDeck(mode, deck);
+            plan = ResolvePlan(mode, plan);
             var enemies = CollectEnemies(deck, plan, bonus);
             var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
                             viewAssets, movement, stackModifiers, imbueCaps, board);
@@ -60,8 +63,34 @@ namespace Wassup.BattleCoreUnity
 
             // ⚠ 정의표가 다 찬 **뒤에** 굽는다. 먼저 구우면 「덱을 바꿨는데 해시가 그대로」가 된다.
             def.ConfigHash = def.ComputeConfigHash();
+
+            // 모드 × 저작의 유효성을 **판 밖에서 한 번** 묻는다. 안 물으면 「12웨이브를 막으라는데
+            // 플랜이 비었다」가 판 중간에야 드러난다(그 판은 영영 안 끝난다). 판은 짓되 문제를
+            // 전부 한 번에 loud 하게 적는다 — 저작을 고치는 사람이 한 번에 봐야 한다.
+            var problems = new System.Collections.Generic.List<string>();
+            if (!ModeValidation.Validate(def, problems))
+                foreach (var why in problems)
+                    Debug.LogError($"[MatchDefinitionBuilder] 모드 검증 실패('{def.Mode.ModeId}'): {why}", mode);
             return def;
         }
+
+        /// <summary>
+        /// 이 판의 덱. **모드가 덱을 골랐으면 그것**, 비었으면 호출자의 덱이다. 툴팁의 「비우면 맵
+        /// 풀이 짝지은 덱」 중 맵 풀 짝은 아직 배선 전이라 그 자리를 호출자 덱이 채운다 — 맵 풀
+        /// 로테이션(`mapPool`·`fixedMapSeed`)의 귀속은 `docs/spec/battle-core-rebuild/` 가 정한다.
+        /// ⚠ 드라이버도 적 목록을 모을 때 **같은 함수**를 지나야 한다(적 인덱스가 갈린다).
+        /// </summary>
+        public static AttackDeck ResolveDeck(MatchModeData mode, AttackDeck fallback)
+            => mode != null && mode.deck != null ? mode.deck : fallback;
+
+        /// <summary>
+        /// 이 판의 저작 플랜. 모드가 **저작 플랜 모드**이고 플랜을 골랐으면 그것, 아니면 호출자의 것.
+        /// 덱 생성 모드는 모드의 플랜을 읽지 않는다(툴팁 계약).
+        /// </summary>
+        public static WavePlanAsset ResolvePlan(MatchModeData mode, WavePlanAsset fallback)
+            => mode != null && mode.waveSourceKind == WaveSourceKind.AuthoredPlan && mode.plan != null
+                ? mode.plan
+                : fallback;
 
         /// <summary>
         /// 모드 선택 3단: **테스트 모드 강제 &gt; 로비/서버 지정 &gt; 기본 모드**.
@@ -282,6 +311,12 @@ namespace Wassup.BattleCoreUnity
         public static ModeDef ToModeDef(MatchModeData m)
         {
             if (m == null) return ModeDef.Default();
+            // 배치 자원 저작이 없으면 **값을 지어내지 않고** 크게 알린다. 옛 배치 창 폴백은 30초
+            // (`PlacementPhaseView`)였는데 SO 폴백은 0초라 조용히 뒤집혀 있었다 — 숫자를 하나 더
+            // 두는 대신 「저작이 없다」를 오류로 만든다(코스트 시작·상한·재생 폴백도 같은 SO 몫이다).
+            if (m.costConfig == null)
+                Debug.LogError($"[MatchDefinitionBuilder] 모드 '{m.modeId}' 에 costConfig(배치 자원 저작)가 없다 — "
+                               + "배치 창·코스트가 코드 폴백으로 돈다. 저작을 연결한다.", m);
             return new ModeDef
             {
                 ModeId = m.modeId,

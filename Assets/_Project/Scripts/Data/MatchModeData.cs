@@ -46,6 +46,8 @@ namespace Wassup.Data
 
         [Header("맵")]
         [Tooltip("비우면 기본 풀. 선택은 seed % Count 그대로.")]
+        // ⚠ 새 전투 코어의 빌더는 이 칸을 **아직 읽지 않는다.** 맵 풀 로테이션의 소비자 귀속은
+        // `docs/spec/battle-core-rebuild/` 가 정한다(`deck` 의 「맵 풀이 짝지은 덱」도 같은 자리).
         public MapStagePool mapPool;
 
         [Header("기믹")]
@@ -84,6 +86,8 @@ namespace Wassup.Data
         /// 배치 창의 길이(초). 입력이 꺼진 모드는 **카운트다운**이 그 길이이고, 켜진 모드는
         /// 저작된 창 길이(`CostConfig.placementPhaseDuration`)다 — 0 이면 플레이어가 닫는다.
         /// 어느 쪽이든 **길이가 0 이어도 열림 신호는 난다**(census 계약 3).
+        /// ⚠ `costConfig` 가 없을 때의 0 은 저작이 아니라 **누락**이다 — 옛 폴백(30초)과 다르므로
+        /// 빌더(`MatchDefinitionBuilder.ToModeDef`)가 loud 오류로 알린다.
         /// </summary>
         public float PlacementSeconds
             => placementPhaseEnabled

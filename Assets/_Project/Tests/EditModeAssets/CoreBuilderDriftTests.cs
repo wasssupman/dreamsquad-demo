@@ -363,5 +363,84 @@ namespace Wassup.Tests.EditMode
             if (m.costConfig != null) Object.DestroyImmediate(m.costConfig);
             Object.DestroyImmediate(m);
         }
+
+        [Test]
+        public void 모드와_저작이_어긋나면_빌드가_크게_알린다()
+        {
+            // `ModeValidation.Validate` 는 테스트만 불렀다 — 「12웨이브를 막으라는데 플랜이 비었다」
+            // 가 판 중간에야 드러났다(그 판은 영영 안 끝난다).
+            var mode = Mode();
+            mode.goalKind = GoalKind.WaveClear;
+            mode.clockKind = ClockKind.CountUp;
+            mode.targetWaves = 12;
+            mode.waveSourceKind = WaveSourceKind.AuthoredPlan;
+            try
+            {
+                // 문제 둘(목표 12 > 저작 0 · 플랜에 웨이브 없음)을 **전부** 적는다 — 첫 문제에서 멈추면
+                // 저작자가 두 번째를 고치려고 다시 돌려야 한다.
+                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("모드 검증.*목표 웨이브 12"));
+                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("모드 검증.*웨이브가 없다"));
+                MatchDefinitionBuilder.Build(mode, new DefenderUnitData[0], null, null, null, 1);
+            }
+            finally { DropMode(mode); }
+        }
+
+        [Test]
+        public void 배치_자원_저작이_없는_모드는_크게_알린다()
+        {
+            // 옛 배치 창 폴백은 30초였는데 새 폴백은 0초로 뒤집혀 있었다. 숫자를 다시 지어내지
+            // 않고 「저작이 없다」를 loud 하게 만든다.
+            var mode = Mode();
+            Object.DestroyImmediate(mode.costConfig);
+            mode.costConfig = null;
+            try
+            {
+                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("costConfig"));
+                MatchDefinitionBuilder.ToModeDef(mode);
+            }
+            finally { DropMode(mode); }
+        }
+
+        [Test]
+        public void 모드의_덱은_드라이버_덱을_이긴다()
+        {
+            // 툴팁 「비우면 맵 풀이 짝지은 덱」 — 맵 풀 배선 전까지는 드라이버 덱이 폴백이다.
+            var mode = Mode();
+            var modeDeck = ScriptableObject.CreateInstance<AttackDeck>();
+            modeDeck.waveSeed = 111;
+            var driverDeck = ScriptableObject.CreateInstance<AttackDeck>();
+            driverDeck.waveSeed = 222;
+            mode.deck = modeDeck;
+            try
+            {
+                var def = MatchDefinitionBuilder.Build(mode, new DefenderUnitData[0], driverDeck, null, null, 1);
+                Assert.AreEqual(111, def.WaveDeck.WaveSeed, "모드가 고른 덱이 안 쓰였다");
+                mode.deck = null;
+                def = MatchDefinitionBuilder.Build(mode, new DefenderUnitData[0], driverDeck, null, null, 1);
+                Assert.AreEqual(222, def.WaveDeck.WaveSeed, "모드 덱이 비면 드라이버 덱이다");
+            }
+            finally { DropMode(mode); Object.DestroyImmediate(modeDeck); Object.DestroyImmediate(driverDeck); }
+        }
+
+        [Test]
+        public void 저작_플랜_모드는_모드의_플랜을_쓴다()
+        {
+            var mode = Mode();
+            var plan = ScriptableObject.CreateInstance<WavePlanAsset>();
+            plan.displayName = "drift_plan";
+            plan.waves.Add(new AuthoredWave { durationSec = 10f });   // 빈 플랜은 검증이 거절한다
+            mode.plan = plan;
+            try
+            {
+                mode.waveSourceKind = WaveSourceKind.AuthoredPlan;
+                var def = MatchDefinitionBuilder.Build(mode, new DefenderUnitData[0], null, null, null, 1);
+                Assert.AreEqual("drift_plan", def.WavePlan.DisplayName, "저작 플랜 모드가 모드의 플랜을 안 읽었다");
+
+                mode.waveSourceKind = WaveSourceKind.GeneratedFromDeck;
+                def = MatchDefinitionBuilder.Build(mode, new DefenderUnitData[0], null, null, null, 1);
+                Assert.AreNotEqual("drift_plan", def.WavePlan.DisplayName, "덱 생성 모드가 모드의 플랜을 읽었다");
+            }
+            finally { DropMode(mode); Object.DestroyImmediate(plan); }
+        }
     }
 }

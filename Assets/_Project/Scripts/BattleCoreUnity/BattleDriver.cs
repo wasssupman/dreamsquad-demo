@@ -232,7 +232,11 @@ namespace Wassup.BattleCoreUnity
             // 조용히 실패한다. 이 인자를 지우지 말 것.
             // 적 목록은 **뷰도 같은 줄 번호로 읽어야** 해서 여기서도 한 번 모은다.
             // 순수 함수라 아래 `Build` 안의 호출과 같은 배열이 나온다(그래서 둘이 안 갈린다).
-            _enemyAssets = MatchDefinitionBuilder.CollectEnemies(_deck, _plan, _bonus)
+            // ⚠ 모드가 고른 덱·플랜을 **빌더와 같은 함수로** 푼다 — 여기서 드라이버 저작을 그대로
+            // 모으면 모드 덱을 쓰는 판에서 뷰의 적 줄 번호가 정의표와 갈린다.
+            _enemyAssets = MatchDefinitionBuilder.CollectEnemies(
+                               MatchDefinitionBuilder.ResolveDeck(mode, _deck),
+                               MatchDefinitionBuilder.ResolvePlan(mode, _plan), _bonus)
                            ?? Array.Empty<AttackUnitData>();
 
             var def = MatchDefinitionBuilder.Build(

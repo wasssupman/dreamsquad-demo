@@ -29,7 +29,7 @@
 | 효과 타일 | `Match/EffectTileDef.cs` + `MatchDefinition.EffectTiles[]` · `Owners/PlacementService.cs`(배치 시 적용 · **퇴근·재배치 시 회수**) |
 | 정의표 | `Match/HazardDef.cs`(모양·반경·수명·효과 배열) · `Match/BlockingHazardDef.cs` · canonicalize |
 | 커맨드 | `Match/Command.cs` 에 `DebugSpawnHazard`·`DebugSpawnBlocker` |
-| 사건 | `CoreEvent` **44~47**: `HazardSpawned`·`HazardDestroyed`·`FieldSpawned`·`FieldDespawned` · 트레이스 채널 **42~45**(41~43 은 6a·6a2 가 먼저 썼다) |
+| 사건 | `CoreEvent` **44~47**: `HazardSpawned`·`HazardDestroyed`·`FieldSpawned`·`FieldDespawned` · 트레이스 채널 **42~45**(사건 42·43 = 6a `DotCleared`·6a2 `ImbueChanged`, 트레이스 40·41 이 그 둘 — 그 다음 번호부터 append) |
 | 테스트 | `Tests/EditModeCore/`: `HazardZoneTests`·`BlockingHazardTests`·`FieldCarrierTests`·`EffectTileTests` |
 
 ## 구현
