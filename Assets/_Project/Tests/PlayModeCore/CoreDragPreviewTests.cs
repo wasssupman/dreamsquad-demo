@@ -2,8 +2,6 @@ using System.Collections;
 using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 using Wassup.BattleCore;
 using Wassup.BattleCoreUnity;
@@ -19,19 +17,17 @@ namespace Wassup.Tests.PlayMode.Core
     // 사용자 플레이 2차의 문장: 「배치 중에 하이라이트 타일 위로 배치할 유닛이 drag 모션을 하면서
     // 실루엣이 나와야 하는데 현재 미노출」.
     //
-    // 다른 배치 테스트는 제스처가 부르는 함수를 직접 부르지만, 여기서는 **가상 마우스로 실제
-    // 드래그를 흘린다** — 증상이 「끄는 동안」이라 트레이 칸을 누르고 끄는 입력 경로 자체가
-    // 재현 대상이다. 입력이 실루엣을 밀지 않으면 프리젠터만 옳아도 화면엔 안 나온다.
+    // 증상이 「끄는 동안」이라 **입력이 실루엣을 미는 경로**가 재현 대상이다 — 프리젠터만 옳아도
+    // 입력이 안 밀면 화면엔 안 나온다. 그래서 프리젠터를 직접 부르지 않고, 포인터 제스처가 부르는
+    // **입력의 창구**(`BeginPress` → `StepDrag` 매 프레임 → `Release`)를 탄다.
+    //
+    // ⚠ 가상 Input System 마우스로 흘리지 않는다. 처음엔 그렇게 썼는데 **에디터 포커스·다른
+    // 포인터 사용자에 따라 이벤트가 안 흘러** 머신마다 빨강/초록이 갈렸다(리드 실행에서 2건 빨강).
     public sealed class CoreDragPreviewTests
     {
-        private Mouse _mouse;
-
-        [TearDown]
-        public void RemoveMouse()
-        {
-            if (_mouse != null) InputSystem.RemoveDevice(_mouse);
-            _mouse = null;
-        }
+        private DragPlacementInput _input;
+        private int _defIndex;
+        private Vector2 _finger;
 
         [UnityTest]
         public IEnumerator 드래그하면_실루엣이_하나_서고_손끝을_따라가며_판_밖에서_사라진다()
@@ -41,10 +37,10 @@ namespace Wassup.Tests.PlayMode.Core
             var c = ctx();
 
             // ① 트레이 칸을 누르고 판으로 끈다.
-            yield return Press(c.SlotScreen);
+            Press(c.SlotScreen);
             Vector2 a = c.BoardScreen(-2);
             yield return DragTo(a);
-            yield return Frames(4);
+            yield return Hold(4);
 
             Assert.IsTrue(c.Input.IsDragging, "드래그로 승격되지 않았다 — 입력 경로가 안 탔다");
             Assert.IsTrue(c.Preview.IsShowing, "끄는 동안 판 위에 유닛 실루엣이 없다(사용자 증상)");
@@ -64,7 +60,7 @@ namespace Wassup.Tests.PlayMode.Core
             // 칸 확정은 시간 스로틀(`_snapIntervalSec`)을 탄다 — 손가락이 멈춘 뒤 한 박자 늦게 마지막
             // 칸이 들어온다. 그래서 목표를 **매 프레임 다시 읽고** 그 목표로 수렴하는지를 본다.
             for (int i = 0; i < 90 && Vector3.Distance(c.Preview.Current.position, c.Preview.TargetViewPos) > 0.02f; i++)
-                yield return null;
+                yield return Hold(1);
             Vector3 targetB = c.Preview.TargetViewPos;
             Assert.AreNotEqual(targetA, targetB, "손끝을 옮겼는데 실루엣 목표가 그대로다");
             AssertNearFingerX(c, b, targetB);
@@ -73,10 +69,10 @@ namespace Wassup.Tests.PlayMode.Core
 
             // ④ 판 밖 = 숨김(재진입하면 다시 선다).
             yield return DragTo(new Vector2(2f, Screen.height - 2f));
-            yield return Frames(3);
+            yield return Hold(3);
             Assert.IsFalse(c.Preview.IsShowing, "판 밖으로 나갔는데 실루엣이 남아 있다");
             yield return DragTo(b);
-            yield return Frames(3);
+            yield return Hold(3);
             Assert.IsTrue(c.Preview.IsShowing, "판으로 돌아왔는데 실루엣이 다시 안 선다");
 
             // ⑤ 판 밖에서 뗌 = 취소 → 사라진다(커맨드도 없다).
@@ -96,11 +92,11 @@ namespace Wassup.Tests.PlayMode.Core
             yield return Boot(out var ctx);
             var c = ctx();
 
-            yield return Press(c.SlotScreen);
+            Press(c.SlotScreen);
             // 판정 포인터는 손가락보다 오프셋만큼 위다 — 합격 앵커 칸에 떨어지도록 그만큼 내려 잡는다.
             Vector2 at = c.BoardScreen(0) - new Vector2(0f, PointerOffsetPx(c.Input));
             yield return DragTo(at);
-            yield return Frames(4);
+            yield return Hold(4);
             Assert.IsTrue(c.Preview.IsShowing, "끄는 동안 실루엣이 없다");
 
             yield return Release(at);
@@ -160,42 +156,61 @@ namespace Wassup.Tests.PlayMode.Core
             yield return null;
 
             // 판 가운데쯤, 좌우 두 칸이 전부 판 안인 합격 앵커를 가진 로스터 유닛.
-            Assert.IsTrue(TryFindPlaceable(c.Driver, out int defIndex, out c.Anchor),
+            Assert.IsTrue(TryFindPlaceable(c.Driver, out _defIndex, out c.Anchor),
                 "로스터의 어떤 유닛도 이 판에 놓을 수 없다");
             bool slot = false;
-            for (int i = 0; i < 20 && !(slot = tray.TryGetSlotScreenCenter(defIndex, null, out c.SlotScreen)); i++)
+            for (int i = 0; i < 20 && !(slot = tray.TryGetSlotScreenCenter(_defIndex, null, out c.SlotScreen)); i++)
                 yield return null;
             Assert.IsTrue(slot, "트레이에 그 유닛의 칸이 없다");
             c.TilePx = Mathf.Abs(c.BoardScreen(1).x - c.BoardScreen(0).x);
 
-            _mouse = InputSystem.AddDevice<Mouse>();
-            yield return Move(c.SlotScreen, false);
+            _input = c.Input;
+            // 입력 자신의 `Update` 는 **실제 포인터**를 읽는다 — 포인터 장치가 없으면(배치 러너)
+            // 매 프레임 제스처를 끝내고, 누가 진짜 마우스를 클릭하면 뗌으로 읽는다. 제스처를
+            // 이 테스트가 몰고 있으니 그 폴링을 끈다(`OnDisable` 의 정리는 아직 빈 상태라 무해).
+            // 사건 구독도 같이 내려가므로 **떼는 순간 다시 켠다** — `Release`.
+            _input.enabled = false;
         }
 
-        private IEnumerator Press(Vector2 p) { yield return Move(p, true); }
+        // 트레이 칸을 누른다(칸 판정은 테스트가 이미 했다 — 그 칸의 화면 중심).
+        private void Press(Vector2 p)
+        {
+            _finger = p;
+            _input.BeginPress(_defIndex, p);
+        }
 
         private IEnumerator Release(Vector2 p)
         {
-            yield return Move(p, false);
+            _finger = p;
+            // 배치가 성사되면 `Placed` 를 받아 비행을 띄우는 것은 입력의 구독이다 — 켠 **같은
+            // 프레임**에 뗀다(그 프레임의 `Update` 는 이미 지나갔다).
+            _input.enabled = true;
+            _input.Release(p);
             yield return null;
         }
 
-        // 임계(16px)와 오프셋 램프를 넘도록 여러 프레임에 걸쳐 끈다.
+        // 임계(16px)와 오프셋 램프를 넘도록 여러 프레임에 걸쳐 끈다 — 프레임마다 한 걸음.
         private IEnumerator DragTo(Vector2 to)
         {
-            Vector2 from = _mouse.position.ReadValue();
+            Vector2 from = _finger;
             const int steps = 8;
             for (int i = 1; i <= steps; i++)
-                yield return Move(Vector2.Lerp(from, to, i / (float)steps), true);
+            {
+                _finger = Vector2.Lerp(from, to, i / (float)steps);
+                _input.StepDrag(_finger);
+                yield return null;
+            }
         }
 
-        private IEnumerator Move(Vector2 p, bool pressed)
+        // 누른 채 멈춰 있다. 실제 손가락도 멈춘 동안 매 프레임 `StepDrag` 를 받는다 —
+        // 칸 확정 스로틀은 그 호출에서만 진행한다.
+        private IEnumerator Hold(int frames)
         {
-            var state = new MouseState { position = p };
-            if (pressed) state = state.WithButton(MouseButton.Left);
-            InputSystem.QueueStateEvent(_mouse, state);
-            _mouse.MakeCurrent();
-            yield return null;
+            for (int i = 0; i < frames; i++)
+            {
+                _input.StepDrag(_finger);
+                yield return null;
+            }
         }
 
         private static float PointerOffsetPx(DragPlacementInput input)
@@ -204,11 +219,6 @@ namespace Wassup.Tests.PlayMode.Core
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.IsNotNull(f, "입력의 포인터 오프셋 칸 이름이 바뀌었다");
             return (float)f.GetValue(input);
-        }
-
-        private static IEnumerator Frames(int n)
-        {
-            for (int i = 0; i < n; i++) yield return null;
         }
 
         private static int ActiveSilhouettes(CoreDragPreviewPresenter preview)
