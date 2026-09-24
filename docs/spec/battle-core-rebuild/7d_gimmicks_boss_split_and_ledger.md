@@ -85,10 +85,13 @@
 | `FieldSpawned` 페이로드 | 출구·반경이 없었다 → 포탈 출구 `SiteTarget` · 반경(칸) `AreaTiles`(값 스냅샷 · 트레이스 무변 — a·b·i·f 만 기록) | 계약 4·7(뷰가 되묻지 않는다) · `f45a9ae7e` |
 | 넘겨받은 WIP(커맨드 2종) | 진영 타입 이름 미해석으로 **컴파일이 안 됐다** → `Wassup.Battle.Units.Faction` 한정(규칙 무변) | `ff3094ac4` |
 | `TriggerDispatcher` 진단 칸 | 없음 → 종류별 **감지된 사실 수**(`SensedCount`) — 판정에 안 쓰는 관측값. 「감지자 없음」을 코드 목록이 아니라 관측으로 답한다 | `BindingDiagnosis` · `ff3094ac4` |
+| 이동 정의표의 「기본값이면 canonical 줄 생략」(리뷰 M1) | float `!=` 정확 비교 → 허용 오차 `CanonicalDefaultEpsilon`(1e-6) — SO 직렬화 왕복의 1 ulp 로 해시가 뒤집혀 골든이 「조건이 바뀌었다」고 오보할 수 있었다. 다른 `Canonicalize` 의 조건부 생략은 전부 int·bool·enum 이라 해당 없음(grep) | `MovementTuningDef.Canonicalize` · `MovementTuningTests.기본값_이웃_1ulp_는_canonical_줄을_안_쓴다`(옛 비교로 빨강 확인) |
+| 분열 상한 8 의 자리(리뷰 M2) | 빌더 두 곳의 리터럴 상수(`MatchDefinitionBuilder`·`BindingDefinitionBuilder`) → 정의표 `MovementTuningDef.SplitMaxChildren`(기본 8 = 옛 `BattleBridge.MaxSplitChildren` · 저작 `MovementTuningConfig.splitMaxChildren` · 기본값이면 canonical 줄 생략) + 코어 `EnemySplit` 이 한 번 더 자르고 말한다(고정구·헤드리스는 빌더를 안 지난다) | `SplitTests.고정구가_상한보다_많이_넣어도_상한만큼만_선다` · Assets `DeathSiteBakeTests.라이브_분열_상한은_옛_브리지_상수_그대로_코어_기본값과_같다`(작성만 · 리드 실행) |
+| `CoreFieldPresenter` 순회(리뷰 L1) | 사전 `foreach` → 다른 뷰 풀과 같이 id 목록 순회(키 조회만 사전) | `CoreFieldPresenter.ClearAll`/`Release` |
 
-### 미배선 — 씬(Unity MCP 세션 끊김 · 열린 씬 YAML 외부 편집 금지)
+### 씬 배선 — **완료**(2026-09-24, impl-7c 세션 · MCP SerializedObject → `manage_scene save` · 씬 diff +18 −2 = 표의 칸만)
 
-`BattleCoreScene` 에 아래를 더하면 끝난다. 값은 옛 `BattleScene.unity` 의 `VfxSpawner` 블록(4439~4452줄) 그대로다. 비면 컴포넌트가 **에러 한 번**을 찍는다(조용한 무동작 없음). `_overlay` 는 같은 씬에서 찾아 쓴다.
+`CoreFieldPresenter` 는 `Vfx` 오브젝트에 붙였다. 배선 뒤 EditMode 코어+Assets 925/927(선행 2) · PlayMode 코어 56/56. 아래는 배선한 값이다. 값은 옛 `BattleScene.unity` 의 `VfxSpawner` 블록(4439~4452줄) 그대로다. 비면 컴포넌트가 **에러 한 번**을 찍는다(조용한 무동작 없음). `_overlay` 는 같은 씬에서 찾아 쓴다.
 
 | 오브젝트 | 컴포넌트 · 칸 | 값 |
 |---|---|---|
@@ -115,6 +118,6 @@ $ python3 tools/battle-core-rebuild/check_ledgers.py
 - [x] `ledgers/rules.md` **E1 완료(7d) · E2·E4 결정(7a·7b) · S1·S8·S9·C5 완료(7a)** · F35 **결정**(감속장 스냅샷 현행 박제) · F19 7d 확인. 보류 **31**, 기계 점검으로 **unit 번호·후속 후보 없는 보류 0**.
 - [x] `ledgers/bridge-methods.md` 미정 **28 → 0**(위 「장부 마감 증거」): Relocation 8행(`RelocationCheck/7`·`TryGetDefenderAt/4`·`RelocatePatrolAnchorFor/2`·`PlayLandingSquash/3`·`TryGetRelocationAnchors/5`·`ActivateRelocatedDefender/3`·`ApplyRefitHeal/2`·`FinishDefenderRelocation/2`) + `BattleBridge.cs` 20행(수명 8 · 유출 4 · `ComputeSpawnLateralOffset/1` · `FindSummonPatrolAbility/1` · `RegisterPatrolUnitSO/1` · `NoQueuedAttackersRemain/0` · `ApplyEnvironmentGating/0` · `SpawnSplitChildren/2` · `DestroyEntitiesByType/0` · `OnRestartRequested/0`).
 - [x] `python3 Tools/battle-core-rebuild/check_ledgers.py` **exit 0** · `bridge-methods` 미정 **0** 을 README 상태 라인에 숫자로 적는다(**조각 E 진입 조건**).
-- [ ] `core-reviewer` APPROVE — 매니저 0 · 하드코딩 0(기믹 수치 전량 `GimmickDef`) · `Unity.Entities` 0 · 틱 phase 수 무변.
+- [x] `core-reviewer` APPROVE(2026-09-24 · CRITICAL/HIGH 0 · MEDIUM 2·LOW 1 → 후속 `ebf998593` 로 해소, 보충 리뷰 APPROVE finding 0). 리드 재검증(HEAD `303133091`): export build 0 · test 670 · Check 0 · 미정 0 · Unity EditMode 코어+Assets 929/931(선행 2) · PlayMode 코어 56/56 · 골든 11종 무변.
 - [ ] **사용자 플레이 — 조각 D 의 질문**: *「카드를 쓰는 맛과 판이 얹는 변수가 옛 게임과 같은가」*. 구체 확인 6: ⑴ 손패를 끌어 유닛에 붙이고 **범위 링이 유닛마다 다르게** 보인다 ⑵ 액티브를 칸에 쏜다 ⑶ 붙인 유닛이 죽거나 퇴근하면 카드가 **돌아온다** ⑷ 이번 판의 기믹이 실제로 **일어난다** ⑸ 보스가 도약하고 분열체가 갈라진다 ⑹ 각성이 차고 손패가 열린다. ⚠ 같이 고지할 것: **재배치(유닛 이동)는 없다**(라이브도 그렇다) · **사망 시 작별 선물이 여러 장이면 전부 터진다**(사용자 결정 ① 의 기본값) · 「자는 가디언」은 **현행 그대로**(결정 ③).
-- [x] 6c 「아직 안 보이는 것」 → 전 행 해소(회오리·포탈 장 · 픽업/사직서 · 열기/피로 · 호접몽/운석 · 착탄 예고 · 브레스 — 뒤의 넷은 이 unit, 셋은 씬 미배선). 「아직 안 보이는 것」 표를 unit 8 에 넘긴다: 전투 BGM · 제출 payload 의 덱 스냅샷 · 결과 화면 실제 랭킹(로비 진입).
+- [x] 6c 「아직 안 보이는 것」 → 전 행 해소(회오리·포탈 장 · 픽업/사직서 · 열기/피로 · 호접몽/운석 · 착탄 예고 · 브레스 — 뒤의 넷은 이 unit, 셋은 씬 배선 — 완료). 「아직 안 보이는 것」 표를 unit 8 에 넘긴다: 전투 BGM · 제출 payload 의 덱 스냅샷 · 결과 화면 실제 랭킹(로비 진입).

@@ -116,7 +116,7 @@
 ### 씬 배선 — **완료**(2026-09-24, MCP `execute_code` · SerializedObject → `manage_scene save`)
 
 `BattleCoreScene` 에 아래를 배선했다(씬 diff = 추가 211줄 · 삭제 0). 컴포넌트는 비어 있는 **씬 참조**를 같은 씬에서 찾아 경고와 함께 쓰므로(배선이 정본) 테스트는 씬 배선 없이도 돈다(`CoreCardViewTests` 가 없으면 세운다).
-⚠ 씬 저장이 `CoreVfxSpawner` 에 다른 작업의 새 칸(`_areaBreath*` · `_overlay`)을 **기본값으로** 같이 직렬화했다 — 값은 코드 기본값 그대로다(참조 0). `BattleDriver._cards`·`_dreamstones` 는 빈 배열로 처음 직렬화됐다(7b 칸).
+씬 저장이 `CoreVfxSpawner` 에 7d 의 새 칸(`_areaBreath*` · `_overlay`)을 기본값으로 같이 직렬화했고, 이어서 **7d 미배선 표도 배선했다**(브레스 프리팹 · 오버레이 참조 · `CoreFieldPresenter` — 7d 문서). `BattleDriver._cards`·`_dreamstones` 는 빈 배열로 처음 직렬화됐다(7b 칸).
 
 | 오브젝트 | 컴포넌트 · 칸 | 값(옛 `BattleScene` 저작) |
 |---|---|---|
