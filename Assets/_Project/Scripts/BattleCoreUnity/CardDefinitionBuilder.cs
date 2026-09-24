@@ -33,18 +33,23 @@ namespace Wassup.BattleCoreUnity
         /// `CombatDefinitionBuilder.Fill` 이 **탄·패턴 표를 굳히기 전**에 부른다(카드 탄·패턴이 같은 표에 든다).
         /// </summary>
         public static void Fill(MatchDefinition def, in CardAuthoring src, List<ProjectileData> projectiles,
-                                List<ProjectilePatternData> patterns, HazardSO[] hazards)
+                                List<ProjectilePatternData> patterns, HazardSO[] hazards,
+                                MatchViewAssets view = null)
         {
             var rows = new List<BindingDef>(def.Bindings ?? System.Array.Empty<BindingDef>());
             var cards = new List<CardDef>();
+            // unit 7c — 카드 줄 번호 → 카드 에셋(아트·문안). 빈 칸을 건너뛰는 **이 순회**가 번호를 매기므로 목록도 여기서 낸다.
+            var assets = new List<DreamcatcherCard>();
             if (src.Cards != null)
                 for (int i = 0; i < src.Cards.Count; i++)
                 {
                     var c = src.Cards[i];
                     if (c == null) { Warn($"덱 {i} 번 카드가 비었다 — 건너뛴다."); continue; }
                     cards.Add(Bake(c, src.Awakening, projectiles, patterns, hazards, rows));
+                    assets.Add(c);
                 }
             if (cards.Count > 0) def.Cards = cards.ToArray();
+            view?.SetCards(assets);
             var match = BakeDreamstones(src.Dreamstones, rows);
             if (match.Length > 0) def.MatchBindings = match;
             def.Bindings = rows.ToArray();

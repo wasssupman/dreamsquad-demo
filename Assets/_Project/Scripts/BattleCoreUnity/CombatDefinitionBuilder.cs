@@ -69,9 +69,11 @@ namespace Wassup.BattleCoreUnity
 
             // unit 7a — 유닛·적이 **저작으로 든 규칙**(배치 스킬 · 적 악몽 · 실드 캐스트). 탄·패턴 표를 굳히기 **전**이다 —
             // 규칙이 가리키는 탄·패턴이 같은 표에 들어야 한다.
-            BindingDefinitionBuilder.Fill(def, unitList, enemies, projectiles, patterns, hazards);
+            // unit 7c — 규칙 줄의 연출(부착 오라 · 빔)과 카드 에셋 목록도 **번호를 매기는 그 순회**가 채운다.
+            viewAssets?.ClearBindingVisuals();
+            BindingDefinitionBuilder.Fill(def, unitList, enemies, projectiles, patterns, hazards, viewAssets);
             // unit 7b — 카드(덱) · 드림스톤. 같은 이유로 표를 굳히기 전이다(카드 탄·패턴이 같은 표에 든다).
-            CardDefinitionBuilder.Fill(def, in cards, projectiles, patterns, hazards);
+            CardDefinitionBuilder.Fill(def, in cards, projectiles, patterns, hazards, viewAssets);
 
             // 거점은 **탄 표를 유닛·적과 공유한다**(본능 포탑의 탄이 그 판의 탄 목록에 든다).
             // 표를 굳히기 **전**에 채우는 이유가 이것이다 — 뒤로 미루면 본능의 탄만 표 밖을

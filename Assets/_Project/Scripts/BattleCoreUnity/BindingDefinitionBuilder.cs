@@ -33,7 +33,7 @@ namespace Wassup.BattleCoreUnity
         /// </summary>
         public static void Fill(MatchDefinition def, List<DefenderUnitData> units, AttackUnitData[] enemies,
                                 List<ProjectileData> projectiles, List<ProjectilePatternData> patterns,
-                                HazardSO[] hazards)
+                                HazardSO[] hazards, MatchViewAssets view = null)
         {
             var rows = new List<BindingDef>(def.Bindings ?? System.Array.Empty<BindingDef>());
             for (int i = 0; i < def.Units.Length && i < units.Count; i++)
@@ -45,7 +45,7 @@ namespace Wassup.BattleCoreUnity
                 var skill = d.GetAbility<UnitSkillAbility>();
                 if (skill?.mechanics != null)
                     Bake(skill.mechanics, hostIsEnemy: false, d.name, d.aggroCapacity > 0, null,
-                         projectiles, patterns, hazards, rows, mine, mods);
+                         projectiles, patterns, hazards, rows, mine, mods, view);
                 BakeShieldCast(d, rows, mine);
                 if (mine.Count > 0) def.Units[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Units[i].Attack.Mods = mods.ToArray();
@@ -57,7 +57,7 @@ namespace Wassup.BattleCoreUnity
                 var mods = new List<AttackModDef>();
                 var mine = new List<int>();
                 Bake(e.nightmareMechanics, hostIsEnemy: true, e.name, false, e,
-                     projectiles, patterns, hazards, rows, mine, mods);
+                     projectiles, patterns, hazards, rows, mine, mods, view);
                 if (mine.Count > 0) def.Enemies[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Enemies[i].Attack.Mods = mods.ToArray();
             }
@@ -88,7 +88,8 @@ namespace Wassup.BattleCoreUnity
         private static void Bake(DcMechanic[] mechanics, bool hostIsEnemy, string owner, bool hostIsGuardian,
                                  AttackUnitData enemyOwner,
                                  List<ProjectileData> projectiles, List<ProjectilePatternData> patterns,
-                                 HazardSO[] hazards, List<BindingDef> rows, List<int> mine, List<AttackModDef> mods)
+                                 HazardSO[] hazards, List<BindingDef> rows, List<int> mine, List<AttackModDef> mods,
+                                 MatchViewAssets view = null)
         {
             for (int i = 0; i < mechanics.Length; i++)
             {
@@ -198,6 +199,18 @@ namespace Wassup.BattleCoreUnity
                 b.Origin = BindingOrigin.UnitAuthored;
 
                 if (!ValidatePayload(ref b, in m, label, hostIsGuardian, projectiles, patterns, hazards)) continue;
+
+                // unit 7c — 메커닉이 선언한 연출 프리팹(옛 `BakeUnitMechanics` 의 두 갈래). 규칙이 아니라 **뷰 표**이고,
+                // 규칙 줄에는 빔의 번호만 싣는다(`SkillVisual.DefIndex` — 스킬이 `HasData` 일 때만 빔을 요청한다).
+                //   · 지속 피해(`AreaDot`)의 `auraPrefab` = **빔**(옛 `GetOrCreateSkillVfxIndex`). 빔은 선택이다 — 없으면 무연출.
+                //   · 그 밖의 `auraPrefab` = 숙주를 따라다니는 **부착 오라**(옛 `DcAuraVisualPool.Register`, kind 무관).
+                //   ⚠ 옛 bake 는 `AreaDot` 의 빔 프리팹도 오라로 **같이** 등록했다(두 갈래가 한 필드를 겸한 뒤 가드가 안 생겼다) —
+                //   빔이 숙주에 기본 방향으로 박혀 떠 있게 된다. 빔 쪽만 옮긴다(7c 이식 제외).
+                if (view != null && m.payload.auraPrefab != null)
+                {
+                    if (b.Payload == TriggerPayload.AreaDot) b.DataIndex = view.RegisterSkillVfx(m.payload.auraPrefab);
+                    else view.SetBindingAura(rows.Count, m.payload.auraPrefab, m.payload.auraScale);
+                }
 
                 mine.Add(rows.Count);
                 rows.Add(b);
