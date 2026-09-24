@@ -717,11 +717,17 @@ namespace Wassup.BattleCore
             if (_candCount > _picked.Length) System.Array.Resize(ref _picked, _candCount);
             for (int i = 0; i < _candCount; i++) _picked[i] = _cands[i].U == primaryUnit;
 
+            // 힐러의 부가 대상도 **가장 다친 순**이다 — 주 대상과 같은 자(`PickTarget` 의
+            // `rankByHealth`). 옛 pass 루프가 `rankByHealth` 로 같은 분기를 탔다.
+            bool rankByHealth = u.Kind == UnitKind.Defender
+                                && atk.TargetMask == (int)Faction.DefenderUnit;
+
             while (count < desired)
             {
                 int pickIdx = -1;
                 float pickSq = float.MaxValue;
                 int pickSimId = int.MaxValue;
+                LowestHealthTargeting.Candidate healPick = default;
                 for (int i = 0; i < _candCount; i++)
                 {
                     if (_picked[i]) continue;
@@ -733,7 +739,18 @@ namespace Wassup.BattleCore
                     if (!AttackReach.InReachShaped(u.Position, c.Pos, atk.Range, tileSize,
                                                    u.HitRadius, c.Body, in atk.Shape, dir)) continue;
                     float d2 = SqXZ(u.Position, c.Pos);
-                    if (d2 < pickSq || (d2 == pickSq && c.SimId < pickSimId))
+                    if (rankByHealth)
+                    {
+                        var hc = new LowestHealthTargeting.Candidate
+                        {
+                            HpRatio = HealthMath.ComputeRatio(c.U.Health, c.U.MaxHealth),
+                            SqDist = d2,
+                            SimId = c.SimId,
+                        };
+                        if (pickIdx < 0 || LowestHealthTargeting.RanksBefore(in hc, in healPick))
+                        { healPick = hc; pickIdx = i; }
+                    }
+                    else if (d2 < pickSq || (d2 == pickSq && c.SimId < pickSimId))
                     { pickSq = d2; pickSimId = c.SimId; pickIdx = i; }
                 }
                 if (pickIdx < 0) break;
