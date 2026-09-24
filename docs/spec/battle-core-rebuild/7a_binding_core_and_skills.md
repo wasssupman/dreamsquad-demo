@@ -109,7 +109,7 @@
 | 일반 도약(짱쎈 `SelfBlink`)의 **착지 슬램** | 옛 슬램은 브리지가 **뷰 도착 시각**에 쐈다(`RunBossLeap` → `ResolveLanding`, 장부상 둘 다 뷰·삭제). 코어는 순간이동과 `LeapAscend`(일반) 연출 신호까지 한다. 슬램을 결정론으로 어디에 둘지는 보스 규칙이라 7d 가 정한다 — **7a 플레이에서 짱쎈 도약은 피해가 없다** | 이월 · 7d |
 | 보스 위협 귀속(`CreditThreat`) | 소비자(보스 텔레포트 대상 선정)가 7d. 의도는 `Report` 로 말하고 버린다(조용한 무동작 금지) | 이월 · 7d(C25) |
 | 살찌운 제물의 **소비**(처치 보상 배율) | 의도는 `Unit.AwakeningRewardMul` 까지 적용한다. 보상 담당자(`HandDeck`)가 그 배율을 읽는 것은 카드 규칙이라 7b | 이월 · 7b |
-| 빔(`AreaDot`)·부착 오라(`auraPrefab`) 연출 index | 뷰 표(프리팹)는 카드·연출 화면의 것 — bake 가 index 를 안 싣는다(무연출). 규칙(지속 피해·자기 공격 지연)은 그대로 돈다 | 이월 · 7c |
+| 빔(`AreaDot`)·부착 오라(`auraPrefab`) 연출 index | 뷰 표(프리팹)는 카드·연출 화면의 것 — bake 가 index 를 안 싣는다(무연출). 규칙(지속 피해·자기 공격 지연)은 그대로 돈다 | 이월 · 7c → **해소**(`87f9c5781` — 빔 = `DataIndex` · 오라 = 뷰 표) |
 | 유닛 bake 의 `SelfOrbitProjectile` | 옛 bake 가 이미 거절했다(속도·탄 SO 를 안 채워 발동해도 무동작). 그 가드 그대로 — 궤도 탄 자체(`IntentApplier.SpawnOrbit`)는 카드 경로(7b)용으로 선다 | 유지(옛 가드) |
 | 자기 죽음(`OnDeath`)의 **틱** | 옛 = 사망 프레임 안(`UnitLifecycleSystem` 이 같은 프레임에 파괴). 새 코어는 사망 2단계(unit 3 계약 9 — 표시 틱 ≠ 소멸 틱)라 **소멸 틱**(한 틱 뒤)의 `Lifecycle` seam 에서 난다 | 계약 계승(unit 3) |
 

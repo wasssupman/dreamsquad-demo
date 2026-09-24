@@ -118,14 +118,14 @@
 
 | 안 보이는 것 | 왜 | 뷰 쪽 준비 |
 |---|---|---|
-| 오버헤드 **부착 카드 줄** | 부착 사건(7b) | 없음(빈 슬롯 금지) |
+| ~~오버헤드 **부착 카드 줄**~~ **해소(7c)** | 부착 사건(7b) | `CoreUnitOverheadUiLayer` 카드 아이콘 + `CoreSelectionPanel` 카드 줄(자기 구독 · 부착 순) |
 | 회오리·포탈 **장 비주얼** | 장을 까는 자(7a·7d) | 없음 — `FieldSpawned` 소비처 0 |
 | **픽업 스폰** · **사직서 드랍** | 주기 바인딩·사망 seam(7d). 기본 모드는 기믹 0 이라 디버그 커맨드도 `GimmickInactive` | `CorePickupViewPool`·`CoreResignationViewPool` 섬 |
 | **열기·피로 누적** | 기믹 per-unit 타이머(7d) | 오버헤드 스택 아이콘 섬 |
 | **호접몽** · **운석 barrage** | 7d | 광역 착탄 버스트 섬(`ProjectileHit.AreaTiles`) |
 | **착탄 예고 표식** | 예고 반경이 스킬 intent 값(7a) | 없음(반경 없이 칠하면 규칙을 지어낸다) |
-| **강화 오라**(드림캐쳐 출처 스탯) · 카드 페이로드 오라 | 카드 부착·시전(7b) | `CoreDcAuraVisualPool` 섬(판정 = 코어 순수 함수) |
-| **살찌운 제물 표식** | 저주 카드(7b) | 등록부 `Marked` 줄만 |
+| **강화 오라**(드림캐쳐 출처 스탯) · ~~카드 페이로드 오라~~ **메커닉 선언 오라 해소(7c)** | 카드 부착·시전(7b) | `CoreDcAuraVisualPool` — 강화 오라(판정 = 코어 순수 함수) + `BindingAttached` → 뷰 표 오라 |
+| ~~**살찌운 제물 표식**~~ **해소(7c)** | 저주 카드(7b) | `CoreStatusFxSpawner` — `CardAttached`(`TargetsEnemies`) → `Marked` · 부팅 스모크 표식 수 |
 | 드래곤 브레스 | 콘이 공격 도형이 아니라 `ConeBreath` 스킬 슬롯 값이다(위 이식 제외) — 스킬이 7a | 없음 |
 
 
