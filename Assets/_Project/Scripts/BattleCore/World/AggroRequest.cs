@@ -26,4 +26,18 @@ namespace Wassup.BattleCore
         public static AggroRequest Taunted(SimEntityId enemy, SimEntityId guardian, float seconds)
             => new AggroRequest { Enemy = enemy, Guardian = guardian, Taunt = true, Seconds = seconds };
     }
+
+    /// <summary>
+    /// 어그로가 풀린 까닭(`CoreEvent.AggroReleased.Arg`). 해제 자리는 `FieldPrepPhase` 의 셋이 전부다.
+    /// append-only — 트레이스 `i` 칸에 그대로 실린다.
+    /// </summary>
+    public enum AggroReleaseReason : byte
+    {
+        /// <summary>시한 도발의 시간이 다 됐다(0 = 무기한 센티널은 여기 안 온다).</summary>
+        Expired = 0,
+        /// <summary>가디언이 죽었거나 판에서 사라졌다(퇴근 포함).</summary>
+        GuardianGone = 1,
+        /// <summary>장애물이 바뀌어 추격판이 낡았다 — **히트 어그로만** 풀린다(도발은 표시가 남는다, M10).</summary>
+        Rebuilt = 2,
+    }
 }

@@ -24,6 +24,9 @@ namespace Wassup.BattleCoreUnity.View
     //   · 스탯 `ModifierApplied`/`ModifierRevoked` — 번아웃(피로 임계 파생). 사건은 「무엇이 바뀌었나」
     //     만 알고 「그 결과 번아웃인가」는 모르므로, 사건을 **계기로** 그 몸의 슬롯 목록을 순수 판정에
     //     넘긴다(`ModifierAuraClassifier`). 판정은 코어 함수이고 뷰는 결과만 그린다.
+    //   · 어그로 `AggroAcquired`/`AggroReleased` — 끌려간 적(`A`)의 머리 위 표식. 도발이 다른 가디언으로
+    //     갈아타도 표식은 적의 것이라 그대로다(획득 사건이 한 번 더 올 뿐). 풀림 사건이 코어의 해제 함수
+    //     하나에서 나오므로 여기서는 받기만 한다 — 옛 것은 `Aggroed` 보유를 매 프레임 폴링했다.
     //   · 라스트런 `PickupTaken`(레드불을 먹은 자) — 창의 정본은 코어 진행형 상태(`LastRunActive`)다.
     //     ⚠ **창이 닫히는 사건이 코어에 없다**(crash 는 사건을 안 낸다). 그래서 끄는 쪽만 계기가 둘이다:
     //     같은 몸의 스탯 회수 사건(라스트런 공속 버프가 창과 같은 틱에 만료된다) + 초당 한 번 그 정본
@@ -127,6 +130,14 @@ namespace Wassup.BattleCoreUnity.View
                 case CoreEventKind.ModifierRevoked:
                     RefreshBurnout(e.B);
                     RefreshLastRun(e.B);
+                    break;
+
+                case CoreEventKind.AggroAcquired:
+                    _wanted.Add(new Key(e.A.Value, StatusFxKind.Aggro));
+                    break;
+
+                case CoreEventKind.AggroReleased:
+                    Unwant(new Key(e.A.Value, StatusFxKind.Aggro));
                     break;
 
                 case CoreEventKind.PickupTaken:

@@ -137,6 +137,66 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsEmpty(CoreSceneFixture.Errors, string.Join("\n", CoreSceneFixture.Errors));
         }
 
+        // 6c 후속 — **어그로 표식은 코어의 풀림 사건에 꺼진다**(폴링 없음). 도발을 코어의 진짜 문
+        // (어그로 요청)으로 걸고, 시한 만료로 풀어 표식이 내려가는지 본다.
+        [UnityTest]
+        public IEnumerator 어그로_표식은_획득에_켜지고_코어의_풀림_사건에_꺼진다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return Boot(d => driver = d);
+            var fx = Object.FindAnyObjectByType<CoreStatusFxSpawner>();
+            Assert.IsNotNull(fx, "씬에 CoreStatusFxSpawner 가 없다");
+            var def = driver.Match.Definition;
+
+            // 가디언 = 어그로 수용량이 저작된 방어유닛, 적 = 유닛을 노리고 공격 수단이 있는 적.
+            // (코어의 획득 게이트가 거르는 적을 고르면 「표식이 안 뜬다」가 뷰가 아니라 게이트에서 난다.)
+            int guardianDef = -1;
+            for (int i = 0; i < def.Units.Length && guardianDef < 0; i++)
+                if (def.Units[i].AggroCapacity > 0) guardianDef = i;
+            Assert.GreaterOrEqual(guardianDef, 0, "라이브 정의표에 어그로 수용량이 있는 방어유닛이 없다");
+            int enemyDef = -1;
+            for (int i = 0; i < def.Enemies.Length && enemyDef < 0; i++)
+                if (def.Enemies[i].AttackRange > 0f
+                    && (Wassup.BattleCore.Combat.TargetDefaults.ResolveEnemy(def.Enemies[i].TargetFactions)
+                        & Wassup.Battle.Units.Factions.AnyUnit) != 0)
+                    enemyDef = i;
+            Assert.GreaterOrEqual(enemyDef, 0, "라이브 정의표에 유닛을 노리는 적이 없다");
+
+            var world = driver.Match.World;
+            var cell = PathCell(driver.Match.Map, 2);
+            Assert.IsTrue(driver.Apply(Command.DebugSpawnDefender(guardianDef, cell)).Accepted, "가디언 스폰 거절");
+            Assert.IsTrue(driver.Apply(Command.DebugSpawnEnemyInLane(enemyDef, 0)).Accepted, "적 스폰 거절");
+            SimEntityId guardian = SimEntityId.None, enemy = SimEntityId.None;
+            for (int i = 0; i < world.Units.Count; i++)
+            {
+                if (world.Units[i].Kind == UnitKind.Defender) guardian = world.Units[i].Id;
+                if (world.Units[i].Kind == UnitKind.Enemy) enemy = world.Units[i].Id;
+            }
+            Assert.IsFalse(guardian.IsNone || enemy.IsNone, "가디언·적이 안 섰다");
+            world.Find(guardian).Attack = null;   // 히트가 어그로를 다시 물지 못하게(재획득은 이 질문 밖)
+            yield return Ticks(driver, 1);
+
+            var acquired = new System.Collections.Generic.List<CoreEvent>();
+            var released = new System.Collections.Generic.List<CoreEvent>();
+            driver.Match.Bus.Subscribe(CoreEventKind.AggroAcquired, 0, acquired.Add);
+            driver.Match.Bus.Subscribe(CoreEventKind.AggroReleased, 0, released.Add);
+
+            world.AggroRequests.Add(AggroRequest.Taunted(enemy, guardian, 0.25f));
+            yield return Ticks(driver, 1);
+            Assert.AreEqual(1, acquired.Count, "도발이 코어 게이트를 지나 붙어야 한다");
+            Assert.IsTrue(fx.IsShown(enemy, StatusFxKind.Aggro), "획득 사건 → 어그로 표식");
+
+            yield return Ticks(driver, 30);
+            Assert.AreEqual(1, released.Count, "시한이 끝나면 풀림 사건이 한 번 난다");
+            Assert.IsTrue(world.IsAlive(enemy), "적은 살아 있다 — 표식이 내려가는 까닭은 숙주 소멸이 아니다");
+            Assert.IsFalse(fx.IsShown(enemy, StatusFxKind.Aggro), "풀림 사건 → 어그로 표식 회수");
+            Assert.AreEqual(0, fx.WantedCountOf(enemy), "풀린 적에 남은 표식이 없다");
+
+            CoreSceneFixture.EndErrorWatch();
+            Assert.IsEmpty(CoreSceneFixture.Errors, string.Join("\n", CoreSceneFixture.Errors));
+        }
+
         [UnityTest]
         public IEnumerator 픽업과_사직서는_코어_개체를_따라_서고_사라진다()
         {

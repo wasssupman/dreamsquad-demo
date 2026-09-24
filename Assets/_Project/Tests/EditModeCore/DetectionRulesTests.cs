@@ -201,6 +201,85 @@ namespace Wassup.Tests.EditMode.Core
                 "0 은 무기한 센티널이고 >0 만 감소한다");
         }
 
+        // ── 6c 후속 — 어그로의 끝도 사건이다(계약 7) ─────────────────────────
+        //
+        // 켜는 사건(`AggroAcquired`)만 있으면 표식을 끄는 쪽이 폴링으로 되묻는다. 해제 자리 셋이
+        // 각각 **정확히 한 건**을 내는지 본다 — 두 번 나면 뷰는 무해하지만 트레이스가 거짓을 증언한다.
+
+        private static BattleMatch AggroBoard(int capacity)
+        {
+            var map = CoreMapFixtures.Open(10, 5, new int2(9, 2), new int2(0, 2));
+            var def = CoreMapFixtures.Definition(map, defenderW: 1, defenderH: 1, aggroCapacity: capacity);
+            var match = new BattleMatch(def);
+            match.Begin();
+            match.Apply(Command.PlaceDefender(0, new int2(5, 2)));
+            match.Apply(Command.DebugSpawnEnemyInLane(0, 0));
+            match.Apply(Command.DebugSpawnEnemyInLane(0, 0));
+            match.Tick();
+            return match;
+        }
+
+        [Test]
+        public void 장애물이_바뀌어_풀린_히트_어그로는_풀림_사건을_한_번_내고_도발은_안_낸다()
+        {
+            var match = AggroBoard(4);
+            var released = Listen(match, CoreEventKind.AggroReleased);
+            var guardian = new SimEntityId(1);
+            match.World.AggroRequests.Add(AggroRequest.Hit(new SimEntityId(2), guardian));
+            match.World.AggroRequests.Add(AggroRequest.Taunted(new SimEntityId(3), guardian, 10f));
+            match.Tick();
+            Assert.AreEqual(0, released.Count);
+
+            match.Apply(Command.DebugSetObstacle(new int2(3, 3), true));
+            match.Tick();
+
+            Assert.AreEqual(1, released.Count, "히트 어그로 하나만 풀린다 — 도발은 표시가 남는다");
+            Assert.AreEqual(2, released[0].A.Value, "주체 = 풀린 적");
+            Assert.AreEqual(guardian.Value, released[0].B.Value, "대상 = 가디언");
+            Assert.AreEqual((int)AggroReleaseReason.Rebuilt, released[0].Arg);
+        }
+
+        [Test]
+        public void 도발_시한이_지나_풀리면_풀림_사건이_정확히_한_번_난다()
+        {
+            var match = AggroBoard(1);
+            var released = Listen(match, CoreEventKind.AggroReleased);
+            match.World.AggroRequests.Add(AggroRequest.Taunted(new SimEntityId(2), new SimEntityId(1), 0.5f));
+            match.Tick();
+            match.World.Find(new SimEntityId(1)).Attack = null;   // 히트 재획득 차단(위 시한 테스트와 같은 이유)
+
+            for (int t = 0; t < 90; t++) match.Tick();
+
+            Assert.AreEqual(1, released.Count, "풀림은 한 번 — 풀린 뒤에는 대상이 없다");
+            Assert.AreEqual(2, released[0].A.Value);
+            Assert.AreEqual((int)AggroReleaseReason.Expired, released[0].Arg);
+        }
+
+        [Test]
+        public void 가디언이_사라지면_붙들린_적마다_풀림_사건이_한_번씩_난다()
+        {
+            var match = AggroBoard(4);
+            var released = Listen(match, CoreEventKind.AggroReleased);
+            var guardian = new SimEntityId(1);
+            match.World.AggroRequests.Add(AggroRequest.Hit(new SimEntityId(2), guardian));
+            match.World.AggroRequests.Add(AggroRequest.Taunted(new SimEntityId(3), guardian, 0f));
+            match.Tick();
+
+            match.Apply(Command.DebugDestroy(guardian));
+            for (int t = 0; t < 10; t++) match.Tick();
+
+            Assert.AreEqual(2, released.Count, "적 둘 — 각 한 건(두 번 나지 않는다)");
+            // ⚠ 가디언의 몸은 **장애물**이다. 몸이 빠진 틱에 장 준비가 추격판 무효화를 먼저 돌려
+            // 히트 어그로는 그 사유로 풀리고, 무효화를 버티는 도발만 「가디언 부재」로 풀린다.
+            // 순서는 장 준비의 단계 순서(장애물 → 어그로)가 정한다 — 사유는 그 사실을 그대로 증언한다.
+            Assert.AreEqual(2, released[0].A.Value);
+            Assert.AreEqual((int)AggroReleaseReason.Rebuilt, released[0].Arg);
+            Assert.AreEqual(3, released[1].A.Value);
+            Assert.AreEqual((int)AggroReleaseReason.GuardianGone, released[1].Arg);
+            for (int k = 0; k < released.Count; k++)
+                Assert.AreEqual(guardian.Value, released[k].B.Value, "가디언 id 는 지우기 전 값");
+        }
+
         private static Unit FindEnemy(BattleMatch match)
         {
             for (int i = 0; i < match.World.Units.Count; i++)

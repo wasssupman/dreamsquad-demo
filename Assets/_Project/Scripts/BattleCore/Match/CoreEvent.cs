@@ -174,6 +174,24 @@ namespace Wassup.BattleCore
         PickupExpired = 52,
         /// <summary>사직서 한 장이 임계로 소모됐다. 장마다 1건 — 뷰가 어느 장을 지울지 되묻지 않게.</summary>
         ResignationConsumed = 53,
+
+        // ── unit 6c 후속 (상태의 끝) ──────────────────────────────────────────
+        //
+        // 켜는 사건만 있고 끄는 사건이 없으면 뷰가 「언제 끄나」를 폴링으로 되묻는다 — 계약 7 이
+        // 막는 모양이다. 그래서 **끝이 나는 자리마다** 사건을 낸다. 각 상태의 끝은 **한 함수**가
+        // 내고(해제 자리를 모은 뒤 그 함수만 부른다), 사유는 값으로 싣는다.
+
+        /// <summary>
+        /// 어그로가 **풀렸다**. `A` = 끌려갔던 적, `B` = 가디언, `Arg` = `AggroReleaseReason`.
+        /// ⚠ 적 자신의 소멸은 이 사건이 아니다(`UnitDestroyed` 가 그 몸의 표식을 거둔다) —
+        /// 도발이 다른 가디언으로 **갈아타는** 것도 풀림이 아니다(`AggroAcquired` 가 다시 온다).
+        /// </summary>
+        AggroReleased = 54,
+        /// <summary>
+        /// 라스트런 창이 **닫혔다**. `A` = 그 유닛, `Arg` = `LastRunEndReason`.
+        /// crash 피해는 이 사건과 별개로 `DamageApplied` 가 나른다.
+        /// </summary>
+        LastRunEnded = 55,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -669,5 +687,15 @@ namespace Wassup.BattleCore
 
         public static CoreEvent ResignationThreshold(int tick, int meteorCount, int threshold)
             => Match(CoreEventKind.ResignationThreshold, tick, meteorCount, threshold);
+
+        // ── unit 6c 후속 (상태의 끝) ──────────────────────────────────────────
+
+        /// <summary>어그로 풀림. 자리 = 풀린 적의 몸(발화 시점 스냅샷).</summary>
+        public static CoreEvent AggroReleased(int tick, Unit enemy, SimEntityId guardian,
+                                              AggroReleaseReason reason)
+            => new CoreEvent(CoreEventKind.AggroReleased, tick,
+                             enemy.Id, guardian,
+                             new Site(enemy.Position, enemy.HitRadius), Site.Nowhere,
+                             enemy.Faction, (int)reason, 0f);
     }
 }

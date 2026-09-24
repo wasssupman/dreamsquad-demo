@@ -408,12 +408,12 @@ namespace Wassup.BattleCore
                 var u = units[i];
                 var aggro = u.Aggro;
                 if (aggro == null || aggro.Target.IsNone) continue;
+                if (!aggro.Taunted) { Release(ctx, u, AggroReleaseReason.Rebuilt); continue; }
                 if (aggro.Chase != null)
                 {
                     _chasePool.Return(aggro.Chase);
                     aggro.Chase = null;
                 }
-                if (!aggro.Taunted) aggro.Target = SimEntityId.None;
             }
         }
 
@@ -432,11 +432,12 @@ namespace Wassup.BattleCore
                 if (aggro.Remaining > 0f)
                 {
                     aggro.Remaining -= ctx.Dt;
-                    if (aggro.Remaining <= 0f) { Release(aggro); continue; }
+                    if (aggro.Remaining <= 0f) { Release(ctx, u, AggroReleaseReason.Expired); continue; }
                 }
 
                 var guardian = ctx.World.Find(aggro.Target);
-                if (guardian == null || guardian.Dead || guardian.Health <= 0f) Release(aggro);
+                if (guardian == null || guardian.Dead || guardian.Health <= 0f)
+                    Release(ctx, u, AggroReleaseReason.GuardianGone);
             }
 
             // 수용량 재계산은 **full recompute** 다 — 증감으로 유지하면 drift 가 쌓인다.
@@ -452,12 +453,19 @@ namespace Wassup.BattleCore
             }
         }
 
-        private void Release(Aggro aggro)
+        // **어그로 해제의 유일한 자리.** 해제 경로 셋(시한 · 가디언 부재 · 추격판 무효화)이 전부 여기를
+        // 부르고, 여기가 풀림 사건을 낸다(계약 7). 경로마다 사건을 따로 내면 언젠가 한쪽이 빠지고,
+        // 그 경로로 풀린 적의 표식은 판이 끝날 때까지 떠 있는다.
+        // 사건은 **지우기 전에** 만든다 — 가디언 id 가 `None` 으로 덮이기 전 값이 필요하다.
+        private void Release(TickContext ctx, Unit enemy, AggroReleaseReason reason)
         {
+            var aggro = enemy.Aggro;
+            var ev = CoreEvent.AggroReleased(ctx.Tick, enemy, aggro.Target, reason);
             aggro.Target = SimEntityId.None;
             aggro.Remaining = 0f;
             aggro.Taunted = false;
             if (aggro.Chase != null) { _chasePool.Return(aggro.Chase); aggro.Chase = null; }
+            ctx.Bus.Publish(ev);
         }
 
         // ── ③ 공용 사냥판 ─────────────────────────────────────────────────────

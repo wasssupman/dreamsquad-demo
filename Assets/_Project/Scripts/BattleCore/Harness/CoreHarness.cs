@@ -104,6 +104,8 @@ namespace Wassup.BattleCore
             match.Bus.Subscribe(CoreEventKind.ResignationThreshold, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.PickupExpired, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.ResignationConsumed, 0, trace.Record);
+            // unit 6c 후속 — 상태의 끝. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.AggroReleased, 0, trace.Record);
 
             int kills = 0;
             match.Bus.Subscribe(CoreEventKind.UnitSlain, 1, _ => kills++);
