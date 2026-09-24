@@ -34,6 +34,14 @@ namespace Wassup.BattleCore
         /// <summary>부분을 빌리는 곳. 부착 지점(커맨드·소환·도발)이 전부 여기를 지난다.</summary>
         public UnitPartPool Parts => _parts;
 
+        // unit 7a — 규칙 등록부. 조립 지점(`BattleMatch`)이 한 번 꽂는다 — 없으면(테스트의 맨 월드) 규칙이 없다.
+        private Trigger.BindingRegistry _bindings;
+        internal void BindRegistry(Trigger.BindingRegistry registry)
+        {
+            _bindings = registry;
+            registry?.Bind(this);
+        }
+
         /// <summary>id 오름차순 개체 목록. 순회 중 구조 변경 금지 — 소멸은 틱 단계가 모아서 한다.</summary>
         public IReadOnlyList<Unit> Units => _units;
 
@@ -347,6 +355,9 @@ namespace Wassup.BattleCore
             _byId[u.Id.Value] = u;
 
             _bus.Publish(CoreEvent.Spawned(tick, u));
+            // unit 7a — 저작 규칙은 **스폰 한 자리**에서 붙는다(배치·웨이브·소환·디버그 — 경로가 몇이든).
+            // 「어떤 경로로 태어났나」가 규칙을 바꾸지 않는 것이 이 자리의 뜻이다.
+            _bindings?.AttachAuthored(u, tick);
             return u;
         }
 
@@ -412,6 +423,8 @@ namespace Wassup.BattleCore
             // 진행형 상태가 열린 채 사라지는 경로(유출 · 디버그 제거 등)도 닫힘을 알린다(계약 7).
             // 죽음·퇴근은 그 앞에서 이미 자기 사유로 닫았으므로 여기서는 아무 일도 안 일어난다.
             InterruptProgress(u, ProgressInterrupt.OwnerDestroyed, tick);
+            // unit 7a — 소유자가 사라진다 = 규칙 전부가 떨어진다(사건 1건씩). **리셋 전**이어야 목록이 있다.
+            _bindings?.OnOwnerRemoved(u, tick);
 
             // 소멸 이벤트는 **빼기 전에** 값을 읽어 만든다 — `Reset` 뒤에 읽으면 자리도
             // 몸 반경도 0 으로 새어 조용히 좁아진다(제약 13 의 사망 스냅샷과 같은 함정).

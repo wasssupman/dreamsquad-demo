@@ -23,9 +23,12 @@ namespace Wassup.BattleCore
     // 길이 막힌 뒤에도 적이 옛 추격판을 하강해 **못 가는 곳으로 영원히 밀린다**.
     // 단 **도발된 적은 필드만 떼고 어그로 표시는 남긴다** — 도발은 1회성이라 재획득 경로가
     // 없어 통째로 풀면 도발이 그 자리에서 사라진다.
-    public sealed class FieldPrepPhase : ITickPhase
+    public sealed class FieldPrepPhase : ITickPhase, ISeamHost
     {
         public string Name => "FieldPrep";
+
+        /// <summary>unit 7a — 이 단계가 여는 seam(끝자리).</summary>
+        public void AppendSeams(System.Collections.Generic.List<Seam> into) => into.Add(Seam.Periodic);
 
         private readonly MapRuntime _map;
         private readonly ChaseFieldPool _chasePool;

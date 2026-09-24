@@ -120,5 +120,35 @@ namespace Wassup.Tests.EditMode.Core
                 StringAssert.DoesNotContain("_projectiles.Remove", code, Path.GetFileName(path));
             }
         }
-    }
+    
+        [Test]
+        public void 스킬_경로의_쓰기는_IntentApplier_한_표면을_지난다()
+        {
+            // unit 7a · S20 — 옛 전투는 asmdef 가 「쓰기는 발행으로만」을 컴파일러로 강제했다. 새 코어 안에서는
+            // 아무것도 막지 않으므로 규율을 **표면 하나**로 옮기고 그 형태를 여기서 못박는다.
+            // 트리거 폴더에서 세계를 바꾸는 호출(관문·요청 줄·인박스·장·장판)은 `IntentApplier` 에만 있어야 한다.
+            // 예외 하나: 등록부의 소급 회수(`RevokeTag`) — 수명의 일이지 스킬의 쓰기가 아니다.
+            var writes = new Regex(@"EffectApply\.|RequestCc\(|ProjectileRequests\.Add|GrantShield\(|SpawnField\(|HazardSpawn\.|AggroRequests\.Add|Inbox\.(Damage|Heal|Shield)|\.Cc\.(Apply|Clear)\(|\.Health\s*=[^=]|\.Position\s*=[^=]");
+            var offenders = new List<string>();
+            foreach (var path in Sources("Trigger"))
+            {
+                string name = Path.GetFileName(path);
+                if (name == "IntentApplier.cs") continue;
+                if (writes.IsMatch(CodeOnly(path))) offenders.Add(name);
+            }
+            CollectionAssert.IsEmpty(offenders, "스킬 경로의 상태 변경은 `IntentApplier.Apply` 뿐이다");
+
+            // 문맥(질의)은 쓰기를 **위임만** 한다 — `Emit` 두 줄이 applier 로 간다.
+            string ctx = CodeOnly(Path.Combine(CoreDir, "Trigger/CoreSkillContext.cs"));
+            StringAssert.Contains("_applier.Apply(in intent)", ctx);
+        }
+
+        [Test]
+        public void 트리거_레이어에_매니저_이름이_없다()
+        {
+            foreach (var path in Sources("Trigger"))
+                Assert.IsFalse(Regex.IsMatch(CodeOnly(path), @"class\s+\w*(Manager|Bridge|Controller)\b"),
+                    Path.GetFileName(path) + " — 새 코어 절대 제약 1");
+        }
+}
 }

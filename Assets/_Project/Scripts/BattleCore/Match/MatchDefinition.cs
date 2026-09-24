@@ -97,6 +97,12 @@ namespace Wassup.BattleCore
         /// </summary>
         public EffectTileDef[] EffectTiles = System.Array.Empty<EffectTileDef>();
 
+        /// <summary>
+        /// unit 7a — 규칙(`BindingDef`) 표. 유닛·적 줄이 `Bindings`(인덱스)로 가리킨다 — 참조를 복제하지 않는다.
+        /// **빈 표는 한 줄도 안 적는다**(저작이 없는 판 = 오늘의 골든 코퍼스 전부의 해시 무변).
+        /// </summary>
+        public Trigger.BindingDef[] Bindings = System.Array.Empty<Trigger.BindingDef>();
+
         /// <summary>시드 생성 덱. `Mode.WaveSource` 가 `GeneratedFromDeck` 일 때 읽힌다.</summary>
         public Wave.WaveDeckDef WaveDeck = Wave.WaveDeckDef.Empty();
 
@@ -284,6 +290,11 @@ namespace Wassup.BattleCore
                 sb.Append("[effecttile").Append(i.ToString(inv)).Append("]\n");
                 EffectTiles[i].Canonicalize(sb, inv);
             }
+            for (int i = 0; i < Bindings.Length; i++)
+            {
+                sb.Append("[binding").Append(i.ToString(inv)).Append("]\n");
+                Bindings[i].Canonicalize(sb, inv);
+            }
         }
 
         private static string Cell(int2 c, CultureInfo inv)
@@ -382,6 +393,9 @@ namespace Wassup.BattleCore
         /// </summary>
         public int AwakeningReward;
 
+        /// <summary>unit 7a — 이 유닛이 저작으로 든 규칙(`MatchDefinition.Bindings` 인덱스). null/빈 = 없음.</summary>
+        public int[] Bindings;
+
         public int EffectiveMaxOnBoard => MaxOnBoard <= 0 ? 1 : MaxOnBoard;
 
         public float EffectiveDeathCooldown => DeathCooldown > 0f ? DeathCooldown : 0f;
@@ -414,6 +428,16 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "deployMotionSeconds", DeployMotionSeconds, inv);
             MatchDefinition.Put(sb, "awakeningReward", AwakeningReward, inv);
             Attack.Canonicalize(sb, inv);
+            PutBindings(sb, inv, Bindings);
+        }
+
+        // unit 7a — **비면 한 줄도 안 쓴다**(골든 코퍼스 해시 무변 — 칸을 더했다는 사실만으로 해시가 바뀌면 오보가 난다).
+        internal static void PutBindings(StringBuilder sb, CultureInfo inv, int[] rows)
+        {
+            if (rows == null || rows.Length == 0) return;
+            var parts = new string[rows.Length];
+            for (int i = 0; i < rows.Length; i++) parts[i] = rows[i].ToString(inv);
+            MatchDefinition.Put(sb, "bindings", string.Join(",", parts));
         }
     }
 
@@ -451,6 +475,9 @@ namespace Wassup.BattleCore
         /// <summary>공격 저작. 방어유닛 줄과 **같은 타입**이다(통합 루프가 둘을 구분하지 않는다).</summary>
         public AttackDef Attack;
 
+        /// <summary>unit 7a — 이 적이 저작으로 든 규칙(악몽 메커닉). null/빈 = 없음.</summary>
+        public int[] Bindings;
+
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
             MatchDefinition.Put(sb, "id", Id);
@@ -473,6 +500,7 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "targetFactions", TargetFactions, inv);
             MatchDefinition.Put(sb, "waypointPathIndex", WaypointPathIndex, inv);
             Attack.Canonicalize(sb, inv);
+            UnitDef.PutBindings(sb, inv, Bindings);
         }
     }
 

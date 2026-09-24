@@ -210,6 +210,9 @@ namespace Wassup.BattleCore
         /// <summary>발사 명세 슬롯(`MatchDefinition.Patterns` 인덱스들). 없으면 빈 배열.</summary>
         public int[] PatternDefIndices;
 
+        /// <summary>unit 7a — 저작 공격 수식자(강공 등). 없으면 빈 배열. 카드가 붙이는 것은 런타임(7b).</summary>
+        public Combat.AttackModDef[] Mods;
+
         // 폭탄맨(정책 `Bomb`).
         public int BombProjectileDefIndex;
         public float BombDamage;
@@ -286,6 +289,9 @@ namespace Wassup.BattleCore
             int patterns = PatternDefIndices != null ? PatternDefIndices.Length : 0;
             for (int i = 0; i < patterns; i++)
                 MatchDefinition.Put(sb, "pattern" + i.ToString(inv), PatternDefIndices[i], inv);
+            // unit 7a — 비면 한 줄도 안 쓴다(저작을 안 건드린 판의 해시 무변).
+            int mods = Mods != null ? Mods.Length : 0;
+            for (int i = 0; i < mods; i++) Mods[i].Canonicalize(sb, inv, "mod" + i.ToString(inv));
         }
     }
 

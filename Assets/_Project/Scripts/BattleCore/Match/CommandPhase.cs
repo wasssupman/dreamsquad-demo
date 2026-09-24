@@ -15,7 +15,7 @@ namespace Wassup.BattleCore
     // 이 클래스가 하는 일은 「어느 담당자에게 가나」뿐이고, 그것이 계약 12 의 이행이다 —
     // 커맨드마다 판정을 조금씩 여기 두면 이 파일이 새 브리지가 된다.
     // 남아 있는 판정은 **디버그 커맨드**뿐이고 그쪽은 정의상 판정을 갖지 않는다(시나리오가 곧 의도다).
-    public sealed class CommandPhase : ITickPhase
+    public sealed class CommandPhase : ITickPhase, ISeamHost
     {
         public string Name => "Command";
 
@@ -44,10 +44,14 @@ namespace Wassup.BattleCore
             _hand = hand;
         }
 
+        /// <summary>틱 안 seam 순서표에서 이 단계는 **맨 앞**(`Immediate`)이다 — 실제 드레인은 커맨드 콜스택이다.</summary>
+        public void AppendSeams(System.Collections.Generic.List<Seam> into) => into.Add(Seam.Immediate);
+
         public void Run(TickContext ctx)
         {
-            // unit 7 — Immediate seam 드레인이 여기 들어온다. 지금은 커맨드가 동기라
-            // 이 자리에서 할 일이 없다(빈 단계를 지우지 않는 이유는 위 주석).
+            // unit 7a — 틱 시작. 디스패처의 「이번 틱에 어디까지 돌았나」가 여기서 처음으로 돌아간다 —
+            // 잔여 규칙(후속 seam 이면 같은 틱 · 지난 seam 이면 다음 틱)의 기준점이다.
+            ctx.Triggers?.BeginTick(ctx.Tick);
         }
 
         public Receipt Execute(in Command cmd, int tick)
@@ -56,6 +60,20 @@ namespace Wassup.BattleCore
             // 결과 화면이 판 뒤에 바뀐다(계약 5).
             if (_clock.Ended) return Receipt.Reject(RejectReason.MatchEnded);
 
+            var receipt = Dispatch(in cmd, tick);
+            // unit 7a — **Immediate seam 의 유일한 호출부.** 커맨드를 적용한 **이 콜스택 안**에서 드레인한다 —
+            // 큐에 넣고 틱을 기다리면 소모(차감·쿨다운) 뒤에 실행이 도착한다(퇴근 운석 · 부착 즉시 · 액티브).
+            if (_ctx != null)
+            {
+                // 커맨드는 틱 사이에 온다 — 이 드레인이 내는 사건의 틱 = 커맨드의 틱(다음 틱 번호)이다.
+                _ctx.Tick = tick;
+                _ctx.Seams?.Run(Seam.Immediate, _ctx);
+            }
+            return receipt;
+        }
+
+        private Receipt Dispatch(in Command cmd, int tick)
+        {
             switch (cmd.Kind)
             {
                 case CommandKind.PlaceDefender:

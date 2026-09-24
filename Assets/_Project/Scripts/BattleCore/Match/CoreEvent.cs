@@ -192,6 +192,32 @@ namespace Wassup.BattleCore
         /// crash 피해는 이 사건과 별개로 `DamageApplied` 가 나른다.
         /// </summary>
         LastRunEnded = 55,
+
+        // ── unit 7a (트리거 → 발동) ───────────────────────────────────────────
+        //
+        // 셋 다 **규칙의 사건**이다(개체의 사건이 아니다) — 카드 펄스(7c)·「왜 안 터졌나」 도구(7d)·
+        // 트레이스가 듣는다. `Arg` = 그 규칙의 `InstanceId`(억제 키 E2 · 카드 칸 판별자) — 뷰가 규칙을
+        // id 로 되찾지 않게 값으로 싣는다.
+
+        /// <summary>
+        /// 규칙이 **발동했다**(실행 직전). `A` = 소유자, `B` = 사건 대상, `Arg` = `InstanceId`,
+        /// `Amount` = `TriggerPayload`, `DefIndex` = 규칙 줄(-1 = 런타임 조립).
+        /// `SiteFired` = 시전자 몸(없으면 스냅샷) · `SiteTarget` = 사건 자리(0 몸 = 칸).
+        /// ⚠ 화염 브레스(`AreaBreath`)는 **그 스킬의 콘**을 `AttackDir`·`AttackShape`·`AttackRange` 에
+        /// 싣는다(6c 후속 3) — `AttackResolved` 의 도형은 **공격의** 도형이라 드래곤에서 브레스와 다르다.
+        /// </summary>
+        TriggerFired = 56,
+        /// <summary>규칙이 붙었다. `A` = 소유자, `Arg` = `InstanceId`, `Amount` = `TriggerPayload`, `DefIndex` = 줄.</summary>
+        BindingAttached = 57,
+        /// <summary>규칙이 떨어졌다. `A` = 소유자, `Arg` = `InstanceId`, `Amount` = `BindingDetachReason`.</summary>
+        BindingDetached = 58,
+        /// <summary>
+        /// 스킬이 **연출을 요청했다**(`SimIntentKind.PlayVisual` 중 다른 사건이 이미 나르지 않는 것 —
+        /// 적중 펄스 · 빔). 상태를 안 바꾼다. `A` = 시전자, `B` = 대상, `Arg` = `SkillVisualKind`,
+        /// `Amount` = 지속(초), `DefIndex` = 연출 index(-1 = 무연출 저작). 「언제 트나」는 스킬의 판단이고
+        /// 무엇을 그리나는 뷰의 것이다 — 이 사건이 없으면 요청이 **조용히 버려진다**.
+        /// </summary>
+        SkillVisual = 59,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -429,12 +455,15 @@ namespace Wassup.BattleCore
         /// 탄 발사. `SiteFired.OriginBody` 가 **제약 13 의 원점 항**을 경계 너머로 나른다 —
         /// 0 이면 「자리에 떨어지는 것」이다.
         /// </summary>
+        /// ⚠ unit 7a — `AreaTiles` = **착탄 예고 반경(칸)**(0 = 예고 없음). 예고 표식 뷰(6c 보류)가 그 반경으로
+        /// 칠한다 — 반경 없이 칠하면 뷰가 규칙을 지어낸다. 트레이스에는 안 실린다(채널 여섯 칸) — 골든 무변.
         public static CoreEvent ProjectileSpawned(int tick, Combat.Projectile.Projectile p)
             => new CoreEvent(CoreEventKind.ProjectileSpawned, tick,
                              p.Id, p.Owner,
                              new Site(p.Position, p.OriginBodyRadius),
                              new Site(p.Impact, 0f),
-                             p.OwnerFaction, (int)p.Movement, p.Damage);
+                             p.OwnerFaction, (int)p.Movement, p.Damage,
+                             areaTiles: p.TelegraphTileRange);
 
         public static CoreEvent ProjectileDespawned(int tick, Combat.Projectile.Projectile p)
             => new CoreEvent(CoreEventKind.ProjectileDespawned, tick,
@@ -737,5 +766,37 @@ namespace Wassup.BattleCore
                              u.Id, SimEntityId.None,
                              new Site(u.Position, u.HitRadius), Site.Nowhere,
                              u.Faction, (int)reason, 0f);
+
+        // ── unit 7a ───────────────────────────────────────────────────────────
+
+        public static CoreEvent TriggerFired(int tick, Trigger.Binding b, SimEntityId target,
+                                             Site casterSite, Site targetSite, Faction faction,
+                                             float2 coneAxis = default,
+                                             Combat.AttackShapeBaked cone = default, float coneRange = 0f)
+            => new CoreEvent(CoreEventKind.TriggerFired, tick,
+                             b.Owner, target, casterSite, targetSite, faction,
+                             b.InstanceId, (float)(int)b.Def.Payload, b.DefIndex,
+                             attackDir: coneAxis, attackShape: cone, attackRange: coneRange);
+
+        public static CoreEvent BindingAttached(int tick, Trigger.Binding b, Unit owner)
+            => new CoreEvent(CoreEventKind.BindingAttached, tick,
+                             b.Owner, SimEntityId.None,
+                             owner != null ? new Site(owner.Position, owner.HitRadius) : Site.Nowhere,
+                             Site.Nowhere, owner != null ? owner.Faction : Faction.None,
+                             b.InstanceId, (float)(int)b.Def.Payload, b.DefIndex);
+
+        public static CoreEvent BindingDetached(int tick, Trigger.Binding b, Unit owner,
+                                                Trigger.BindingDetachReason reason)
+            => new CoreEvent(CoreEventKind.BindingDetached, tick,
+                             b.Owner, SimEntityId.None,
+                             owner != null ? new Site(owner.Position, owner.HitRadius) : Site.Nowhere,
+                             Site.Nowhere, owner != null ? owner.Faction : Faction.None,
+                             b.InstanceId, (float)(int)reason, b.DefIndex);
+
+        public static CoreEvent SkillVisual(int tick, SimEntityId source, SimEntityId target,
+                                            Site fired, Site at, Faction faction, int visualKind,
+                                            float seconds, int dataIndex)
+            => new CoreEvent(CoreEventKind.SkillVisual, tick, source, target, fired, at, faction,
+                             visualKind, seconds, dataIndex);
     }
 }

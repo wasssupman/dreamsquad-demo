@@ -34,6 +34,12 @@ namespace Wassup.BattleCore
         public SeamHooks Seams;
 
         /// <summary>
+        /// unit 7a — 감지자가 사실을 올리는 입구(`Raise*`). 단계는 규칙을 **모른다** — 「공격이 성사됐다 ·
+        /// 죽였다 · 사라진다」를 값으로 올릴 뿐이고, 무엇이 그것을 듣는지는 등록부가 안다. null = 규칙 레이어 없음.
+        /// </summary>
+        public Trigger.TriggerDispatcher Triggers;
+
+        /// <summary>
         /// unit 3 — 진단 통로. **조용한 무동작 금지**(C4)의 이행 수단이다: 규칙이 발동했는데
         /// 실행할 팔이 없으면 여기로 말한다(횟수는 이미 소비된 채로).
         /// null 이면 버린다 — 코어는 로거를 소유하지 않는다(엔진을 모른다).

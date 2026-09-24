@@ -43,6 +43,14 @@ namespace Wassup.BattleCore
         private readonly MapRuntime _map;
         private readonly SeamHooks _seams;
 
+        // ── unit 7a: 트리거 → 발동 ──
+        // 등록부(누가 무엇을 들었나) · 디스패처(seam 마다 줄 세우고 드레인) · 문맥(질의) · 쓰기 표면(의도 적용).
+        // 넷 다 **판정·상태의 담당자**다 — 규칙의 상태는 `Binding` 이 들고, 이 파일은 만들고 꽂기만 한다.
+        private readonly Trigger.BindingRegistry _bindings;
+        private readonly Trigger.IntentApplier _intents;
+        private readonly Trigger.CoreSkillContext _skills;
+        private readonly Trigger.TriggerDispatcher _triggers;
+
         private readonly IMatchGoal _goal;
         private readonly MatchGoalContext _goalCtx;
 
@@ -65,6 +73,9 @@ namespace Wassup.BattleCore
 
             _clock = new MatchClock();
             _seams = new SeamHooks();
+            // unit 7a — 등록부는 **스폰보다 먼저** 꽂힌다(판 경계의 거점 스폰도 저작 규칙을 붙인다).
+            _bindings = new Trigger.BindingRegistry(_bus, _def);
+            _world.BindRegistry(_bindings);
 
             // ⚠ **만드는 순서가 구독 순서의 동률 tie-break 다**(`EventBus`: 같은 order 면 구독한
             // 차례). `HeartMeter` 를 `WaveScheduler` 보다 먼저 만드는 것은 처치 사건에서 둘이
@@ -82,6 +93,10 @@ namespace Wassup.BattleCore
             _goalCtx = new MatchGoalContext(_clock, _score, _waves, _heart, in _def.Mode);
 
             _commands = new CommandPhase(_world, _clock, _def, _map, _placement, _cost, _waves, _hand, _gimmick);
+
+            _intents = new Trigger.IntentApplier(_world, _map, _def, _bus, _cost, _hand);
+            _skills = new Trigger.CoreSkillContext(_world, _map, _intents);
+            _triggers = new Trigger.TriggerDispatcher(_world, _def, _bus, _bindings, _skills);
 
             // 이동 단계는 **붙들어 둔다**(unit 5b). 거점 선택의 후보 배열이 그 안에 있고,
             // 예고선이 같은 답을 받아야 하기 때문이다(M18) — 배열을 밖으로 복제하는 대신
@@ -116,6 +131,9 @@ namespace Wassup.BattleCore
                 new FlushPhase(),
             });
 
+            // unit 7a — seam 순서표는 **파이프라인에서** 만든다(단계가 자기 seam 을 순서대로 말한다).
+            _triggers.Install(_seams, SeamTickOrder.From(_pipeline));
+
             _ctx = new TickContext
             {
                 World = _world,
@@ -126,11 +144,13 @@ namespace Wassup.BattleCore
                 Dt = Dt,
                 Tick = 0,
                 Seams = _seams,
+                Triggers = _triggers,
             };
             // 커맨드는 틱 밖에서 들어오는데 스폰 조립이 문맥을 요구한다. 판당 한 벌이라
             // 한 번 묶으면 끝이다(매 틱 다시 묶으면 「언제 묶였나」가 규칙이 된다).
             _commands.Bind(_ctx);
             _placement.Bind(_ctx);
+            _intents.Bind(_ctx);
         }
 
         // 그 판에 나올 수 있는 유닛들의 통행 층. 0(미저작)은 기본 마스크로 접힌다.
@@ -160,6 +180,15 @@ namespace Wassup.BattleCore
         /// <summary>트리거 레이어(unit 7)가 여기 등록한다. 등록은 **틱 밖**에서만.</summary>
         public SeamHooks Seams => _seams;
 
+        /// <summary>unit 7a — 규칙 등록부(읽기 · 7b 의 카드 부착이 여기 붙인다).</summary>
+        public Trigger.BindingRegistry Bindings => _bindings;
+
+        /// <summary>unit 7a — 트리거 디스패처(seam 순서표 · 줄 선 발동 수 — 진단).</summary>
+        public Trigger.TriggerDispatcher Triggers => _triggers;
+
+        /// <summary>unit 7a — 스킬 쓰기 표면(테스트·7b 액티브가 의도를 직접 넣는 창구 — 판정을 갖지 않는다).</summary>
+        public Trigger.IntentApplier Intents => _intents;
+
         /// <summary>
         /// 진단 통로. **조용한 무동작 금지**(C4)의 수신처이고, 연결하지 않으면 버려진다 —
         /// 코어는 로거를 소유하지 않는다.
@@ -173,6 +202,10 @@ namespace Wassup.BattleCore
                 // 담당자도 같은 통로로 말한다. 각자 로거를 갖게 두면 「어디로 갔는지」가 갈린다.
                 _placement.Report = value;
                 _hand.Report = value;
+                _bindings.Report = value;
+                _triggers.Report = value;
+                _skills.Report = value;
+                _intents.Report = value;
             }
         }
 

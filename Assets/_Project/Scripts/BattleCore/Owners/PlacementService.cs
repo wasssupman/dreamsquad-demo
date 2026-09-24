@@ -503,6 +503,14 @@ namespace Wassup.BattleCore
             _bus.Publish(CoreEvent.Retired(tick, u, defIndex, cd));
             RevokeTile(u, tick);
 
+            // unit 7a — 감지자 사실: 퇴근(퇴직 위로금 · 퇴근 운석). **파괴 직전에** 스냅샷을 싣는다 — 자리 = 비워진
+            // 칸 중심(대표 칸), 몸 = 0(자리형). 드레인은 이 커맨드의 콜스택(`Immediate`)이다(7b 8-1).
+            if (_ctx?.Triggers != null)
+            {
+                var cell = u.Footprint != null ? u.Footprint.Anchor : _map.CellOf(u.Position);
+                _ctx.Triggers.RaiseRetire(u, _map.CenterOf(cell));
+            }
+
             _map.Occupancy.Release(id);
             // 중단 정책의 「퇴근」 열. 제거 **앞**에 불러야 닫힘 사건의 사유가 「제거」가 아니라 「퇴근」이다.
             _world.InterruptProgress(u, ProgressInterrupt.Retire, tick);

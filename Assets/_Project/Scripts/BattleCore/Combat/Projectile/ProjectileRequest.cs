@@ -59,6 +59,11 @@ namespace Wassup.BattleCore.Combat.Projectile
         public int BounceTileRange;
         public float BounceDamageMul;
         public int RetargetTileRange;
+        /// <summary>
+        /// unit 7a — **착탄 예고 반경(칸)**. 0 = 예고 없음. 저작 필드가 아니라 **스킬의 판단**이다(옛
+        /// `telegraphTileRange = intent.Telegraph ? intent.TileRange : 0`) — 탄 정의표에 옮길 저작이 없다.
+        /// </summary>
+        public int TelegraphTileRange;
 
         public static ProjectileRequest Empty => new ProjectileRequest
         {
