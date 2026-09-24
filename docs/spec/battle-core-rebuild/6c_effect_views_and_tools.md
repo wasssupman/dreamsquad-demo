@@ -84,3 +84,5 @@
 
 - **착탄 예고 표식**(`telegraphTileRange` — 옛 `ProjectileSpawnRequest.cs:21` · `BattleBridge.cs:5456`, 낙하탄·운석이 떨어질 칸을 미리 칠하는 뷰)은 어느 unit 문서에도 없었다 → 이 unit 의 뷰 풀 목록에 넣는다. 사건은 `ProjectileSpawned` 가 이미 자리(`SiteTarget`)를 나르므로 새 사건은 없다. 예고 반경은 탄 정의표(`ProjectileDef`)의 값이다(제약 6).
 - 착탄 사건의 **광역 반경·페이로드 종류**(옛 `ProjectileHitEvent.cs:25`)가 `CoreEvent.ProjectileHit` 에 없어 광역 폭발 뷰 라우팅이 불가능하다 → 6c 가 사건 페이로드에 반경·페이로드 종류를 추가한다(값 스냅샷, 계약 7).
+
+- **발사 순간 총구(캐스트) VFX 미배선**(감사 LOW): 옛 `BattleBridge.cs:5014-5027 TrySpawnCastVfx → PlayCast(castPrefab, anchor, dir, castVfxLifetime)`(호출처 `:4923`). 새 `CoreProjectileViewPool.cs:514 PlayCast` 는 복사돼 있으나 호출자 0 · `castPrefab`·`castVfxLifetime` 을 읽는 줄 0 → 방어유닛 11종·적 6종의 총구 섬광이 안 나온다. 규칙 무변·연출만 누락. **이 unit 이 `ProjectileSpawned` 구독으로 배선**한다(값은 유닛 뷰 데이터 SO).
