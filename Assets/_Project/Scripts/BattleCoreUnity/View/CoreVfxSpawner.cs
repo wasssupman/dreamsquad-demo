@@ -181,7 +181,9 @@ namespace Wassup.BattleCoreUnity.View
 
         // 코어 bake → 뷰 메시 키. 옛 `ShapeMarkSpec.FromBaked` 와 **같은 역산**이다(옛 타입은
         // `Wassup.Data.AttackShapeBaked` 라 코어 타입을 못 받는다 — 필드가 같아 옮겨 담는다).
-        private static ShapeMarkSpec ShapeMarkOf(in Wassup.BattleCore.Combat.AttackShapeBaked s,
+        // 배치 도형 가이드(`CoreMapOverlay`)도 이 함수를 지난다 — 옛 가이드와 참격이 `ShapeMarkSpec.AngleDegOf`
+        // 하나를 읽던 「같은 역산 = 같은 윤곽」(directional-attack-shape 리뷰 L-5)을 새 층에서도 구조로 둔다.
+        internal static ShapeMarkSpec ShapeMarkOf(in Wassup.BattleCore.Combat.AttackShapeBaked s,
                                                  float lengthTiles, float cellSize)
         {
             var legacy = new Wassup.Data.AttackShapeBaked

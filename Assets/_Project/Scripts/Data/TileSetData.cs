@@ -86,6 +86,14 @@ namespace Wassup.Data
                  "검붉게 뭉갠다(락온 spec 이 적에게서 좌초한 지점).")]
         public Color rangeTargetMarkColor = new Color(1f, 0.28f, 0.24f, 0.9f);
 
+        // directional-attack-shape unit 6 — 배치 드래그 중 **공격 도형 가이드**(부채꼴·띠)의 알파. 색은 위 마크 색을 쓴다
+        // (「같이 맞는 범위」는 「이놈이 맞는다」와 한 언어). 옛 `TilemapMapView` 는 이 둘을 코드 상수(0.22 · 0.85)로
+        // 들고 있었다 — 새 오버레이(`CoreMapOverlay`)는 룩을 저작에서만 읽으므로 같은 값으로 여기에 올렸다.
+        [Tooltip("공격 도형 가이드 **채움** 알파(색 = rangeTargetMarkColor). 옅게 — 판 위의 적·마크를 가리지 않게.")]
+        [Range(0f, 1f)] public float rangeShapeGuideFillAlpha = 0.22f;
+        [Tooltip("공격 도형 가이드 **테** 알파(색 = rangeTargetMarkColor). 또렷하게 — 도형의 경계가 곧 「같이 맞는 범위」다.")]
+        [Range(0f, 1f)] public float rangeShapeGuideRimAlpha = 0.85f;
+
         // placement-thumb-occlusion unit 3 — 배치 불가 시 사거리 격자를 적색으로. 사거리는 중심 셀을
         // 제외한 링이라 손가락 바깥에 있고 면적이 커서 주변시로 읽힌다 = 가림에 구조적으로 면역인
         // 유일한 채널. 형태(격자 outline)는 무변경 — solid 승급은 후속(맵 가림이 solid 폐기의 원 이유).

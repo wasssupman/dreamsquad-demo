@@ -14,11 +14,13 @@ namespace Wassup.BattleCoreUnity.View
     // 오버레이 몫만 가져왔다(바닥 페인팅은 스테이지 프리팹이, 평면 선언은 `CoreBoardPlane` 이
     // 이미 소유한다 — 옛 뷰가 셋을 겸하던 것을 5a 에서 쪼갰다).
     //
-    // 그리는 것 넷:
+    // 그리는 것 다섯:
     //   ① 격자 — 「칸이 있다」를 말한다. 디오라마 바닥에는 칸 선이 없다.
     //   ② 배치 가이드 — 이 유닛을 **놓을 수 없는 칸**들, 이유별 2색(사용자 결정 2026-09-23).
     //   ③ 고스트 — 지금 손가락이 가리키는 footprint(초록/빨강).
     //   ④ 사거리 링 + 사정권 표식 — 「여기 놓으면 저기까지 닿는다」.
+    //   ⑤ 공격 도형 가이드 — 방향 유닛(부채꼴·띠)이 **지금 물 적** 쪽으로 「같이 맞는 범위」
+    //      (directional-attack-shape unit 6 — 6c 후속에서 이식 누락을 메웠다).
     //
     // ⚠ **판정을 한 줄도 갖지 않는다.**
     //   · 「놓을 수 있나」 = `PlacementService` 호출. 고스트는 `Judge`(그 유닛을 그 앵커에),
@@ -86,6 +88,13 @@ namespace Wassup.BattleCoreUnity.View
         // 칸마다 「유닛이 막았나(true) / 지형·프랍이 막았나(false)」. 색을 가르는 유일한 축이다.
         private readonly List<bool> _guideOccupied = new List<bool>(64);
 
+        // ⑤ 공격 도형 가이드 — 채움·테 두 장(알파가 다르다). 메시는 도형 키가 바뀔 때만 다시 굽는다.
+        private MeshRenderer _shapeFill, _shapeRim;
+        private Mesh _shapeFillMesh, _shapeRimMesh;
+        private ShapeMarkSpec _shapeKey;
+        private bool _shapeKeyValid;
+        private bool _shapeMatMissing;   // 머티리얼 실패 경고 1회 게이트(옛 `_shapeGuideMatMissing` 과 같은 규약)
+
         // ── 배치 입력이 미는 것 ───────────────────────────────────────────────
         //
         // **단방향 push** 다(카메라 bounds 와 같은 규약). 오버레이가 입력에서 당겨오면
@@ -131,6 +140,7 @@ namespace Wassup.BattleCoreUnity.View
                 SetCount(_ghostCells, 0);
                 SetCount(_marks, 0);
                 if (_ring != null) _ring.enabled = false;
+                HideShapeGuide();
                 _guideDefIndex = -1;
                 return;
             }
@@ -255,7 +265,7 @@ namespace Wassup.BattleCoreUnity.View
         private void PaintRange()
         {
             var def = _driver.Definition;
-            if (_dragDefIndex >= def.Units.Length) return;
+            if (_dragDefIndex >= def.Units.Length) { HideShapeGuide(); return; }
             ref var unit = ref def.Units[_dragDefIndex];
 
             int w = math.max(1, unit.FootprintWidth);
@@ -267,7 +277,13 @@ namespace Wassup.BattleCoreUnity.View
             // 반지름은 **판정이 아니라 치수**다: 판정이 `d ≤ range + selfBody + targetBody`
             // 이므로 그 선은 `range + selfBody` 에 그린다(상대 몸은 상대마다 다르다).
             float radiusTiles = unit.AttackRange + unit.BodyRadiusTiles;
-            if (radiusTiles <= 0f) { if (_ring != null) _ring.enabled = false; SetCount(_marks, 0); return; }
+            if (radiusTiles <= 0f)
+            {
+                if (_ring != null) _ring.enabled = false;
+                SetCount(_marks, 0);
+                HideShapeGuide();
+                return;
+            }
 
             EnsureRing();
             _ring.enabled = true;
@@ -286,6 +302,15 @@ namespace Wassup.BattleCoreUnity.View
             // 「이놈이 맞는다」 표식. **판정은 `AttackReach.InReach` 하나**다 — 여기서
             // 거리를 다시 재면 제약 13 위반이고, 그 어긋남은 리터럴도 심볼도 아니라
             // grep 이 못 잡는다.
+            //
+            // ⑤ 가이드의 «지금 물 적»도 **이 후보 집합**에서 고른다(옛 `BattleBridge.cs:8141-8174` —
+            // 마크와 가이드가 한 루프였다). 순위 = 최근접, 동거리는 낮은 `SimId` — 코어
+            // `NearestTargeting.RanksBefore`(= 옛 `NearestTargeting.RanksBefore`, 옛 `:8172`)를 **부르기만** 한다.
+            // 거리는 발밑→대상 XZ 제곱(옛 `AttackSystem.DistanceSqToTarget`, `:8166`). 배치 전이라 락·도발·
+            // 우선 클래스·최전방은 없다(옛 unit 6 규칙).
+            bool guideHas = false;
+            var guideBest = default(NearestTargeting.Candidate);
+            float3 guidePos = default;
             int used = 0;
             var units = _driver.Units;
             for (int i = 0; i < units.Count; i++)
@@ -301,8 +326,142 @@ namespace Wassup.BattleCoreUnity.View
                 sr.transform.position = ViewOf(u.Position);
                 sr.transform.rotation = PlaneRotation();
                 sr.transform.localScale = Vector3.one * (ts * 0.7f);
+
+                float dx = u.Position.x - foot.x, dz = u.Position.z - foot.z;
+                var cand = new NearestTargeting.Candidate { SqDist = dx * dx + dz * dz, SimId = u.Id.Value };
+                if (!guideHas || NearestTargeting.RanksBefore(in cand, in guideBest))
+                { guideBest = cand; guidePos = u.Position; guideHas = true; }
             }
             SetCount(_marks, used);
+
+            if (guideHas) PaintShapeGuide(in unit.Attack, foot, guidePos, radiusTiles);
+            else HideShapeGuide();   // 사거리 안 적이 없으면 없다 — 기본 방향은 없다(「방향은 타겟이 정한다」)
+        }
+
+        // ── ⑤ 공격 도형 가이드 ────────────────────────────────────────────────
+        //
+        // 옛 `TilemapMapView.SetShapeGuide`(`:878-925`) + 호출부 `BattleBridge.cs:8176-8183` 의 이식.
+        // 치수는 **전부 정의표에서** 온다 — 뷰는 도달을 다시 재지 않는다:
+        //   · 원점 = 발밑(`foot` — 링과 같은 점, 옛 `:8178` 의 `center + markBase`)
+        //   · 길이/반경 = `range + 내 몸`(링과 같은 값, 옛 `:8180` `attackRange + BodyRadiusTiles`).
+        //     대상의 몸은 **그리지 않는다**(제약 13 — 상대마다 다르다 · directional-attack-shape/7:52)
+        //   · 각 = bake 역산(`ShapeMarkSpec.AngleDegOf`, 옛 `:8180`) · 반폭 = bake `halfWidth`, 테 폭 하한
+        //     (옛 `TilemapMapView.cs:900` 의 `Max(halfWidth, 테 폭)`) — 참격 자국과 **같은 역산**(`CoreVfxSpawner.ShapeMarkOf`)
+        //   · 방향 = 발밑 → 대상(옛 `:8179`). 같은 자리(방향 0)면 숨긴다(옛 `:884`)
+        //   · Omni 는 없다(옛 `:8176` `!IsOmni`) — 원 링이 전부다
+        // 색 = 마크 색(`TileSetData.rangeTargetMarkColor`, 옛 `:919`) × 저작 알파 둘 · 정렬 = 링·타일 위, 마크 아래
+        // (`PlacementShapeGuideOrder`, 옛 `:978`).
+        private void PaintShapeGuide(in AttackDef attack, float3 foot, float3 targetPos, float radiusTiles)
+        {
+            if (attack.ShapeKind == Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind || _tileSet == null) { HideShapeGuide(); return; }
+
+            Vector3 originView = (Vector3)BoardSpace.ToView(foot);
+            Vector3 dirView = (Vector3)BoardSpace.ToView(targetPos) - originView;
+            if (dirView.sqrMagnitude < 1e-6f) { HideShapeGuide(); return; }
+
+            // 메시는 **뷰 단위**로 굽는다. 타일 한 칸이 뷰에서 얼마인지는 링이 쓰는 같은 사상(`ToView`)으로
+            // 잰다 — 그래야 바깥 호가 링 원과 정확히 겹친다(옛 unit 6 「바깥 호 = 링」).
+            float ts = _driver.TileSize;
+            float viewTile = ((Vector3)BoardSpace.ToView(foot + new float3(ts, 0f, 0f)) - originView).magnitude;
+            var baked = new Wassup.BattleCore.Combat.AttackShapeBaked
+            {
+                kind = (byte)attack.ShapeKind, sinHalf = attack.ShapeSinHalf,
+                cosHalf = attack.ShapeCosHalf, halfWidth = attack.ShapeHalfWidth,
+            };
+            var spec = CoreVfxSpawner.ShapeMarkOf(in baked, radiusTiles, viewTile);
+            bool band = spec.kind == Wassup.Data.AttackShapeBaked.BandKind;
+            if (!band && (spec.angleDeg <= 0f || spec.angleDeg >= 360f)) { HideShapeGuide(); return; }   // 옛 `:882`
+
+            if (!EnsureShapeGuide()) return;
+            if (!_shapeKeyValid || !spec.Equals(_shapeKey))
+            {
+                float r = spec.lengthTiles * spec.cellSize;
+                float rim = ShapeMeshBuilder.DefaultRimWidthTiles * spec.cellSize;
+                if (band)
+                {
+                    float hw = spec.halfWidthTiles * spec.cellSize;   // 테 폭 하한은 `FromBaked` 가 이미 걸었다
+                    ShapeMeshBuilder.BuildBand(_shapeFillMesh, hw, r);
+                    ShapeMeshBuilder.BuildBandOutline(_shapeRimMesh, hw, r, rim);
+                }
+                else
+                {
+                    ShapeMeshBuilder.BuildFan(_shapeFillMesh, spec.angleDeg, r);
+                    ShapeMeshBuilder.BuildFanOutline(_shapeRimMesh, spec.angleDeg, r, rim);
+                }
+                _shapeKey = spec;
+                _shapeKeyValid = true;
+            }
+
+            // 메시 관습: XY 평면 · +Y = 찌르는 방향. 로컬 +Z 를 보드 법선에, +Y 를 대상 방향에 맞춘다.
+            var rot = Quaternion.LookRotation(BoardSpace.RaycastPlane().normal, dirView);
+            var pos = originView + SurfaceLift();
+            _shapeFill.transform.SetPositionAndRotation(pos, rot);
+            _shapeRim.transform.SetPositionAndRotation(pos, rot);
+
+            var c = _tileSet.rangeTargetMarkColor;
+            c.a = _tileSet.rangeShapeGuideFillAlpha;
+            Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeFill.sharedMaterial, c);
+            c.a = _tileSet.rangeShapeGuideRimAlpha;
+            Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeRim.sharedMaterial, c);
+            if (!_shapeFill.enabled) _shapeFill.enabled = true;
+            if (!_shapeRim.enabled) _shapeRim.enabled = true;
+        }
+
+        private void HideShapeGuide()
+        {
+            if (_shapeFill != null && _shapeFill.enabled) _shapeFill.enabled = false;
+            if (_shapeRim != null && _shapeRim.enabled) _shapeRim.enabled = false;
+        }
+
+        /// <summary>
+        /// 테스트 창구 — 지금 도형 가이드가 떠 있나, 떠 있으면 그 도형(종류·각·반폭·길이 칸). 그리는 쪽이 쓰는
+        /// 값 그대로다(메시 정점을 역산하지 않는다).
+        /// </summary>
+        public bool TryGetShapeGuide(out ShapeMarkSpec spec, out Vector3 originView, out Vector3 dirView)
+        {
+            spec = _shapeKey; originView = default; dirView = default;
+            if (_shapeFill == null || !_shapeFill.enabled || !_shapeKeyValid) return false;
+            originView = _shapeFill.transform.position;
+            dirView = _shapeFill.transform.up;
+            return true;
+        }
+
+        // 머티리얼은 `RuntimeMaterialFactory`(always-included) 에서 파생한다 — `Shader.Find` 금지. 채움·테의 알파가
+        // 달라 한 장을 공유하지 않는다(옛 `EnsureShapeGuide` 와 같다). 실패는 1회 경고 뒤 조용히 빠진다.
+        private bool EnsureShapeGuide()
+        {
+            if (_shapeFill != null) return true;
+            if (_shapeMatMissing) return false;
+            var c = _tileSet.rangeTargetMarkColor;
+            var fillMat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(c);
+            var rimMat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(c);
+            if (fillMat == null || rimMat == null)
+            {
+                _shapeMatMissing = true;
+                if (fillMat != null) Destroy(fillMat);
+                if (rimMat != null) Destroy(rimMat);
+                Debug.LogWarning("[CoreMapOverlay] 공격 도형 가이드 머티리얼을 만들 수 없다(RuntimeMaterials 미배선) — 가이드 생략.", this);
+                return false;
+            }
+            _shapeFill = MakeShapeRenderer("ShapeGuideFill", fillMat, out _shapeFillMesh);
+            _shapeRim = MakeShapeRenderer("ShapeGuideRim", rimMat, out _shapeRimMesh);
+            return true;
+        }
+
+        private MeshRenderer MakeShapeRenderer(string n, Material mat, out Mesh mesh)
+        {
+            var go = new GameObject($"{name}_{n}");
+            go.transform.SetParent(transform, false);
+            mesh = new Mesh { name = n };
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = mat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            mr.sortingOrder = BoardSortOrder.PlacementShapeGuideOrder;
+            mr.enabled = false;
+            return mr;
         }
 
         // ── ① 격자 ───────────────────────────────────────────────────────────
@@ -495,6 +654,10 @@ namespace Wassup.BattleCoreUnity.View
             if (_cellSprite != null) Destroy(_cellSprite);
             if (_markSprite != null) Destroy(_markSprite);
             if (_material != null) Destroy(_material);
+            if (_shapeFill != null && _shapeFill.sharedMaterial != null) Destroy(_shapeFill.sharedMaterial);
+            if (_shapeRim != null && _shapeRim.sharedMaterial != null) Destroy(_shapeRim.sharedMaterial);
+            if (_shapeFillMesh != null) Destroy(_shapeFillMesh);
+            if (_shapeRimMesh != null) Destroy(_shapeRimMesh);
         }
     }
 }
