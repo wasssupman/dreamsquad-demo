@@ -78,7 +78,6 @@
 | 2026-09-24 (M6) | 보스 면역 = **기절·수면·넉백만**. `EffectEligibility.AcceptsCc(victim, kind)` — 인자 없는 오버로드 없음 | 옛 `IsBossImmune(kind) = IsLock ∨ Impulse`. 종류 축을 잃어 감속까지 막았다 |
 | 2026-09-24 (M7) | 적의 공격 대상 층 = 0(무필터). 이동 정지 조건·감지 후보(`ReachProbe`)도 **공격 대상 층**을 본다 | 옛 적 `targetTraversalLayers` 미설정. 「자기 통행 층」을 대상 층으로 읽어 비행 적이 경로를 걷는 순찰병을 못 때리고 멈추지도 않았다 |
 | 2026-09-24 (빌더 의미) | 적 `attackMethod None`/산출물 없음 = 걷기만(`AttackDef.Unarmed`, 사거리 0) · 탄은 `Projectile` 방식만 · 직업 필터는 **존재가 게이트**(`HasClassFilter`, 적은 늘 켬 — 마스크 0 = 아무도 못 때림) · 폭탄맨 = 능력 ∧ `travelSec > 0` · 광역 = `Splash` 토큰 ∧ 반경 · 패턴 거절·클램프(옛 `TryToSpec`) · 패턴을 먼저 굽고 탄 표를 나중에 굳힌다 | 전부 잠복(라이브 무영향). 새 두 칸은 기본값이면 canonical 줄을 안 써 골든 `configHash` 를 보존한다 |
-| 2026-09-24 (H6) | 평타 없는 적 + 도발 공격 프로필 → 유인되는 동안만 임시 공격(`CombatPhase.StepTauntGrant`, 매 틱 상태에서 파생) · 유인 수락과 이동 정지 조건이 프로필 사거리를 본다 · 빌더가 `aggroAttack*` 를 싣는다(0 이면 해시 줄 생략) | 옛 `TauntAttackGrantSystem`(aggro-targeting unit 1·8). 빌더·코어 둘 다 없어 프로필만 있는 적은 **유인조차 안 됐다**. 라이브 러너·스위프트는 평타가 있어 옛 전투처럼 **제 공격**으로 때린다(프로필 미사용) — 무장한 적의 옛 두 번째 분기(마스크 OR)는 어그로 고정이 대상을 가디언으로 좁혀 따로 필요 없다 |
 | 2026-09-24 (enum 핀) | `MapTileType`·`EnemyTargetMode`·`EngageMovement` 이름 매핑 + 핀 · 도형 종류·층 비트 값 핀 · 스택 저작 종류도 `ToCoreStackKind` · `EnemySpawn` 의 교전 이동 clamp → 정의역 밖 loud | `PatternSelectionRule`(ec10619d)과 같은 모양의 나머지 쌍 |
 | 2026-09-24 (모드 배선) | `ModeValidation.Validate` 를 빌더가 부른다(문제 전부 loud) · 모드 `deck`(있으면 이김)·`plan`(저작 플랜 모드) 소비 — 드라이버도 같은 `ResolveDeck/Plan` · `costConfig` 누락 = loud 오류 | 검증이 테스트에서만 불렸고, 모드 덱·플랜 소비자 0, 배치 창 폴백이 옛 30초 → 0초로 뒤집혀 있었다. 맵 풀 로테이션은 이 spec 이 귀속을 정한다(미배선) |
 

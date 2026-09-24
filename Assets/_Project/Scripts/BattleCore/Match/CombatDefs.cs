@@ -225,16 +225,6 @@ namespace Wassup.BattleCore
         /// <summary>보스인가. 기절·수면·넉백 면역 집합의 유일한 축이다(출처 불문).</summary>
         public bool BossImmune;
 
-        // ── 도발 공격 프로필(aggro-targeting unit 1·8) ──
-        // **평타가 없는 적**(`Unarmed`)이 가디언에게 유인되는 동안만 얻는 임시 공격이다: 대상 =
-        // 방어유닛 · 1체 · 피해 1출력. 풀리면 통째로 벗는다(옛 `TauntAttackGrantSystem`).
-        // 평타가 있는 적은 이 값을 **안 쓴다** — 유인되면 제 공격으로 가디언을 때린다.
-        /// <summary>도발 공격 피해. **0 = 프로필 없음**(유인되지도 않는다 — 때릴 수단이 없다).</summary>
-        public float TauntDamage;
-        public float TauntCooldown;
-        /// <summary>도발 공격 사거리(칸). 이동의 정지 조건·추격판도 이 값을 쓴다.</summary>
-        public float TauntRange;
-
         public static AttackDef Default() => new AttackDef
         {
             TargetLayers = 0,
@@ -280,13 +270,6 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "bombArcHeight", BombArcHeight, inv);
             MatchDefinition.Put(sb, "summonPatrolDef", SummonPatrolDefIndex, inv);
             MatchDefinition.Put(sb, "bossImmune", BossImmune ? 1 : 0, inv);
-            // 프로필 없음(0)이면 줄을 안 쓴다 — 저작을 안 건드린 판(골든)의 해시를 보존한다.
-            if (TauntDamage > 0f)
-            {
-                MatchDefinition.Put(sb, "tauntDamage", TauntDamage, inv);
-                MatchDefinition.Put(sb, "tauntCooldown", TauntCooldown, inv);
-                MatchDefinition.Put(sb, "tauntRange", TauntRange, inv);
-            }
             int outputs = Outputs != null ? Outputs.Length : 0;
             for (int i = 0; i < outputs; i++)
             {

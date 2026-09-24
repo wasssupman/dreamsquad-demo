@@ -259,15 +259,6 @@ namespace Wassup.BattleCoreUnity
             a.PriorityClass = (int)e.targetPriorityClass;
             a.ClassMask = (int)e.targetClassMask;
             a.HasClassFilter = true;
-            // 도발 공격 프로필 — 옛 bake 게이트 그대로 `aggroAttackDamage > 0` 일 때만 싣는다. 쓰는 것은
-            // **평타 없는 적**이 유인됐을 때뿐이다(`CombatPhase.StepTauntGrant`). 라이브 러너·스위프트는
-            // 값을 저작했지만 평타(피해 10)가 있어 유인되면 제 공격으로 때린다 — 옛 전투와 같다.
-            if (e.aggroAttackDamage > 0f)
-            {
-                a.TauntDamage = e.aggroAttackDamage;
-                a.TauntCooldown = e.aggroAttackCooldown;
-                a.TauntRange = e.aggroAttackRange;
-            }
             // **보스 면역은 등급에서 나온다** — 별도 토글을 만들지 않는다(옛 전투도 `tier` 가
             // 유일한 출처였고, 토글을 두면 「보스인데 면역이 아닌」 저작이 가능해진다).
             a.BossImmune = e.tier == EnemyTier.Boss;
@@ -417,8 +408,7 @@ namespace Wassup.BattleCoreUnity
         // byte 로 구워져 있어 한쪽이 앞에 값을 끼우는 순간 조용히 밀린다.
         // (리뷰가 든 시나리오: `ThresholdMode` 앞에 값이 끼면 `Consume` 이 `Edge` 로 읽혀
         //  소비형 임계가 스택을 안 깎고 **무한 발화**한다.)
-        // `BuilderEnumPinTests` 가 이 파일과 `MatchDefinitionBuilder` 의 매핑 전부(열거형 열 쌍 +
-        // 상수 집합 둘 — 도형 종류·층 비트)의 이름·개수 일치와 매핑의 이름 보존을 고정한다.
+        // `BuilderEnumPinTests` 가 일곱 쌍의 이름·개수 일치와 매핑의 이름 보존을 고정한다.
 
         /// <summary>저작 지속 락 모드 → 코어 어휘. **이름으로 옮긴다.** 모르는 값은 락 없음으로 접는다.</summary>
         public static TargetMode ToCoreTargetMode(EnemyTargetMode authored)

@@ -15,8 +15,8 @@ namespace Wassup.Tests.EditMode
 {
     // battle-core-rebuild 2026-09-24 드리프트 감사 후속 — **라이브 저작으로 구운 정의표의 형태.**
     //
-    // 이 감사의 결함들(배치 코스트 0 · 연발 피해 0 · 힐러 진영 · 마음사냥꾼 어그로 · 비행 적
-    // 대상 층 · 도발 공격 프로필)은 전부 「고정구는 SO 를 안 읽는다」는 한 구멍으로 새어 나갔다 — 골든 코퍼스와 코어
+    // 이 감사의 결함 다섯(배치 코스트 0 · 연발 피해 0 · 힐러 진영 · 마음사냥꾼 어그로 · 비행 적
+    // 대상 층)은 전부 「고정구는 SO 를 안 읽는다」는 한 구멍으로 새어 나갔다 — 골든 코퍼스와 코어
     // 테스트는 손으로 짠 정의표를 쓰므로 **빌더를 한 번도 지나지 않는다.** 이 파일은 그 구멍을 막는
     // lane 이다: `BattleCoreScene` 의 드라이버가 실제로 들고 있는 저작(모드 · 방어유닛 8 · 덱 ·
     // 보너스 · 스테이지 · 스택 · 부여 상한 · 이동 튜닝 · 활성 시즌)으로 빌더를 돌리고 **정의표의
@@ -233,32 +233,6 @@ namespace Wassup.Tests.EditMode
             }
             int mask = Wassup.BattleCore.Combat.TargetDefaults.ResolveEnemy(def.Enemies[at].TargetFactions);
             Assert.AreEqual(0, mask & (int)Faction.DefenderUnit, "마음사냥꾼의 대상에 방어유닛 비트가 있다");
-        }
-
-        [Test]
-        public void 러너와_스위프트는_도발_공격_프로필을_싣는다()
-        {
-            // 놓친 결함 H6: 빌더가 `aggroAttack*` 을 안 실어 도발 공격 프로필이 정의표에 없었다.
-            // ⚠ 러너·스위프트는 평타가 있어 **유인돼도 이 프로필을 안 쓴다**(옛 부여는 평타 없는 적 전용) —
-            // 여기서 증언하는 것은 「저작이 정의표까지 온다」이고, 누가 쓰나는 코어 규칙이 진다.
-            foreach (var name in new[] { "Enemy_Runner", "Enemy_Swift" })
-            {
-                var so = AssetDatabase.LoadAssetAtPath<AttackUnitData>("Assets/_Project/Data/Enemies/" + name + ".asset");
-                Assert.IsNotNull(so, $"{name} 에셋이 없다");
-                Assert.Greater(so.aggroAttackDamage, 0f, $"전제: {name} 는 도발 공격을 저작했다");
-                var def = _def;
-                int at = System.Array.FindIndex(def.Enemies, e => e.Id == so.id);
-                if (at < 0)
-                {
-                    def = MatchDefinitionBuilder.Build(_live.Defenders, new[] { so }, 1, ModeDef.Default());
-                    at = 0;
-                }
-                var a = def.Enemies[at].Attack;
-                Assert.AreEqual(so.aggroAttackDamage, a.TauntDamage, 1e-4f, $"{name}: 도발 공격 피해가 저작과 다르다");
-                Assert.AreEqual(so.aggroAttackCooldown, a.TauntCooldown, 1e-4f, $"{name}: 도발 공격 간격이 저작과 다르다");
-                Assert.AreEqual(so.aggroAttackRange, a.TauntRange, 1e-4f, $"{name}: 도발 공격 사거리가 저작과 다르다");
-                Assert.IsFalse(a.Unarmed, $"{name}: 평타가 있는 적이 걷기만 하는 적으로 구워졌다");
-            }
         }
 
         [Test]
