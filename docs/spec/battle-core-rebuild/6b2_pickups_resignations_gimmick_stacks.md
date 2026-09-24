@@ -95,7 +95,7 @@
 - [x] **EditMode 코어 lane 초록** + 새 테스트 3묶음 + 1확장(`SeamHookTests` 는 신설): `PickupTests`(수명 만료 · 재소비 락 · **제약 13 자로 소비**) · `ResignationTests`(누적 · 한 틱 다중 임계) · `HeatFatigueTests`(오버힐 없음 · 체력 1 바닥 · 피로 임계 → `Burnout` 출처 · **피로 누적이 스탯 적용 뒤라 1틱 뒤에 든다**) · `SeamHookTests`(`Periodic` append 로 `Seam._Count` 앞 번호가 **안 밀렸다** + **핸들러 0 인 채로 호출부가 매 틱 실행된다**).
 - [x] 디버그 커맨드 3종이 헤드리스 하네스에서 동작(`CommandSchedule` 로 예약 → 개체·스택이 선다). **메뉴 UI 없이** 커맨드만으로 검증된다.
 - [x] 기믹 수치 **하드코딩 0** — 4종 전량이 `GimmickDef` 에서 오고, 그 값이 canonical text 에 실린다.
-- [ ] **골든 11종 Unity 재굽기** — 조각 C 의 **마지막 코어 변경**이라 여기서 한 번만 굽는다. **정본 런타임은 Unity EditMode 다**(계약 5 — 헤드리스 lane 은 골든 제외. Unity Mono 가 float 를 확장 정밀도로 평가해 약 300틱부터 갈린다). 6a·6b·6b2 를 전부 구현한 뒤 한 번에 굽고, 6a 가 기록해 둔 **「값이 실제로 바뀐 시나리오 / 해시만 바뀐 시나리오」 구분**과 대조한다.
+- [x] **골든 11종 Unity 재굽기 → 재굽기 불필요로 종결(2026-09-24)** — 조각 C 의 **마지막 코어 변경**이라 여기서 한 번만 굽는다. **정본 런타임은 Unity EditMode 다**(계약 5 — 헤드리스 lane 은 골든 제외. Unity Mono 가 float 를 확장 정밀도로 평가해 약 300틱부터 갈린다). 6a·6b·6b2 를 전부 구현한 뒤 한 번에 굽고, 6a 가 기록해 둔 **「값이 실제로 바뀐 시나리오 / 해시만 바뀐 시나리오」 구분**과 대조한다. **실측**: 6a·6a2·6b·6b2 를 전부 얹은 HEAD `ec041a8af` 에서 Unity EditMode 코어 lane 519/519 — 골든 11종 해시·트레이스 **무변**. 새 정의표 칸(기믹·해저드·효과 타일·도발 등)은 저작 값이 없으면 canonical 줄을 쓰지 않고, 코퍼스 시나리오는 기믹·해저드를 포함하지 않아 지문이 움직이지 않았다. 「값이 바뀐 시나리오 / 해시만 바뀐 시나리오」 대조는 둘 다 0건.
 - [x] `ledgers/rules.md` **E6**(표식 없음 · `DefenderActivated` 가 정본) + **M3**(완료 — unit 2 가 `MapRuntime`/`FlowFieldSet` 을 이미 나눴다) + **F10** 이 코드 포인터로 매핑.
 - [x] `ledgers/bridge-methods.md` **잔량 변화 없음(46)** — 픽업·사직서·기믹 관련 브리지 행은 이미 `GimmickHost`·「디버그/로그」로 배정돼 있어 **이 unit 이 닫을 미정 행이 0** 이다. 잔량을 안 줄이는 unit 이라는 사실을 상태 라인에 명시한다(누락으로 읽히지 않게).
 - [ ] `core-reviewer` APPROVE — **매니저 0** · **틱 phase 수 무변** · `Unity.Entities` 0.
