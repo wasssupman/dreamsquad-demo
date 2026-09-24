@@ -121,7 +121,7 @@
 | 19 | `DisposeEcsInfrastructureNativeContainers/0` | 미정 |  |
 | 20 | `DisposeCachedQueries/0` | 미정 |  |
 | 21 | `BuildFlowField/0` | MapRuntime (코어) |  |
-| 22 | `AddTraversalMask/2` | 미정 |  |
+| 22 | `AddTraversalMask/2` | BattleMatch (7a 확인) | 통행 층 목록은 조립 지점이 정의표에서 한 번 모은다(`CollectTraversalMasks`) — 규칙이 만드는 개체(장판·탄)는 새 층을 안 연다 |
 | 23 | `BuildPickupSpawnState/0` | GimmickHost |  |
 | 24 | `TeardownPickupSpawnState/0` | MatchClock |  |
 | 25 | `ComputeSpawnLateralOffset/1` | 미정 |  |
@@ -238,8 +238,8 @@
 | 136 | `DrainEnemyKilledEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 137 | `DrainProjectileSpawnRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) | 안의 발사 SFX 는 `CoreBattleAudio`(`ProjectileSpawned`, 방어유닛 탄만) |
 | 138 | `DrainMeteorBarrageRequests/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
-| 139 | `SpawnProjectile/2` | 미정 |  |
-| 140 | `CanDefenderTargetMover/2` | 미정 |  |
+| 139 | `SpawnProjectile/2` | IntentApplier (7a) | 스킬 탄은 `IntentApplier.SpawnProjectile` → 요청 줄 → 착탄 관문(6a2). 퇴근 운석의 옛 직접 발사도 `DeathSiteBlast × OnRetire` 규칙으로 접혔다 |
+| 140 | `CanDefenderTargetMover/2` | CoreSkillContext (7a) | `CandidateFilter.MatchTraversalLayers` = `LayerBits.CanTarget(시전자 공격 층, 후보 통행 층)` · 스킬 패턴 층도 같은 술어 |
 | 141 | `RegisteredFootprintRect/2` | PlacementService |  |
 | 142 | `EnqueueStatModifier/6` | 삭제 (코어 내부 호출) |  |
 | 143 | `EnqueueStatModifierRaw/7` | 삭제 (코어 내부 호출) |  |
@@ -248,7 +248,7 @@
 | 146 | `TryScreenToCell/3` | MapRuntime (코어) |  |
 | 147 | `TryScreenToCellStrict/3` | MapRuntime (코어) |  |
 | 148 | `TryScreenToBoardFrac/3` | DragPlacementInput.TryResolveCell | `BoardSpace.ToSim` + `PlacementCellSnap`(순수 재사용) |
-| 149 | `TryPickNearestEnemy/4` | 미정 |  |
+| 149 | `TryPickNearestEnemy/4` | 입력 층 (7c 타겟 화살 — 7a 귀속 확정) | 화면 좌표 → 보드 평면 → **판 위 최근접 적** 픽(표식 카드 조준). 판정이 아니라 입력이라 코어에 두지 않는다 — 입력이 `BoardSpace` 레이 + `BattleWorld.Units` 읽기로 고르고 결과는 커맨드 대상이 된다 |
 | 150 | `TryGetDefenderAt/2` | PlacementOccupancy.OwnerAt | 칸의 주인은 배치 담당자가 점유와 **쌍으로** 관리한다(옛 `_defenderByTile` 을 안 옮긴 자리) |
 | 151 | `SetDefenderHoverHighlight/3` | CoreUnitViewPool | 유닛 뷰 `SetHoverHighlight` fan-out. 구동은 5b |
 | 152 | `TryPickDefenderAtScreen/7` | RetireInput.TryPickDefender | 화면 → 칸 → 점유 주인. 판정 없음 |
@@ -394,14 +394,14 @@
 | 292 | `ResolveUnitMaterial/2` | CoreUnitViewPool | 쿼드 폴백 머티리얼. `RuntimeMaterialFactory` 경유로 바뀌었다 |
 | 293 | `InstallSkillLayer/0` | BindingRegistry / TriggerDispatcher |  |
 | 294 | `RunImmediateSkills/0` | BindingRegistry / TriggerDispatcher |  |
-| 295 | `RoutingProbe/2` | 미정 |  |
+| 295 | `RoutingProbe/2` | SkillRouting (7a) | 그물용 창은 필요 없다 — 표 자체가 코어 공개 함수(`Trigger/SkillRouting.SkillIdFor`)이고 `SkillRoutingTests` 가 전수로 친다 |
 | 296 | `BakeNightmareMechanics/2` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 297 | `BakeUnitMechanics/6` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 298 | `BakeDefenderDirectionalPattern/3` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 299 | `TryBuildPatternSlot/5` | 미정 |  |
-| 300 | `BuildPatternTemplate/4` | 미정 |  |
+| 299 | `TryBuildPatternSlot/5` | BindingDefinitionBuilder (7a) | `BindPattern` — 거절 규칙(FanOut 범위 0 · FanOut 비개체 조준 · 방향 사거리 0 · TryToSpec) 이식. 슬롯은 규칙(`Binding.Emitters`)이 든다 |
+| 300 | `BuildPatternTemplate/4` | CombatPhase (7a) | 템플릿 조립은 발사 시점 `EmitPatternShot`/`FanOut` 이 한다 — 진영(상대 진영 유닛)·층(시전자 공격 층)은 `EmitterInstance.FromSkill` 이 가른다 |
 | 301 | `SpawnUnit/1` | WaveScheduler |  |
 | 302 | `CreateEnemyEntity/4` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 303 | `ConeCosSq/1` | 미정 |  |
+| 303 | `ConeCosSq/1` | BindingDefinitionBuilder (7a) | bake 1회 변환(도 → cos²). 그림용 반각은 `BindingDef.ConeHalfAngleDeg` 로 함께 싣는다(브레스 `TriggerFired`) |
 | 304 | `SpawnSplitChildren/2` | 미정 |  |
 | 305 | `CreateAttackUnitRuntimeMaterial/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
