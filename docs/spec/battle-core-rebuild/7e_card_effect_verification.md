@@ -50,12 +50,20 @@
 
 ## 완료 기준
 
-- [ ] **① `CardEffectWitnessTests`**: 카탈로그 45 + 몽마의 계약 1 + 액티브 6 = 52 케이스가 한 장씩 뜬다(`TestCaseSource`). 전부 ○ — ×가 있으면 **그 카드 이름과 진단**을 보고서에(코어 수정 금지). Assets lane 기준선 빨강은 `bomb_man`·`boomerang` 2건만.
-- [ ] **① 반증**: 카드 한 장의 의도 적용을 일부러 끄면(테스트 안에서 `IntentApplier` 우회 스텁 또는 라우팅 표 항목 제거) 그 카드가 **×로 떨어진다** — 장치가 「구워졌는데 아무 일도 없다」를 실제로 잡는다는 증언 1건.
-- [ ] **② 스냅샷** 파일 커밋 + 테스트 초록 + 갱신 메뉴. 반증: 카드 SO 값 하나를 메모리에서 바꾸면 빨갛다.
-- [ ] **③ 메뉴** Play 중 실행 → 콘솔 표 52행 · 사용자 판 무변(틱·개체 수 전후 동일 단언은 PlayMode 스모크 1건).
-- [ ] **④ 부족분** 목록과 테스트(있으면). 없으면 「없음」과 근거.
-- [ ] 코어 변경은 `EffectWitness`·`CardProbe`(둘 다 판정·상태를 갖지 않는 순수 도구) 외 0. `Unity.Entities` 0 · 매니저 0.
-- [ ] 헤드리스 export 3종 초록 · Unity EditMode 코어+Assets · PlayMode 코어 초록 · 골든 무변 · `check_ledgers.py` exit 0(미정 0 유지).
-- [ ] `core-reviewer` APPROVE.
-- [ ] README 작업 표에 7e 행 · 상태 라인에 「카드 52장 자동 증언」 · `docs/reference/test-procedure.md` 에 Assets lane 의 이 두 테스트와 스냅샷 갱신 절차 한 줄.
+- [x] **① `CardEffectWitnessTests`**: 카탈로그 45 + 몽마의 계약 1 + 액티브 6 = 52 케이스가 한 장씩 뜬다(`TestCaseSource`). 전부 ○ — ×가 있으면 **그 카드 이름과 진단**을 보고서에(코어 수정 금지). Assets lane 기준선 빨강은 `bomb_man`·`boomerang` 2건만.
+- [x] **① 반증**: 카드 한 장의 의도 적용을 일부러 끄면(테스트 안에서 `IntentApplier` 우회 스텁 또는 라우팅 표 항목 제거) 그 카드가 **×로 떨어진다** — 장치가 「구워졌는데 아무 일도 없다」를 실제로 잡는다는 증언 1건.
+- [x] **② 스냅샷** 파일 커밋 + 테스트 초록 + 갱신 메뉴. 반증: 카드 SO 값 하나를 메모리에서 바꾸면 빨갛다.
+- [x] **③ 메뉴** Play 중 실행 → 콘솔 표 52행 · 사용자 판 무변(틱·개체 수 전후 동일 단언은 PlayMode 스모크 1건). → **리드 실행 2026-09-24**: Play(Battle, tick 1094)에서 `Wassup/BattleCore/Debug/카드 자가진단` 실행, `[CoreCardSelfCheck]` 표 출력 · × 경고 **0** · 살아 있는 판 무변(실행 뒤 tick 1679 진행 · ended=false · units 11).
+- [x] **④ 부족분** 목록과 테스트(있으면). 없으면 「없음」과 근거.
+- [x] 코어 변경은 `EffectWitness`·`CardProbe`(둘 다 판정·상태를 갖지 않는 순수 도구) 외 0. `Unity.Entities` 0 · 매니저 0.
+- [x] 헤드리스 export 3종 초록 · Unity EditMode 코어+Assets · PlayMode 코어 초록 · 골든 무변 · `check_ledgers.py` exit 0(미정 0 유지). — PlayMode 코어만 미충족(선행 빨강 4, 구현 기록) → HEAD `7728bce14`(dev 덱 가드 수정 포함): export build 0 · test 678 · Check 0 · Unity EditMode 코어+Assets 992/994(선행 2, `0210ed8f5` 기준) · PlayMode 코어 **57/57**(리드 실행) · 골든 무변 · 미정 0.
+- [x] `core-reviewer` APPROVE.(2026-09-24 · CRITICAL/HIGH/MEDIUM 0 · LOW 1 = `CardProbe.cs:5` `using Wassup.Battle.Units` 「죽은 import」 지적 — **오판**: `Faction` 열거형의 실제 namespace 가 `Wassup.Battle.Units`(`Scripts/Skills/Faction.cs:11`, Skills asmdef)라 필요한 using 이다. 5c 리뷰와 같은 함정(인계 §3-9). 코드 무변.
+- [x] README 작업 표에 7e 행 · 상태 라인에 「카드 52장 자동 증언」 · `docs/reference/test-procedure.md` 에 Assets lane 의 이 두 테스트와 스냅샷 갱신 절차 한 줄.
+
+> **구현 기록(2026-09-24)** — `0164a940a`(① + 반증) · `8d98e45f4`(② + 반증) · `4d390a78a`(③) · `8d901b34d`(④).
+> - ① 52 케이스 전부 ○(× 0 — 보고할 결함 없음). 반증 ⑴ 의도 적용 끄기(`CardProbeOptions.MuteIntents` — 기록은 하되 적용 안 함) → `cost1_as` 구움·발동 ○ 인데 × · ⑵ 라우팅 제거(실행자 null) → 굽기 ×. 헤드리스 자가 테스트 `CardProbeTests` 3(고정구 카드 ○ · 반증 · 원본 정의표 무변).
+> - `AttackN` 만 25 대신 감지자 모양 사건(`RaiseFor` · 공격 seam) — 25 의 사건엔 대상이 없어 대상형 실행자가 할 일이 없다. Squad 줄은 부착 전개만(25 는 주어 필터를 안 지난다). 공격 수식자·인수인계는 의도가 없어 「달렸다」(`AttackMod`) · 「동반 카드가 손패 맨 앞」(`HandFront`)으로 본다.
+> - ② 반증: `poke_needle` 크기 +1 → 478번째 줄에서 빨갛다, 되돌리면 초록.
+> - ③ ⑴ 카탈로그 전량(드라이버 저작 + 카탈로그 카드) ⑵ 이 판의 덱 두 표. PlayMode 스모크 `CoreCardSelfCheckTests` 초록(틱·개체·사건·해시 무변). **메뉴 자체의 Play 실행은 사용자 확인 대기.**
+> - ④ `CardRuleTests` 5 — 궁지 폭발 `OnDamagedN × HpBelow(Self)` 게이트(공격 쪽만 있었다) · 실드 파열 순간 · 퇴근 운석 자리형(몸 0 · 비워진 칸) · 마지막 불꽃 미귀속 죽음(처치 사건 0 · 각성 0) · 파쇄의 찬가 `DamageVsCcMul` 조건부 소비(테스트 0 건이었다 — pin·분류기뿐). 근거 grep: `OnShieldBreak`·`OnRetire`·`DamageVsCc` 는 라우팅/핀 테스트에만, `Lethal` 은 「선다」까지만.
+> - 검증: 헤드리스 export 4 SHA 전부 build 0 · test 673 → **678** · Check 0 · `check_ledgers.py` exit 0(미정 0) · Unity EditMode 코어+Assets **992/994**(선행 `bomb_man`·`boomerang`) · 골든 무변(코어 lane 689/689) · PlayMode 코어 **53/57** — 빨강 4 는 전부 `CoreMatchOutcomeTests`, 원인 = `d06ae0bcd`(dev 카드 덱을 씬 `_cards` 에) 이후 각성 저작 없는 테스트 모드가 카드 빌더 에러를 낸다. 이 unit 과 무관 — 리드 판단.
