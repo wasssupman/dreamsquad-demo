@@ -123,6 +123,21 @@ namespace Wassup.BattleCore
 
         /// <summary>액티브 한 장(`CardIndex` = 정의표 줄)을 손패·각성·쿨다운 없이 시전한다.</summary>
         DebugCastCard = 23,
+
+        // ── unit 7d ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 순찰 소환물(`DefIndex` = `Units` 줄)을 소환사 없이 `Cell` 을 앵커로 세운다. 구역 반경 = `Count`(칸, 1 이상).
+        /// 소환사의 스폰과 **같은 문**(`CombatPhase.SpawnPatrol`)이다 — tools.md 10(`PatrolDebugMenu`)의 후계.
+        /// </summary>
+        DebugSummonPatrol = 24,
+
+        /// <summary>
+        /// 규칙 하나(`Count` = `InstanceId`, 소유자 `Target` — None 이면 판 호스트)를 **지금** 발동시킨다. 카운터·게이트·
+        /// 감지자를 건너뛰고 그 규칙의 실행자만 부른다(발동 상한은 지킨다 — 「왜 안 터졌나」의 한 원인이다).
+        /// 커맨드 콜스택(`Immediate` seam)에서 드레인된다 — tools.md 「트리거 강제 발화」.
+        /// </summary>
+        DebugFireBinding = 25,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -591,6 +606,29 @@ namespace Wassup.BattleCore
             Magnitude = magnitude,
             Seconds = seconds,
             Flag = true,
+        };
+
+        public static Command DebugSummonPatrol(int patrolDefIndex, int2 anchor, int radius) => new Command
+        {
+            Kind = CommandKind.DebugSummonPatrol,
+            DefIndex = patrolDefIndex,
+            Cell = anchor,
+            Count = radius,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = -1,
+            ProjectileDefIndex = -1,
+        };
+
+        public static Command DebugFireBinding(SimEntityId owner, int instanceId) => new Command
+        {
+            Kind = CommandKind.DebugFireBinding,
+            DefIndex = -1,
+            Target = owner,
+            Count = instanceId,
+            Lane = -1,
+            CardIndex = -1,
+            ProjectileDefIndex = -1,
         };
 
         /// <summary>그 시전자에게 자기가 건 부여를 전부 회수한다.</summary>

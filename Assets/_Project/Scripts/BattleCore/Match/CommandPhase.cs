@@ -115,6 +115,8 @@ namespace Wassup.BattleCore
                 case CommandKind.DebugSpawnPickup: return DebugPickup(cmd, tick);
                 case CommandKind.DebugDropResignation: return DebugResignation(cmd, tick);
                 case CommandKind.DebugSetStack: return DebugSetStack(cmd, tick);
+                case CommandKind.DebugSummonPatrol: return DebugSummonPatrol(cmd);
+                case CommandKind.DebugFireBinding: return DebugFireBinding(cmd);
 
                 default: return Receipt.Reject(RejectReason.UnknownCommand);
             }
@@ -134,6 +136,52 @@ namespace Wassup.BattleCore
             int h = math.max(1, d.FootprintHeight);
             _placement.SpawnDefender(cmd.DefIndex, cmd.Cell, w, h, cmd.Facing, tick, deploying: false);
             return Receipt.Ok;
+        }
+
+        // unit 7d — tools.md 10(순찰병 수동 스폰). 소환사와 **같은 문**을 지난다. 소환사가 없으니 연쇄 소멸도 없다.
+        private Receipt DebugSummonPatrol(in Command cmd)
+        {
+            if (_ctx == null) return Receipt.Reject(RejectReason.UnknownCommand);
+            if (cmd.DefIndex < 0 || cmd.DefIndex >= _def.Units.Length) return Receipt.Reject(RejectReason.InvalidUnit);
+            if (_map != null && _map.Snapshot.CellCount > 0 && !_map.Snapshot.InBounds(cmd.Cell))
+                return Receipt.Reject(RejectReason.OutOfBounds);
+            _ctx.Tick = _clock.Tick;
+            float3 at = _map != null && _map.Snapshot.CellCount > 0 ? _map.CenterOf(cmd.Cell) : new float3(cmd.Cell.x, 0f, cmd.Cell.y);
+            CombatPhase.SpawnPatrol(_ctx, cmd.DefIndex, cmd.Cell, cmd.Count, SimEntityId.None, at);
+            return Receipt.Ok;
+        }
+
+        // unit 7d — 규칙 강제 발화(「왜 안 터졌나」 도구). 카운터·게이트·감지자를 건너뛰고 실행자만 — 발동 상한은 지킨다.
+        // 사건은 `Immediate` seam 에 줄 서고 이 커맨드의 콜스택(`Execute`)이 곧 드레인한다.
+        private Receipt DebugFireBinding(in Command cmd)
+        {
+            var triggers = _ctx?.Triggers;
+            if (triggers == null) return Receipt.Reject(RejectReason.UnknownCommand);
+            Unit owner = null;
+            System.Collections.Generic.IReadOnlyList<Trigger.Binding> list;
+            if (cmd.Target.IsNone || cmd.Target == SimEntityId.Match) list = triggers.Registry.MatchBindings;
+            else
+            {
+                owner = _world.Find(cmd.Target);
+                if (owner == null) return Receipt.Reject(RejectReason.NoSuchEntity);
+                list = owner.Bindings;
+            }
+            for (int i = 0; i < list.Count; i++)
+            {
+                var b = list[i];
+                if (b.InstanceId != cmd.Count) continue;
+                var e = owner != null
+                    ? Trigger.TriggerDispatcher.SubjectOf(owner, Seam.Immediate, b.Def.Trigger)
+                    : new Trigger.TriggerEvent
+                    {
+                        Seam = Seam.Immediate, Kind = b.Def.Trigger, Subject = SimEntityId.Match,
+                        SubjectFaction = Wassup.Battle.Units.Faction.DefenderUnit, Target = SimEntityId.None,
+                    };
+                if (owner?.Attack != null) e.TargetLayers = owner.Attack.TargetLayers;
+                triggers.RaiseFor(b, in e);
+                return Receipt.Ok;
+            }
+            return Receipt.Reject(RejectReason.NoSuchEntity);
         }
 
         private Receipt Submit()

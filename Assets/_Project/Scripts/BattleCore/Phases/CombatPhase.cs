@@ -323,25 +323,8 @@ namespace Wassup.BattleCore
 
             if (gateOpen && !summonAlive)
             {
-                ref var pd = ref ctx.Def.Units[patrolDef];
-                var patrol = ctx.World.Spawn(UnitKind.Patrol, Faction.DefenderUnit, patrolDef,
-                                             _map != null ? _map.CenterOf(anchor) : u.Position,
-                                             pd.BodyRadiusTiles, pd.Health,
-                                             deploying: false, tick: ctx.Tick);
-                var parts = ctx.World.Parts;
-                var box = parts.RentPatrol();
-                box.Anchor = anchor;
-                box.Home = anchor;
-                box.Radius = coverTiles;
-                box.SummonedBy = u.Id;
-                patrol.Patrol = box;
-
-                var move = parts.RentMove();
-                move.Speed = pd.MoveSpeed;
-                move.TraversalLayers = (byte)pd.TraversalLayers;
-                patrol.Move = move;
-
-                patrol.Attack = BuildAttackState(in pd, ctx.Def, parts);
+                var patrol = SpawnPatrol(ctx, patrolDef, anchor, coverTiles, u.Id,
+                                         _map != null ? _map.CenterOf(anchor) : u.Position);
                 atk.HasSummonedOnce = true;
 
                 ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, patrol.Id,
@@ -350,6 +333,34 @@ namespace Wassup.BattleCore
             }
 
             if (gateOpen) atk.CooldownRemaining = atk.Interval;
+        }
+
+        /// <summary>
+        /// 순찰 소환물 하나를 세우는 **단 하나의 조립 자리**. 소환사(공격 루프)와 디버그 커맨드(tools 10 — `DebugSummonPatrol`)가
+        /// 같은 문을 지난다 — 두 벌이면 「어떤 경로로 태어났나」가 구역·이동·공격 규칙을 바꾼다.
+        /// `owner` = 소환사(없으면 None — 소환사 연쇄 소멸이 없다). 이동·앵커 수학은 unit 2 의 `PatrolAreaMath` 가 돈다.
+        /// </summary>
+        internal static Unit SpawnPatrol(TickContext ctx, int patrolDef, int2 anchor, int radius,
+                                         SimEntityId owner, float3 position)
+        {
+            ref var pd = ref ctx.Def.Units[patrolDef];
+            var patrol = ctx.World.Spawn(UnitKind.Patrol, Faction.DefenderUnit, patrolDef, position,
+                                         pd.BodyRadiusTiles, pd.Health, deploying: false, tick: ctx.Tick);
+            var parts = ctx.World.Parts;
+            var box = parts.RentPatrol();
+            box.Anchor = anchor;
+            box.Home = anchor;
+            box.Radius = math.max(1, radius);
+            box.SummonedBy = owner;
+            patrol.Patrol = box;
+
+            var move = parts.RentMove();
+            move.Speed = pd.MoveSpeed;
+            move.TraversalLayers = (byte)pd.TraversalLayers;
+            patrol.Move = move;
+
+            patrol.Attack = BuildAttackState(in pd, ctx.Def, parts);
+            return patrol;
         }
 
         private static bool HasLiveSummon(TickContext ctx, SimEntityId owner)

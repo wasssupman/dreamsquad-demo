@@ -46,6 +46,10 @@ namespace Wassup.BattleCore.Trigger
         private int _raisedThisTick;
         private bool _overflowWarned;
 
+        // unit 7d — 이 판에 **감지자가 올린 사실**의 수(종류별). 「왜 안 터졌나」의 첫 원인(감지자 없음)을
+        // 추측이 아니라 관측으로 답하려고 센다. 규칙 상태가 아니다 — 판정에 쓰지 않는다.
+        private readonly int[] _sensed = new int[256];
+
         private bool _draining;
         private Seam _drainingSeam;
         private int _drainingGeneration;
@@ -80,6 +84,22 @@ namespace Wassup.BattleCore.Trigger
         }
 
         public SeamTickOrder Order => _order;
+
+        /// <summary>unit 7d — 등록부(도구·디버그 커맨드가 규칙을 id 로 찾는다 — 읽기 전용 목록만 쓴다).</summary>
+        public BindingRegistry Registry => _registry;
+
+        /// <summary>
+        /// unit 7d — 이 판에 그 종류의 사실이 감지자에게서 몇 번 올라왔나(진단 전용 · 판정에 안 쓴다).
+        /// 폴링 감지(`IsPolled`)는 여기 안 든다 — 그쪽은 감지자가 늘 돈다.
+        /// </summary>
+        public int SensedCount(TriggerKind kind) => _sensed[(byte)kind];
+
+        /// <summary>
+        /// unit 7d — 감지자가 **사건이 아니라 폴링**인 종류(주기 타이머 · 체력 경계 — `DetectPeriodic`·`DetectThresholds`).
+        /// 이 둘은 「감지자 없음」이 될 수 없다 — 안 터졌다면 조건(주기·경계)이 아직이다.
+        /// </summary>
+        public static bool IsPolled(TriggerKind kind)
+            => kind == TriggerKind.PeriodicTimer || kind == TriggerKind.HealthThreshold;
 
         /// <summary>그 seam 에 줄 선 발동 수(테스트·진단).</summary>
         public int PendingAt(Seam seam) => _queues[(int)seam].Count;
@@ -201,6 +221,7 @@ namespace Wassup.BattleCore.Trigger
 
         private void Collect(in TriggerEvent e, Unit subject, bool includeDetached)
         {
+            _sensed[(byte)e.Kind]++;
             _listeners.Clear();
             if (subject != null)
             {
