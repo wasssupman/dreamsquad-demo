@@ -218,6 +218,23 @@ namespace Wassup.BattleCore
         /// 무엇을 그리나는 뷰의 것이다 — 이 사건이 없으면 요청이 **조용히 버려진다**.
         /// </summary>
         SkillVisual = 59,
+
+        // ── unit 7b (카드의 규칙) ─────────────────────────────────────────────
+        //
+        // 카드는 개체가 아니다(숙주의 등록부 항목 묶음이다). 그래서 **카드의 사건**을 따로 낸다 — 뷰(7c 손패·
+        // 부착 줄·표식)가 규칙 사건(`BindingAttached` 여러 건)을 모아 「어느 카드인가」를 역산하지 않게.
+        // `Arg` = 손패 항목 번호(`HandDeck.Entry.EntryId`), `DefIndex` = **카드 줄**(`MatchDefinition.Cards`),
+        // `Amount` = 부착 묶음 핸들(판 수명 단조 — F1).
+
+        /// <summary>카드가 붙었다. `A` = 숙주(방어유닛 · 표식이면 적), `SiteFired` = 숙주 몸(발화 시점).</summary>
+        CardAttached = 60,
+        /// <summary>카드가 떨어졌다(숙주 소멸·퇴근·표식 대상 소멸). `A` = 숙주(이미 없을 수 있다).</summary>
+        CardDetached = 61,
+        /// <summary>
+        /// 액티브를 시전했다. `A` = 판, `SiteTarget` = 조준 칸 중심(몸 0 = 칸), `SiteFired` = 둘째 칸(포탈 출구 —
+        /// 한 칸 조준이면 첫 칸과 같다), `Faction` = 플레이어 진영.
+        /// </summary>
+        CardCast = 62,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -337,13 +354,22 @@ namespace Wassup.BattleCore
         /// </summary>
         public readonly float AttackRange;
 
+        /// <summary>
+        /// unit 7b — `UnitSlain` 전용: 죽은 개체의 **각성 보상 배율**(살찌운 제물 표식 — `Unit.AwakeningRewardMul`)
+        /// 발화 시점 스냅샷. 그 외 사건은 0 이다(안 읽힌다). 보상 담당자(`HandDeck`)가 이 값으로 곱한다 —
+        /// 드레인 시점에 개체를 되물으면 소멸이 한 틱 당겨지는 날 배율이 조용히 1 로 떨어진다(계약 7).
+        /// ⚠ **마음 회복은 이 배율을 안 본다**(SO 원값 — 표식 두 축 겸직 금지). 트레이스에는 안 실린다(골든 무변).
+        /// </summary>
+        public readonly float RewardMul;
+
         private CoreEvent(CoreEventKind kind, int tick, SimEntityId a, SimEntityId b,
                           Site siteFired, Site siteTarget, Faction faction, int arg, float amount,
                           int defIndex = -1, int areaTiles = 0,
                           Combat.Projectile.PayloadKind payload = default,
                           float2 attackDir = default, Combat.AttackShapeBaked attackShape = default,
-                          float attackRange = 0f)
+                          float attackRange = 0f, float rewardMul = 0f)
         {
+            RewardMul = rewardMul;
             Kind = kind;
             Tick = tick;
             A = a;
@@ -518,7 +544,8 @@ namespace Wassup.BattleCore
                              killer, victim.Id,
                              Site.Nowhere,
                              new Site(victim.Position, victim.HitRadius),
-                             victim.Faction, (int)victim.Kind, victim.MaxHealth, victim.DefIndex);
+                             victim.Faction, (int)victim.Kind, victim.MaxHealth, victim.DefIndex,
+                             rewardMul: victim.AwakeningRewardMul);
 
         public static CoreEvent Knockup(int tick, Unit target, float seconds, float height)
             => new CoreEvent(CoreEventKind.Knockup, tick,
@@ -792,6 +819,25 @@ namespace Wassup.BattleCore
                              owner != null ? new Site(owner.Position, owner.HitRadius) : Site.Nowhere,
                              Site.Nowhere, owner != null ? owner.Faction : Faction.None,
                              b.InstanceId, (float)(int)reason, b.DefIndex);
+
+        // ── unit 7b ───────────────────────────────────────────────────────────
+
+        public static CoreEvent CardAttached(int tick, SimEntityId host, Unit hostUnit, int entryId, int cardIndex, int handle)
+            => new CoreEvent(CoreEventKind.CardAttached, tick, host, SimEntityId.None,
+                             hostUnit != null ? new Site(hostUnit.Position, hostUnit.HitRadius) : Site.Nowhere,
+                             Site.Nowhere, hostUnit != null ? hostUnit.Faction : Faction.None,
+                             entryId, handle, cardIndex);
+
+        public static CoreEvent CardDetached(int tick, SimEntityId host, Unit hostUnit, int entryId, int cardIndex, int handle)
+            => new CoreEvent(CoreEventKind.CardDetached, tick, host, SimEntityId.None,
+                             hostUnit != null ? new Site(hostUnit.Position, hostUnit.HitRadius) : Site.Nowhere,
+                             Site.Nowhere, hostUnit != null ? hostUnit.Faction : Faction.None,
+                             entryId, handle, cardIndex);
+
+        public static CoreEvent CardCast(int tick, int entryId, int cardIndex, float3 cellA, float3 cellB, int handle)
+            => new CoreEvent(CoreEventKind.CardCast, tick, SimEntityId.Match, SimEntityId.None,
+                             Site.AtCell(cellB), Site.AtCell(cellA), Faction.DefenderUnit,
+                             entryId, handle, cardIndex);
 
         public static CoreEvent SkillVisual(int tick, SimEntityId source, SimEntityId target,
                                             Site fired, Site at, Faction faction, int visualKind,

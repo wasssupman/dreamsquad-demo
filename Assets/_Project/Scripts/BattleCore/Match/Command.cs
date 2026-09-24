@@ -111,6 +111,18 @@ namespace Wassup.BattleCore
         /// 스택 단계가 본다. 스택 종류 쪽은 게이트가 없다 — 6a 의 스택은 기믹 전용이 아니다.
         /// </summary>
         DebugSetStack = 21,
+
+        // ── unit 7b ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 카드 한 장(`CardIndex` = **정의표 줄**)을 손패·각성·상한 없이 붙인다. 적용성(`Applicability`)은 **지난다** —
+        /// 판정을 건너뛰면 라이브에서 안 붙는 조합이 붙어 검증이 거짓이 된다. 숙주가 떠나면 떨어지고 **큐로 안 돌아온다**.
+        /// 손패 UI(7c) 없이 규칙을 라이브에서 확인하는 문이다(6b2 의 규율).
+        /// </summary>
+        DebugAttachCard = 22,
+
+        /// <summary>액티브 한 장(`CardIndex` = 정의표 줄)을 손패·각성·쿨다운 없이 시전한다.</summary>
+        DebugCastCard = 23,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -174,6 +186,18 @@ namespace Wassup.BattleCore
         // ── unit 6b2 ──────────────────────────────────────────────────────────
         /// <summary>그 기믹이 이번 판에 안 뽑혔다. 셈판은 뽑힌 판에서만 돈다.</summary>
         GimmickInactive,
+
+        // ── unit 7b ───────────────────────────────────────────────────────────
+        /// <summary>적을 겨누는 카드(표식)를 적이 아닌 것에 붙이려 했다.</summary>
+        NotAnEnemy,
+        /// <summary>방어유닛 카드를 방어유닛이 아닌 것(적·순찰 소환물·거점)에 붙이려 했다.</summary>
+        NotADefender,
+        /// <summary>그 카드의 부착 제한(직업·유닛)을 이 숙주가 못 채운다 — 무효 저작도 여기다(fail-closed).</summary>
+        AttachRequirementUnmet,
+        /// <summary>이 숙주에서는 그 카드의 규칙이 **한 줄도** 안 돈다(옛 `attached == 0`).</summary>
+        NoContribution,
+        /// <summary>두 칸을 받는 액티브(포탈)에 둘째 칸이 없다.</summary>
+        NeedsSecondCell,
     }
 
     public struct Command
@@ -234,7 +258,10 @@ namespace Wassup.BattleCore
         /// <summary>`DebugSetStack` 이 놓을 중첩.</summary>
         public int Count;
 
-        // 스킬 파라미터(대상 자리·방향 등)는 unit 7(트리거 레이어)에서 붙는다.
+        // ── unit 7b ──────────────────────────────────────────────────────────
+        /// <summary>액티브의 둘째 칸(포탈 출구). `HasCellB` 가 거짓이면 안 읽힌다.</summary>
+        public int2 CellB;
+        public bool HasCellB;
 
         public static Command PlaceDefender(int defIndex, int2 cell, float2 facing = default) => new Command
         {
@@ -371,6 +398,42 @@ namespace Wassup.BattleCore
             Target = SimEntityId.None,
             Lane = -1,
             CardIndex = cardIndex,
+        };
+
+        /// <summary>두 칸을 받는 액티브(포탈 — 입구 `a` · 출구 `b`)를 시전한다.</summary>
+        public static Command CastActivePair(int cardIndex, int2 a, int2 b) => new Command
+        {
+            Kind = CommandKind.CastActive,
+            DefIndex = -1,
+            Cell = a,
+            CellB = b,
+            HasCellB = true,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = cardIndex,
+        };
+
+        /// <summary>디버그 — 정의표 카드 줄을 손패·각성·상한 없이 붙인다(적용성은 지난다).</summary>
+        public static Command DebugAttachCard(int cardRow, SimEntityId host) => new Command
+        {
+            Kind = CommandKind.DebugAttachCard,
+            DefIndex = -1,
+            Target = host,
+            Lane = -1,
+            CardIndex = cardRow,
+        };
+
+        /// <summary>디버그 — 정의표 액티브 줄을 손패·각성·쿨다운 없이 시전한다.</summary>
+        public static Command DebugCastCard(int cardRow, int2 a, int2 b = default, bool hasB = false) => new Command
+        {
+            Kind = CommandKind.DebugCastCard,
+            DefIndex = -1,
+            Cell = a,
+            CellB = b,
+            HasCellB = hasB,
+            Target = SimEntityId.None,
+            Lane = -1,
+            CardIndex = cardRow,
         };
 
         /// <summary>보너스 웨이브를 당긴다(제안이 떠 있을 때만).</summary>

@@ -103,6 +103,13 @@ namespace Wassup.BattleCore
         /// </summary>
         public Trigger.BindingDef[] Bindings = System.Array.Empty<Trigger.BindingDef>();
 
+        /// <summary>
+        /// unit 7b — **판 호스트가 판 시작에 드는 규칙 줄**(드림스톤 — 판 진입 장비의 스탯 상속). 비면 한 줄도 안 쓴다.
+        /// 카드가 아니다(손패·각성과 무관) — 그 판에 들고 들어온 플레이어 장비라 모드가 아니라 반입이 정한다
+        /// (`CostRateMultiplier` 와 같은 축).
+        /// </summary>
+        public int[] MatchBindings = System.Array.Empty<int>();
+
         /// <summary>시드 생성 덱. `Mode.WaveSource` 가 `GeneratedFromDeck` 일 때 읽힌다.</summary>
         public Wave.WaveDeckDef WaveDeck = Wave.WaveDeckDef.Empty();
 
@@ -179,6 +186,12 @@ namespace Wassup.BattleCore
             Mode.Canonicalize(sb, inv);
             Put(sb, "costRateMultiplier", CostRateMultiplier, inv);
             Put(sb, "effectTileCount", EffectTileCount, inv);
+            if (MatchBindings != null && MatchBindings.Length > 0)
+            {
+                var parts = new string[MatchBindings.Length];
+                for (int i = 0; i < parts.Length; i++) parts[i] = MatchBindings[i].ToString(inv);
+                Put(sb, "matchBindings", string.Join(",", parts));
+            }
             Movement.Canonicalize(sb, inv);
             Heart.Canonicalize(sb, inv);
             Bonus.Canonicalize(sb, inv);

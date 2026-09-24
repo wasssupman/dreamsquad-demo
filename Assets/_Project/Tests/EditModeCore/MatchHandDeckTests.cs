@@ -10,32 +10,45 @@ namespace Wassup.Tests.EditMode.Core
     public class MatchHandDeckTests
     {
         // 부착 10 + 공용 액티브 2 = 12. 마지막 부착 카드가 「인수인계」를 선언한다.
-        private static CardDef[] Cards()
+        // unit 7b — 카드는 **규칙을 실어야** 붙는다(규칙 0 줄 카드는 옛 `attached == 0` 처럼 거절된다).
+        // 자원 테스트라 규칙은 무해한 한 줄(처치 × 자기 버프)이고, 액티브는 무동작 한 줄(배율 1 = 조용히 소모)이다.
+        private static CardDef[] Cards(MatchDefinition def)
         {
             var cards = new CardDef[12];
+            var attachRule = CoreCardFixtures.CardRule(Wassup.BattleCore.Trigger.TriggerKind.OnKill,
+                                                       Wassup.BattleCore.Trigger.TriggerPayload.SelfStatBuff);
+            attachRule.StatKind = (int)Wassup.Skills.SkillStatKind.DamageMul;
+            attachRule.Magnitude = 1f;
+            int attachRow = CoreTriggerFixtures.Add(def, attachRule)[0];
+            var activeRule = CoreCardFixtures.CardProbe(Wassup.BattleCore.Trigger.TriggerKind.None,
+                                                        new Wassup.Skills.Concrete.TileStatBurstSkill());
+            activeRule.Magnitude = 1f;
+            int activeRow = CoreTriggerFixtures.Add(def, activeRule)[0];
             for (int i = 0; i < 10; i++)
-                cards[i] = new CardDef
-                {
-                    Id = "attach_" + i,
-                    Kind = CardKind.Attach,
-                    Cost = 15,
-                    DeclaresRetireRecall = i == 9,
-                };
+            {
+                cards[i] = CardDef.Default();
+                cards[i].Id = "attach_" + i;
+                cards[i].Kind = CardKind.Attach;
+                cards[i].Cost = 15;
+                cards[i].DeclaresRetireRecall = i == 9;
+                cards[i].Bindings = new[] { attachRow };
+            }
             for (int i = 10; i < 12; i++)
-                cards[i] = new CardDef
-                {
-                    Id = "active_" + i,
-                    Kind = CardKind.Active,
-                    Cost = 20,
-                    CooldownSeconds = 2f,
-                };
+            {
+                cards[i] = CardDef.Default();
+                cards[i].Id = "active_" + i;
+                cards[i].Kind = CardKind.Active;
+                cards[i].Cost = 20;
+                cards[i].CooldownSeconds = 2f;
+                cards[i].ActiveBinding = activeRow;
+            }
             return cards;
         }
 
         private static BattleMatch Battle(System.Action<MatchDefinition> tweak = null)
         {
             var def = CoreMatchFixtures.Definition();
-            def.Cards = Cards();
+            def.Cards = Cards(def);
             def.Mode.Awakening = new AwakeningDef { Start = 60f, Max = 100f };
             tweak?.Invoke(def);
             def.ConfigHash = def.ComputeConfigHash();

@@ -26,6 +26,11 @@ namespace Wassup.BattleCore.Trigger
         public BindingSubject Subject;
         /// <summary>`Any` 바인딩의 주어 필터(직업 비트). 0 = 없음. 저작 노출 없음 — 7b 의 상속 바인딩이 쓴다.</summary>
         public int SubjectClassMask;
+        /// <summary>
+        /// unit 7b — `Any` 바인딩의 주어 필터(배치 코스트). 0 = 없음. 카드 축 `Cost1` 의 자리다(옛 `MatchesDcAxis`) —
+        /// 직업 비트와 **곱(∧)** 으로 읽는다. 둘 다 0 = 전원(축 `All`).
+        /// </summary>
+        public int SubjectCost;
 
         // ── 트리거 상태의 저작값 ──
         /// <summary>`AttackN`·`OnDamagedN` — N 번째마다. 0 = 발동 안 함(순수 함수 가드).</summary>
@@ -118,6 +123,8 @@ namespace Wassup.BattleCore.Trigger
             MatchDefinition.Put(sb, "skill", SkillId, inv);
             MatchDefinition.Put(sb, "subject", (int)Subject, inv);
             MatchDefinition.Put(sb, "subjectClass", SubjectClassMask, inv);
+            // unit 7b — 기본값이면 안 쓴다(7a 까지의 규칙 줄 해시 무변).
+            if (SubjectCost != 0) MatchDefinition.Put(sb, "subjectCost", SubjectCost, inv);
             MatchDefinition.Put(sb, "period", Period, inv);
             MatchDefinition.Put(sb, "periodSec", PeriodSeconds, inv);
             MatchDefinition.Put(sb, "fraction", Fraction, inv);

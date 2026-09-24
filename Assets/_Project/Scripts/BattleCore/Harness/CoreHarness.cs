@@ -111,6 +111,9 @@ namespace Wassup.BattleCore
             match.Bus.Subscribe(CoreEventKind.TriggerFired, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.BindingAttached, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.BindingDetached, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CardAttached, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CardDetached, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.CardCast, 0, trace.Record);
 
             int kills = 0;
             match.Bus.Subscribe(CoreEventKind.UnitSlain, 1, _ => kills++);

@@ -86,7 +86,7 @@ namespace Wassup.BattleCore
             _heart = new HeartMeter(_bus, _world, _clock, _def);
             _waves = new WaveScheduler(_bus, _world, _clock, _def, _map, _heart);
             _placement = new PlacementService(_bus, _world, _clock, _def, _map, _cost);
-            _hand = new HandDeck(_bus, _world, _def);
+            _hand = new HandDeck(_bus, _world, _def, _clock);
             _gimmick = new GimmickHost(_bus, _def);
 
             _goal = MatchGoals.Create(_def.Mode.Goal);
@@ -97,6 +97,8 @@ namespace Wassup.BattleCore
             _intents = new Trigger.IntentApplier(_world, _map, _def, _bus, _cost, _hand);
             _skills = new Trigger.CoreSkillContext(_world, _map, _intents);
             _triggers = new Trigger.TriggerDispatcher(_world, _def, _bus, _bindings, _skills);
+            // unit 7b — 손패는 효과를 모른다. 규칙 레이어(등록부·디스패처)를 **핸들로만** 쥐어 카드를 넘긴다.
+            _hand.Bind(_bindings, _triggers, _map);
 
             // 이동 단계는 **붙들어 둔다**(unit 5b). 거점 선택의 후보 배열이 그 안에 있고,
             // 예고선이 같은 답을 받아야 하기 때문이다(M18) — 배열을 밖으로 복제하는 대신
@@ -269,6 +271,8 @@ namespace Wassup.BattleCore
                          _def.Enemies, _def.Seed,
                          System.Math.Max(1, _def.Map.Spawns.Length), _ctx.Report);
             _hand.Begin(null, _def.Seed, in mode.Awakening, mode.HandSize, mode.AttachCap);
+            // unit 7b — 판 호스트의 판 수명 규칙(드림스톤 — 판 진입 장비). 배치 사건으로 상속된다.
+            _bindings.AttachMatchRows(_def.MatchBindings, 0);
             _gimmick.Begin(mode.GimmickEnabled, _def.Seed);
             _goal.OnBegin(_goalCtx);
 

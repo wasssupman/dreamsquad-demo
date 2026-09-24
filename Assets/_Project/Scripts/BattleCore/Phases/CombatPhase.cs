@@ -1394,7 +1394,9 @@ namespace Wassup.BattleCore
                 // 완주 — 저작 배율을 **영구** 스탯으로(분류는 `ModifierAuthoring` 한 곳).
                 ModifierAuthoring.FromMultiplier(pg.CocoonMult, out var op, out var mag);
                 EffectApply.Stat(ctx, u.Id, u, u, (StatKind)pg.CocoonStat, op, mag, float.PositiveInfinity,
-                                 new SlotTag(SlotKind.OnPlace, pg.CocoonStackId), 0f, ModifierOrigin.Dreamcatcher);
+                                 // unit 7b — 칸 판별자 = 그 카드 규칙의 `InstanceId`(카드 칸 — 붙일 때마다 새 칸, 옛 `_dcStackCounter++`).
+                                 // 배치 칸(`OnPlace`)에 두면 유닛 저작 스택 id 와 같은 번호판을 써 서로를 덮는다.
+                                 SlotTag.OfCard(pg.CocoonStackId), 0f, ModifierOrigin.Dreamcatcher);
             }
         }
 

@@ -89,6 +89,10 @@ namespace Wassup.BattleCore
         TriggerFired = 54,
         BindingAttached = 55,
         BindingDetached = 56,
+        // unit 7b — 카드. `a` = 숙주(시전은 판), `i` = 손패 항목 번호, `f` = 부착 묶음 핸들.
+        CardAttached = 57,
+        CardDetached = 58,
+        CardCast = 59,
         // ⚠ `SkillVisual` 은 채널이 없다 — 뷰 전용 연출 신호라 규칙을 증언하지 않는다(위 `TryChannel` 주석).
         // ⚠ `ScoreChanged` 는 **채널이 없다.** 처치 사건과 1:1 이라 새 정보가 0 이고
         // (`UnitSlain` + 진영으로 정확히 재구성된다) 총점은 아래 `finalScore` 가 증언한다.
@@ -220,6 +224,9 @@ namespace Wassup.BattleCore
                 case CoreEventKind.TriggerFired: channel = CoreTraceChannel.TriggerFired; return true;
                 case CoreEventKind.BindingAttached: channel = CoreTraceChannel.BindingAttached; return true;
                 case CoreEventKind.BindingDetached: channel = CoreTraceChannel.BindingDetached; return true;
+                case CoreEventKind.CardAttached: channel = CoreTraceChannel.CardAttached; return true;
+                case CoreEventKind.CardDetached: channel = CoreTraceChannel.CardDetached; return true;
+                case CoreEventKind.CardCast: channel = CoreTraceChannel.CardCast; return true;
                 default: channel = default; return false;
             }
         }

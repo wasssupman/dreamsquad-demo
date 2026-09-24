@@ -541,7 +541,11 @@ namespace Wassup.BattleCore.Trigger
                 case SkillModifierOrigin.Dreamcatcher: return ModifierOrigin.Dreamcatcher;
                 case SkillModifierOrigin.Boss: return ModifierOrigin.Boss;
                 case SkillModifierOrigin.HealthThreshold: return ModifierOrigin.HealthThreshold;
-                default: return ModifierOrigin.Unspecified;
+                default:
+                    // unit 7b — 두 어휘는 **번호가 정렬돼 있다**(`SkillModifierOrigin` 헤더 — 「어댑터가 캐스트한다」).
+                    // 스킬 어휘에 이름이 없는 코어 출처(드림스톤 — `DreamstoneStatSkill`)는 번호로 옮긴다.
+                    return System.Enum.IsDefined(typeof(ModifierOrigin), (ModifierOrigin)(byte)o)
+                        ? (ModifierOrigin)(byte)o : ModifierOrigin.Unspecified;
             }
         }
 

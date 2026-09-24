@@ -170,6 +170,119 @@ namespace Wassup.BattleCore.Trigger
             }
         }
 
+        // ── 카드 묶음(7b) ─────────────────────────────────────────────────────
+        //
+        // 카드 한 장 = 규칙 여러 줄 + 공격 수식자 몇 개. **떼는 단위가 카드**라서 묶음(`CardAttachment`)으로 든다 —
+        // 손패 담당자는 이 핸들 하나만 쥐고, 효과가 무엇인지 모른다(`HandDeck` 에 효과가 0 줄인 이유).
+        // 핸들은 `InstanceId` 와 같은 번호판에서 뗀다: 판 수명 단조 · 재사용 없음(F1).
+
+        /// <summary>
+        /// 카드 한 장을 숙주에 붙인다(행과 수식자는 `CardBindings.Plan` 이 이미 골랐다). 사건 `CardAttached` 1건 +
+        /// 규칙마다 `BindingAttached`. 반환 = 묶음(떼기의 핸들).
+        /// </summary>
+        public CardAttachment AttachCard(Unit host, int entryId, int cardIndex,
+                                         List<int> rows, List<int> squadRows, List<Combat.AttackModDef> mods, int tick)
+        {
+            var att = new CardAttachment
+            {
+                Handle = _nextInstanceId++,
+                EntryId = entryId,
+                CardIndex = cardIndex,
+                Host = host.Id,
+            };
+            AttachRows(host, rows, att.Bindings, tick);
+            AttachRows(host, squadRows, att.SquadBindings, tick);
+            if (mods != null && host.Attack != null)
+                for (int i = 0; i < mods.Count; i++)
+                {
+                    var m = new Combat.AttackModState { Def = mods[i], OwnerInstanceId = att.Handle };
+                    host.Attack.Mods.Add(m);
+                    att.Mods.Add(m);
+                }
+            _bus.Publish(CoreEvent.CardAttached(tick, host.Id, host, entryId, cardIndex, att.Handle));
+            return att;
+        }
+
+        private void AttachRows(Unit host, List<int> rows, List<Binding> into, int tick)
+        {
+            if (rows == null) return;
+            for (int i = 0; i < rows.Count; i++)
+            {
+                int r = rows[i];
+                if (r < 0 || r >= _def.Bindings.Length) { Warn($"[Binding] 카드 규칙 줄 {r} 이 표 밖이다 — 건너뛴다."); continue; }
+                var b = Attach(host, in _def.Bindings[r], r, tick);
+                if (b == null) continue;
+                // **카드의 주기 규칙은 붙는 순간 첫 발동한다**(사용자 결정 2026-08-16 — 옛 `elapsed = periodSeconds`).
+                // 카드는 전투 중에 붙는다 — 붙이자마자 주기만큼 아무 일도 없으면 「안 붙었다」로 읽힌다. 유닛 저작
+                // 스킬(스폰과 함께 시작)은 이 줄을 안 탄다.
+                if (b.Def.Trigger == TriggerKind.PeriodicTimer) b.Elapsed = b.Def.PeriodSeconds;
+                // 호접몽 완주 버프의 칸 판별자 = 그 규칙의 `InstanceId`(옛 `_dcStackCounter++` — 붙일 때마다 새 칸).
+                if (b.Def.Payload == TriggerPayload.DreamCocoon) b.Def.StackId = b.InstanceId;
+                into.Add(b);
+            }
+        }
+
+        /// <summary>
+        /// 카드 한 장을 뗀다(숙주가 떠났다 · 표식 대상이 사라졌다). 남은 규칙을 떼고(이미 소유자 소멸로 떨어졌으면 무동작),
+        /// 수식자를 걷고, `CardDetached` 1건. 두 번 불러도 한 번만 일어난다.
+        /// </summary>
+        public void DetachCard(CardAttachment att, int tick)
+        {
+            if (att == null || att.Detached) return;
+            att.Detached = true;
+            for (int i = 0; i < att.Bindings.Count; i++) Detach(att.Bindings[i], BindingDetachReason.Manual, tick);
+            for (int i = 0; i < att.SquadBindings.Count; i++) Detach(att.SquadBindings[i], BindingDetachReason.Manual, tick);
+            var host = _world != null ? _world.Find(att.Host) : null;
+            if (host?.Attack != null)
+                for (int i = 0; i < att.Mods.Count; i++) host.Attack.Mods.Remove(att.Mods[i]);
+            _bus.Publish(CoreEvent.CardDetached(tick, att.Host, host, att.EntryId, att.CardIndex, att.Handle));
+        }
+
+        /// <summary>
+        /// 액티브 시전 — 판 호스트에 규칙 하나를 **발동 1회 수명**으로 붙인다(시전자가 없다 — 진영은 플레이어로 접힌다).
+        /// 드레인이 발동하면 `FireCapReached` 로 떨어진다. 사건 `CardCast` 1건.
+        /// </summary>
+        public Binding AttachCast(int row, int entryId, int cardIndex, Unity.Mathematics.float3 cellA,
+                                  Unity.Mathematics.float3 cellB, int tick)
+        {
+            if (row < 0 || row >= _def.Bindings.Length) { Warn($"[Binding] 액티브 규칙 줄 {row} 이 표 밖이다."); return null; }
+            var b = Attach(null, in _def.Bindings[row], row, tick);
+            if (b == null) return null;
+            b.Def.FireCap = 1;
+            b.Def.Lifetime = BindingLifetime.UntilFireCap;
+            _bus.Publish(CoreEvent.CardCast(tick, entryId, cardIndex, cellA, cellB, b.InstanceId));
+            return b;
+        }
+
+        /// <summary>판 호스트의 판 수명 규칙(드림스톤 — 판 진입 장비). `BattleMatch.Begin` 이 한 번 부른다.</summary>
+        internal void AttachMatchRows(int[] rows, int tick)
+        {
+            if (rows == null) return;
+            for (int i = 0; i < rows.Length; i++)
+            {
+                int r = rows[i];
+                if (r < 0 || r >= _def.Bindings.Length) { Warn($"[Binding] 판 규칙 줄 {r} 이 표 밖이다 — 건너뛴다."); continue; }
+                Attach(null, in _def.Bindings[r], r, tick);
+            }
+        }
+
         private void Warn(string msg) => Report?.Invoke(msg);
+    }
+
+    /// <summary>
+    /// 붙어 있는 카드 한 장 = 규칙 몇 줄 + 공격 수식자 몇 개. 개체가 아니다 — 숙주의 등록부 항목 묶음이다.
+    /// 손패 담당자는 이것을 **핸들로만** 쥔다(안을 들여다보면 그것이 효과를 아는 첫 줄이 된다).
+    /// </summary>
+    public sealed class CardAttachment
+    {
+        public int Handle;
+        public int EntryId;
+        public int CardIndex;
+        public SimEntityId Host;
+        public bool Detached;
+        public readonly List<Binding> Bindings = new List<Binding>(2);
+        /// <summary>Squad 스탯 줄 — 붙는 순간 판 위 해당 유닛 전원에게 한 번씩, 이후 배치분은 상속.</summary>
+        public readonly List<Binding> SquadBindings = new List<Binding>(1);
+        public readonly List<Combat.AttackModState> Mods = new List<Combat.AttackModState>(1);
     }
 }

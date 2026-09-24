@@ -5,9 +5,10 @@ namespace Wassup.BattleCore
 {
     // battle-core-rebuild unit 4 — 드림캐쳐 카드와 기믹의 **정의표 줄**.
     //
-    // 이 unit 이 카드에서 갖는 것은 **자원**뿐이다: 큐 · 손패 · 각성 게이지 · 부착 등록부 ·
-    // 쿨다운. 「그 카드가 무엇을 하는가」(바인딩·페이로드·발동)는 unit 7 의 것이고, 그래서
-    // 여기에 효과 필드가 하나도 없다 — 있으면 다음 사람이 그것을 읽어 실행하려 든다.
+    // unit 4 가 연 칸은 **자원**(값·쿨다운·인수인계 선언)이고, unit 7b 가 **그 카드가 무엇을 싣는가**를
+    // 더했다 — 규칙 줄 번호(`Bindings`)·공격 수식자·액티브 규칙·부착 제한·적 표식 여부. 여기 있는 것은
+    // 전부 **값**이다: 실행은 규칙 레이어(`BindingRegistry` → `TriggerDispatcher` → concrete)가 하고,
+    // 손패 담당자(`HandDeck`)는 이 줄을 읽어 규칙 등록부에 넘기기만 한다.
 
     public enum CardKind : byte
     {
@@ -38,6 +39,45 @@ namespace Wassup.BattleCore
         /// </summary>
         public bool DeclaresRetireRecall;
 
+        // ── unit 7b — 카드가 싣는 규칙 ────────────────────────────────────────
+
+        /// <summary>
+        /// 붙을 때 숙주에 매다는 규칙 줄(`MatchDefinition.Bindings` 인덱스). null/빈 = 없음.
+        /// 한 줄 = 저작 메커닉 하나(배치 오라는 **둘** — 공속 + 수면, 회수가 비대칭이라 한 줄로 못 접는다).
+        /// 줄마다 **host 종속 적용성**이 따로 판정된다(`Applicability`) — 한 줄이 이 숙주에서 안 돌아도
+        /// 나머지는 붙는다(옛 「메커닉 단위 skip, 전량 무효일 때만 카드 거절」).
+        /// </summary>
+        public int[] Bindings;
+
+        /// <summary>
+        /// Squad 카드의 스탯 줄. 숙주에 매다는 것은 위와 같지만 **붙는 순간 판 위의 해당 유닛 전원에게도
+        /// 한 번씩** 발동한다(이후 배치분은 그 줄이 `OnPlace(Any)` 로 상속시킨다). 회수는 그 줄의 소급 중화다.
+        /// </summary>
+        public int[] SquadBindings;
+
+        /// <summary>항상 켜진 공격 수식자(튕김·최전방·수면 배율 + 저작상 payload 인 강공). null/빈 = 없음.</summary>
+        public Combat.AttackModDef[] AttackMods;
+
+        /// <summary>액티브의 규칙 줄(`trigger None`, 시전자 없음). -1 = 없음(부착 카드 · bake 거절).</summary>
+        public int ActiveBinding;
+
+        /// <summary>액티브가 **두 칸**을 받는가(포탈). 입구 == 출구는 거절이다.</summary>
+        public bool NeedsTwoCells;
+
+        /// <summary>
+        /// 적을 겨누는 카드(살찌운 제물). 방어유닛에 안 붙고, **부착 상한 밖**이다(D14).
+        /// 조준 라우팅(7c)이 코어에 이 한 칸을 묻는다 — 뷰가 메커닉을 뒤져 추측하지 않게.
+        /// </summary>
+        public bool TargetsEnemies;
+
+        /// <summary>
+        /// 부착 제한(정적 술어 — 「누구에게 붙을 수 있나」). 발동 시점의 게이트와 층이 다르다.
+        /// 무효 저작(값 없음·모르는 직업)은 **어디에도 안 붙는다**(fail-closed).
+        /// </summary>
+        public AttachRequirementDef Requirement;
+
+        public static CardDef Default() => new CardDef { Id = "", ActiveBinding = -1 };
+
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
             MatchDefinition.Put(sb, "id", Id);
@@ -45,7 +85,43 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "cost", Cost, inv);
             MatchDefinition.Put(sb, "cooldownSeconds", CooldownSeconds, inv);
             MatchDefinition.Put(sb, "retireRecall", DeclaresRetireRecall ? 1 : 0, inv);
+            // unit 7b — **기본값이면 한 줄도 안 쓴다**(unit 4 까지의 카드 줄 해시 무변).
+            UnitDef.PutBindings(sb, inv, Bindings);
+            if (SquadBindings != null && SquadBindings.Length > 0)
+            {
+                var parts = new string[SquadBindings.Length];
+                for (int i = 0; i < parts.Length; i++) parts[i] = SquadBindings[i].ToString(inv);
+                MatchDefinition.Put(sb, "squadBindings", string.Join(",", parts));
+            }
+            if (AttackMods != null)
+                for (int i = 0; i < AttackMods.Length; i++)
+                    AttackMods[i].Canonicalize(sb, inv, "attackMod" + i.ToString(inv));
+            if (ActiveBinding >= 0) MatchDefinition.Put(sb, "active", ActiveBinding, inv);
+            if (NeedsTwoCells) MatchDefinition.Put(sb, "twoCells", 1, inv);
+            if (TargetsEnemies) MatchDefinition.Put(sb, "targetsEnemies", 1, inv);
+            if (Requirement.Kind != AttachRequirementKind.None) Requirement.Canonicalize(sb, inv);
         }
+    }
+
+    /// <summary>부착 제한의 종류 — 저작 `DcAttachType` 미러(번호 같음).</summary>
+    public enum AttachRequirementKind : byte { None = 0, Class = 1, UnitId = 2 }
+
+    /// <summary>
+    /// 부착 제한 한 칸. 옛 저작은 `attachType + attachValue`(문자열 한 칸)였고, 정의표에서는 **해석을 끝낸 값**으로
+    /// 싣는다 — 직업은 `UnitDef.Role` 과 같은 int, 유닛은 `UnitDef.Id`(저장용 안정 키, ordinal 비교).
+    /// `Invalid` = 저작이 무효(빈 값·모르는 직업) → 어디에도 안 붙는다(옛 fail-closed).
+    /// </summary>
+    public struct AttachRequirementDef
+    {
+        public AttachRequirementKind Kind;
+        public int Role;
+        public string UnitId;
+        public bool Invalid;
+
+        internal void Canonicalize(StringBuilder sb, CultureInfo inv)
+            => MatchDefinition.Put(sb, "attachReq",
+                ((int)Kind).ToString(inv) + "," + Role.ToString(inv) + "," + (UnitId ?? "~") + ","
+                + (Invalid ? "1" : "0"));
     }
 
     // ── 시즌 기믹 ────────────────────────────────────────────────────────────

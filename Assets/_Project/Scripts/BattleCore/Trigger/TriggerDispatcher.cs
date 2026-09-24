@@ -175,7 +175,7 @@ namespace Wassup.BattleCore.Trigger
             Raise(in e);
         }
 
-        private static TriggerEvent SubjectOf(Unit u, Seam seam, TriggerKind kind) => new TriggerEvent
+        internal static TriggerEvent SubjectOf(Unit u, Seam seam, TriggerKind kind) => new TriggerEvent
         {
             Seam = seam,
             Kind = kind,
@@ -247,13 +247,22 @@ namespace Wassup.BattleCore.Trigger
                     _listeners.Add(match[i]);
         }
 
-        private bool SubjectPasses(Binding b, Unit subject)
+        private bool SubjectPasses(Binding b, Unit subject) => SubjectPasses(in b.Def, subject, _def);
+
+        /// <summary>
+        /// `Any` 바인딩의 주어 필터 — 직업 비트 ∧ 배치 코스트(옛 카드 축 `MatchesDcAxis`). 둘 다 0 = 전원.
+        /// **한 함수**다: 상속(배치 사건)과 Squad 카드의 부착 즉시 전개(`CardBindings`)가 같은 답을 받아야 한다.
+        /// </summary>
+        public static bool SubjectPasses(in BindingDef d, Unit subject, MatchDefinition def)
         {
-            int mask = b.Def.SubjectClassMask;
-            if (mask == 0) return true;
+            int mask = d.SubjectClassMask;
+            if (mask == 0 && d.SubjectCost == 0) return true;
             if (subject == null || subject.Kind != UnitKind.Defender) return false;
-            int role = subject.DefIndex >= 0 && subject.DefIndex < _def.Units.Length ? _def.Units[subject.DefIndex].Role : -1;
-            return role >= 0 && (mask & (1 << role)) != 0;
+            if (subject.DefIndex < 0 || subject.DefIndex >= def.Units.Length) return false;
+            ref var u = ref def.Units[subject.DefIndex];
+            if (mask != 0 && (u.Role < 0 || (mask & (1 << u.Role)) == 0)) return false;
+            if (d.SubjectCost != 0 && u.Cost != d.SubjectCost) return false;
+            return true;
         }
 
         // 카운터·게이트 — **통과한 사건만 센다**(카운트 게이트: `if (GatePass) Tick`).

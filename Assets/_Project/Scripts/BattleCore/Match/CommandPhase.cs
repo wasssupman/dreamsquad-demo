@@ -93,7 +93,11 @@ namespace Wassup.BattleCore
                 case CommandKind.AttachCard:
                     return _hand.TryAttach(cmd.CardIndex, cmd.Target, tick);
                 case CommandKind.CastActive:
-                    return _hand.TryCast(cmd.CardIndex, tick);
+                    return _hand.TryCast(cmd.CardIndex, cmd.Cell, cmd.CellB, cmd.HasCellB, tick);
+                case CommandKind.DebugAttachCard:
+                    return _hand.DebugAttach(cmd.CardIndex, cmd.Target, tick);
+                case CommandKind.DebugCastCard:
+                    return _hand.DebugCast(cmd.CardIndex, cmd.Cell, cmd.CellB, cmd.HasCellB, tick);
                 case CommandKind.Submit:
                     return Submit();
 
