@@ -408,7 +408,8 @@ namespace Wassup.BattleCoreUnity
         // byte 로 구워져 있어 한쪽이 앞에 값을 끼우는 순간 조용히 밀린다.
         // (리뷰가 든 시나리오: `ThresholdMode` 앞에 값이 끼면 `Consume` 이 `Edge` 로 읽혀
         //  소비형 임계가 스택을 안 깎고 **무한 발화**한다.)
-        // `BuilderEnumPinTests` 가 일곱 쌍의 이름·개수 일치와 매핑의 이름 보존을 고정한다.
+        // `BuilderEnumPinTests` 가 이 파일과 `MatchDefinitionBuilder` 의 매핑 전부(열거형 열 쌍 +
+        // 상수 집합 둘 — 도형 종류·층 비트)의 이름·개수 일치와 매핑의 이름 보존을 고정한다.
 
         /// <summary>저작 지속 락 모드 → 코어 어휘. **이름으로 옮긴다.** 모르는 값은 락 없음으로 접는다.</summary>
         public static TargetMode ToCoreTargetMode(EnemyTargetMode authored)

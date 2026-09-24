@@ -54,6 +54,7 @@
 | 착지 슬램의 형을 데이터로 싣기 | 저작이 하나뿐이라 코드가 `OriginBodyRadius = 0` 으로 선언한다. **그 전에 필드를 만들지 말 것** | 보류(C22) |
 | 스탯·스택 출력의 **적용** | 저작(`AttackOutputDef`)은 옮겼고 슬롯 적용은 unit 6 이다. 오늘은 인박스까지 | 이월(unit 6) |
 | `PatternDef.FanOutToAllCandidates` / `FanOutStaggerSec` | 정의표와 `configHash` 에는 있는데 `EmitPatternShot` 에 **소비자가 없다**(옛 `ProjectileEmitterSystem.cs:221` 은 true 면 반경 안 전원에게 한 발씩). 라이브 SO 에서 켠 곳 0건이라 오늘 거동은 같다. 발사 명세를 트리거 레이어가 소비할 때 배선하거나, 그때도 켠 곳이 0 이면 은퇴 판정 | 보류(unit 7) |
+| `TauntAttackGrantSystem`·`AggroAttackProfile`(무장 해제 적의 임시 도발 공격 + 골 grant 마스크 넓힘) | 라이브 소비자 0 — 러너·스위프트는 무장(평타 피해 10)·마스크 21 이라 부여 분기(`WithNone<AttackState>`)를 안 타고, 무장 해제 적은 저작 0, walk-only 골 grant 는 은퇴했다(battle-structures unit 0). 후계 = `AiMovePhase.GrantAggro` 의 `tileRange == NoAttack` 게이트(못 때리는 적은 유인되지 않는다). 훗날 `aggroAttackDamage > 0` 인 무장 해제 적을 저작하려면 이 규칙을 **다시 열어야 한다 — 그때는 사용자 결정**(2026-09-24 드리프트 감사, 한 번 이식했다가 `53e8fec4` 로 철회) | 제거(C26) |
 | 군중 제어 슬롯 적용·감쇠·면역 병합 | 같은 이유. 이 unit 은 **부여 측**(누가 무엇을 얼마나)까지 | 이월(unit 6) |
 | 모디파이어 배율(`damageMul`·`attackSpeedMul`·`dmgTakenMul`) | 소비처는 이미 살아 있다(`Unit.DamageTakenMul`·`AttackState.Period(mul)`). 값을 넣는 것이 unit 6 | 이월(unit 6) |
 
