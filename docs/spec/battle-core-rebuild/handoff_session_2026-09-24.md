@@ -8,10 +8,10 @@
 |---|---|
 | 브랜치 | `rebuild/battle-core` = 워크트리 `/Users/sy/dev/wassup-core`. main 워크트리 `/Users/sy/dev/wassup` 는 문서 정본. 조각 B 까지 **main 에 머지됨**(`d9fbe90c`), 이후 둘은 같은 지점을 따라간다(main 문서 커밋 → 브랜치 `--ff-only`) |
 | 푸시 | GitHub `f119c1b1`(main + 브랜치)까지 푸시됨(2026-09-24). 그 뒤 커밋은 미푸시. GitLab 미러는 SSH 불통으로 사용자가 직접. 푸시는 매번 명시 승인 |
-| 완료 | unit 0(환경) · 조각 A(1~4) · 조각 B(5a·5b·5c + 플레이 1~3차 결함 9건 수정) · **조각 C 코어(6a·6a2·6b·6b2)** · 드리프트 감사 수정 13건 · unit 7 spec 4편(7a~7d) |
-| 진행 중 | 6b2 core-reviewer → **6c**(뷰 풀·착탄 예고 표식·디버그 도구) → 사용자 플레이(조각 C). 다른 세션이 이어받으면 브랜치 HEAD 와 `git status` 로 산출물 유무를 먼저 확인 |
-| spec 있음·구현 전 | 6c · 7a~7d · 8·9·10(README 행만) |
-| 검증 기준선(HEAD `ec041a8af`) | 헤드리스 export: build 0 · test 508 · Unity 층 Check 0 · Unity EditMode 코어 519/519(골든 11종 무변) · Assets 223/225(선행 2 = `bomb_man`·`boomerang`) · PlayMode 코어 40/40 · `check_ledgers.py` exit 0, `bridge-methods` 미정 **46** · rules 보류 38 |
+| 완료 | unit 0(환경) · 조각 A(1~4) · 조각 B(5a·5b·5c + 플레이 1~3차 결함 9건 수정) · **조각 C 전부(6a·6a2·6b·6b2·6c+후속 5)** · 드리프트 감사 수정 13건 · unit 7 spec 4편(7a~7d) |
+| 진행 중 | **사용자 플레이(조각 C) 대기** — 6c 후속 5커밋 보충 리뷰(review-6c) 진행 중. 통과 시 unit 7(7a→7b→7c→7d). 다른 세션이 이어받으면 브랜치 HEAD 와 `git status` 로 산출물 유무를 먼저 확인 |
+| spec 있음·구현 전 | 7a~7d · 8·9·10(README 행만) |
+| 검증 기준선(HEAD `ef3606e4c`) | 헤드리스 export: build 0 · test 525 · Unity 층 Check 0 · Unity EditMode 코어+Assets 759/761(선행 2 = `bomb_man`·`boomerang`, 골든 11종 무변) · PlayMode 코어 46/46 · `check_ledgers.py` exit 0, `bridge-methods` 미정 **44** · rules 보류 38 |
 | 새 씬 진입 | 워크트리 에디터 메뉴 `Wassup/BattleCore/씬 열고 플레이 (기본 모드)` (빌드 설정 무변, 로비 진입 없음) |
 
 ## 2. 사용자 결정 기록 (날짜순 — 되돌리지 말 것)
@@ -55,4 +55,4 @@
 
 ## 6. 이 세션의 커밋 지도 (브랜치, 최근순)
 
-`ec041a8af` 도발 공격 이식 제외 기록 · `53e8fec4a` H6 revert(cc8fe232 철회) · `bed80d790` **6b2** · `a6098eab` 라이브 정의표 스모크 lane · `c70ea3f1`~`881550a3` 감사 수정 H1~H5·M6·M7·빌더 의미·enum 핀 · `acc3c572a` 6b 리뷰 docs(**+ fix-audit 모드 배선 4파일 편승** — 공유 인덱스 사고, 내용은 검증본) · `a3798db83` 효과 타일 옛 규칙 복구 · `cd390e511` **6b** · `732b5a00`·`56b8a4d8` 6a2 · `0087e9d2`·`ec10619d`·`94846d3c`·`a5180e9e` 6a · `80f90953` 6a2 spec · `8eb1daaa` 6c 추가 2건 · `4388d104` unit 6 spec 4편 · `d9fbe90c` **조각 A·B main 머지** · `99395bc0` 선택 패널+퇴근 버튼 · `bc43587b`~`e92477fa` 플레이 2차 결함 5 · `bf6aa7ae`~`04cfc393` 플레이 1차 결함 3(+반전) · `725df315`~`ebf055f4` 5c · `c4c98c92`·`f979550d`~`e3731485` 5b · `1b7e033b`~`aa16ee9d` 5a(+골든 Unity 재굽기 `68c28363` · 이동 튜닝 정의표 `fae42944`) · `e734f33e` 골든 정본 Unity · `7abfec27`·`55688ef5` unit 4 fix · 그 앞은 README 상태 라인 참조.
+`ef3606e4c`·`1a798bb8e` 6c 문서(브레스·예고 7a 이월) · `8fb234be7` 방패 마음 부수 피해 백스톱 · `785cf4234` AttackResolved 도형 스냅샷 · `e3337272f` LastRunEnded 55 · `405bf29f3` AggroReleased 54 · `eca3e47e7` **6c** · `ec041a8af` 도발 공격 이식 제외 기록 · `53e8fec4a` H6 revert(cc8fe232 철회) · `bed80d790` **6b2** · `a6098eab` 라이브 정의표 스모크 lane · `c70ea3f1`~`881550a3` 감사 수정 H1~H5·M6·M7·빌더 의미·enum 핀 · `acc3c572a` 6b 리뷰 docs(**+ fix-audit 모드 배선 4파일 편승** — 공유 인덱스 사고, 내용은 검증본) · `a3798db83` 효과 타일 옛 규칙 복구 · `cd390e511` **6b** · `732b5a00`·`56b8a4d8` 6a2 · `0087e9d2`·`ec10619d`·`94846d3c`·`a5180e9e` 6a · `80f90953` 6a2 spec · `8eb1daaa` 6c 추가 2건 · `4388d104` unit 6 spec 4편 · `d9fbe90c` **조각 A·B main 머지** · `99395bc0` 선택 패널+퇴근 버튼 · `bc43587b`~`e92477fa` 플레이 2차 결함 5 · `bf6aa7ae`~`04cfc393` 플레이 1차 결함 3(+반전) · `725df315`~`ebf055f4` 5c · `c4c98c92`·`f979550d`~`e3731485` 5b · `1b7e033b`~`aa16ee9d` 5a(+골든 Unity 재굽기 `68c28363` · 이동 튜닝 정의표 `fae42944`) · `e734f33e` 골든 정본 Unity · `7abfec27`·`55688ef5` unit 4 fix · 그 앞은 README 상태 라인 참조.

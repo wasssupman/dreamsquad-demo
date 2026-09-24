@@ -65,16 +65,16 @@
 | 벤더 VFX 프리팹 **신규 저작** | 이 unit 은 **배선**이다. 옛 씬이 쓰던 프리팹을 그대로 가리킨다 — 새 룩은 별도 spec | 제거(범위 밖) |
 | 옛 **타이밍 VFX 큐**(`_pendingHitVfx` · `hitDelaySec` 지연) | 옛 시각 사건은 공격 **START** 에 나와 RESOLVE 까지 미뤘다. 새 `AttackResolved` 는 **그 자체가 RESOLVE** 라 미룰 것이 없다(미루면 타격보다 늦게 터진다). 공격 **애니**가 RESOLVE 에 시작하는 것은 위 「공격음을 START 로」와 같은 축이다 | 제거(사건이 이미 그 시점) |
 | **착탄 예고 표식**(「추가」 절 1) | spec 전제가 틀렸다 — 예고 반경은 `ProjectileData` 필드가 **아니라** 스킬 intent 값이다(옛 `EcsSkillContext.cs:1121` `telegraphTileRange = intent.Telegraph ? intent.TileRange : 0`). 탄 정의표에 옮길 저작이 없고, 생산자(운석·스킬 조준)가 전부 unit 7 이다. 반경 없이 칠하면 규칙을 지어낸다 | 보류 · unit 7(7a intent) |
-| **어그로 표식**(`StatusFxKind.Aggro`) | 켜는 사건(`AggroAcquired`)은 있는데 **풀리는 사건이 없다**. 옛 표식은 `Aggroed` 컴포넌트 보유를 매 프레임 폴링했다 — 풀림을 폴링으로 되살리면 이 unit 이 없애는 모양이 돌아온다 | 보류 · 코어 사건(`AggroReleased`) 필요 — **리드 결정** |
-| 라스트런 표식의 **닫힘 사건** | 켜짐은 `PickupTaken`, 닫힘(crash)은 사건이 없다. 임시 다리 = 같은 몸의 스탯 회수 사건 + 초당 1회 정본 플래그(`LastRunActive`) 확인 | 임시 · 코어 사건 필요 — **리드 결정** |
+| **어그로 표식**(`StatusFxKind.Aggro`) | 켜는 사건(`AggroAcquired`)은 있는데 **풀리는 사건이 없다**. 옛 표식은 `Aggroed` 컴포넌트 보유를 매 프레임 폴링했다 — 풀림을 폴링으로 되살리면 이 unit 이 없애는 모양이 돌아온다 | **완료**(6c 후속 · 리드 결정) — 코어 `AggroReleased`(54) 구독으로 끈다. 「고친 것」 행 |
+| 라스트런 표식의 **닫힘 사건** | 켜짐은 `PickupTaken`, 닫힘(crash)은 사건이 없다. 임시 다리 = 같은 몸의 스탯 회수 사건 + 초당 1회 정본 플래그(`LastRunActive`) 확인 | **완료**(6c 후속 · 리드 결정) — 코어 `LastRunEnded`(55) 구독으로 끈다. 임시 다리 철거. 「고친 것」 행 |
 | **살찌운 제물 표식**(`Marked`) | 표식 등록부의 주인이 unit 7(저주 카드)이다 | 보류 · unit 7 |
 | **실드 파열 원샷 VFX** | 옛 코드에 **없다**(옛 파열 드레인은 페이로드 실행·카드 펄스뿐). 파열의 그림은 오버헤드 실드 칸이 0 이 되는 것이다. 새 원샷은 신규 저작 | 제거(범위 밖) |
-| 드래곤 **화염 브레스** VFX | 새 `AttackResolved` 에 브레스 축(방향·반각·사거리)이 없다 — 옛 것은 전용 플래그 사건(`hasAreaBreath`)이었다 | 보류 · 코어 사건 축 — **리드 결정** |
+| 드래곤 **화염 브레스** VFX | 6c 후속 3 이 `AttackResolved` 에 축·도형·사거리를 실었지만 **브레스는 그 값으로 그릴 수 없다** — 옛 브레스의 콘은 공격 도형이 아니라 **드림캐쳐 메커닉 슬롯**(`AreaBreath` = 21, `ConeBreathSkill`)의 `coneHalfAngleDeg`·`tileRange` 였다(옛 `AttackSystem.cs:1942-1971` · `BattleBridge.cs:4768-4776`). 드래곤 저작은 공격 도형 전방위 · 사거리 2칸, 브레스 슬롯 반각 50° · 3칸(`Enemy_Dragon.asset`) — 공격 사건으로 그리면 **틀린 콘**이 나온다. 새 코어에는 `ConeBreath` 스킬이 아직 없다(7a) | 보류 · unit 7a(`ConeBreath` 발화 사건이 콘 스냅샷을 싣는다) — **7a 이월 확정**(리드 2026-09-24: 플레이어 규칙이 아니라 «어느 사건에서 그리나»의 배선 문제) |
 | 길막 **절차 폴백 VFX**(떨어지는 돌·먼지) · 픽업 플레이스홀더의 **발광** | 파티클 수치가 전부 코드 리터럴이고 머티리얼이 `Shader.Find` 였다(제약 6 · 추가 제약). 프리팹이 비면 경고 + 그림 없음, 플레이스홀더는 `RuntimeMaterialFactory.CreateOpaque` | 제거 |
 | 옛 장판 프리팹의 **자기 수명 시계**(`HazardVisualLifetime`) | 실시간으로 자기를 파괴해 정지·슬로모에서 규칙보다 먼저 사라졌다. 스폰 시 떼고 소멸 사건만 지운다(Play 스모크에서 실측) | 제거(계약 7) |
 | 배치 **폴백 펄스**(`PlayFallbackDeploymentPulse`) | 배치 모션은 5a 가 `DefenderActivated` → 뷰 `PlayDeploy` 로 이미 옮겼다 | 제거(선행) |
 | `DcVisualConfig` **개통** | 그 자산의 유일한 값(`procImpactMinIntervalSec`)은 **드림캐쳐 발동 임팩트**의 코얼레스 간격이고 발동 사건이 unit 7 이다. 6c 에서 읽으면 그 값을 다른 뜻으로 쓰게 된다 | 보류 · unit 7 |
-| 방패 걸린 마음의 **부수 피해 제외 소비처**(README 6c 행) | 코어 변경(광역 생산자 쪽 `EffectEligibility`)이라 이 unit 의 배정(뷰·도구)과 코어 손대기 범위 밖이다. 6c 문서의 변경 대상에도 없었다 | 보류 · **리드 결정**(6b/7 코어) |
+| 방패 걸린 마음의 **부수 피해 제외 소비처**(README 6c 행) | 코어 변경이라 6c 본편의 배정(뷰·도구) 밖이었다 | **완료**(6c 후속 4 · 리드 결정) — 「고친 것」 행 |
 
 ## 고친 것 (기존 코어·Unity 층 변경)
 
@@ -92,6 +92,10 @@
 | 공격 빔 세션 키 = **쏘는 쪽** | spec 문면 「키 = 맞는 쪽」은 배치 스킬의 **대상별 조사**(unit 7) 얘기다(옛 주석). 공격 빔을 맞는 쪽으로 키잉하면 두 버스터즈가 한 적을 쏠 때 빔이 하나로 접힌다. `Open(key, …)` 는 키를 호출자가 고른다 |
 | 배치 링 펄스 = **착지** 프레임 | 사건 `Placed` 는 드롭 순간이고 비행이 그 뒤다. 옛 연출은 착지에 났다 → 비행 키가 사라지는 프레임에 난다(비행 없는 경로는 다음 프레임). 흔들기는 `DefenderActivated`(옛: 배치 스킬 발화 시점) |
 | `ViewOrder` += `Board 15` · `Effect 35` · `Status 45` | 구현 7. `CoreViewOrderTests` 가 씬 순서를 뒤집어 확인 |
+| **어그로 풀림 = 사건**(6c 후속 · 리드 결정 1) — `CoreEvent.AggroReleased`(**54**, 트레이스 **52**, `Arg` = `AggroReleaseReason`{`Expired` · `GuardianGone` · `Rebuilt`}). 해제 자리 셋(시한 · 가디언 부재 · 추격판 무효화)이 `FieldPrepPhase.Release` **한 함수**를 부르고 그 함수가 낸다. 상태 표식 풀이 `AggroAcquired`/`AggroReleased` 로 어그로 표식을 켜고 끈다 | 이식 제외 「어그로 표식」 행. 옛 것은 `Aggroed` 보유를 매 프레임 폴링했다(`BattleBridge.cs:3525`). 적 자신의 소멸은 풀림이 아니다(`UnitDestroyed` 가 거둔다) · 도발 갈아타기도 아니다(획득이 한 번 더 온다). ⚠ 가디언이 빠지면 그 몸(장애물)이 풀려 **같은 틱의 추격판 무효화가 먼저** 히트 어그로를 푼다 — 사유가 `Rebuilt` 인 것이 그 순서의 증언이다(`DetectionRulesTests` 3건 · PlayMode `CoreEffectViewTests` 어그로 표식 1건). 골든 코퍼스는 어그로 획득 0건이라 무변 |
+| **라스트런 닫힘 = 사건**(6c 후속 · 리드 결정 2) — `CoreEvent.LastRunEnded`(**55**, 트레이스 **53**, `Arg` = `LastRunEndReason`{`Crash` · `Death` · `Retire` · `Removed`}). 닫히는 문 둘(시간 끝 `CrashLastRun` · 중단 정책 `InterruptProgress`)이 `BattleWorld` 에 있고 사건은 거기 한 곳에서 난다. `ProgressiveStates.Interrupt` 는 「이 중단이 창을 닫았나」를 **전후 값 비교**로 돌려준다(정책 표를 두 번 적지 않는다). 퇴근은 제거 **앞**에 `Retire` 로 닫고, 그 밖의 제거(유출 등)는 `Destroy` 가 `Removed` 로 닫는다 | 이식 제외 「라스트런 닫힘」 행. 6c 의 임시 다리(스탯 회수 계기 + 초당 `LastRunActive` 확인)를 철거했다 — 표식은 레드불 `PickupTaken` 에 켜지고 이 사건에 꺼진다. 퇴근 경로는 전에는 중단 정책을 **안 불렀다**(`Reset` 이 대신 지웠다) — 규칙 결과는 같고, 사유가 「퇴근」으로 남는 것만 달라졌다(`PickupTests` 4건 · PlayMode `CoreEffectViewTests` 라스트런 1건). 골든 코퍼스는 픽업 0건이라 무변 |
+| **`AttackResolved` 가 공격의 축·도형·사거리를 싣는다**(6c 후속 · 리드 결정 3) — 필드 append `AttackDir`(월드 XZ 정규화) · `AttackShape`(bake 형 그대로 — 반각은 `sinHalf`/`cosHalf`) · `AttackRange`(런타임 칸). 근접은 부가 타격을 고른 **그 축**, 평타 탄은 조준 방향. 폭탄·소환은 기본값. 참격 자국(`CoreVfxSpawner`)이 이 스냅샷으로만 그린다 | 5a~6c 의 참격은 공격자를 **되물어** `Attack.Shape`·`Attack.Range` 를 읽었다(계약 4·7 위반 — 옛 브리지 `BattleBridge.cs:4869-4884` 의 드레인 시점 `AttackState` 읽기를 옮긴 모양). 번호 무변 · **트레이스 무변**(채널 여섯 칸) → 골든 무변. `CombatRulesTests.공격_성사_사건은_판정한_도형_축_사거리를_값으로_싣는다`. 브레스 라우팅은 안 했다(위 이식 제외) |
+| **방패 걸린 마음의 부수 피해 제외**(6c 후속 · 리드 결정 4 · unit 4 이월) — `HeartMeter.DrainTowers` 가 방패(`CoreShielded` 관찰) 동안 마음 타워 인박스의 피해·회복을 **버린다**(비운다 · 숫자 없음) | 옛 소비처 5(`DamageApplicationSystem.cs:139-144`)를 **그 모양 그대로** 옮겼다 — 생산자 쪽이 아니라 **피해 적용 한 곳**. 리드 지시는 「광역 생산자가 `EffectEligibility` 를 본다」였지만 옛 `CoreShielded.cs:34-38` 이 「`ProjectileHitSystem` 에 중복 필터를 넣지 말 것 — 한 곳에서 떨어뜨려야 새 피해 경로가 자동으로 덮인다」를 명시해 옛 것을 따랐다. ⚠ 증상 「옆에서 터진 광역이 마음을 깎는다」는 **이미 초록이었다** — 새 코어의 착탄·장판 피해자 선정이 `IsTargetable`(방패 = `Untargetable`)로 이미 거른다. 빨간 것은 조준을 안 지나는 생산자(인박스 직접 기입 — unit 7 의 스킬 페이로드 자리)였다. `MatchStructureTests` 광역 증상 1건(대조군 포함) · 백스톱 1건 |
 
 ## 완료 기준
 
@@ -100,7 +104,9 @@
 - [x] `ledgers/tools.md` **6·7·9행 닫힘**(존 해저드 · 길막 · 피로). 세 행의 처분이 「조각 C 앞」이었고 여기서 끝난다 — 남는 것은 조각 D 앞의 2행(순찰 10 · 재배치 11)뿐이다.
 - [x] `ledgers/bridge-methods.md` 미정 **46 → 44**: 닫히는 것은 **2행**(`ReconcileStatusFx/0` · `HostBodyRadiusOf/1`)이다. 나머지 뷰 풀 행들은 이미 「뷰 풀」로 배정돼 있어 **주인 확정이지 잔량 감소가 아니다**. **잔량 44 를 README 상태 라인에 숫자로 적는다**(진행 규칙 — unit 7 이 그 44 를 닫는 것이 조각 E 진입 조건).
 - [x] `python3 tools/battle-core-rebuild/check_ledgers.py` **exit 0**(미정 44).
-- [ ] `core-reviewer` APPROVE(Unity 층 포함: 매니저·브리지·컨트롤러 이름 0 · 판정 이전 0 · `Shader.Find` 0).
+- [x] `core-reviewer` APPROVE(2026-09-24 · `eca3e47e7` finding 0 — 매니저 0 · 판정 재계산 0 · `Shader.Find` 0 · 빔 키 = 쏘는 쪽이 옛 코드와 일치. 후속 5커밋 `405bf29f3`~`ef3606e4c` 보충 리뷰 진행 중).
+
+확인 2026-09-24 — 리드 export 재검증(`1a798bb8e`): build 0 · test 525 · Check 0 · 미정 44. Unity EditMode 코어+Assets 759/761(선행 2) · PlayMode 코어 46/46 · 골든 무변.
 - [ ] **사용자 플레이 — 조각 C 의 질문**: *「효과가 걸린 게 보이나, 그리고 걸린 만큼 세기가 달라진 게 느껴지나」*. 구체 확인 6: ⑴ 감속·기절·수면·출혈·화상 표식이 각각 구분된다 ⑵ 실드가 부여되고 깨지는 순간이 보인다 ⑶ 장판이 깔리고 밟은 적이 탄다 ⑷ 길막이 체력 바를 달고 부서진다 ⑸ 배치 순간 링과 흔들림이 난다 ⑹ 선택 패널에 **델타 칩**이 뜬다. ⚠ 같이 볼 것 둘 — **6a 구현 15**(투사체 디버프 곱누적)는 사용자가 **(a) 고친다**로 답했고 6a2 가 구현했다(`732b5a00`) — 킨들러류가 눈에 띄게 약해졌는지 이 플레이에서 본다. **6b2 구현 1**(픽업 소비가 칸 → 제약 13 자)은 **더 잘 먹히게** 바뀐다. 반영 시점(버프가 몇 틱 뒤에 드나)은 **안 바뀌었다** — rev 3 §4 가 그 축을 「변경 없음」으로 닫았고 새 코어도 같은 단계 순서를 쓴다.
 - [x] 「아직 안 보이는 것」 표를 unit 7 에 넘긴다(아래 표): 부착 카드 줄 · 회오리/포탈 장 · 픽업 스폰 · 사직서 드랍 · 열기/피로 누적 · 호접몽 · 운석 barrage.
 
@@ -118,10 +124,10 @@
 | **착탄 예고 표식** | 예고 반경이 스킬 intent 값(7a) | 없음(반경 없이 칠하면 규칙을 지어낸다) |
 | **강화 오라**(드림캐쳐 출처 스탯) · 카드 페이로드 오라 | 카드 부착·시전(7b) | `CoreDcAuraVisualPool` 섬(판정 = 코어 순수 함수) |
 | **살찌운 제물 표식** | 저주 카드(7b) | 등록부 `Marked` 줄만 |
-| 어그로 표식 · 라스트런 닫힘 · 드래곤 브레스 | 코어 **사건 부재**(위 이식 제외) — 리드 결정 | 라스트런은 임시 다리로 뜬다 |
+| 드래곤 브레스 | 콘이 공격 도형이 아니라 `ConeBreath` 스킬 슬롯 값이다(위 이식 제외) — 스킬이 7a | 없음 |
 
 
 ## 추가 (2026-09-24 투사체 이식 감사)
 
-- **착탄 예고 표식**(`telegraphTileRange` — 옛 `ProjectileSpawnRequest.cs:21` · `BattleBridge.cs:5456`, 낙하탄·운석이 떨어질 칸을 미리 칠하는 뷰)은 어느 unit 문서에도 없었다 → 이 unit 의 뷰 풀 목록에 넣는다. 사건은 `ProjectileSpawned` 가 이미 자리(`SiteTarget`)를 나르므로 새 사건은 없다. 예고 반경은 탄 정의표(`ProjectileDef`)의 값이다(제약 6).
+- **착탄 예고 표식**(`telegraphTileRange` — 옛 `ProjectileSpawnRequest.cs:21` · `BattleBridge.cs:5456`, 낙하탄·운석이 떨어질 칸을 미리 칠하는 뷰)은 어느 unit 문서에도 없었다 → 이 unit 의 뷰 풀 목록에 넣는다. 사건은 `ProjectileSpawned` 가 이미 자리(`SiteTarget`)를 나르므로 새 사건은 없다. 예고 반경은 탄 정의표(`ProjectileDef`)의 값이다(제약 6). ⚠ **정정**: 탄 정의표 값이 아니라 스킬 intent 값이다 — 위 이식 제외 「착탄 예고 표식」 행 · 7a 이월 메모.
 - 착탄 사건의 **광역 반경·페이로드 종류**(옛 `ProjectileHitEvent.cs:25`)가 `CoreEvent.ProjectileHit` 에 없어 광역 폭발 뷰 라우팅이 불가능하다 → 6c 가 사건 페이로드에 반경·페이로드 종류를 추가한다(값 스냅샷, 계약 7).
