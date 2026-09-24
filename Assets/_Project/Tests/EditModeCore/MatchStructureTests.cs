@@ -286,6 +286,73 @@ namespace Wassup.Tests.EditMode.Core
                 "거점은 점유만 선언한다 — 「본능 footprint 는 벽」은 2026-08-12 에 폐기됐다");
         }
 
+        // ── 6c 후속 4 — 방패 걸린 마음의 **부수 피해 제외**(옛 `CoreShielded` 소비처 5) ──
+        //
+        // 조준 제외(소비처 1·2)로는 못 막는 것 — 마음을 «겨눈» 게 아니라 **옆에 떨어진** 광역.
+        // 옛 전투는 생산자마다 거르지 않고 피해 적용 한 곳에서 버렸다(`DamageApplicationSystem.cs:139`).
+
+        // 적이 쏘는 칸 광역 탄 하나(하늘에서 떨어진다 — 비행 거리를 묻는 테스트가 아니다).
+        private static MatchDefinition WithEnemyBlast(bool shielded)
+        {
+            var def = Armed();
+            var p = Wassup.BattleCore.ProjectileDef.Default();
+            p.Id = "fixture_blast";
+            p.Movement = (int)Wassup.BattleCore.Combat.Projectile.MovementKind.SkyFall;
+            p.Payload = (int)Wassup.BattleCore.Combat.Projectile.PayloadKind.TileAoe;
+            p.ImpactTileRange = 1;
+            p.MinFlightTime = 0.05f;
+            def.Projectiles = new[] { p };
+            if (shielded) CoreMatchFixtures.AddStructure(def, new int2(8, 2), Faction.DefenderInstinct, health: 1000f);
+            return def;
+        }
+
+        private static float BlastBesideHeart(bool shielded)
+        {
+            var match = Begin(WithEnemyBlast(shielded));
+            Assert.AreEqual(shielded, match.Heart.CoreShielded);
+            match.Apply(Command.DebugSpawnEnemy(0, new int2(1, 2)));
+            var caster = FirstOf(match, Faction.EnemyUnit);
+            caster.Move.Speed = 0f;
+            caster.Attack = null;   // 이 적의 평타가 아니라 **옆에 떨어진 광역**만 본다
+            var towerCell = match.Map.CellOf(FirstOf(match, Faction.DefenderCore).Position);
+            Assert.IsTrue(match.Apply(Command.DebugFireProjectile(0, caster.Id, towerCell, damage: 50f)).Accepted);
+            for (int t = 0; t < 60; t++) match.Tick();
+            return match.Heart.MaxHealth - match.Heart.Health;
+        }
+
+        [Test]
+        public void 방패가_걸린_마음_옆에서_터진_광역_피해는_마음의_체력을_깎지_않는다()
+        {
+            Assert.Greater(BlastBesideHeart(shielded: false), 0f,
+                "대조군 — 방패가 없으면 같은 광역이 마음을 깎는다(테스트가 광역을 볼 수 있다는 증거)");
+            Assert.AreEqual(0f, BlastBesideHeart(shielded: true), 1e-4f,
+                "본능이 서 있는 동안 옆에 떨어진 광역은 마음을 못 깎는다");
+        }
+
+        [Test]
+        public void 방패가_걸린_마음에_들어온_피해는_어느_생산자든_버려지고_숫자도_안_뜬다()
+        {
+            // 옛 설계의 선택 그대로 — **생산자마다 거르지 않는다.** 체력의 주인(담당자)이 인박스를
+            // 받는 자리에서 버리므로, 조준 제외를 모르는 새 생산자(unit 7 의 스킬 · 미래 페이로드)가
+            // 인박스에 직접 써도 방패가 샌다는 일이 없다.
+            var def = Armed();
+            CoreMatchFixtures.AddStructure(def, new int2(8, 2), Faction.DefenderInstinct, health: 1000f);
+            var match = Begin(def);
+            var damage = CoreMatchFixtures.Listen(match, CoreEventKind.DamageApplied);
+            var heal = CoreMatchFixtures.Listen(match, CoreEventKind.HealApplied);
+            var tower = FirstOf(match, Faction.DefenderCore);
+
+            tower.Inbox.Damage.Add(new DamageEntry { Amount = 40f, Source = SimEntityId.Match });
+            tower.Inbox.Heal.Add(5f);
+            match.Tick();
+
+            Assert.AreEqual(match.Heart.MaxHealth, match.Heart.Health, 1e-4f, "방패가 피해를 버린다");
+            Assert.AreEqual(0, tower.Inbox.Damage.Count, "버린다 = 비운다(쌓였다가 방패가 깨지는 틱에 터지지 않게)");
+            Assert.AreEqual(0, tower.Inbox.Heal.Count);
+            foreach (var e in damage) Assert.AreNotEqual(Faction.DefenderCore, e.Faction, "버린 피해의 숫자는 안 뜬다");
+            foreach (var e in heal) Assert.AreNotEqual(Faction.DefenderCore, e.Faction);
+        }
+
         private static Unit FirstOf(BattleMatch match, Faction faction)
         {
             var units = match.World.Units;

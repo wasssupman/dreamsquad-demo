@@ -74,7 +74,7 @@
 | 옛 장판 프리팹의 **자기 수명 시계**(`HazardVisualLifetime`) | 실시간으로 자기를 파괴해 정지·슬로모에서 규칙보다 먼저 사라졌다. 스폰 시 떼고 소멸 사건만 지운다(Play 스모크에서 실측) | 제거(계약 7) |
 | 배치 **폴백 펄스**(`PlayFallbackDeploymentPulse`) | 배치 모션은 5a 가 `DefenderActivated` → 뷰 `PlayDeploy` 로 이미 옮겼다 | 제거(선행) |
 | `DcVisualConfig` **개통** | 그 자산의 유일한 값(`procImpactMinIntervalSec`)은 **드림캐쳐 발동 임팩트**의 코얼레스 간격이고 발동 사건이 unit 7 이다. 6c 에서 읽으면 그 값을 다른 뜻으로 쓰게 된다 | 보류 · unit 7 |
-| 방패 걸린 마음의 **부수 피해 제외 소비처**(README 6c 행) | 코어 변경(광역 생산자 쪽 `EffectEligibility`)이라 이 unit 의 배정(뷰·도구)과 코어 손대기 범위 밖이다. 6c 문서의 변경 대상에도 없었다 | 보류 · **리드 결정**(6b/7 코어) |
+| 방패 걸린 마음의 **부수 피해 제외 소비처**(README 6c 행) | 코어 변경이라 6c 본편의 배정(뷰·도구) 밖이었다 | **완료**(6c 후속 4 · 리드 결정) — 「고친 것」 행 |
 
 ## 고친 것 (기존 코어·Unity 층 변경)
 
@@ -95,6 +95,7 @@
 | **어그로 풀림 = 사건**(6c 후속 · 리드 결정 1) — `CoreEvent.AggroReleased`(**54**, 트레이스 **52**, `Arg` = `AggroReleaseReason`{`Expired` · `GuardianGone` · `Rebuilt`}). 해제 자리 셋(시한 · 가디언 부재 · 추격판 무효화)이 `FieldPrepPhase.Release` **한 함수**를 부르고 그 함수가 낸다. 상태 표식 풀이 `AggroAcquired`/`AggroReleased` 로 어그로 표식을 켜고 끈다 | 이식 제외 「어그로 표식」 행. 옛 것은 `Aggroed` 보유를 매 프레임 폴링했다(`BattleBridge.cs:3525`). 적 자신의 소멸은 풀림이 아니다(`UnitDestroyed` 가 거둔다) · 도발 갈아타기도 아니다(획득이 한 번 더 온다). ⚠ 가디언이 빠지면 그 몸(장애물)이 풀려 **같은 틱의 추격판 무효화가 먼저** 히트 어그로를 푼다 — 사유가 `Rebuilt` 인 것이 그 순서의 증언이다(`DetectionRulesTests` 3건 · PlayMode `CoreEffectViewTests` 어그로 표식 1건). 골든 코퍼스는 어그로 획득 0건이라 무변 |
 | **라스트런 닫힘 = 사건**(6c 후속 · 리드 결정 2) — `CoreEvent.LastRunEnded`(**55**, 트레이스 **53**, `Arg` = `LastRunEndReason`{`Crash` · `Death` · `Retire` · `Removed`}). 닫히는 문 둘(시간 끝 `CrashLastRun` · 중단 정책 `InterruptProgress`)이 `BattleWorld` 에 있고 사건은 거기 한 곳에서 난다. `ProgressiveStates.Interrupt` 는 「이 중단이 창을 닫았나」를 **전후 값 비교**로 돌려준다(정책 표를 두 번 적지 않는다). 퇴근은 제거 **앞**에 `Retire` 로 닫고, 그 밖의 제거(유출 등)는 `Destroy` 가 `Removed` 로 닫는다 | 이식 제외 「라스트런 닫힘」 행. 6c 의 임시 다리(스탯 회수 계기 + 초당 `LastRunActive` 확인)를 철거했다 — 표식은 레드불 `PickupTaken` 에 켜지고 이 사건에 꺼진다. 퇴근 경로는 전에는 중단 정책을 **안 불렀다**(`Reset` 이 대신 지웠다) — 규칙 결과는 같고, 사유가 「퇴근」으로 남는 것만 달라졌다(`PickupTests` 4건 · PlayMode `CoreEffectViewTests` 라스트런 1건). 골든 코퍼스는 픽업 0건이라 무변 |
 | **`AttackResolved` 가 공격의 축·도형·사거리를 싣는다**(6c 후속 · 리드 결정 3) — 필드 append `AttackDir`(월드 XZ 정규화) · `AttackShape`(bake 형 그대로 — 반각은 `sinHalf`/`cosHalf`) · `AttackRange`(런타임 칸). 근접은 부가 타격을 고른 **그 축**, 평타 탄은 조준 방향. 폭탄·소환은 기본값. 참격 자국(`CoreVfxSpawner`)이 이 스냅샷으로만 그린다 | 5a~6c 의 참격은 공격자를 **되물어** `Attack.Shape`·`Attack.Range` 를 읽었다(계약 4·7 위반 — 옛 브리지 `BattleBridge.cs:4869-4884` 의 드레인 시점 `AttackState` 읽기를 옮긴 모양). 번호 무변 · **트레이스 무변**(채널 여섯 칸) → 골든 무변. `CombatRulesTests.공격_성사_사건은_판정한_도형_축_사거리를_값으로_싣는다`. 브레스 라우팅은 안 했다(위 이식 제외) |
+| **방패 걸린 마음의 부수 피해 제외**(6c 후속 · 리드 결정 4 · unit 4 이월) — `HeartMeter.DrainTowers` 가 방패(`CoreShielded` 관찰) 동안 마음 타워 인박스의 피해·회복을 **버린다**(비운다 · 숫자 없음) | 옛 소비처 5(`DamageApplicationSystem.cs:139-144`)를 **그 모양 그대로** 옮겼다 — 생산자 쪽이 아니라 **피해 적용 한 곳**. 리드 지시는 「광역 생산자가 `EffectEligibility` 를 본다」였지만 옛 `CoreShielded.cs:34-38` 이 「`ProjectileHitSystem` 에 중복 필터를 넣지 말 것 — 한 곳에서 떨어뜨려야 새 피해 경로가 자동으로 덮인다」를 명시해 옛 것을 따랐다. ⚠ 증상 「옆에서 터진 광역이 마음을 깎는다」는 **이미 초록이었다** — 새 코어의 착탄·장판 피해자 선정이 `IsTargetable`(방패 = `Untargetable`)로 이미 거른다. 빨간 것은 조준을 안 지나는 생산자(인박스 직접 기입 — unit 7 의 스킬 페이로드 자리)였다. `MatchStructureTests` 광역 증상 1건(대조군 포함) · 백스톱 1건 |
 
 ## 완료 기준
 

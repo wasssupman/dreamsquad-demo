@@ -164,6 +164,19 @@ namespace Wassup.BattleCore
                 var inbox = t.Inbox;
                 if (inbox.Damage.Count == 0 && inbox.Heal.Count == 0) continue;
 
+                // **방패 백스톱**(옛 `CoreShielded` 소비처 5 — `DamageApplicationSystem.cs:139-144`).
+                // 조준 제외(`Untargetable`)는 마음을 «겨누는» 것만 막는다. 옆에 떨어진 광역·미래의 스킬
+                // 페이로드처럼 조준을 안 지나는 피해는 여기서 **버린다** — 생산자마다 거르지 않는 것이
+                // 옛 설계의 선택이고, 그래야 새 피해 경로가 자동으로 덮인다(생산자 쪽 중복 필터 금지).
+                // ⚠ 적립하지 않고 **비운다.** 쌓아 두면 방패가 깨지는 틱에 통째로 터진다. 회복도 같이 비우고
+                // 숫자도 안 띄운다(옛 것도 `continue` 로 피해 숫자 앞에서 빠졌다).
+                if (_shielded)
+                {
+                    inbox.Damage.Clear();
+                    inbox.Heal.Clear();
+                    continue;
+                }
+
                 float damage = 0f;
                 for (int k = 0; k < inbox.Damage.Count; k++) damage += inbox.Damage[k].Amount;
                 float heal = 0f;
