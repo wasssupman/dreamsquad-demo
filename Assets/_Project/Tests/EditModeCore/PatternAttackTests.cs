@@ -81,5 +81,13 @@ namespace Wassup.Tests.EditMode.Core
                 Assert.AreEqual(AttackDamage, e.Amount, 1e-4f,
                     "연발탄 피해가 패턴 저작값(0)이다 — 머신거너가 아무도 못 죽인다");
         }
+
+        [Test]
+        public void 연발_유닛은_평타_단발을_따로_쏘지_않는다()
+        {
+            var (_, spawned) = FirstVolley();
+            Assert.AreEqual(Shots, spawned.Count,
+                "한 번의 공격에 패턴 발수만큼만 나가야 한다 — 단발탄이 한 발 더 섞였다");
+        }
     }
 }

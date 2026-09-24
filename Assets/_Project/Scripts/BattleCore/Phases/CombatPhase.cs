@@ -611,7 +611,11 @@ namespace Wassup.BattleCore
             // 탄이 있으면 요청을 내고 끝난다 — 피해는 착탄이 정한다.
             if (atk.ProjectileDefIndex >= 0)
             {
-                EmitProjectile(ctx, u, atk, primary, primaryPos, tileSize);
+                // 발사 명세 유닛은 **패턴이 단발을 대체한다**(옛 `AttackSystem` 의 `pushedPattern`
+                // 게이트). 둘 다 쏘면 머신거너 한 공격이 단발 1 + 연발 10 = 11발이 된다
+                // (2026-09-24 드리프트 감사 H2).
+                if (atk.PatternSlots.Count == 0)
+                    EmitProjectile(ctx, u, atk, primary, primaryPos, tileSize);
                 ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, primary, primaryPos,
                                                          primaryBody, 1, atk.Period(IntervalMul(u))));
                 FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary));
