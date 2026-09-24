@@ -190,6 +190,10 @@ namespace Wassup.BattleCore
                 var guardian = ctx.World.Find(req.Guardian);
                 if (enemy == null || enemy.Dead || enemy.Move == null) continue;
                 if (guardian == null || guardian.Dead || guardian.Aggro == null) continue;
+                // unit 7d — **보스는 어그로 면역**(히트·도발 둘 다 — 옛 `AggroStateSystem.cs:175` 부착 1곳 차단). 보스는 사냥판으로
+                // 방어유닛을 스스로 쫓는다 — 끌려가면 대상 수가 1로 접혀 광역이 사라지고 가디언만 쫓는다(옛 주석 그대로).
+                // 판정 술어는 군중 제어 면역과 **같은 칸**(`AttackState.BossImmune` ← 티어 보스)이다 — 두 벌이면 갈린다.
+                if (enemy.Attack != null && enemy.Attack.BossImmune) continue;
 
                 bool already = enemy.Aggro != null && !enemy.Aggro.Target.IsNone;
                 // 히트는 선점(먼저 온 쪽이 이긴다) — 도발은 그것을 우회한다(나중에 부른 쪽이 이긴다).

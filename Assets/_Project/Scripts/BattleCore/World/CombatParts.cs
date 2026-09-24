@@ -433,6 +433,18 @@ namespace Wassup.BattleCore
         /// <summary>이탈 직전 자리. 퇴근 취소가 여기로 되돌린다.</summary>
         public float3 LeapOrigin;
 
+        // unit 7d — **일반 도약(보스 `SelfBlink`) 비행 창.** 위치는 발동 틱에 이미 착지점이다(순간이동) — 이 창은
+        // 「공격·자기주도 이동 불가 · 피격 가능」(옛 `LeapFlight`)과 **창 끝의 착지 슬램**만 든다. 옛 전투는 창의 길이와
+        // 슬램을 브리지(뷰 시계)가 소유했다. 궁극기(`LeapActive`)와 **다른 칸**이다 — 한 칸을 둘이 쓰면 먼저 끝나는 쪽이
+        // 남의 잠금을 걷는다(옛 소유권 가드가 막던 결함).
+        public bool HopActive;
+        public float HopRemaining;
+        public float3 HopLanding;
+        public float HopSlamDamage;
+        public int HopSlamTileRange;
+        /// <summary>슬램 탄 줄(`MatchDefinition.Projectiles`). **-1 = 없음** — 슬램 피해가 저작돼도 탄이 없으면 안 터진다(말한다).</summary>
+        public int HopSlamDefIndex = -1;
+
         // 치명 타이머 — 시간이 끝나면 스스로 깎는다(자해라 킬 미귀속).
         public bool LethalActive;
         public float LethalRemaining;
@@ -472,7 +484,7 @@ namespace Wassup.BattleCore
             LastRunFraction = damageFraction;
         }
 
-        public bool Any => LeapActive || LethalActive || Charge > 0 || LastRunActive || CocoonActive;
+        public bool Any => LeapActive || HopActive || LethalActive || Charge > 0 || LastRunActive || CocoonActive;
 
         /// <summary>
         /// 중단 정책 표의 **유일한 이행 지점**. 분기를 소비처로 흩지 말 것.
@@ -500,6 +512,8 @@ namespace Wassup.BattleCore
                     // 도약 중 사망은 정의상 일어나지 않지만(C12), 오버킬 경합으로 왔다면
                     // 착지 없이 상태만 걷어 「시체가 잠긴 채」 남지 않게 한다.
                     LeapActive = false;
+                    // 일반 도약은 비행 중에도 맞으니 **죽을 수 있다** — 그러면 슬램 없이 끝난다(옛 `abandoned` → 착지 처리 안 함).
+                    HopActive = false;
                     LethalActive = false;
                     LastRunActive = false;
                     CocoonActive = false;
@@ -508,6 +522,7 @@ namespace Wassup.BattleCore
 
                 case ProgressInterrupt.Retire:
                     LeapActive = false;
+                    HopActive = false;
                     LethalActive = false;
                     LastRunActive = false;
                     CocoonActive = false;
@@ -525,6 +540,12 @@ namespace Wassup.BattleCore
             SlamDamage = 0f;
             SlamTileRange = 0;
             SlamProjectileDefIndex = -1;
+            HopActive = false;
+            HopRemaining = 0f;
+            HopLanding = float3.zero;
+            HopSlamDamage = 0f;
+            HopSlamTileRange = 0;
+            HopSlamDefIndex = -1;
             LethalActive = false;
             LethalRemaining = 0f;
             CocoonActive = false;

@@ -110,6 +110,24 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void 궁극기_규칙만_생존당_한_번이고_다른_경계_규칙은_발동_상한이_없다()
+        {
+            // unit 7d 구현 9 — 「생존당 1회」는 `fireCap 1` 이다. 옛 전투는 `fraction ≥ 0.5` 로 **우연히** 1회였다.
+            // 라이브 짱쎈이 한 판에 둘을 다 든다(경계 × 궁극기 + 경계 × 도약·자폭) — 공허하지 않게 둘 다 센다.
+            var enemies = All<AttackUnitData>("t:AttackUnitData");
+            var def = MatchDefinitionBuilder.Build(All<DefenderUnitData>("t:DefenderUnitData"), enemies, 1, ModeDef.Default());
+            int ultimates = 0, others = 0;
+            foreach (var b in def.Bindings)
+            {
+                if (b.Trigger != TriggerKind.HealthThreshold) continue;
+                if (b.Payload == TriggerPayload.UltimateLeap) { ultimates++; Assert.AreEqual(1, b.FireCap, b.Label); }
+                else { others++; Assert.AreEqual(0, b.FireCap, b.Label + " — 경계 규칙은 다회가 사양"); }
+            }
+            Assert.Greater(ultimates, 0, "라이브 궁극기가 없다면 테스트가 공허하다");
+            Assert.Greater(others, 0);
+        }
+
+        [Test]
         public void 캐논_배치_스킬은_한_발이_반경_안_전원에게인_명세를_가리킨다()
         {
             var cannon = AssetDatabase.LoadAssetAtPath<Wassup.Data.ProjectilePatternData>(

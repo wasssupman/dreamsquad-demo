@@ -86,8 +86,11 @@ namespace Wassup.BattleCore.Trigger
                 case SimIntentKind.GrantShield: _world.GrantShield(Id(i.Target), Id(i.Source), i.Amount, Tick); return;
                 case SimIntentKind.Taunt: Taunt(in i); return;
                 case SimIntentKind.CreditThreat:
-                    // 보스 위협 귀속의 소비자는 7d(C25 이월) — 여기서 조용히 버리지 않는다.
-                    Warn("[Intent] 위협 귀속(CreditThreat)은 7d 에서 선다 — 이번 의도는 버린다.");
+                    // unit 7d — **위협 표는 이식하지 않는다**(7d 이식 제외). 옛 표는 누적만 돌고 **읽는 자가 0** 이었다 —
+                    // 보스 순간이동이 「위협 리더 근처」에서 「상대 밀집 칸」으로 바뀌며 소비자가 사라졌다
+                    // (옛 `HealthThresholdSystem.cs:28-32` · `ThreatTable.cs:47-49`). 이 의도를 내는 concrete 도 0 이다.
+                    // 그래도 조용히 버리지 않는다 — 누가 내기 시작하면 여기서 들린다.
+                    Warn("[Intent] 위협 귀속(CreditThreat)은 소비자가 없어 이식하지 않았다(7d) — 이번 의도는 버린다.");
                     return;
                 case SimIntentKind.Blink: Blink(in i); return;
                 case SimIntentKind.SpawnProjectile: SpawnProjectile(in i); return;
@@ -382,6 +385,22 @@ namespace Wassup.BattleCore.Trigger
             _bus.Publish(CoreEvent.LeapAscend(Tick, u, i.Position, ultimate: true, pg.LeapRemaining));
         }
 
+        // unit 7d — 일반 도약 비행 창 개시. 굴리는 것은 `CombatPhase.StepLeap`(창 끝 = 착지 슬램). 겹쳐 오면 **새 착지점이
+        // 이긴다**(옛 브리지는 비행 중 두 번째 신호를 무시했다 — 그런데 sim 은 이미 두 번째 자리로 옮겼다. 슬램이 옛 자리에
+        // 터지면 「보스가 없는 곳이 터진다」가 된다).
+        private void BeginHop(Unit u, float3 landing, float seconds, float slamDamage, int slamTiles, int slamDef)
+        {
+            var pg = Progressive(u);
+            pg.HopActive = true;
+            pg.HopRemaining = seconds;
+            pg.HopLanding = landing;
+            pg.HopSlamDamage = math.max(0f, slamDamage);
+            pg.HopSlamTileRange = math.max(0, slamTiles);
+            pg.HopSlamDefIndex = slamDef >= 0 && slamDef < _def.Projectiles.Length ? slamDef : -1;
+            if (pg.HopSlamDamage > 0f && pg.HopSlamDefIndex < 0)
+                Warn($"[Intent] 보스 {u.Id} 도약 슬램 피해 {pg.HopSlamDamage} 가 저작됐는데 슬램 탄이 없다 — 착지해도 안 터진다.");
+        }
+
         private void DelaySelfAttack(in SimIntent i)
         {
             var u = U(i.Target);
@@ -412,8 +431,14 @@ namespace Wassup.BattleCore.Trigger
                 case SkillVisualKind.LeapArc:
                 {
                     // 일반 도약 — 코어는 즉시 옮기고 **뷰만** 아치로 난다(`LeapAscend` 일반).
+                    // unit 7d — 그리고 **비행 창을 연다.** 스킬(무변)이 슬램 수치를 이 의도에 싣는다(옛 브리지가 뷰 도착 시각에
+                    // 슬램을 쐈기 때문이다). 창의 길이는 판의 저작(`Movement.BossLeapFlightSeconds`)이고 뷰는 사건으로 받는다 —
+                    // 뷰가 제 시계로 재면 슬로모 중에 두 시계가 갈린다(궁극기 예고와 같은 규율).
                     var u = U(i.Source);
-                    if (u != null) _bus.Publish(CoreEvent.LeapAscend(Tick, u, CenterOf(i.Cell), ultimate: false, 0f));
+                    if (u == null) return;
+                    float seconds = math.max(BattleMatch.Dt, _def.Movement.BossLeapFlightSeconds);
+                    BeginHop(u, CenterOf(i.Cell), seconds, i.Amount, i.TileRange, i.DataIndex);
+                    _bus.Publish(CoreEvent.LeapAscend(Tick, u, CenterOf(i.Cell), ultimate: false, seconds));
                     return;
                 }
                 case SkillVisualKind.ShieldGranted:

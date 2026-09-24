@@ -1517,6 +1517,47 @@ namespace Wassup.BattleCore
 
                 ctx.Bus.Publish(CoreEvent.LeapDescend(ctx.Tick, u, pg.LandingWorld, ultimate: true));
             }
+            StepHop(ctx);
+        }
+
+        // unit 7d — **일반 도약의 착지 슬램**(짱쎈). 옛 전투는 뷰가 도착한 시각(브리지 코루틴 0.83초)에 브리지가 슬램 탄을 쐈다 —
+        // 그 시각을 판의 시계로 옮긴다: 비행 창(`Movement.BossLeapFlightSeconds`)이 끝나는 틱.
+        // ⚠ **자리에 떨어지는 것**이다(2026-09-07 사용자 결정 — 운석과 같은 형). 원점 몸 0 · 칸 반폭 — 궁극기 강습과 같은 규칙.
+        // ⚠ 비행 중 죽으면 슬램 없이 끝난다(옛 `abandoned` — 중단 정책 표가 `HopActive` 를 걷는다).
+        // ⚠ 통행 층은 **안 거른다**(0) — 옛 슬램 요청이 `targetTraversalLayers` 를 비워 뒀다. 궁극기 강습(공격 층)과 다르다.
+        private static void StepHop(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                var pg = u.Progressive;
+                if (pg == null || !pg.HopActive) continue;
+                pg.HopRemaining -= ctx.Dt;
+                if (pg.HopRemaining > 0f) continue;
+                pg.HopActive = false;
+                if (u.Dead) continue;
+
+                if (pg.HopSlamDamage > 0f && pg.HopSlamDefIndex >= 0)
+                {
+                    var req = ProjectileRequest.Empty;
+                    req.DefIndex = pg.HopSlamDefIndex;
+                    req.Movement = MovementKind.SkyFall;
+                    req.Payload = PayloadKind.TileAoe;
+                    req.Owner = u.Id;              // 킬 귀속만 보스로(옛 `owner = evt.entity`) — 피해는 고정값이다
+                    req.OwnerFaction = u.Faction;
+                    req.TargetMask = u.Attack != null ? u.Attack.TargetMask : 0;
+                    req.TargetLayers = 0;
+                    req.Origin = pg.HopLanding;
+                    req.Impact = pg.HopLanding;
+                    req.Damage = pg.HopSlamDamage;
+                    req.ImpactTileRange = pg.HopSlamTileRange;
+                    req.OriginBodyRadius = 0f;   // ⚠ 자리형 — 「몸이 내리찍는 것」이 아니다
+                    req.FlightTime = 0f;         // 비행 창이 이미 시간을 벌었다
+                    ctx.World.ProjectileRequests.Add(req);
+                }
+                ctx.Bus.Publish(CoreEvent.LeapDescend(ctx.Tick, u, pg.HopLanding, ultimate: false));
+            }
         }
 
         // ── ⑧ 실드 부여 스테이징 ──────────────────────────────────────────────

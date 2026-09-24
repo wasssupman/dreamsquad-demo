@@ -248,6 +248,10 @@ namespace Wassup.BattleCoreUnity
                     }
                     b.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
                     b.VisualScale = 0f;   // 유닛 bake 는 탄 배율을 안 실었다(0 = 뷰가 1 로 읽는다)
+                    // unit 7d — 「생존당 1회」는 **`fireCap 1`** 이다(정정 5 의 짝). 옛 전투는 `fraction ≥ 0.5` 라 둘째 경계가
+                    // 음수가 되어 **우연히** 1회였다 — 값 한 칸이 0.4 가 되면 조용히 2회가 된다. ⚠ **궁극기에만** 준다 —
+                    // 같은 경계 트리거를 빈사폭주·진동갑주·가호가 쓰고 그쪽은 다회 발동이 사양이다.
+                    if (b.Payload == TriggerPayload.UltimateLeap) b.FireCap = 1;
                     return true;
                 case TriggerPayload.SelfBlink:
                 case TriggerPayload.AllyMoveSpeedAura:

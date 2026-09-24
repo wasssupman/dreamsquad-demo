@@ -42,6 +42,13 @@ namespace Wassup.BattleCore
         /// <summary>위쪽(+) 범위만 좁히는 배율. 키 큰 캐릭터 보정. 1 = 대칭.</summary>
         public float SpawnSpreadTopScale;
 
+        /// <summary>
+        /// unit 7d — **보스 일반 도약의 비행 창(초).** 이 창 동안 보스는 공격도 자기주도 이동도 못 하고(맞기는 한다),
+        /// 창이 끝나는 틱에 착지 슬램이 터진다. 옛 값의 집은 브리지 직렬화 필드(`bossLeapTotalSeconds`)였고 슬램도
+        /// 브리지가 뷰 도착 시각에 쐈다 — 그 시각이 판의 규칙이라 판 밖 저작으로 올린다. 뷰는 이 값을 사건으로 받는다.
+        /// </summary>
+        public float BossLeapFlightSeconds;
+
         /// <summary>옛 씬 값. 「기본값 = 라이브」가 이 표의 계약이다.</summary>
         public static MovementTuningDef Default() => new MovementTuningDef
         {
@@ -49,6 +56,7 @@ namespace Wassup.BattleCore
             SpawnSubLaneCount = 3,
             SpawnSpreadFraction = 0.2f,
             SpawnSpreadTopScale = 0.5f,
+            BossLeapFlightSeconds = 0.83f,
         };
 
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
@@ -57,6 +65,10 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "spawnSubLaneCount", SpawnSubLaneCount, inv);
             MatchDefinition.Put(sb, "spawnSpreadFraction", SpawnSpreadFraction, inv);
             MatchDefinition.Put(sb, "spawnSpreadTopScale", SpawnSpreadTopScale, inv);
+            // unit 7d — **옛 값과 같으면 안 쓴다**(고정구·라이브 기본값의 해시 무변 — 칸을 더했다는 사실만으로 골든이 빨개지면 오보다).
+            var d = Default();
+            if (BossLeapFlightSeconds != d.BossLeapFlightSeconds)
+                MatchDefinition.Put(sb, "bossLeapFlightSeconds", BossLeapFlightSeconds, inv);
         }
     }
 }

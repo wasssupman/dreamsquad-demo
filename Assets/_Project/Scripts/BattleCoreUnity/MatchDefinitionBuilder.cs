@@ -316,6 +316,7 @@ namespace Wassup.BattleCoreUnity
             SpawnSubLaneCount = c.SpawnSubLaneCount,
             SpawnSpreadFraction = c.SpawnSpreadFraction,
             SpawnSpreadTopScale = c.SpawnSpreadTopScale,
+            BossLeapFlightSeconds = c.BossLeapFlightSeconds,
         };
 
         public static ModeDef ToModeDef(MatchModeData m)

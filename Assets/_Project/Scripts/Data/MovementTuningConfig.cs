@@ -27,7 +27,12 @@ namespace Wassup.Data
         [Tooltip("위쪽(+) 범위만 좁히는 배율. 키 큰 캐릭터 보정. 1 = 대칭.")]
         [SerializeField, Range(0f, 1f)] private float spawnSpreadTopScale = 0.5f;
 
+        [Tooltip("보스 일반 도약의 비행 창(초). 이 동안 공격·이동을 못 하고(맞기는 한다) 창 끝에 착지 슬램이 터진다. " +
+                 "옛 브리지 값 0.83. 뷰(`CoreLeapPresenter`)는 이 값을 도약 사건으로 받는다.")]
+        [SerializeField, Min(0.05f)] private float bossLeapFlightSeconds = 0.83f;
+
         public float AgentRadiusTiles => agentRadiusTiles;
+        public float BossLeapFlightSeconds => bossLeapFlightSeconds;
         public int SpawnSubLaneCount => spawnSubLaneCount;
         public float SpawnSpreadFraction => spawnSpreadFraction;
         public float SpawnSpreadTopScale => spawnSpreadTopScale;

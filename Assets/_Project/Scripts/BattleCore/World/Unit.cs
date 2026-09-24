@@ -227,7 +227,7 @@ namespace Wassup.BattleCore
         /// ⚠ 넉백은 잠금이 아니다(밀리는 중에도 때린다).
         /// </summary>
         public bool ActionLocked
-            => (Progressive != null && Progressive.LeapActive)
+            => (Progressive != null && (Progressive.LeapActive || Progressive.HopActive))
                || (Move != null && Move.Locked)
                || Cc.IsLocked;
 
@@ -238,6 +238,9 @@ namespace Wassup.BattleCore
         /// 군중 제어가 풀리는 틱에 도약 잠금까지 같이 풀린다. 소유자를 안 섞고 **읽는 자리에서**
         /// 합친다.
         /// </summary>
-        public bool MovementLocked => (Move != null && Move.Locked) || Cc.IsLocked;
+        public bool MovementLocked
+            => (Move != null && Move.Locked) || Cc.IsLocked
+               // unit 7d — 일반 도약 비행 창(옛 `LeapFlight`: 자기주도 이동·감지 막힘 판정이 같은 술어를 읽었다).
+               || (Progressive != null && Progressive.HopActive);
     }
 }
