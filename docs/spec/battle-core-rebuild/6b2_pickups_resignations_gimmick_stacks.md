@@ -62,15 +62,15 @@
 | 안 옮긴 것 | 이유 | 등급 |
 |---|---|---|
 | 4개 기믹 config 싱글턴 + `RequireForUpdate` self-gate | Burst 우회. 값은 `GimmickDef`, 게이트는 「그 기믹이 뽑혔나」 하나 | 제거 · 계약 1 |
-| 픽업 스폰 **주기** · 사직서 **드랍 계기** · 열기/피로 **누적 주기와 대상 필터** | rev 3 이 셋 다 바인딩으로 환원했다(Match 호스트 주기 · 사망 seam · 유닛 호스트 per-unit 타이머 + 기믹마다 다른 필터). 여기서 또 세우면 unit 7 이 그것을 걷어내야 한다 | 보류 · unit 7 |
-| 사직서 **임계 뒤의 운석 barrage** | `MeteorBarrageRequests` 채널은 안 옮긴다. 임계 도달은 사건이고 실행은 unit 7 | 보류 · unit 7 |
-| 호접몽(`DreamCocoon`) | 「끝까지 자면 영구 버프, 중간에 맞으면 파탄」은 **카드의 규칙**이라 바인딩이다. 상태 자리는 unit 3 의 `ProgressiveStates`(`CombatParts.cs`)에 이미 예약돼 있다(UML §2 의 `+Cocoon?`) | 보류 · unit 7 |
+| 픽업 스폰 **주기** · 사직서 **드랍 계기** · 열기/피로 **누적 주기와 대상 필터** | rev 3 이 셋 다 바인딩으로 환원했다(Match 호스트 주기 · 사망 seam · 유닛 호스트 per-unit 타이머 + 기믹마다 다른 필터). 여기서 또 세우면 unit 7 이 그것을 걷어내야 한다 | 보류 · unit 7 → **7d 해소**(`GimmickBindings` — 레드불 판 주기 · 사직서 사망 seam · 온천/번아웃 유닛 호스트 타이머, `277e8bcba`) |
+| 사직서 **임계 뒤의 운석 barrage** | `MeteorBarrageRequests` 채널은 안 옮긴다. 임계 도달은 사건이고 실행은 unit 7 | 보류 · unit 7 → **7b 해소**(`Trigger/ResignationBarrage.cs`) |
+| 호접몽(`DreamCocoon`) | 「끝까지 자면 영구 버프, 중간에 맞으면 파탄」은 **카드의 규칙**이라 바인딩이다. 상태 자리는 unit 3 의 `ProgressiveStates`(`CombatParts.cs`)에 이미 예약돼 있다(UML §2 의 `+Cocoon?`) | 보류 · unit 7 → **7b·7d 해소**(카드 bake · 피격 기상 = 같은 틱 파탄 `DreamCocoonTests`) |
 | 별도 `LastRunTimer` 타입 | 집이 하나여야 중단 정책이 하나다 — `ProgressiveStates.LastRun`(UML §2) | 제거 |
 | `ClockOutRefundEvents`(퇴근 코스트 환급) | `season-gimmick-clockout` unit 8 재설계로 이미 은퇴(강제 퇴근 제거 → 사망 시 사직서 드랍) | 제거(선행) |
 | 옛 브리지의 번아웃 SO 부재 폴백(`maxStack 5` · `perAppDuration 25f`, `BattleBridge.cs:9846-9847`) | 하드코딩 수치(제약 6). 피로 스택 자산이 없으면 빌더가 loud 하게 적고 6a 의 스택 폴백(`StackRules.DefaultMaxStack`) 하나로 떨어진다 — 폴백이 두 벌이면 어느 쪽이 이겼는지 아무도 모른다 | 제거 |
 | 픽업 스폰 `MaxSpawnsPerFrame = 4`(`PickupSpawnSystem.cs:17`) | dt 급증(에디터 일시정지 복귀) 가드 — 고정 틱이라 근거가 사라졌고, 한 틱에 몇 번 부르나는 주기(unit 7)의 질문이다 | 제거 |
-| 동시 상한에 막혔을 때 밀린 주기를 접는 클램프(`elapsed = min(elapsed, interval)`, `PickupSpawnSystem.cs:75`) | 주기의 규칙이다. 상한 판정 자체는 `PickupSpawn.TrySpawnRandom` 이 한다(막히면 null) | 보류 · unit 7 |
-| 운석 투사체 저작(`ClockOutGimmickData.meteorProjectile`)의 탄 표 편입 | 수치 6개는 `ClockOutSpec` 에 실렸다. 탄 줄은 실행(barrage)이 오는 unit 7 이 탄 표에 편입한다 — 지금 넣으면 소비처 0 인 줄이 해시만 움직인다 | 보류 · unit 7 |
+| 동시 상한에 막혔을 때 밀린 주기를 접는 클램프(`elapsed = min(elapsed, interval)`, `PickupSpawnSystem.cs:75`) | 주기의 규칙이다. 상한 판정 자체는 `PickupSpawn.TrySpawnRandom` 이 한다(막히면 null) | 보류 · unit 7 → **7d 해소**(레드불 막힘 = 밀린 주기 접기 · `GimmickBindingTests`) |
+| 운석 투사체 저작(`ClockOutGimmickData.meteorProjectile`)의 탄 표 편입 | 수치 6개는 `ClockOutSpec` 에 실렸다. 탄 줄은 실행(barrage)이 오는 unit 7 이 탄 표에 편입한다 — 지금 넣으면 소비처 0 인 줄이 해시만 움직인다 | 보류 · unit 7 → **7b 해소**(barrage 와 같은 커밋) |
 | 열기 한 프레임 다중 주기의 투영 체력(`HeatAccrualSystem.cs:94-121` 의 `projectedHp` 루프) | 대형 dt 대비였다. `GimmickStacks.AccrueHeat` 는 **한 주기의 한 걸음**이고 고정 틱(1/60)에서 저작 주기(초 단위)가 한 틱에 두 번 오지 않는다 — 온다면 그 루프는 unit 7 의 per-unit 타이머가 돈다 | 제거 |
 | 적에게 회복 버퍼를 lazy-add(`HeatAccrualSystem.cs:56-57`) | 기계. 코어 `Inbox` 는 모든 개체가 항상 갖는다 | 제거 |
 | 픽업 소비의 「방어유닛 먼저, 적 나중」 두 패스(`PickupConsumeSystem.cs:49-71`) | 쿼리 순서의 우연이다. 새 코어는 `SimEntityId` 오름차순(계약 5) — 같은 틱에 방어유닛과 적이 **같은 캔에** 닿을 때만 누가 먹는지가 갈린다 | 제거 · 계약 5 |

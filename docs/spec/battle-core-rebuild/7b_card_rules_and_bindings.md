@@ -99,7 +99,7 @@ unit 4 의 `HandDeck` 은 자원만 움직이고 효과 자리를 **진단 통�
 | 빌더 | `CombatDefinitionBuilder.Fill(…, extraProjectiles, cards)` · `MatchDefinitionBuilder.Build(…, cards, dreamstones)` · `GimmickProjectilesOf` · `BindingDefinitionBuilder.BindPattern` internal · `BattleDriver._cards`·`_dreamstones` | 카드 탄·패턴·장판·운석 탄이 **표를 굳히기 전에** 편입돼야 한다 |
 | `MatchHandDeckTests` 고정구 | 규칙 없는 카드 → 무해한 규칙 한 줄 | 규칙 0 줄 카드는 이제 **거절**이다(옛 `attached == 0 → -1`) |
 
-### 사용자 결정 필요 (7b) — **1건**
+### 사용자 결정 (7b) — 배치 오라 수면 시작 시점 · **답 = 새 코어(활성화 시점) 2026-09-24**
 
 **배치 오라(느린 각성)의 수면은 언제부터 세나?** 옛 전투는 수면을 **스폰 순간**(배치 비행 시작)에 걸었고, 수면 감쇠가 배치 중에도 돌아(`CcDecaySystem` 이 `PendingDeployment` 를 안 거른다) **배치 모션 길이만큼 수면이 먹혔다** — 활성화 뒤 실제로 자는 시간 = 저작 초 − 배치 모션. 새 코어는 spec 대로 **활성화 사건**(`OnPlace`)에서 건다 → 저작 초 **전부**를 잔다. 라이브 저작은 `Card_SlowAwakening` 하나(수면 2초)이고 배치 모션은 유닛마다 다르다. **기본값 = 활성화 기준**(저작 문면 「배치된 유닛은 N초 잔다」에 맞음). 옛 체감을 원하면 「스폰 사건」 규칙이 하나 더 필요하다. 공속·Squad 상속은 배치 중에 공격하지 않아 시점 차가 안 보인다.
 
