@@ -109,7 +109,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             // 옛 전투는 이 규칙이 진입 가드 셋에 흩어져 있어 새 효과마다 넷째 구멍이 열렸다.
             var structure = new Unit { Kind = UnitKind.Structure };
-            Assert.IsFalse(EffectEligibility.AcceptsCc(structure));
+            Assert.IsFalse(EffectEligibility.AcceptsCc(structure, CcRequestKind.Slow), "거점은 종류 불문");
             Assert.IsFalse(EffectEligibility.AcceptsModifier(structure));
             Assert.IsTrue(EffectEligibility.AcceptsHeal(structure), "회복만 열려 있다");
         }
@@ -118,15 +118,35 @@ namespace Wassup.Tests.EditMode.Core
         public void 보스는_행동불능_면역이지만_버프_디버프는_받는다()
         {
             var boss = new Unit { Kind = UnitKind.Enemy, Attack = new AttackState { BossImmune = true } };
-            Assert.IsFalse(EffectEligibility.AcceptsCc(boss));
+            Assert.IsFalse(EffectEligibility.AcceptsCc(boss, CcRequestKind.Stun));
             Assert.IsTrue(EffectEligibility.AcceptsModifier(boss),
                 "버프·디버프까지 막으면 가호가 보스에 안 걸린다");
         }
 
         [Test]
+        public void 보스_면역은_기절_수면_넉백만_막고_감속은_받는다()
+        {
+            // 2026-09-24 드리프트 감사 M6 — 옛 `CcActionLock.IsBossImmune(kind) = IsLock(kind) ||
+            // kind == Impulse`. 종류 축을 잃은 술어가 **감속까지** 막아 보스에 둔화 카드가 안 걸렸다.
+            var def = CoreCombatFixtures.Definition();
+            def.Enemies[0].Attack.BossImmune = true;
+            def.ConfigHash = def.ComputeConfigHash();
+            var m = new BattleMatch(def);
+            m.Begin();
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var boss = CoreCombatFixtures.First(m, UnitKind.Enemy);
+
+            Assert.IsTrue(m.World.RequestCc(CcRequest.Of(boss.Id, CcRequestKind.Slow, 1f, Src)),
+                "보스가 감속을 거절했다 — 면역은 행동 잠금·넉백 축뿐이다");
+            Assert.IsFalse(m.World.RequestCc(CcRequest.Of(boss.Id, CcRequestKind.Stun, 1f, Src)));
+            Assert.IsFalse(m.World.RequestCc(CcRequest.Of(boss.Id, CcRequestKind.Sleep, 1f, Src)));
+            Assert.IsFalse(m.World.RequestCc(CcRequest.Push(boss.Id, new float3(1f, 0f, 0f), 0.2f, Src)));
+        }
+
+        [Test]
         public void 이미_사라진_대상에_거는_것은_요청이_아니라_사고다()
         {
-            Assert.IsFalse(EffectEligibility.AcceptsCc(null));
+            Assert.IsFalse(EffectEligibility.AcceptsCc(null, CcRequestKind.Slow));
             Assert.IsFalse(EffectEligibility.AcceptsModifier(null));
         }
     }

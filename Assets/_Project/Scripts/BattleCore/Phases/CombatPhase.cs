@@ -1334,7 +1334,7 @@ namespace Wassup.BattleCore
 
         private void RequestKnockback(TickContext ctx, Unit u, AttackState atk, Unit victim)
         {
-            if (IsImmune(ctx, victim)) return;
+            if (IsImmune(ctx, victim, CcRequestKind.Impulse)) return;
             if (victim.Move == null) return;
             // **방향을 모르는 대상은 밀리지 않는다**(C8). 스폰 직후·고정 구조물이 그렇다 —
             // 0 방향으로 밀면 원점으로 빨려든다.
@@ -1349,13 +1349,13 @@ namespace Wassup.BattleCore
 
         private void RequestSleep(TickContext ctx, Unit u, AttackState atk, Unit victim)
         {
-            if (IsImmune(ctx, victim)) return;
+            if (IsImmune(ctx, victim, CcRequestKind.Sleep)) return;
             _pendingCc.Add(CcRequest.Of(victim.Id, CcRequestKind.Sleep, atk.Cc.SleepSeconds, u.Id));
         }
 
         private void RequestKnockup(TickContext ctx, Unit u, AttackState atk, Unit victim)
         {
-            if (IsImmune(ctx, victim)) return;
+            if (IsImmune(ctx, victim, CcRequestKind.Stun)) return;
             // 심에서 넉업의 실체는 **짧은 기절**이다. 그래서 띄우는 연출은 **띄운 쪽이 따로
             // 신호한다** — 뷰가 군중 제어 종류로 판단하면 일반 기절까지 떠오른다.
             _pendingCc.Add(CcRequest.Of(victim.Id, CcRequestKind.Stun, atk.Cc.KnockupSeconds, u.Id));
@@ -1368,8 +1368,8 @@ namespace Wassup.BattleCore
         /// 거점 면역(F3)이 **같은 술어**에 있는 이유: 둘 다 「이 대상에게는 이 축이 아예
         /// 없다」는 말이고, 둘을 나누면 새 효과가 한쪽만 물어본다.
         /// </summary>
-        private static bool IsImmune(TickContext ctx, Unit victim)
-            => !EffectEligibility.AcceptsCc(victim);
+        private static bool IsImmune(TickContext ctx, Unit victim, CcRequestKind kind)
+            => !EffectEligibility.AcceptsCc(victim, kind);
 
         // ── 공통 ─────────────────────────────────────────────────────────────
 

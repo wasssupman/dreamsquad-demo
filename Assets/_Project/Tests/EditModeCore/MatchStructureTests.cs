@@ -238,7 +238,7 @@ namespace Wassup.Tests.EditMode.Core
 
             foreach (var victim in new[] { instinct, tower })
             {
-                Assert.IsFalse(EffectEligibility.AcceptsCc(victim), "행동불능 거절(F3)");
+                Assert.IsFalse(EffectEligibility.AcceptsCc(victim, CcRequestKind.Stun), "행동불능 거절(F3)");
                 Assert.IsFalse(EffectEligibility.AcceptsModifier(victim), "스탯·스택 거절(F3)");
                 Assert.IsTrue(EffectEligibility.AcceptsHeal(victim),
                     "회복 하나만 의도적으로 열려 있다");

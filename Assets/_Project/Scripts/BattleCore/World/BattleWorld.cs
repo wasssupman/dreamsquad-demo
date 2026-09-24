@@ -156,7 +156,7 @@ namespace Wassup.BattleCore
         /// </summary>
         public bool RequestCc(in CcRequest req)
         {
-            if (!EffectEligibility.AcceptsCc(Find(req.Target))) return false;
+            if (!EffectEligibility.AcceptsCc(Find(req.Target), req.Kind)) return false;
             _ccRequests.Add(req);
             return true;
         }
