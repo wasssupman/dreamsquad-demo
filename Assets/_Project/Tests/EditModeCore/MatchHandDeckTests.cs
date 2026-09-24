@@ -284,6 +284,31 @@ namespace Wassup.Tests.EditMode.Core
                 "화면이 「넘쳤다」를 알릴 근거가 없으면 플레이어는 안 받은 줄 안다");
         }
 
+        // unit 7c — 손패 화면의 딤·드래그 게이트는 코어 preflight 를 읽는다(뷰가 `gauge >= cost` 를 다시 세지 않게).
+        // 그 preflight 가 **커밋과 같은 답**을 내는지를 건다 — 갈리면 「밝은 카드인데 거절」이 돌아온다.
+        [Test]
+        public void 쓸_수_있나_preflight_는_커밋과_같은_답이다()
+        {
+            var match = Battle(d => { d.Mode.HandSize = 12; d.Mode.Awakening = new AwakeningDef { Start = 5f, Max = 100f }; });
+            match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
+            var host = CoreMatchFixtures.PlacedDefender(match);
+            int attach = FirstOfKind(match, CardKind.Attach);
+            int active = FirstOfKind(match, CardKind.Active);
+
+            Assert.AreEqual(RejectReason.InsufficientAwakening, match.Hand.UsableReason(attach));
+            Assert.AreEqual(match.Hand.UsableReason(attach), match.Apply(Command.AttachCard(attach, host)).Reason);
+            Assert.AreEqual(match.Hand.UsableReason(active), match.Apply(Command.CastActive(active)).Reason);
+            Assert.AreEqual(RejectReason.CardNotInHand, match.Hand.UsableReason(9999));
+
+            match.Hand.Gain(95f);
+            Assert.AreEqual(RejectReason.None, match.Hand.UsableReason(active));
+            Assert.IsTrue(match.Apply(Command.CastActive(active)).Accepted);
+            Assert.AreEqual(RejectReason.CardOnCooldown, match.Hand.UsableReason(active),
+                "대기가 각성보다 먼저다(커밋 순서)");
+            Assert.AreEqual(match.Hand.UsableReason(active), match.Apply(Command.CastActive(active)).Reason);
+            Assert.AreEqual(RejectReason.None, match.Hand.UsableReason(attach));
+        }
+
         private static int EntryOfCard(BattleMatch match, int cardIndex)
         {
             foreach (var e in Hand(match)) if (e.CardIndex == cardIndex) return e.EntryId;

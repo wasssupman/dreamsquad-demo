@@ -350,6 +350,23 @@ namespace Wassup.BattleCore
             return RejectReason.None;
         }
 
+        /// <summary>
+        /// 7c — 손패 카드의 **쓸 수 있나** preflight(딤·드래그 게이트·거절 문구). 부착·시전 **공통 앞단**만 답한다 —
+        /// 손패에 있나 · (액티브) 대기 · 각성 값. 숙주에 달린 것(상한·적용성)은 `WouldAttach` 가, 국면·칸은 시전 커맨드가
+        /// 답한다. 순서는 `TryAttach`/`TryCast` 의 앞단과 같다(대기 &gt; 각성) — 뷰가 자기 셈(`gauge &gt;= cost`)을 들면
+        /// 딤과 거절이 갈린다. 쓰기가 없다.
+        /// </summary>
+        public RejectReason UsableReason(int entryId)
+        {
+            int index = IndexInHand(entryId);
+            if (index < 0) return RejectReason.CardNotInHand;
+            int cardIndex = _queue[index].CardIndex;
+            ref var card = ref _def.Cards[cardIndex];
+            if (card.Kind == CardKind.Active && !IsReady(cardIndex)) return RejectReason.CardOnCooldown;
+            if (_gauge < card.Cost) return RejectReason.InsufficientAwakening;
+            return RejectReason.None;
+        }
+
         /// <summary>그 카드가 적을 겨누나(7c 조준 라우팅 — 뷰가 메커닉을 뒤져 추측하지 않게).</summary>
         public bool TargetsEnemies(int cardIndex)
             => cardIndex >= 0 && cardIndex < _def.Cards.Length && _def.Cards[cardIndex].TargetsEnemies;
