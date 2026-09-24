@@ -9,7 +9,7 @@
 | 브랜치 | `rebuild/battle-core` = 워크트리 `/Users/sy/dev/wassup-core`. main 워크트리 `/Users/sy/dev/wassup` 는 문서 정본. 조각 B 까지 **main 에 머지됨**(`d9fbe90c`), 이후 둘은 같은 지점을 따라간다(main 문서 커밋 → 브랜치 `--ff-only`) |
 | 푸시 | GitHub `f119c1b1`(main + 브랜치)까지 푸시됨(2026-09-24). 그 뒤 커밋은 미푸시. GitLab 미러는 SSH 불통으로 사용자가 직접. 푸시는 매번 명시 승인 |
 | 완료 | unit 0(환경) · 조각 A(1~4) · 조각 B(5a·5b·5c + 플레이 1~3차 결함 9건 수정) · **조각 C 전부(6a·6a2·6b·6b2·6c+후속 5)** · 드리프트 감사 수정 13건 · unit 7 spec 4편(7a~7d) |
-| 진행 중 | **사용자 플레이(조각 C) 대기** — 6c 후속 5커밋 보충 리뷰(review-6c) 진행 중. 통과 시 unit 7(7a→7b→7c→7d). 다른 세션이 이어받으면 브랜치 HEAD 와 `git status` 로 산출물 유무를 먼저 확인 |
+| 진행 중 | **사용자 플레이(조각 C) 대기** — 리뷰 전건 APPROVE. 플레이 통과 시 unit 7(7a→7b→7c→7d). 다른 세션이 이어받으면 브랜치 HEAD 와 `git status` 로 산출물 유무를 먼저 확인 |
 | spec 있음·구현 전 | 7a~7d · 8·9·10(README 행만) |
 | 검증 기준선(HEAD `ef3606e4c`) | 헤드리스 export: build 0 · test 525 · Unity 층 Check 0 · Unity EditMode 코어+Assets 759/761(선행 2 = `bomb_man`·`boomerang`, 골든 11종 무변) · PlayMode 코어 46/46 · `check_ledgers.py` exit 0, `bridge-methods` 미정 **44** · rules 보류 38 |
 | 새 씬 진입 | 워크트리 에디터 메뉴 `Wassup/BattleCore/씬 열고 플레이 (기본 모드)` (빌드 설정 무변, 로비 진입 없음) |
