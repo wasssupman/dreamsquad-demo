@@ -440,7 +440,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d385cdd627de949599cfc0b0174650e8, type: 2}
   _extraBlockers:
   - {fileID: 11400000, guid: db7dcf5e2c6674ddba4a3849df2057e5, type: 2}
-  _cards: []
+  _cards:
+  - {fileID: 11400000, guid: 0f4b1a971f97449e93a90cb7bdc41244, type: 2}
+  - {fileID: 11400000, guid: 2f54c79e8df8ab149b614d6010f56480, type: 2}
+  - {fileID: 11400000, guid: 3e80fa182e183429185aea4d3d9d3bad, type: 2}
+  - {fileID: 11400000, guid: 3c8e5b21d7f9426a91c4e0d83b56f7a2, type: 2}
+  - {fileID: 11400000, guid: 75a63cf309de4c1c8b141180bcc2ec84, type: 2}
+  - {fileID: 11400000, guid: a519684f4f954cbf91ea3fbde9ff30cc, type: 2}
+  - {fileID: 11400000, guid: 80443dea41b4f4143bee2d4395d92d8b, type: 2}
+  - {fileID: 11400000, guid: 803f4524e3c6442593872dd1acf9219c, type: 2}
+  - {fileID: 11400000, guid: 505977850fe29485886d1d588b27ba69, type: 2}
+  - {fileID: 11400000, guid: bebbf7bccd1f94f2f857b780398898c8, type: 2}
+  - {fileID: 11400000, guid: c2156bc97318c334c90169a18c55dc80, type: 2}
+  - {fileID: 11400000, guid: aee631d1aa88aa847a311bbf02546792, type: 2}
   _profile: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   _cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
   _activePool:
