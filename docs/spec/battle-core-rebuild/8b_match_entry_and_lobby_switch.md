@@ -19,8 +19,8 @@
 | 씬 초기화 | 새 씬 컴포넌트 ← `GameManager.cs:195~204`(세로 1080 캡) · `:285~291`(탭/드래그 임계 DPI) · `:645`(씬 꺼짐) |
 | 퇴장 | `Hud/CoreMenuPopup.cs`(「나가기」·「성적 확정」 — 파일 헤더 `:18` 이 5c 로 미뤘고 5c 가 안 만들었다) |
 | 덱 스냅샷 | `TournamentDeckInfo.Serialize(unitIds, stoneIds, cardIds)`(`Core/Api/TournamentDeckInfo.cs:46`, 순수 static)를 **직접** 부른다. `BattleLogger` 는 새 씬에 들이지 않는다 — `CoreMatchOutcomePresenter.cs:107~109` 가 「그 로거를 새 씬이 들면 두 번째 매니저」라고 기록했고, 로거 자체가 옛 타입을 든다(`BattleLogger.cs:159 SetWavePattern(GeneratedWavePlan)`) |
-| 온보딩 | `BattleCoreUnity/Hud/CoreFirstRunGuide.cs` ← `UI/Tutorial/FirstRunTutorialController.cs`(908줄) — **사용자 결정 ①** |
-| 로비 교대 | `Core/SceneNames.cs:8` · `ProjectSettings/EditorBuildSettings.asset` · **`Editor/MobileBuild/DreamSquadMobileBuildCli.cs:33~37`(`ExpectedScenes`)·`:603~610`(불일치 거부) + `Tests/EditMode/MobileBuild/DreamSquadMobileBuildCliTests.cs:333`** — 이 둘은 「mobile-build 복구 커밋 보호」 대상이라 **사용자 결정 ②** 없이 손대지 않는다 |
+| 온보딩 | `BattleCoreUnity/Hud/CoreFirstRunGuide.cs` ← `UI/Tutorial/FirstRunTutorialController.cs`(908줄) — **사용자 결정 ①(2026-09-25: 옮긴다)** |
+| 로비 교대 | `Core/SceneNames.cs:8` · `ProjectSettings/EditorBuildSettings.asset` · **`Editor/MobileBuild/DreamSquadMobileBuildCli.cs:33~37`(`ExpectedScenes`)·`:603~610`(불일치 거부) + `Tests/EditMode/MobileBuild/DreamSquadMobileBuildCliTests.cs:333`** — 「mobile-build 복구 커밋 보호」 대상이지만 **사용자 결정 ②(2026-09-25 허용)** 로 씬 목록(`OutgameScene` + `BattleCoreScene`)과 그 거부 문구만 바꾼다. 파일의 다른 부분은 무변 |
 | 에디터 도구 | `Editor/WavePlanTestLauncher.cs:15·38`(옛 씬 경로) · `Editor/WavePlanAssetEditor.cs:21`(「Test this plan (Play BattleScene)」) → 새 씬 |
 | 테스트 | 진입 테스트 **재작성**(이동이 아니다 — `GameManager`·옛 씬을 직접 부른다): `OutgameFlowSmokeTest`·`PresetCarryInTest`·`SquadCarryInSmokeTest`·`SceneTransitionSmokeTest`·`DreamcatcherDeckCarryInTest`(프로필 선택 덱 → 판 덱, 짝 = `CoreDeckComposition`)·`DreamstoneCarryInSmokeTest` → `Tests/PlayModeCore/` |
 
@@ -45,9 +45,9 @@
 **웨이브 원천 우선순위**(옛 `BattleBridge.cs:2114~2116` + 모드 슬롯): ① 테스트 모드 플랜 > ② 온보딩 플랜(G11) > ③ 모드 `plan`(`waveSourceKind == AuthoredPlan`) > ④ 맵 풀 엔트리의 플랜 > ⑤ 모드 `deck` > ⑥ 맵 풀 엔트리의 덱 > ⑦ 드라이버 저작 덱. 옛 게임에는 ③·⑤ 가 없었다(모드가 새로 생긴 칸). 라이브 모드는 둘 다 비어 있다(`plan`·`deck` null) — 그래서 **라이브 판의 원천은 옛 게임과 같다**. `MatchDefinitionBuilder.ResolveDeck/ResolvePlan`(`:88·95`)이 이 순서를 담는 유일한 자리다.
 
 - 순서는 옛 것 그대로다: **시드 → 기믹 → 맵**(G3·G4 주석). 반입 기록은 배치 **전**이다(앱이 죽어도 그 판이 편성을 갖는다, G22).
-- **온보딩(결정 ①).** 완료 플래그 `firstRunTutorialDone = true` 를 쓰는 곳은 옛 컨트롤러 **하나뿐**이다(`FirstRunTutorialController.cs:719`). 로비는 그 플래그가 거짓인 동안 참가 신청을 생략한다(`OutgameMenuController.cs:280~292` · `FirstRunTutorialConfig.cs:113~114`). 그러니 새 씬에 완료를 쓰는 주인이 없으면 **새 계정은 토너먼트에 영영 오르지 못하고**, 매 판 60초 저작 웨이브·첫 손패·보너스 억제가 걸린다. (a) 옮긴다면 가이드 문구·포커스·홀드는 `TutorialGuidanceView`·`OutgameTutorialOverlay`(도구 — 76038c26 이 사용자 결정으로 보존)를 그대로 쓰고, 컨트롤러만 읽기 모델·커맨드 receipt 로 다시 쓴다. **완료 기록은 그 컨트롤러가 갖는다.** (b)·(c) 는 README 결정 ①.
+- **온보딩(결정 ① = (a) 옮긴다, 2026-09-25 확정).** 완료 플래그 `firstRunTutorialDone = true` 를 쓰는 곳은 옛 컨트롤러 **하나뿐**이다(`FirstRunTutorialController.cs:719`). 로비는 그 플래그가 거짓인 동안 참가 신청을 생략한다(`OutgameMenuController.cs:280~292` · `FirstRunTutorialConfig.cs:113~114`). 그러니 새 씬에 완료를 쓰는 주인이 없으면 **새 계정은 토너먼트에 영영 오르지 못하고**, 매 판 60초 저작 웨이브·첫 손패·보너스 억제가 걸린다. 옮길 때 가이드 문구·포커스·홀드는 `TutorialGuidanceView`·`OutgameTutorialOverlay`(도구 — 76038c26 이 사용자 결정으로 보존)를 그대로 쓰고, 컨트롤러만 읽기 모델·커맨드 receipt 로 다시 쓴다. **완료 기록은 그 컨트롤러가 갖는다.**
 - **배틀 JSON 로그 파일**(`BattleLogger.cs:448`)은 새 씬에 두지 않는다(에이전트 판정). 그 파일의 유일한 소비 도구는 은퇴한 PRD 가설을 검증하는 스크립트(`tools/analyze_sessions.py:2`)다. 판별 로그는 코어 트레이스(`BattleCore/Harness/CoreTrace.cs`)가 맡는다. rules X28(「배틀 JSON 로그 미완」, `ledgers/rules.md:259`)은 이 판정으로 **제거**로 닫고 근거를 그 행에 적는다.
-- 로비 교대는 **마지막 커밋**이다. 위가 전부 초록일 때 상수 한 줄 + 빌드 설정 + (결정 ② 에 따라) CLI 목록을 바꾼다.
+- 로비 교대는 **마지막 커밋**이다. 위가 전부 초록일 때 상수 한 줄 + 빌드 설정 + 모바일 빌드 CLI·테스트의 씬 목록(결정 ②)을 바꾼다.
 
 ## 이식 제외
 
@@ -69,9 +69,9 @@ N/A — 판 오브젝트의 생성→렌더 경로는 바뀌지 않는다(입력
 - [ ] 나가기 → 0점 제출 1회(덱 포함) · `matchesPlayed` +1 · 로비. 결과 경로와 겹쳐도 +1(래치).
 - [ ] 같은 토너먼트 시드 두 판 = 같은 맵·같은 덱(옛 `tournament-seed-map-select` 결정론). dev 강제 인덱스가 이긴다.
 - [ ] 테스트 모드 패널·에디터 「Test this plan」 → 저작 플랜 판(1회 소비 — 다음 판은 일반 판).
-- [ ] 결정 ①(a) 의 경우: 새 계정 → 온보딩 판(저작 웨이브·첫 손패·보너스 억제·가이드 순서) → **완주 → `firstRunTutorialDone` 저장 → 다음 판 참가 신청 발행**(결과 화면 랭킹이 뜬다). (b)·(c) 의 경우 README 결정 ① 의 결과 문장대로.
+- [ ] 온보딩(결정 ①): 새 계정 → 온보딩 판(저작 웨이브·첫 손패·보너스 억제·가이드 순서) → **완주 → `firstRunTutorialDone` 저장 → 다음 판 참가 신청 발행**(결과 화면 랭킹이 뜬다).
 - [ ] `grep -rn "RuntimeInitializeOnLoadMethod" Assets/_Project/Scripts/Core/GameManager.cs` = 0 · `AppBootstrap` 에 둘 존재(두 곳에서 설정하지 않는다). 옛 씬을 한 번도 안 연 로비 콜드 스타트에서 `targetFrameRate == 60` — **unit 9 삭제 뒤 한 번 더** 잰다(지금은 옛 훅이 씬과 무관하게 돌아 판별력이 없다).
-- [ ] `SceneNames.Battle` 목적지 = 새 씬 · 빌드 설정 = (결정 ② 의 답).
-- [ ] 재작성한 진입 테스트 6 + 신규 진입 테스트 초록 · EditMode 선행 2 외 빨강 0(결정 ② 가 CLI 테스트를 바꾸면 그 테스트 포함) · 헤드리스 3종.
+- [ ] `SceneNames.Battle` 목적지 = 새 씬 · 빌드 설정 = `OutgameScene` + `BattleCoreScene` · CLI `ExpectedScenes` 와 그 테스트가 같은 목록(결정 ②).
+- [ ] 재작성한 진입 테스트 6 + 신규 진입 테스트 초록 · EditMode 선행 2 외 빨강 0(`DreamSquadMobileBuildCliTests` 포함) · 헤드리스 3종.
 - [ ] **Android QA 빌드**(`DreamSquadMobileBuildCli.BuildAndroidQa`) 성공 + 실기기 1판(로비 → 판 → 결과 → 로비). ⚠ Entities 가 아직 있어 기본 월드가 옛 시스템을 만든다 — 이 빌드의 성능 수치는 unit 9 뒤 빌드와 바로 비교하지 않는다.
 - [ ] `core-reviewer` APPROVE → **사용자 플레이 4차**(조각 D 의 3차 뒤 · 질문 = 「로비에서 들어간 판이 옛 판과 같은 판인가」).
