@@ -84,8 +84,3 @@ unit 9 에서 교대한다). 그래서 진입은 에디터 메뉴다:
 - `Wassup/BattleCore/씬 열고 플레이 (선택한 모드 SO)` — 프로젝트 창에서 고른 `MatchModeData` 를
   **「로비 지정」 칸**에 넣고 연다. 로비가 설 때 그 UI 가 채울 칸이 이미 값으로 존재한다는 증명이다.
 - `Wassup/BattleCore/씬 열기` — 플레이 없이 열기만.
-
-## 추가 (2026-09-24 드리프트 감사) — 맵 풀 로테이션이 주인을 잃었다
-
-5a 가 「풀 선택은 5c 에서」로 미뤘는데(`5a:56` · `ledgers/bridge-fields.md:58`) 5c 변경 대상·이식 제외 어디에도 없이 완료됐다. 옛 경로(`BattleBridge.cs:1264·1295-1303`)는 매 판 `MapStagePool.asset` 의 (스테이지·덱·플랜) 4쌍 중 하나를 **토너먼트 시드**로 골랐고 그것이 「같은 토너먼트 = 같은 맵」의 근거다. 새 드라이버는 `_deck`·`_stagePrefab` 직렬화로 Duel 한 장에 고정돼 로테이션도 시드 결정론도 없다(`BattleDriver.cs:38-43·238-242`, `MatchModeData.mapPool` 소비처 0).
-→ **주인 = 조각 E unit 8**(로비 진입이 새 씬으로 옮겨질 때 `modeId + seed → 풀 엔트리` 선택을 `MatchDefinitionBuilder` 입력으로 배선). 그때까지 dev 진입은 Duel 고정이고 이 문서의 「아직 안 보이는 것」 표에 그 사실을 둔다. 규칙(`seed % poolCount`)은 `docs/reference/map-wave-balancing.md` 결정론 절이 정본.
