@@ -75,6 +75,13 @@ namespace Wassup.BattleCore
         HazardDestroyed = 43,
         FieldSpawned = 44,
         FieldDespawned = 45,
+        // ── unit 6b2 (기믹 셈판) ──
+        PickupSpawned = 46,
+        PickupTaken = 47,
+        ResignationDropped = 48,
+        ResignationThreshold = 49,
+        PickupExpired = 50,
+        ResignationConsumed = 51,
         // ⚠ `ScoreChanged` 는 **채널이 없다.** 처치 사건과 1:1 이라 새 정보가 0 이고
         // (`UnitSlain` + 진영으로 정확히 재구성된다) 총점은 아래 `finalScore` 가 증언한다.
         // 「전부 기록」을 강제하지 않는 이유가 이것이다 — 같은 사실의 두 번째 기록은
@@ -193,6 +200,13 @@ namespace Wassup.BattleCore
                 case CoreEventKind.HazardDestroyed: channel = CoreTraceChannel.HazardDestroyed; return true;
                 case CoreEventKind.FieldSpawned: channel = CoreTraceChannel.FieldSpawned; return true;
                 case CoreEventKind.FieldDespawned: channel = CoreTraceChannel.FieldDespawned; return true;
+                // ── unit 6b2 ──
+                case CoreEventKind.PickupSpawned: channel = CoreTraceChannel.PickupSpawned; return true;
+                case CoreEventKind.PickupTaken: channel = CoreTraceChannel.PickupTaken; return true;
+                case CoreEventKind.ResignationDropped: channel = CoreTraceChannel.ResignationDropped; return true;
+                case CoreEventKind.ResignationThreshold: channel = CoreTraceChannel.ResignationThreshold; return true;
+                case CoreEventKind.PickupExpired: channel = CoreTraceChannel.PickupExpired; return true;
+                case CoreEventKind.ResignationConsumed: channel = CoreTraceChannel.ResignationConsumed; return true;
                 default: channel = default; return false;
             }
         }

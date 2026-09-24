@@ -2,7 +2,7 @@ using System;
 
 namespace Wassup.BattleCore
 {
-    // battle-core-rebuild unit 3 — 트리거 레이어가 들어올 **자리**.
+    // battle-core-rebuild unit 3 — 트리거 레이어가 들어올 **자리**. unit 6b2 가 `Periodic` 을 더했다(4 로 append).
     //
     // 이 unit 은 훅을 **뚫기만** 한다(spec 변경 대상 표: 「seam 은 unit 7 이 채운다」).
     // 지금 등록된 핸들러는 0 이고 `Run` 은 빈 루프다.
@@ -26,6 +26,15 @@ namespace Wassup.BattleCore
         Lifecycle = 2,
         /// <summary>체력 경계(임계)를 넘은 직후. 도약·순간이동이 이 뒤에 온다.</summary>
         Threshold = 3,
+        /// <summary>
+        /// unit 6b2 — **주기마다 무슨 일이 일어난다**의 자리. 장 준비(`FieldPrepPhase`) 끝에서 매 틱
+        /// 돈다. unit 7 의 주기 바인딩(레드불 주기 · 온천 열기)과 배치 엣지(`OnPlace`)가 여기 붙는다.
+        /// ⚠ **번호(4)는 틱 안의 실행 순서가 아니다** — 이 seam 은 `Attack`(0) 보다 **앞**에서 돈다.
+        /// 번호는 append-only 의 몫이고 순서의 몫이 아니다(7a 의 `SeamTickOrder`).
+        /// ⚠ 번아웃 피로는 여기서 스택을 **더하지 않는다** — `GimmickStacks.RequestFatigue`(스탯 적용
+        /// 뒤 단계가 소비)로 요청만 넣는다. 여기서 곧바로 더하면 1틱 지연이 사라진다.
+        /// </summary>
+        Periodic = 4,
 
         /// <summary>종류 수. 종류가 아니다 — 배열 크기가 이 값에서 나온다.</summary>
         _Count,

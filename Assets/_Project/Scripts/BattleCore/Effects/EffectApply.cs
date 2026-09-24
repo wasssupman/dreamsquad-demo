@@ -112,12 +112,21 @@ namespace Wassup.BattleCore.Effects
         /// </summary>
         public static int Stack(TickContext ctx, SimEntityId sourceId, Unit victim, StackKind kind,
                                 int delta, int authoredMaxStack, float authoredDuration)
+            => Stack(ctx, sourceId, victim, kind, delta, authoredMaxStack, authoredDuration, -1);
+
+        /// <summary>
+        /// 같은 함수의 **줄 지정** 판(unit 6b2). 부여자가 자기 저작 자산의 줄을 안다(F31 —
+        /// 번아웃 기믹은 자기 피로 스택 자산을 가리킨다). 번호가 안 맞으면 `StackRules.Resolve` 가
+        /// 그 종류의 첫 줄로 떨어뜨린다.
+        /// </summary>
+        public static int Stack(TickContext ctx, SimEntityId sourceId, Unit victim, StackKind kind,
+                                int delta, int authoredMaxStack, float authoredDuration, int ruleHint)
         {
             if (!EffectEligibility.AcceptsModifier(victim)) return 0;
             if (kind == StackKind.None) return 0;
 
             var rules = ctx.Def.StackRules;
-            int ruleIndex = StackRules.Resolve(rules, kind, -1);
+            int ruleIndex = StackRules.Resolve(rules, kind, ruleHint);
             int maxStack = authoredMaxStack > 0
                 ? authoredMaxStack : StackRules.MaxStackOf(rules, ruleIndex);
             float duration = StackRules.PerAppDurationOf(rules, ruleIndex);

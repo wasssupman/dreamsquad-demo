@@ -28,9 +28,37 @@ namespace Wassup.BattleCore.Effects
         public float Remaining;
     }
 
+    //
+    // unit 6b2 — **열기(온천)도 여기 산다**(`Heat`). 슬롯이 아니라 카운터 하나인 이유:
+    //   ① 열기에는 출처 축도 지속도 임계 파생도 없다 — 효과는 누적마다 `HeatMath` 가 내고
+    //      상한에서 멈출 뿐이다(옛 `HeatAccrual.stacks` 가 그랬다).
+    //   ② `StackKind` 에 값을 따지 않았다 — 그 enum 은 `Wassup.Skills.SkillStackKind` 와 **개수까지**
+    //      핀으로 묶여 있고(`CoreSkillEnumPinTests`), 저쪽은 다시 동결된 옛 전투 enum 과 묶여 있다.
+    //      열기 하나를 위해 동결 코드의 핀을 풀 수 없다.
     public sealed class StackSet
     {
         private readonly List<StackSlot> _slots = new List<StackSlot>(2);
+
+        /// <summary>열기 중첩(온천). 0 = 아직 한 번도 안 쌓였다. 상한은 저작(`OnsenSpec.HeatMaxStack`).</summary>
+        public int Heat { get; private set; }
+
+        /// <summary>열기 +1(상한에서 멈춘다). 반환 = 더한 뒤의 열기. 상한 0 이하는 폴백 없이 0 에 머문다.</summary>
+        public int AddHeat(int maxStack)
+        {
+            if (Heat < maxStack) Heat++;
+            return Heat;
+        }
+
+        /// <summary>디버그 전용(`DebugSetStack`) — 열기를 그 값으로 놓는다.</summary>
+        public void SetHeat(int value) => Heat = value > 0 ? value : 0;
+
+        /// <summary>그 (출처, 종류) 슬롯의 인덱스. 없으면 -1.</summary>
+        public int IndexOf(SimEntityId source, StackKind kind)
+        {
+            for (int i = 0; i < _slots.Count; i++)
+                if (_slots[i].Source == source && _slots[i].Kind == kind) return i;
+            return -1;
+        }
 
         public IReadOnlyList<StackSlot> Slots => _slots;
 
@@ -118,6 +146,10 @@ namespace Wassup.BattleCore.Effects
             return total;
         }
 
-        public void Reset() => _slots.Clear();
+        public void Reset()
+        {
+            _slots.Clear();
+            Heat = 0;
+        }
     }
 }

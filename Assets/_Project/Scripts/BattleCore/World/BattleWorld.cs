@@ -95,6 +95,90 @@ namespace Wassup.BattleCore
             return false;
         }
 
+        // unit 6b2 — **판 위에 놓인 먹을 것(픽업)과 떨어진 사직서.** 존과 같은 자리에 살고 같은
+        // 규율이다: 목록을 직접 못 고치고, 문은 아래 넷뿐이며 **문마다 사건이 난다**(계약 7).
+        // 순회는 발급 순서 = `SimEntityId` 오름차순(계약 5).
+        private readonly List<Pickup> _pickups = new List<Pickup>(8);
+        private readonly Stack<Pickup> _pickupPool = new Stack<Pickup>(8);
+        public IReadOnlyList<Pickup> Pickups => _pickups;
+
+        private readonly List<Resignation> _resignations = new List<Resignation>(8);
+        private readonly Stack<Resignation> _resignationPool = new Stack<Resignation>(8);
+        public IReadOnlyList<Resignation> Resignations => _resignations;
+
+        /// <summary>픽업 하나를 놓는다. 반드시 `PickupSpawned` 를 낸다. 자리 검증은 `PickupSpawn` 이 한다.</summary>
+        public Pickup SpawnPickup(PickupKind kind, int2 cell, float3 center, float lifetime, int tick)
+        {
+            var p = _pickupPool.Count > 0 ? _pickupPool.Pop() : new Pickup();
+            p.Reset();
+            p.Id = new SimEntityId(_nextId++);
+            p.Kind = kind;
+            p.Cell = cell;
+            p.Center = center;
+            p.Remaining = lifetime;
+            p.SpawnTick = tick;
+            _pickups.Add(p);
+            _bus.Publish(CoreEvent.PickupSpawned(tick, p));
+            return p;
+        }
+
+        /// <summary>
+        /// **픽업의 유일한 제거 경로.** `taker` 가 있으면 `PickupTaken`(먹혔다), 없으면
+        /// `PickupExpired`(수명 만료) — 어느 쪽이든 사건이 난다(계약 7). 사건은 빼기 전에 만든다.
+        /// </summary>
+        public bool RemovePickup(SimEntityId id, Unit taker, int tick)
+        {
+            for (int i = 0; i < _pickups.Count; i++)
+            {
+                if (_pickups[i].Id != id) continue;
+                var p = _pickups[i];
+                var ev = taker != null ? CoreEvent.PickupTaken(tick, p, taker) : CoreEvent.PickupExpired(tick, p);
+                _pickups.RemoveAt(i);
+                p.Reset();
+                _pickupPool.Push(p);
+                _bus.Publish(ev);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 사직서 한 장을 떨어뜨린다. 반드시 `ResignationDropped` 를 내고, 그 사건이 **떨어뜨린 뒤의
+        /// 판 위 장수**를 값으로 나른다(HUD 가 되묻지 않게).
+        /// </summary>
+        public Resignation DropResignation(int2 cell, float3 center, SimEntityId source, Faction faction, int tick)
+        {
+            var r = _resignationPool.Count > 0 ? _resignationPool.Pop() : new Resignation();
+            r.Reset();
+            r.Id = new SimEntityId(_nextId++);
+            r.Cell = cell;
+            r.Center = center;
+            r.Source = source;
+            r.Faction = faction;
+            _resignations.Add(r);
+            _bus.Publish(CoreEvent.ResignationDropped(tick, r, _resignations.Count));
+            return r;
+        }
+
+        /// <summary>
+        /// 사직서를 **가장 오래된 것부터** `count` 장 소모한다(`SimEntityId` 오름차순 = 떨어진 순서).
+        /// 장마다 `ResignationConsumed` 가 난다(계약 7). 반환 = 실제로 소모한 장수.
+        /// </summary>
+        public int ConsumeResignations(int count, int tick)
+        {
+            int n = count < _resignations.Count ? count : _resignations.Count;
+            for (int i = 0; i < n; i++)
+            {
+                var r = _resignations[0];
+                var ev = CoreEvent.ResignationConsumed(tick, r);
+                _resignations.RemoveAt(0);
+                r.Reset();
+                _resignationPool.Push(r);
+                _bus.Publish(ev);
+            }
+            return n;
+        }
+
         /// <summary>
         /// 장 하나를 깐다. 반드시 `FieldSpawned` 를 낸다. 인자가 아니라 **완성된 개체**를 받는
         /// 이유: 종류마다 읽는 필드가 달라(포탈 = 출구 · 당김 = 속도 · 아군 버프 = 스탯) 공용
@@ -163,6 +247,16 @@ namespace Wassup.BattleCore
 
         private readonly List<WakeRequest> _wakeRequests = new List<WakeRequest>(8);
         public List<WakeRequest> WakeRequests => _wakeRequests;
+
+        /// <summary>
+        /// unit 6b2 — **스택 누적 요청.** 주기 바인딩(unit 7 — 번아웃 피로)이 넣고, 소비는
+        /// `TickProjectilePhase` 의 **스탯 적용 뒤** 단계다. 그 자리 때문에 여기서 쌓은 피로가
+        /// **한 틱 뒤에** 임계를 본다 — 옛 `FatigueAccrualSystem`(`[UpdateAfter(ModifierApplySystem)]`)의
+        /// 1프레임 지연을 **단계 위치로** 박제한 것이다(rev 3 §4 「변경 없음」). 주기 바인딩이
+        /// `[Periodic]` seam(장 준비 끝)에서 곧바로 스택을 더하면 그 지연이 사라져 밸런스가 바뀐다.
+        /// </summary>
+        private readonly List<Effects.StackAccrual> _stackAccruals = new List<Effects.StackAccrual>(8);
+        public List<Effects.StackAccrual> StackAccruals => _stackAccruals;
 
         /// <summary>
         /// 실드를 건다. 반환 = **실제로 걸렸나.**

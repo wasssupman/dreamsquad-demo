@@ -45,7 +45,15 @@ namespace Wassup.BattleCore
         // unit 6a2 — 관문이 이번 발사에서 접는 칸들. 발사마다 비운다.
         private readonly List<FoldSlot> _foldSlots = new List<FoldSlot>(4);
 
-        public TickProjectilePhase(MapRuntime map) => _map = map;
+        // unit 6b2 — 기믹 셈판의 게이트. 「그 기믹이 뽑혔나」 하나다(옛 config 싱글턴 4 의 후계).
+        private readonly GimmickHost _gimmick;
+        private readonly List<SimEntityId> _pickupsGone = new List<SimEntityId>(8);
+
+        public TickProjectilePhase(MapRuntime map, GimmickHost gimmick = null)
+        {
+            _map = map;
+            _gimmick = gimmick;
+        }
 
         public void Run(TickContext ctx)
         {
@@ -53,17 +61,173 @@ namespace Wassup.BattleCore
             StepFlight(ctx);
             Despawn(ctx);
 
-            // unit 6a — 효과 슬롯. 열기/피로·픽업은 6b2, 해저드는 6b 다.
+            // unit 6b2 — 사직서 임계. **스택 틱 앞**이다(옛 캡처 22 `[UpdateBefore(StackModifierTickSystem)]`).
+            // 드랍은 사망 seam(피해 단계 안 = 이 단계 **뒤**)이라, 틱 N 에 떨어진 사직서는 틱 N+1 에
+            // 임계를 본다 — 옛 순서(드랍 37 → 다음 프레임 임계 22)와 같다.
+            StepResignations(ctx);
+
+            // unit 6a — 효과 슬롯. 해저드는 6b 다.
             // ⚠ **「피해 그릇이 없으면 같이 멈춘다」를 재현하지 말 것**(C24). 옛 전투는 한
             // 단계가 성격이 다른 일을 겸직해서 그 결합이 생겼다 — 여기서는 재생이 인박스를
             // 안 본다(그 값은 `Unit.RegenPerSec` 로 나가고 소비는 피해 단계가 한다).
             StepEffects(ctx);
+
+            // unit 6b2 — 스택 누적 요청(번아웃 피로). **스탯 적용 뒤**다(옛 캡처 30
+            // `[UpdateAfter(ModifierApplySystem)]`) — 여기서 쌓은 피로는 **다음 틱의** 스택 단계가
+            // 임계를 본다. 그 1틱이 현행이고(`FatigueAccrualSystem.cs:18` 이 「그대로 박제한다」),
+            // 이 줄을 `StepEffects` 앞으로 당기면 그것이 곧 밸런스 변경이다.
+            StepStackAccruals(ctx);
 
             // unit 6b — 판 위에 깔린 것의 시계. **이동 뒤**다: 옛 `EffectTickSystem`(27)은
             // `[UpdateAfter(MovementSystem)]` 라서 캐리어가 사라지는 틱에도 이동은 그것을 한 번
             // 더 본다. 길막 노후화는 피해라서 **피해 단계 앞**이면 같은 틱에 정산된다.
             StepCarriers(ctx);
             StepBlockerDecay(ctx);
+
+            // unit 6b2 — 라스트런 crash → 픽업(수명 → 소비). 둘 다 **피해 단계 앞**이다(옛 캡처 0 ·
+            // 24·25). crash 가 소비보다 먼저인 것도 옛 순서다 — 이번 틱에 먹은 유닛의 타이머는
+            // 다음 틱부터 흐른다.
+            StepLastRun(ctx);
+            StepPickups(ctx);
+        }
+
+        // ── ⑧ 사직서 임계 ───────────────────────────────────────────────────
+        //
+        // **level 폴링**이다 — 판 위 장수가 임계 이상이면 임계마다 1건, 한 틱에 여러 번 넘을 수
+        // 있고 그것이 사양이다(rev 3 §2 · 옛 `count / threshold`). 소모는 가장 오래된 것부터.
+        // 임계 도달은 **사건만 낸다** — 운석 barrage 실행은 unit 7 이다.
+        private void StepResignations(TickContext ctx)
+        {
+            var world = ctx.World;
+            if (world.Resignations.Count == 0) return;
+            if (_gimmick == null || !_gimmick.TryActive(GimmickKind.ClockOut, out var g)) return;
+            int threshold = g.ClockOut.ResignationThreshold;
+            if (threshold <= 0) return;   // 0 이면 무한 발화 — 옛 가드와 같다(fail-closed)
+
+            int barrages = world.Resignations.Count / threshold;
+            if (barrages == 0) return;
+            world.ConsumeResignations(barrages * threshold, ctx.Tick);
+            for (int b = 0; b < barrages; b++)
+                ctx.Bus.Publish(CoreEvent.ResignationThreshold(ctx.Tick, g.ClockOut.MeteorCount, threshold));
+        }
+
+        // ── ⑨ 스택 누적 요청 ─────────────────────────────────────────────────
+        //
+        // 요청 순서(= 넣은 순서)대로 적용한다. 게이트(거점 면역·죽음)는 부여 관문 하나다.
+        private static void StepStackAccruals(TickContext ctx)
+        {
+            var reqs = ctx.World.StackAccruals;
+            if (reqs.Count == 0) return;
+            for (int i = 0; i < reqs.Count; i++)
+            {
+                var r = reqs[i];
+                var u = ctx.World.Find(r.Target);
+                if (u == null || u.Dead) continue;
+                EffectApply.Stack(ctx, r.Source, u, r.Kind, r.Amount, 0, 0f, r.RuleIndex);
+            }
+            reqs.Clear();
+        }
+
+        // ── ⑩ 라스트런 crash ─────────────────────────────────────────────────
+        //
+        // 공속 버프는 먹는 순간 스탯 슬롯으로 걸렸고 **스스로 만료된다** — 여기는 지연 crash 만 본다.
+        // 타이머의 집은 `ProgressiveStates` 하나다(중단 정책 표가 한 곳).
+        // ⚠ crash 는 **출처 없는 피해**다 — 자해라 이것으로 죽어도 처치 보상이 안 난다(옛 `IncomingDamage`
+        // 무출처 · 치명 타이머와 같은 규약).
+        private static void StepLastRun(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                var pg = u.Progressive;
+                if (pg == null || !pg.LastRunActive || u.Dead) continue;
+                pg.LastRunRemaining -= ctx.Dt;
+                if (pg.LastRunRemaining > 0f) continue;
+                pg.LastRunActive = false;
+                float amount = u.MaxHealth * pg.LastRunFraction;
+                if (amount > 0f)
+                    u.Inbox.Damage.Add(new DamageEntry { Amount = amount, Source = SimEntityId.None });
+            }
+        }
+
+        // ── ⑪ 픽업 ───────────────────────────────────────────────────────────
+        //
+        // 수명 → 소비. 수명이 먼저라 **만료되는 틱에는 못 먹는다**(옛 스폰 시스템 24 의 만료 패스가
+        // 소비 25 보다 앞이었다). 놓인 틱에는 안 깎인다(`Pickup.SpawnTick`).
+        private void StepPickups(TickContext ctx)
+        {
+            var world = ctx.World;
+            var pickups = world.Pickups;
+            if (pickups.Count == 0) return;
+
+            _pickupsGone.Clear();
+            for (int i = 0; i < pickups.Count; i++)
+            {
+                var p = pickups[i];
+                if (p.SpawnTick == ctx.Tick) continue;
+                p.Remaining -= ctx.Dt;
+                if (p.Remaining <= 0f) _pickupsGone.Add(p.Id);
+            }
+            for (int i = 0; i < _pickupsGone.Count; i++) world.RemovePickup(_pickupsGone[i], null, ctx.Tick);
+            if (pickups.Count == 0) return;
+
+            // 소비 효과의 수치는 뽑힌 기믹에서 온다. 안 뽑힌 판에 픽업이 있을 수 없지만(생산자가 전부
+            // 게이트를 지난다) 여기서도 한 번 더 막는다 — 막지 않으면 수치 0 짜리 라스트런이 걸린다.
+            if (_gimmick == null || !_gimmick.TryActive(GimmickKind.RedBull, out var g)) return;
+
+            float inv = _map != null && _map.TileSize > 1e-6f ? 1f / _map.TileSize : 1f;
+            var units = world.Units;
+            for (int i = 0; i < pickups.Count;)
+            {
+                var p = pickups[i];
+                var taker = FirstConsumer(units, p, inv);
+                if (taker == null) { i++; continue; }
+                BeginLastRun(ctx, taker, in g.RedBull);
+                world.RemovePickup(p.Id, taker, ctx.Tick);   // 목록이 줄었으니 i 는 그대로
+            }
+        }
+
+        // 픽업 하나를 먹을 **첫 유닛**(`SimEntityId` 오름차순 — 계약 5).
+        //
+        // 대상 필터 셋: 방어유닛·적만(거점·길막은 먹지 않는다) · 살아 있고 배치 중이 아님 ·
+        // **라스트런 중이 아님**(재소비 락 — 재소비로 타이머를 리셋해 crash 를 무한히 피하던 문제의 수정,
+        // 옛 review #2). 락에 걸린 유닛이 밟으면 픽업은 판 위에 남는다.
+        private static Unit FirstConsumer(IReadOnlyList<Unit> units, Pickup p, float inv)
+        {
+            for (int u = 0; u < units.Count; u++)
+            {
+                var c = units[u];
+                if (c.Kind != UnitKind.Defender && c.Kind != UnitKind.Enemy) continue;
+                if (c.Dead || c.Deploying) continue;
+                if (c.Progressive != null && c.Progressive.LastRunActive) continue;
+                // 제약 13 — 픽업은 「자리에 떨어지는 것」. 원점 항 = 칸 반폭(진입점의 성질),
+                // 범위 = 0(그 칸 하나), 대상의 몸 = 소비자 몸.
+                if (!Wassup.Skills.SkillMath.ReachFromCell(
+                        (c.Position.x - p.Center.x) * inv, (c.Position.z - p.Center.z) * inv,
+                        PickupReachTiles, c.HitRadius)) continue;
+                return c;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 픽업의 판정 범위(칸). **0 = 놓인 칸 하나**다 — 원점 항(칸 반폭)과 소비자의 몸은 진입점이
+        /// 붙인다. 밸런스 값이 아니라 「픽업은 한 칸을 차지한다」의 표현이다.
+        /// </summary>
+        private const float PickupReachTiles = 0f;
+
+        // 라스트런 개시 — 공속 버프(스탯 슬롯, 자체 만료) + 지연 crash 타이머(진행형 상태).
+        // 버프의 출처는 **먹은 자 자신**(옛 `source = unit`), 꼬리표는 `Gimmick` 이다.
+        // ⚠ 칸은 **일반 칸**(`SlotTag.Default`)이다 — 옛 인큐가 `stackId = 0` 이었다. `SlotKind.Gimmick`
+        // 으로 옮기면 「자기 출처 일반 칸 공속 곱」과 따로 쌓이게 돼 규칙이 바뀐다(옮긴 것은 규칙이다).
+        private static void BeginLastRun(TickContext ctx, Unit u, in RedBullSpec spec)
+        {
+            EffectApply.Stat(ctx, u.Id, u, u, StatKind.AttackSpeedMul, CombineOp.Multiplicative,
+                             spec.LastRunAttackSpeedMul, spec.LastRunDuration,
+                             SlotTag.Default, 0f, ModifierOrigin.Gimmick);
+            if (u.Progressive == null) u.Progressive = ctx.World.Parts.RentProgressive();
+            u.Progressive.BeginLastRun(spec.LastRunDuration, spec.LastRunDamageFraction);
         }
 
         // ── ⑥ 장 캐리어 수명 ─────────────────────────────────────────────────

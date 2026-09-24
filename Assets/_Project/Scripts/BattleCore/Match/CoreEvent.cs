@@ -152,6 +152,28 @@ namespace Wassup.BattleCore
         FieldSpawned = 46,
         /// <summary>장이 사라졌다. `Arg` = `FieldKind`.</summary>
         FieldDespawned = 47,
+
+        // ── unit 6b2 (기믹 셈판) ──────────────────────────────────────────────
+        //
+        // ⚠ 픽업·사직서도 **`SiteFired` 가 칸이다**(`OriginBody == 0`) — 둘 다 「자리에 떨어지는 것」.
+        // ⚠ 소멸 사건이 **문마다** 있다(계약 7): 픽업은 먹힘(49)·만료(52) 두 문, 사직서는 임계
+        // 소모(53) 한 문. 한 사건으로 접으면 뷰가 「먹혔나 사라졌나」를 되묻는다.
+
+        /// <summary>픽업이 놓였다. `Arg` = `PickupKind`, `Amount` = 수명(초).</summary>
+        PickupSpawned = 48,
+        /// <summary>픽업이 **먹혔다**. `A` = 픽업, `B` = 먹은 자, `SiteTarget` = 먹은 자의 몸, `Arg` = `PickupKind`.</summary>
+        PickupTaken = 49,
+        /// <summary>사직서가 떨어졌다. `B` = 떨어뜨린 자, `Arg` = **떨어진 뒤 판 위 장수**.</summary>
+        ResignationDropped = 50,
+        /// <summary>
+        /// 사직서 임계에 닿았다 — **임계마다 1건**(한 틱에 여러 번 넘으면 여러 건. 사양이다).
+        /// `A` = 판, `Arg` = 운석 발수(스냅샷), `Amount` = 임계. 운석 실행은 unit 7.
+        /// </summary>
+        ResignationThreshold = 51,
+        /// <summary>픽업이 수명 만료로 사라졌다. `Arg` = `PickupKind`.</summary>
+        PickupExpired = 52,
+        /// <summary>사직서 한 장이 임계로 소모됐다. 장마다 1건 — 뷰가 어느 장을 지울지 되묻지 않게.</summary>
+        ResignationConsumed = 53,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -586,5 +608,41 @@ namespace Wassup.BattleCore
                              f.Id, SimEntityId.None,
                              Site.AtCell(f.Center), Site.Nowhere,
                              (Faction)f.Faction, (int)f.Kind, 0f);
+
+        // ── unit 6b2 (기믹 셈판) ──────────────────────────────────────────────
+
+        public static CoreEvent PickupSpawned(int tick, Pickup p)
+            => new CoreEvent(CoreEventKind.PickupSpawned, tick,
+                             p.Id, SimEntityId.None,
+                             Site.AtCell(p.Center), Site.Nowhere,
+                             Faction.None, (int)p.Kind, p.Remaining);
+
+        // 먹은 자의 몸을 **값으로** 싣는다 — 뷰가 「누가 먹었나」로 개체를 되묻지 않게(계약 7).
+        public static CoreEvent PickupTaken(int tick, Pickup p, Unit taker)
+            => new CoreEvent(CoreEventKind.PickupTaken, tick,
+                             p.Id, taker.Id,
+                             Site.AtCell(p.Center), new Site(taker.Position, taker.HitRadius),
+                             taker.Faction, (int)p.Kind, 0f);
+
+        public static CoreEvent PickupExpired(int tick, Pickup p)
+            => new CoreEvent(CoreEventKind.PickupExpired, tick,
+                             p.Id, SimEntityId.None,
+                             Site.AtCell(p.Center), Site.Nowhere,
+                             Faction.None, (int)p.Kind, 0f);
+
+        public static CoreEvent ResignationDropped(int tick, Resignation r, int onBoard)
+            => new CoreEvent(CoreEventKind.ResignationDropped, tick,
+                             r.Id, r.Source,
+                             Site.AtCell(r.Center), Site.Nowhere,
+                             r.Faction, onBoard, 0f);
+
+        public static CoreEvent ResignationConsumed(int tick, Resignation r)
+            => new CoreEvent(CoreEventKind.ResignationConsumed, tick,
+                             r.Id, SimEntityId.None,
+                             Site.AtCell(r.Center), Site.Nowhere,
+                             r.Faction, 0, 0f);
+
+        public static CoreEvent ResignationThreshold(int tick, int meteorCount, int threshold)
+            => Match(CoreEventKind.ResignationThreshold, tick, meteorCount, threshold);
     }
 }

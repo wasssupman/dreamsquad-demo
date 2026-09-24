@@ -58,7 +58,7 @@ namespace Wassup.BattleCoreUnity
             def.WavePlan = ToPlanDef(plan, enemies);
             def.Bonus = ToBonusDef(bonus, enemies);
             def.Heart = ToHeartConfig(deck);
-            def.Gimmicks = ToGimmickDefs(mode);
+            def.Gimmicks = ToGimmickDefs(mode, def);
             def.Roster = RosterOf(defenders);
 
             // ⚠ 정의표가 다 찬 **뒤에** 굽는다. 먼저 구우면 「덱을 바꿨는데 해시가 그대로」가 된다.
@@ -557,7 +557,16 @@ namespace Wassup.BattleCoreUnity
                     KillHealPerAwakening = deck.killHealPerAwakening,
                 };
 
-        private static GimmickDef[] ToGimmickDefs(MatchModeData mode)
+        /// <summary>
+        /// unit 6b2 — 기믹 SO → 정의표 줄. **종류는 SO 의 구체 타입**이 정하고 수치는 전량 옮긴다(제약 6).
+        /// 옛 브리지의 `CreateGimmickConfigIfActive` 가 하던 복사의 후계이고, 게이트(존재 = 활성)는
+        /// 안 옮긴다 — 활성은 `GimmickHost` 가 「그 기믹이 뽑혔나」로 판정한다.
+        ///
+        /// ⚠ 번아웃의 피로 스택 자산은 **스택 규칙 표에 줄로 들어간다**(F31 — 줄의 주인은 저작 자산).
+        /// 이미 같은 자산의 줄이 있으면 그 줄을 가리키고, 없으면 끝에 붙인다. 그래서 `def` 의 스택
+        /// 표가 **먼저** 차 있어야 한다(`Build` 안의 순서).
+        /// </summary>
+        public static GimmickDef[] ToGimmickDefs(MatchModeData mode, MatchDefinition def)
         {
             if (mode == null || !mode.gimmickEnabled || mode.gimmickPool == null)
                 return System.Array.Empty<GimmickDef>();
@@ -566,9 +575,87 @@ namespace Wassup.BattleCoreUnity
             {
                 var g = mode.gimmickPool[i];
                 if (g == null) continue;
-                list.Add(new GimmickDef { Id = g.gimmickId });
+                list.Add(ToGimmickDef(g, def));
             }
             return list.ToArray();
+        }
+
+        public static GimmickDef ToGimmickDef(GimmickData g, MatchDefinition def)
+        {
+            var row = new GimmickDef { Id = g.gimmickId, Kind = GimmickKind.None };
+            switch (g)
+            {
+                case RedBullGimmickData rb:
+                    row.Kind = GimmickKind.RedBull;
+                    row.RedBull = new RedBullSpec
+                    {
+                        SpawnInterval = rb.redbullSpawnInterval,
+                        Lifetime = rb.redbullLifetime,
+                        MaxActive = rb.maxActivePickups,
+                        LastRunAttackSpeedMul = rb.lastRunAttackSpeedMul,
+                        LastRunDuration = rb.lastRunDuration,
+                        LastRunDamageFraction = rb.lastRunDamageFraction,
+                    };
+                    break;
+                case OnsenGimmickData on:
+                    row.Kind = GimmickKind.Onsen;
+                    row.Onsen = new OnsenSpec
+                    {
+                        HeatInterval = on.heatInterval,
+                        FlipThreshold = on.flipThreshold,
+                        HealPercent = on.healPercent,
+                        LossPercent = on.lossPercent,
+                        HeatMaxStack = on.heatMaxStack,
+                    };
+                    break;
+                case BurnoutGimmickData bo:
+                    row.Kind = GimmickKind.Burnout;
+                    row.Burnout = new BurnoutSpec
+                    {
+                        FatigueInterval = bo.fatigueInterval,
+                        FatigueAmount = bo.fatigueAmount,
+                        FatigueStackRule = StackRuleRowOf(bo.fatigueStack, def),
+                    };
+                    if (bo.fatigueStack == null)
+                        Debug.LogError($"[MatchDefinitionBuilder] 번아웃 기믹 '{g.gimmickId}' 에 피로 스택 자산이 없다 — " +
+                                       "스택 폴백(상한 5 · 지속 0)으로 떨어진다.", g);
+                    break;
+                case ClockOutGimmickData co:
+                    row.Kind = GimmickKind.ClockOut;
+                    row.ClockOut = new ClockOutSpec
+                    {
+                        ResignationThreshold = co.resignationThreshold,
+                        MeteorCount = co.meteorCount,
+                        MeteorDamage = co.meteorDamage,
+                        MeteorTileRange = co.meteorTileRange,
+                        MeteorWarningSec = co.meteorWarningSec,
+                        MeteorStaggerSec = co.meteorStaggerSec,
+                    };
+                    break;
+                default:
+                    // 모르는 SO 는 고르기·알리기만 된다(셈판 없음). loud 하게 — 새 기믹을 만들고 여기를
+                    // 안 고치면 「뽑혔는데 아무 일도 안 일어나는」 판이 된다.
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 기믹 종류 {g.GetType().Name}('{g.gimmickId}') — " +
+                                   "셈판이 안 돈다.", g);
+                    break;
+            }
+            return row;
+        }
+
+        // 그 스택 자산의 줄. 이미 있으면(같은 이름) 그 줄, 없으면 끝에 붙인다. null 이면 -1.
+        private static int StackRuleRowOf(StackModifierSO so, MatchDefinition def)
+        {
+            if (so == null || def == null) return -1;
+            var rows = def.StackRules ?? System.Array.Empty<StackRuleDef>();
+            for (int i = 0; i < rows.Length; i++)
+                if (rows[i].Id == so.name) return i;
+            var added = ToStackRuleDefs(new[] { so });
+            if (added.Length == 0) return -1;
+            var grown = new StackRuleDef[rows.Length + 1];
+            System.Array.Copy(rows, grown, rows.Length);
+            grown[rows.Length] = added[0];
+            def.StackRules = grown;
+            return rows.Length;
         }
 
         /// <summary>

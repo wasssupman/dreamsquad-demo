@@ -88,15 +88,22 @@ namespace Wassup.BattleCore
 
         public void Run(TickContext ctx)
         {
-            if (_map == null || _map.Snapshot.CellCount == 0) return;
+            if (_map != null && _map.Snapshot.CellCount > 0)
+            {
+                RebuildObstacles(ctx);
+                StepAggro(ctx);
+                RebuildHuntField(ctx);
+                StepPatrol(ctx);
+                StepZones(ctx);
+                StepAllyFields(ctx);
+                StepDot(ctx);
+            }
 
-            RebuildObstacles(ctx);
-            StepAggro(ctx);
-            RebuildHuntField(ctx);
-            StepPatrol(ctx);
-            StepZones(ctx);
-            StepAllyFields(ctx);
-            StepDot(ctx);
+            // unit 6b2 — **`[Periodic]` seam 의 호출부.** 핸들러가 0 이어도 매 틱 돈다 — 그것이
+            // 이 unit 의 산출이다(unit 3 이 seam 넷을 그렇게 뚫었다). enum 값만 더하고 여기를 안
+            // 만들면 unit 7 이 「자리가 있는 줄 알고」 등록했다가 아무 일도 안 일어난다.
+            // 맵이 없는 판에서도 부른다 — seam 은 장 준비의 일부가 아니라 **그 뒤의 자리**다.
+            ctx.Seams?.Run(Seam.Periodic, ctx);
         }
 
         // ── ⑤ 존 장판 ────────────────────────────────────────────────────────

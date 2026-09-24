@@ -379,6 +379,7 @@ namespace Wassup.BattleCore
     //   | 궁극기 도약   | **일어나지 않음**(C12 — 피해 버퍼를 비운다) | 취소·위치 복귀 | **면역**(잠금이 이미 걸려 있다) | N/A |
     //   | 치명 타이머   | 같이 사라진다   | 같이 사라진다     | 계속 흐른다     | N/A              |
     //   | 충전(더블파이어) | 같이 사라진다 | 같이 사라진다     | 유지(쿨은 CC 중에도 돈다) | N/A    |
+    //   | 라스트런(6b2) | 같이 사라진다   | 같이 사라진다     | **계속 흐른다**  | N/A              |
     //
     // ⚠ 「궁극기 도약 중 사망이 없다」가 **착지 보장의 근거**다(C12). 가드가 사라지면 착지 예고
     // 미해제 경로가 한꺼번에 열린다 — 그래서 피해 단계가 이탈 중인 개체의 인박스를 **비운다.**
@@ -405,7 +406,23 @@ namespace Wassup.BattleCore
         /// <summary>다음 공격 한 번을 즉시 더 쏘는 충전. 각 발이 온전한 공격이다.</summary>
         public int Charge;
 
-        public bool Any => LeapActive || LethalActive || Charge > 0;
+        // unit 6b2 — 라스트런(레드불) **지연 crash 타이머.** 공속 버프는 스탯 슬롯이 따로 들고
+        // 스스로 만료된다 — 여기는 「시간이 끝나면 최대 체력의 일부를 스스로 깎는다」만 든다.
+        // 별도 타이머 타입을 만들지 않은 이유: 집이 하나여야 중단 정책이 하나다(UML §2 `+LastRun?`).
+        // ⚠ **켜져 있는 동안이 곧 재소비 락**이다 — 먹은 유닛은 crash 로 값을 치른 뒤에야 다시 먹는다.
+        public bool LastRunActive;
+        public float LastRunRemaining;
+        public float LastRunFraction;
+
+        /// <summary>라스트런 개시. 락이 걸려 있으면 부르지 않는다(대상 필터가 먼저 거른다).</summary>
+        public void BeginLastRun(float seconds, float damageFraction)
+        {
+            LastRunActive = true;
+            LastRunRemaining = seconds;
+            LastRunFraction = damageFraction;
+        }
+
+        public bool Any => LeapActive || LethalActive || Charge > 0 || LastRunActive;
 
         /// <summary>중단 정책 표의 **유일한 이행 지점**. 분기를 소비처로 흩지 말 것.</summary>
         public void Interrupt(ProgressInterrupt reason)
@@ -413,7 +430,7 @@ namespace Wassup.BattleCore
             switch (reason)
             {
                 case ProgressInterrupt.Cc:
-                    // 도약은 면역(잠금이 이미 걸려 있다) · 치명은 계속 흐른다 · 충전은 유지.
+                    // 도약은 면역(잠금이 이미 걸려 있다) · 치명·라스트런은 계속 흐른다 · 충전은 유지.
                     return;
 
                 case ProgressInterrupt.Death:
@@ -422,12 +439,14 @@ namespace Wassup.BattleCore
                     // 착지 없이 상태만 걷어 「시체가 잠긴 채」 남지 않게 한다.
                     LeapActive = false;
                     LethalActive = false;
+                    LastRunActive = false;
                     Charge = 0;
                     return;
 
                 case ProgressInterrupt.Retire:
                     LeapActive = false;
                     LethalActive = false;
+                    LastRunActive = false;
                     Charge = 0;
                     return;
             }
@@ -445,6 +464,9 @@ namespace Wassup.BattleCore
             LethalActive = false;
             LethalRemaining = 0f;
             LethalFraction = 0f;
+            LastRunActive = false;
+            LastRunRemaining = 0f;
+            LastRunFraction = 0f;
             Charge = 0;
         }
     }
