@@ -58,7 +58,9 @@ namespace Wassup.BattleCore
             u.Move.Speed = d.MoveSpeed;
             u.Move.Radius = ctx.Def.Movement.AgentRadiusTiles;
             u.Move.TraversalLayers = (byte)d.TraversalLayers;
-            u.Move.Engage = (EngageMovement)math.clamp(d.EngageMovement, 0, 2);
+            // ⚠ 모르는 값을 **조용히 접지 않는다** — clamp 는 새 값을 가장 가까운 옛 값으로 숨긴다.
+            // 빌더가 이름 매핑(`ToCoreEngage`)으로 싣고, 여기선 정의역 밖이면 loud 하게 멈춤으로 둔다.
+            u.Move.Engage = EngageOf(ctx, d.EngageMovement);
             // 경로 선택 — **좁은 쪽이 이긴다**: 적 정의 > 웨이브 컨셉 > 레인 기본.
             u.Move.PathIndex = WaypointRouting.ResolvePathIndex(
                 d.WaypointPathIndex, conceptPathIndex,
@@ -74,6 +76,20 @@ namespace Wassup.BattleCore
             // 적도 방어유닛과 **같은 함수**로 공격을 얻는다(통합 루프가 둘을 구분하지 않는다).
             u.Attack = CombatPhase.BuildAttackState(in d, ctx.Def, ctx.World.Parts);
             return u;
+        }
+
+        private static EngageMovement EngageOf(TickContext ctx, int raw)
+        {
+            switch ((EngageMovement)raw)
+            {
+                case EngageMovement.Halt:
+                case EngageMovement.Advance:
+                case EngageMovement.Pulse:
+                    return (EngageMovement)raw;
+                default:
+                    ctx.Warn($"[EnemySpawn] 모르는 교전 이동 값({raw}) — 멈춤으로 둔다.");
+                    return EngageMovement.Halt;
+            }
         }
 
         // 그 칸에서 골로 향하는 방향. 측면 분산이 **진행방향 수직**으로 벌리기 위한 값이다.

@@ -150,7 +150,7 @@ namespace Wassup.BattleCoreUnity
             snap.CellLayers = new byte[n];
             for (int i = 0; i < n; i++)
             {
-                var tile = (MapTile)(byte)map.tiles[i];
+                var tile = ToCoreTile(map.tiles[i]);
                 snap.Tiles[i] = tile;
                 snap.PlaceMask[i] = map.placeMask.IsCreated
                     ? PlacementLayers.Sanitize(map.placeMask[i])
@@ -537,6 +537,39 @@ namespace Wassup.BattleCoreUnity
         }
 
         /// <summary>
+        /// 저작 칸 종류 → 코어 칸 종류. **이름으로 옮긴다**(`CombatDefinitionBuilder` 의 매핑들과
+        /// 같은 이유 — 두 어휘는 다른 어셈블리라 한쪽이 값을 끼우면 컴파일러가 못 잡는다).
+        /// 모르는 값은 **장식(못 걷는 칸)**으로 접고 loud 하다 — 통로로 접으면 벽이 길이 된다.
+        /// </summary>
+        public static MapTile ToCoreTile(MapTileType authored)
+        {
+            switch (authored)
+            {
+                case MapTileType.Walk: return MapTile.Walk;
+                case MapTileType.Place: return MapTile.Place;
+                case MapTileType.Env: return MapTile.Env;
+                case MapTileType.Deco: return MapTile.Deco;
+                default:
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 칸 종류({authored}) — 장식으로 접는다.");
+                    return MapTile.Deco;
+            }
+        }
+
+        /// <summary>저작 교전 이동 → 코어 어휘. **이름으로 옮긴다.** 모르는 값은 멈춤(Halt)으로 접고 loud 하다.</summary>
+        public static Wassup.BattleCore.EngageMovement ToCoreEngage(Wassup.Data.EngageMovement authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Data.EngageMovement.Halt: return Wassup.BattleCore.EngageMovement.Halt;
+                case Wassup.Data.EngageMovement.Advance: return Wassup.BattleCore.EngageMovement.Advance;
+                case Wassup.Data.EngageMovement.Pulse: return Wassup.BattleCore.EngageMovement.Pulse;
+                default:
+                    Debug.LogError($"[MatchDefinitionBuilder] 모르는 교전 이동({authored}) — 멈춤으로 접는다.");
+                    return Wassup.BattleCore.EngageMovement.Halt;
+            }
+        }
+
+        /// <summary>
         /// 저작 임계 모드 → 코어 어휘. **이름으로 옮긴다**(`CombatDefinitionBuilder` 의 매핑 넷과 같은 이유).
         /// </summary>
         public static StackThresholdMode ToCoreThresholdMode(ThresholdMode authored)
@@ -617,7 +650,8 @@ namespace Wassup.BattleCoreUnity
                 list.Add(new StackRuleDef
                 {
                     Id = so.name,
-                    Kind = (int)so.kind,
+                    // ⚠ 번호 캐스트 금지 — 산출물 스택 종류와 **같은 매핑**을 쓴다.
+                    Kind = (int)CombatDefinitionBuilder.ToCoreStackKind(so.kind),
                     MaxStack = so.maxStack,
                     PerAppDuration = so.perAppDuration,
                     Thresholds = rows,
@@ -715,7 +749,7 @@ namespace Wassup.BattleCoreUnity
                     StabilityDamage = e.stabilityDamage,
                     DetectionRange = e.detectionRange,
                     AwakeningReward = e.awakeningReward,
-                    EngageMovement = (int)e.engageMovement,
+                    EngageMovement = (int)ToCoreEngage(e.engageMovement),
                     TargetFactions = (int)e.targetFactions,
                     WaypointPathIndex = e.waypointPathIndex,
                 };

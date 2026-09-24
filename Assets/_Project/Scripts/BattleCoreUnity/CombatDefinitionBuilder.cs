@@ -253,7 +253,7 @@ namespace Wassup.BattleCoreUnity
                 ? IndexOf(projectiles, e.projectile)
                 : -1;
             a.Outputs = ToOutputs(e.outputs);
-            a.Mode = (int)e.targetMode;
+            a.Mode = (int)ToCoreTargetMode(e.targetMode);
             // `DefenderClass.None`(0) = 우선 없음. 직업 필터는 적에게 **저작 칸이 있으므로 늘 켜진다**
             // — `Everything`(~0) = 전부, `None`(0) = 아무도 못 때린다(옛 `AttackSystem` 의 `hasFilter`).
             a.PriorityClass = (int)e.targetPriorityClass;
@@ -309,7 +309,7 @@ namespace Wassup.BattleCoreUnity
         private static void Bake(AttackShape authored, ref AttackDef a)
         {
             var baked = AttackShapeBake.From(in authored, out bool ok);
-            a.ShapeKind = baked.kind;
+            a.ShapeKind = ToCoreShapeKind(baked.kind);
             a.ShapeSinHalf = baked.sinHalf;
             a.ShapeCosHalf = baked.cosHalf;
             a.ShapeHalfWidth = baked.halfWidth;
@@ -409,6 +409,40 @@ namespace Wassup.BattleCoreUnity
         // (리뷰가 든 시나리오: `ThresholdMode` 앞에 값이 끼면 `Consume` 이 `Edge` 로 읽혀
         //  소비형 임계가 스택을 안 깎고 **무한 발화**한다.)
         // `BuilderEnumPinTests` 가 일곱 쌍의 이름·개수 일치와 매핑의 이름 보존을 고정한다.
+
+        /// <summary>저작 지속 락 모드 → 코어 어휘. **이름으로 옮긴다.** 모르는 값은 락 없음으로 접는다.</summary>
+        public static TargetMode ToCoreTargetMode(EnemyTargetMode authored)
+        {
+            switch (authored)
+            {
+                case EnemyTargetMode.None: return TargetMode.None;
+                case EnemyTargetMode.Nearest: return TargetMode.Nearest;
+                case EnemyTargetMode.FocusUntilDead: return TargetMode.FocusUntilDead;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 지속 락 모드({authored}) — 락 없음으로 접는다.");
+                    return TargetMode.None;
+            }
+        }
+
+        /// <summary>
+        /// 저작 bake 도형 종류(`Wassup.Data.AttackShapeBaked` 상수) → 코어 상수. 두 쪽이 **상수 집합**
+        /// 이라 enum 핀이 못 잡는다 — 이름(상수)으로 옮기고 값 핀은 테스트가 진다. 모르는 값은
+        /// 전방위로 접는다(`bake` 가 정의역 밖을 전방위로 읽는 것과 같은 방향).
+        /// </summary>
+        public static int ToCoreShapeKind(byte authored)
+        {
+            switch (authored)
+            {
+                case Wassup.Data.AttackShapeBaked.OmniKind: return Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind;
+                case Wassup.Data.AttackShapeBaked.SectorKind: return Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind;
+                case Wassup.Data.AttackShapeBaked.BandKind: return Wassup.BattleCore.Combat.AttackShapeBaked.BandKind;
+                default:
+                    UnityEngine.Debug.LogError(
+                        $"[CombatDefinitionBuilder] 모르는 도형 종류({authored}) — 전방위로 접는다.");
+                    return Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind;
+            }
+        }
 
         public static Wassup.BattleCore.AttackOutputKind ToCoreOutputKind(
             Wassup.Data.AttackOutputKind authored)

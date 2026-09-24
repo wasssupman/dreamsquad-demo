@@ -106,5 +106,78 @@ namespace Wassup.Tests.EditMode
             PinMapping<PatternSelectionRule, Wassup.BattleCore.Combat.Emission.PatternSelectionRule>(
                 CombatDefinitionBuilder.ToCoreSelection);
         }
+
+        // ── 2026-09-24 드리프트 감사 — 캐스트로 건너던 나머지 쌍 ──────────────
+
+        [Test]
+        public void 칸_종류()
+        {
+            PinNamesAndValues<MapTileType, Wassup.BattleCore.Map.MapTile>();
+            PinMapping<MapTileType, Wassup.BattleCore.Map.MapTile>(MatchDefinitionBuilder.ToCoreTile);
+        }
+
+        [Test]
+        public void 지속_락_모드()
+        {
+            PinNamesAndValues<EnemyTargetMode, TargetMode>();
+            PinMapping<EnemyTargetMode, TargetMode>(CombatDefinitionBuilder.ToCoreTargetMode);
+        }
+
+        [Test]
+        public void 교전_이동()
+        {
+            PinNamesAndValues<Wassup.Data.EngageMovement, Wassup.BattleCore.EngageMovement>();
+            PinMapping<Wassup.Data.EngageMovement, Wassup.BattleCore.EngageMovement>(
+                MatchDefinitionBuilder.ToCoreEngage);
+        }
+
+        // 상수 집합은 enum 반사로 못 잡는다 — **값으로** 핀한다. 한쪽이 비트를 옮기면 빨개진다.
+
+        [Test]
+        public void 층_비트()
+        {
+            Assert.AreEqual((int)PlacementLayer.None, Wassup.BattleCore.Map.LayerBits.None);
+            Assert.AreEqual((int)PlacementLayer.Ground, Wassup.BattleCore.Map.LayerBits.Ground);
+            Assert.AreEqual((int)PlacementLayer.Path, Wassup.BattleCore.Map.LayerBits.Path);
+            Assert.AreEqual((int)PlacementLayer.Air, Wassup.BattleCore.Map.LayerBits.Air);
+            Assert.AreEqual((int)PlacementLayer.All, Wassup.BattleCore.Map.LayerBits.All);
+            // 이름 집합도 본다 — 저작 쪽에 층이 늘면 코어 상수도 늘어야 한다.
+            CollectionAssert.AreEquivalent(new[] { "None", "Ground", "Path", "Air", "All" },
+                                           Enum.GetNames(typeof(PlacementLayer)),
+                                           "PlacementLayer 에 층이 늘었다 — LayerBits 도 같이 늘린다");
+        }
+
+        [Test]
+        public void 도형_종류()
+        {
+            Assert.AreEqual(Wassup.Data.AttackShapeBaked.OmniKind, Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind);
+            Assert.AreEqual(Wassup.Data.AttackShapeBaked.SectorKind, Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind);
+            Assert.AreEqual(Wassup.Data.AttackShapeBaked.BandKind, Wassup.BattleCore.Combat.AttackShapeBaked.BandKind);
+            Assert.AreEqual(Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind,
+                            CombatDefinitionBuilder.ToCoreShapeKind(Wassup.Data.AttackShapeBaked.SectorKind));
+            Assert.AreEqual(Wassup.BattleCore.Combat.AttackShapeBaked.BandKind,
+                            CombatDefinitionBuilder.ToCoreShapeKind(Wassup.Data.AttackShapeBaked.BandKind));
+            Assert.AreEqual(Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind,
+                            CombatDefinitionBuilder.ToCoreShapeKind(Wassup.Data.AttackShapeBaked.OmniKind));
+        }
+
+        [Test]
+        public void 스택_저작의_종류는_산출물과_같은_매핑을_지난다()
+        {
+            // `StackModifierSO.kind` 가 통짜 캐스트로 건너던 자리. 매핑 자체는 `스택_종류` 가 핀하고,
+            // 여기서는 **스택 저작 표가 그 매핑을 지나는가**를 본다.
+            var so = UnityEngine.ScriptableObject.CreateInstance<StackModifierSO>();
+            try
+            {
+                foreach (Wassup.Battle.Effects.StackKind k in Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)))
+                {
+                    so.kind = k;
+                    var rows = MatchDefinitionBuilder.ToStackRuleDefs(new[] { so });
+                    Assert.AreEqual(1, rows.Length);
+                    Assert.AreEqual((int)CombatDefinitionBuilder.ToCoreStackKind(k), rows[0].Kind, $"스택 저작 {k}");
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(so); }
+        }
     }
 }
