@@ -209,6 +209,90 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsEmpty(CoreSceneFixture.Errors, string.Join("\n", CoreSceneFixture.Errors));
         }
 
+        // 6c 후속 2 보충 — **적 거점도 가이드 후보다**(옛 규칙). 마스크 = 저작 98(적 진영 전부 — 옛
+        // `DefenderTargetDefaults.Resolve` · 팩션 필터 `BattleBridge.cs:8135`), 거점은 따로 사각 반폭을 두르고
+        // (`:8158-8160`) 순위는 **종류를 안 가리는** 순수 최근접(`:8169` `RanksBefore`)이다. 그래서 거점이
+        // 스폰한 적보다 가까우면 옛 가이드는 거점을 봤다 — 「적 유닛만 겨눈다」로 좁히면 이 테스트가 빨개진다.
+        // 레인 0 스폰 자리 옆에 적 본능 거점이 서 있다(첫 테스트가 그 배치에서 이 규칙을 밟았다).
+        [UnityTest]
+        public IEnumerator 적_거점이_스폰한_적보다_가까우면_가이드는_거점을_향한다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return CoreSceneFixture.LoadAndBoot(d => driver = d);
+            Assert.IsNotNull(driver, "BattleCoreScene 에 BattleDriver 가 없다");
+            driver.Apply(Command.FinishPlacement());
+            driver.Pause(true);
+            var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
+            Assert.IsNotNull(overlay);
+
+            var def = driver.Definition;
+            int shaped = -1;
+            for (int i = 0; i < def.Units.Length && shaped < 0; i++)
+            {
+                var u = def.Units[i];
+                if (u.AttackRange <= 0f || u.Attack.ShapeKind != AttackShapeBaked.SectorKind) continue;
+                if ((TargetDefaults.ResolveDefender(u.TargetFactions) & (int)Wassup.Battle.Units.Faction.EnemyUnit) == 0)
+                    continue;
+                shaped = i;
+            }
+            Assert.GreaterOrEqual(shaped, 0, "로스터에 적을 겨누는 부채꼴 유닛이 없다");
+            var su = def.Units[shaped];
+            int mask = TargetDefaults.ResolveDefender(su.TargetFactions);
+
+            Assert.IsTrue(driver.Apply(Command.DebugSpawnEnemyInLane(0, 0)).Accepted, "적 스폰 거절");
+            Unit enemy = LatestEnemy(driver);
+            Assert.IsNotNull(enemy, "적이 안 섰다");
+            yield return null;
+
+            // 앵커 = 적과 적 거점이 **둘 다** 사거리 안이고 거점이 **더 가까운** 자리. 도달은 정본 진입점으로 묻는다.
+            float ts = driver.TileSize;
+            int w = math.max(1, su.FootprintWidth);
+            var size = driver.GridSize;
+            var units = driver.Units;
+            Unit structure = null;
+            int2 anchor = default;
+            float3 foot = default;
+            for (int y = 0; y < size.y && structure == null; y++)
+            for (int x = 0; x < size.x && structure == null; x++)
+            {
+                var f = new float3((x + (w - 1) * 0.5f) * ts, 0f, y * ts);
+                if (!AttackReach.InReach(f, enemy.Position, su.AttackRange, ts, su.BodyRadiusTiles, enemy.HitRadius)) continue;
+                float ex = enemy.Position.x - f.x, ez = enemy.Position.z - f.z;
+                float enemySq = ex * ex + ez * ez;
+                if (enemySq < 0.25f * ts * ts) continue;
+                for (int i = 0; i < units.Count; i++)
+                {
+                    var o = units[i];
+                    if (o.Kind != UnitKind.Structure || ((int)o.Faction & mask) == 0 || !o.IsTargetable()) continue;
+                    if (!AttackReach.InReach(f, o.Position, su.AttackRange, ts, su.BodyRadiusTiles, o.HitRadius)) continue;
+                    float ox = o.Position.x - f.x, oz = o.Position.z - f.z;
+                    float sq = ox * ox + oz * oz;
+                    if (sq < 0.25f * ts * ts || sq >= enemySq) continue;
+                    structure = o; anchor = new int2(x, y); foot = f;
+                    break;
+                }
+            }
+            Assert.IsNotNull(structure, "적과 적 거점이 함께 사거리 안이고 거점이 더 가까운 앵커가 없다 — 증언할 수 없다");
+
+            overlay.ShowPlacement(shaped, anchor, true);
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(overlay.TryGetShapeGuide(out _, out _, out var dirView), "사거리 안에 적과 거점이 있는데 가이드가 없다");
+            Vector3 footView = BoardSpace.ToView(foot);
+            Vector3 toStructure = (Vector3)BoardSpace.ToView(structure.Position) - footView;
+            Vector3 toEnemy = (Vector3)BoardSpace.ToView(enemy.Position) - footView;
+            Assert.Greater(Vector3.Dot(dirView.normalized, toStructure.normalized), 0.999f,
+                $"가이드가 더 가까운 적 거점({structure.Faction})을 향하지 않는다 — 후보에서 거점을 뺐거나 순위가 종류를 가린다");
+            Assert.Less(Vector3.Dot(dirView.normalized, toEnemy.normalized), 0.999f,
+                "가이드가 거점이 아니라 더 먼 적 유닛을 향한다");
+
+            overlay.HidePlacement();
+            CoreSceneFixture.EndErrorWatch();
+            Assert.IsEmpty(CoreSceneFixture.Errors, string.Join("\n", CoreSceneFixture.Errors));
+        }
+
         private static Unit LatestEnemy(BattleDriver driver)
         {
             Unit e = null;
