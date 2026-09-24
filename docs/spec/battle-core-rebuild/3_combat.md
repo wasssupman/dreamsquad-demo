@@ -81,6 +81,8 @@
 | 2026-09-24 (빌더 의미) | 적 `attackMethod None`/산출물 없음 = 걷기만(`AttackDef.Unarmed`, 사거리 0) · 탄은 `Projectile` 방식만 · 직업 필터는 **존재가 게이트**(`HasClassFilter`, 적은 늘 켬 — 마스크 0 = 아무도 못 때림) · 폭탄맨 = 능력 ∧ `travelSec > 0` · 광역 = `Splash` 토큰 ∧ 반경 · 패턴 거절·클램프(옛 `TryToSpec`) · 패턴을 먼저 굽고 탄 표를 나중에 굳힌다 | 전부 잠복(라이브 무영향). 새 두 칸은 기본값이면 canonical 줄을 안 써 골든 `configHash` 를 보존한다 |
 | 2026-09-24 (enum 핀) | `MapTileType`·`EnemyTargetMode`·`EngageMovement` 이름 매핑 + 핀 · 도형 종류·층 비트 값 핀 · 스택 저작 종류도 `ToCoreStackKind` · `EnemySpawn` 의 교전 이동 clamp → 정의역 밖 loud | `PatternSelectionRule`(ec10619d)과 같은 모양의 나머지 쌍 |
 | 2026-09-24 (모드 배선) | `ModeValidation.Validate` 를 빌더가 부른다(문제 전부 loud) · 모드 `deck`(있으면 이김)·`plan`(저작 플랜 모드) 소비 — 드라이버도 같은 `ResolveDeck/Plan` · `costConfig` 누락 = loud 오류 | 검증이 테스트에서만 불렸고, 모드 덱·플랜 소비자 0, 배치 창 폴백이 옛 30초 → 0초로 뒤집혀 있었다. 맵 풀 로테이션은 이 spec 이 귀속을 정한다(미배선) |
+| 2026-09-24 (도달 패리티 D1) | 힐러(아군을 겨누는 방어유닛)의 **부가 대상도 가장 다친 순**이다 — 주 대상과 같은 `LowestHealthTargeting`(체력 비율 `saturate(hp/max)` 오름차순 → 동률이면 거리² → SimId). 적을 겨누는 부가 타격은 그대로 최근접(동거리 SimId — 옛은 순회 인덱스 선착, 계약 6 의 의도된 차이) | 옛 `AttackSystem.cs:1516` pass 루프의 `rankByHealth` 분기(`:1538`, 정의 `:546`) · 순위 `LowestHealthTargeting.cs:29` · 적 쪽 `:1552` `d2 < passSq`. 새 코어는 부가 대상을 가까운 순으로 골라 라이브 `Defender_Healer`(3체)의 2·3번째 회복이 **덜 다친 옆 아군**에게 갔다. 그물 = `SecondaryTargetingTests` |
+| 2026-09-24 (도달 패리티 D2) | 직업 필터는 **주 대상 획득만** 거른다 — 부가 타격 선정은 진영·층·자기·도형만 본다. 필터가 허용한 직업을 문 적의 광역은 옆의 불허 직업도 함께 친다 | 옛 필터는 주 대상 루프 `AttackSystem.cs:622` 한 곳뿐이고 pass 루프(`:1525~1537`)에는 없다. 새 코어가 부가 타격에도 `ClassAllowed` 를 걸어 직업 필터 적의 다중 타격이 좁아졌다. 그물 = `SecondaryTargetingTests` |
 
 ## 규칙 → 증언 매핑 (전투 판정 「필수」 18)
 
