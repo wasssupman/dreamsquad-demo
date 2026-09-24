@@ -106,20 +106,48 @@
 | `SelfWarmupBuff`(7) | 핸들러 0 · 사용 카드 0 — **죽은 값**. 시트 왕복 때문에 번호만 보존하고 코드 경로는 안 만든다 | 제거 · S17 |
 | `AreaBarrage`(5) | 죽은 값이 **아니라 이관됨** — arm 이 철거되고 일이 발사 명세로 옮겨 갔다. 코드 경로는 안 만들되 bake 가 남기던 **안내 문구**(`BattleBridge.cs:10290`)는 같은 뜻으로 유지한다. 저작자가 이 번호를 고르면 「발사 명세를 쓰라」고 말해야 한다 | 이관(안내 유지) |
 | 미개방 게이트 조합 5종 · 복수 게이트 ∧ · 아웃게임 상태 게이트 | `GateComboSupported` 2조합(궁지폭발 · 처형타)만 유지하고 나머지는 loud 거절. 「대상의 체력 × 피격 N회」는 **한 틱 다중 출처의 주체 선정 규칙**이 선행한다 | 보류 · S26 |
+| 일반 도약(짱쎈 `SelfBlink`)의 **착지 슬램** | 옛 슬램은 브리지가 **뷰 도착 시각**에 쐈다(`RunBossLeap` → `ResolveLanding`, 장부상 둘 다 뷰·삭제). 코어는 순간이동과 `LeapAscend`(일반) 연출 신호까지 한다. 슬램을 결정론으로 어디에 둘지는 보스 규칙이라 7d 가 정한다 — **7a 플레이에서 짱쎈 도약은 피해가 없다** | 이월 · 7d |
+| 보스 위협 귀속(`CreditThreat`) | 소비자(보스 텔레포트 대상 선정)가 7d. 의도는 `Report` 로 말하고 버린다(조용한 무동작 금지) | 이월 · 7d(C25) |
+| 살찌운 제물의 **소비**(처치 보상 배율) | 의도는 `Unit.AwakeningRewardMul` 까지 적용한다. 보상 담당자(`HandDeck`)가 그 배율을 읽는 것은 카드 규칙이라 7b | 이월 · 7b |
+| 빔(`AreaDot`)·부착 오라(`auraPrefab`) 연출 index | 뷰 표(프리팹)는 카드·연출 화면의 것 — bake 가 index 를 안 싣는다(무연출). 규칙(지속 피해·자기 공격 지연)은 그대로 돈다 | 이월 · 7c |
+| 유닛 bake 의 `SelfOrbitProjectile` | 옛 bake 가 이미 거절했다(속도·탄 SO 를 안 채워 발동해도 무동작). 그 가드 그대로 — 궤도 탄 자체(`IntentApplier.SpawnOrbit`)는 카드 경로(7b)용으로 선다 | 유지(옛 가드) |
+| 자기 죽음(`OnDeath`)의 **틱** | 옛 = 사망 프레임 안(`UnitLifecycleSystem` 이 같은 프레임에 파괴). 새 코어는 사망 2단계(unit 3 계약 9 — 표시 틱 ≠ 소멸 틱)라 **소멸 틱**(한 틱 뒤)의 `Lifecycle` seam 에서 난다 | 계약 계승(unit 3) |
 
 ## 고친 것 (기존 코어·Unity 층 변경)
 
-*(구현 중 채운다.)*
+| 무엇 | 전 → 후 | 근거 |
+|---|---|---|
+| 치명 타이머(마지막 불꽃) | 「최대 체력의 `LethalFraction` 만큼 피해」(unit 3 의 생산자 0 발명 — 실드·받는 피해 배율에 막힌다) → **시간이 끝나면 죽는다**(출처 없음 = 미귀속, 표시 틱 = 이번 틱) | 옛 `LethalTimerSystem.cs` 가 `DeadTag` 를 붙였다. `CombatPhase.StepThreshold` |
+| 충전 소비 | 한 번에 1씩 차감 → **한 번 쓰면 전부 사라진다** | 옛 `AttackSystem.cs:1035` `RemoveComponent<NextAttackDoubleFire>`(충전 수와 무관하게 1회 보너스). 부여는 덮어쓰기(옛 `AddComponent`) — `AttackMod.ConsumeCharge` · `IntentApplier.GrantCharge` |
+| 스킬 피해의 출처 | 옛 어댑터는 `DealDamage` 를 **출처 없이** 넣었다(`EcsSkillContext.cs` `IncomingDamage { amount }`) → **시전자를 싣는다** | 새 코어의 처치 점수·각성은 **귀속된 죽음**(`UnitSlain`)에만 난다. 옛 전투의 점수는 킬러를 안 봤으므로 출처를 빼면 스킬(브레스·말파이트 지진)로 죽인 적이 점수를 안 준다. → 부작용 1건은 「사용자 결정 필요」 참조 |
+| `AttackState.WantsFrontmost` | 저작 칸(생산자 0) → **공격 수식자에서 파생**(`AttackMod.WantsFrontmost(Mods)`) + START 스냅샷(`FrontmostMulSnapshot`·`FrontmostTarget`, 옛 `FrontmostAttackLock`) | unit 3 이 「배율은 unit 7」로 남긴 자리 |
+| `ProgressiveStates` | 호접몽 칸 신설(`Cocoon*` · ε 0.05 = 옛 `DreamCocoon.Epsilon`) · 완주 판정 = `CombatPhase.FlushCc` 의 기상 뒤·감쇠 앞(옛 `[UpdateAfter(CcClear)][UpdateBefore(CcDecay)]`) | S19 원자 개시 |
+| 착탄 예고 반경 | 없음 → `ProjectileRequest/Projectile.TelegraphTileRange` · `ProjectileSpawned.AreaTiles` 가 싣는다(0 = 예고 없음) | 6c 이월 — 옛 `EcsSkillContext.cs:1121` `telegraphTileRange = intent.Telegraph ? intent.TileRange : 0` |
+| 브레스 그림 | 없음 → `TriggerFired` 가 **스킬의 콘**(`AttackDir` = 시전자→대상 · `AttackShape` 부채꼴 · `AttackRange` = 사거리)을 싣는다 | 6c 후속 3 이월(옛 `AttackSystem.cs:1954-1971` `hasAreaBreath`) |
+| 사건 4 · 트레이스 3 | `CoreEvent` 56 `TriggerFired` · 57 `BindingAttached` · 58 `BindingDetached` · **59 `SkillVisual`**(스펙 셋 + 하나 — 적중 펄스·빔 요청이 다른 사건으로 안 실려 **조용히 버려지지 않게**) · 트레이스 54~56(`SkillVisual` 은 뷰 전용이라 채널 없음) | 로깅은 첫 축(추가 제약) |
+| 정의표 | `MatchDefinition.Bindings` · `UnitDef/EnemyDef.Bindings` · `AttackDef.Mods` — **빈 표·빈 칸은 한 줄도 안 쓴다** | 골든 코퍼스(규칙 0) 해시 무변 — Unity EditMode 골든 11종 무변 확인 |
+| 퇴근 운석의 seam | 옛 `Lifecycle`(브리지가 파괴 뒤 밀어 넣음) → **`Immediate`**(`PlacementService.Retire` 가 파괴 직전 스냅샷 · `CommandPhase` 콜스택 드레인) | 7b 8-1 선언 — 새 코어의 틱 `Lifecycle` 훅은 퇴근이 지나가지 않는다 |
+| `InstanceId` 의 범위 | 7b 13 「앱 수명 내내」 → **판 수명 내내** 단조 · 재사용 없음 | 코어는 판 밖 상태를 안 든다(핸들이 판을 건너지 않는다). 앱 전역 카운터는 같은 판을 다시 돌리면 id 가 달라져 결정론(트레이스 `i`)을 깬다 |
+| 스킬 발사 명세 | 없음 → 규칙의 버스트(`Binding.Emitters`)가 평타 연발과 **같은 전진기**(`CombatPhase.StepEmitters`)를 탄다 — 피해 = 패턴 저작 · 대상 = 시전자의 상대 진영 유닛 · 층 = 시전자 공격 층(옛 `BuildPatternTemplate`) | 옛 `ProjectileEmitterSystem` 이 평타·스킬 둘 다 굴렸다 |
+| `FanOutToAllCandidates` | 소비자 0 → **이식**(`CombatPhase.FanOut` — 적 조준 궤적만 · 스코프 안 후보 전원 1발 · row-major 칸 순위 · 칸마다 시차) | 옛 `ProjectileEmitterSystem.cs:221` · `TriggerSymptomTests.캐논_융단폭격은_미사일_수가_반경_안_적_수다` |
+
+### 사용자 결정 필요 (7a) — **1건**
+
+**스킬 피해로 적을 죽이면 그 유닛의 「처치」 규칙이 켜지나?** 옛 전투에서 스킬의 직접 피해(드래곤 브레스·말파이트 지진·광역 군중 제어의 부수 피해)는 **출처가 없어** 처치 규칙(시체 폭발·잿불·광란)을 안 켰다 — 그런데 점수는 줬다(옛 처치 점수는 킬러를 안 봤다). 새 코어는 점수가 **귀속된 죽음에만** 나므로 두 성질을 동시에 옮길 수 없다. **기본값 = 출처를 싣는다**(점수 유지 · 부작용: 말파이트 지진으로 죽인 적이 말파이트의 처치 카드를 켠다 — 오늘 라이브 조합은 카드 부착 뒤에만 생긴다). 반대로 가면 스킬로 죽인 적이 점수를 안 준다.
 
 ## 완료 기준
 
-- [ ] **헤드리스 초록** · **EditMode 코어 lane 초록** + 새 테스트 7묶음: `BindingRegistryTests`(수명 5종 · `fireCap` ≠ `lifetime` · `revokeOnExpire` · `InstanceId` 단조 증가 F1) · `TriggerDispatchTests`(전순서 키 · 세대 BFS 직접 재진입만 · 깊이 4 초과 `Report` · 잔여 큐 후속/지난 seam) · `SkillRoutingTests`(트리거별 분기 7 + 폴백 표 · **`OnPlace × 충전`이 라우팅을 찾는다** · 미라우팅은 loud 거절) · `RangeCatalogTests`(형 표 전건 · `DeathSiteBlast × OnDeath/OnRetire` 가 **다른 형**) · `IntentApplierTests`(intent 24 + meta 2 · 원자 개시) · `AttackModTests`(5종 · 충전 부여/소비 경계) · `CoreTriggerEnumPinTests`.
-- [ ] **증상 단언 3건**(규칙이 화면에서 보이는 형태로): ⑴ 적을 죽인 자리에서 시체 폭발이 터지고 **그 시체의 몸만큼 넓다** ⑵ 배치하면 배치 스킬이 **그 프레임에** 난다 ⑶ 부착한 카드가 붙은 유닛이 죽으면 **작별 선물이 그 자리에서** 터진다(시전자가 없어도).
-- [ ] `SeamHooks.Run` 호출부 **6곳**(grep) · `Seam._Count` 앞 번호가 **안 밀렸다** · `Immediate` 는 `CommandPhase` 콜스택 안에서만 불린다.
-- [ ] **`SeamTickOrder` 단언**: `Periodic` 의 틱 순서 index 가 `Attack` 보다 **작다**(enum 값은 더 크다). 「지난 seam 이면 다음 틱」 판정이 그 표를 보고, **enum 값을 비교하는 코드가 0** 이다(소스 단언 — 5b 의 `CoreViewYardstickTests` 선례).
-- [ ] **캐논 융단폭격 단언**: `Pattern_Cannon_Strike` 저작으로 배치 스킬을 쏘면 **미사일 수 = 반경 안 적 수**(1:1), 그 손잡이가 꺼진 명세는 한 발. 안 배선하면 조용히 한 발이 되므로 값이 아니라 **개수를** 센다.
-- [ ] 코어에 `Unity.Entities` 0 · `Wassup.Skills` 는 **한 줄도 안 고쳤다**(git diff 0줄 — 엔진 무참조가 이미 참이라는 증거).
-- [ ] `ledgers/rules.md` **S1·S4·S8·S9·S18·S19·S20·S22·S23·S24·S25·S26·S27 · E2 · C5** 가 코드 포인터로 매핑. S20 은 「`IntentApplier` 단일 표면 + 아키텍처 테스트」로 **보류 → 결정**. ⚠ `rules.md` 의 `C5`(바늘 캐리어)와 `rule-holders.md` 의 `C5`(코스트)는 **다른 행**이다 — 장부를 섞지 말 것.
-- [ ] `ledgers/bridge-methods.md` 미정 **44 → 36**(8행): `RoutingProbe/2` · `TryBuildPatternSlot/5` · `BuildPatternTemplate/4` · `ConeCosSq/1` · `SpawnProjectile/2` · `CanDefenderTargetMover/2` · `TryPickNearestEnemy/4` · `AddTraversalMask/2`.
+- [x] **헤드리스 초록** · **EditMode 코어 lane 초록** + 새 테스트 7묶음: `BindingRegistryTests`(수명 5종 · `fireCap` ≠ `lifetime` · `revokeOnExpire` · `InstanceId` 단조 증가 F1) · `TriggerDispatchTests`(전순서 키 · 세대 BFS 직접 재진입만 · 깊이 4 초과 `Report` · 잔여 큐 후속/지난 seam) · `SkillRoutingTests`(트리거별 분기 7 + 폴백 표 · **`OnPlace × 충전`이 라우팅을 찾는다** · 미라우팅은 loud 거절) · `RangeCatalogTests`(형 표 전건 · `DeathSiteBlast × OnDeath/OnRetire` 가 **다른 형**) · `IntentApplierTests`(intent 24 + meta 2 · 원자 개시) · `AttackModTests`(5종 · 충전 부여/소비 경계) · `CoreTriggerEnumPinTests`.
+- [x] **증상 단언 3건**(규칙이 화면에서 보이는 형태로): ⑴ 적을 죽인 자리에서 시체 폭발이 터지고 **그 시체의 몸만큼 넓다** ⑵ 배치하면 배치 스킬이 **그 프레임에** 난다 ⑶ 부착한 카드가 붙은 유닛이 죽으면 **작별 선물이 그 자리에서** 터진다(시전자가 없어도).
+- [x] `SeamHooks.Run` 호출부 **6곳**(grep) · `Seam._Count` 앞 번호가 **안 밀렸다** · `Immediate` 는 `CommandPhase` 콜스택 안에서만 불린다.
+- [x] **`SeamTickOrder` 단언**: `Periodic` 의 틱 순서 index 가 `Attack` 보다 **작다**(enum 값은 더 크다). 「지난 seam 이면 다음 틱」 판정이 그 표를 보고, **enum 값을 비교하는 코드가 0** 이다(소스 단언 — 5b 의 `CoreViewYardstickTests` 선례).
+- [x] **캐논 융단폭격 단언**: `Pattern_Cannon_Strike` 저작으로 배치 스킬을 쏘면 **미사일 수 = 반경 안 적 수**(1:1), 그 손잡이가 꺼진 명세는 한 발. 안 배선하면 조용히 한 발이 되므로 값이 아니라 **개수를** 센다.
+- [x] 코어에 `Unity.Entities` 0 · `Wassup.Skills` 는 **한 줄도 안 고쳤다**(git diff 0줄 — 엔진 무참조가 이미 참이라는 증거).
+- [x] `ledgers/rules.md` **S1·S4·S8·S9·S18·S19·S20·S22·S23·S24·S25·S26·S27 · E2 · C5** 가 코드 포인터로 매핑. S20 은 「`IntentApplier` 단일 표면 + 아키텍처 테스트」로 **보류 → 결정**. ⚠ `rules.md` 의 `C5`(바늘 캐리어)와 `rule-holders.md` 의 `C5`(코스트)는 **다른 행**이다 — 장부를 섞지 말 것.
+- [x] `ledgers/bridge-methods.md` 미정 **44 → 36**(8행): `RoutingProbe/2` · `TryBuildPatternSlot/5` · `BuildPatternTemplate/4` · `ConeCosSq/1` · `SpawnProjectile/2` · `CanDefenderTargetMover/2` · `TryPickNearestEnemy/4` · `AddTraversalMask/2`.
 - [ ] `core-reviewer` APPROVE — **매니저 0**(`SkillManager`·`TriggerManager` 같은 이름이 없다) · 하드코딩 0(깊이 4 와 상한 3종만 상수 + 근거 주석) · 틱 phase 수 무변.
 - [ ] 7a 단독으로는 **카드가 아직 안 붙는다**(7b) — 라이브 확인은 유닛 저작 스킬(적 악몽 · 배치 스킬)로 한다.
+
+> **구현 기록(2026-09-24)** — `eaa3abc72`(어휘·라우팅·형) · `cac943bcc`(바인딩 코어) · `7498ea35b`(유닛 저작 bake) + 문서 커밋.
+> 헤드리스 export 3종(커밋마다): build 0/0 · test 540 → **590** · Check 0. Unity EditMode 코어+Assets 1차 836건 — 실패 = 새 핀 테스트의 캐스트 1(수정 커밋 포함) + 선행 2(`bomb_man`·`boomerang`), **골든 11종 무변**(규칙 없는 코퍼스 · 빈 표 무행). 새 테스트: `SkillRoutingTests`·`RangeCatalogTests`·`BindingRegistryTests`·`TriggerDispatchTests`·`IntentApplierTests`·`AttackModTests`·`TriggerSymptomTests`·`UnitSkillTests`(코어) + `CoreTriggerEnumPinTests`(Assets — 저작 enum 이 거기서만 보인다). `Wassup.Skills` diff 0줄. `check_ledgers.py` exit 0 · 미정 **36** · rules 보류 **33**(실측 재셈).
+
