@@ -70,6 +70,16 @@
 | 언제 | 무엇 | 왜 |
 |---|---|---|
 | 2026-09-24 (6a 감사) | 코어 `PatternSelectionRule` 번호를 **옛 저작과 같게** 되돌리고, 빌더의 통짜 캐스트를 **이름 기반 매핑**(`CombatDefinitionBuilder.ToCoreSelection`)으로 바꿨다 | unit 3 이 이 enum 을 「읽기 좋게」 재배열(`None = 0`)해 두고 주석에는 「번호는 옛과 같다」고 적었는데 **거짓**이었다. 저작 값은 이미 구워진 `ProjectilePatternData` 에셋에 들어 있어서 **12개 저작 중 11개가 다른 규칙으로 읽혔다** — 0(캐논·나이트메어 탄막 = 순회 폭격)이 「선택 안 함」이 되고, 2(샷거너·머신거너·관통·저격·마크스맨 = 방향 발사)가 「무작위 저격」이 됐다. ⚠ 골든은 안 바뀐다 — 코퍼스는 SO 를 안 읽어 발사 명세 줄이 **0개**다(그래서 이 결함이 골든에 안 잡혔다). 그물은 `PatternSelectionRulePinTests`(assets lane — 두 어휘를 동시에 보는 유일한 자리) |
+| 2026-09-24 (드리프트 감사 H1) | 연발(발사 명세) 전탄의 피해 = **트리거 시점 공격 실효값**(산출물 피해 합 × 배율, 단발탄과 같은 `ShotDamage`). 패턴 저작 피해는 보스·스킬 경로 값으로 남는다(unit 7) | 옛 `AttackSystem` `spec.damage = projectileDamage`. 새 코어가 `pat.Damage`(라이브 머신거너 0)를 실어 **머신거너·샷거너 연발 전탄이 피해 0** 이었다 |
+| 2026-09-24 (H2) | 패턴 슬롯이 있는 유닛은 **단발을 쏘지 않는다** — 패턴이 단발을 대체한다 | 옛 `pushedPattern` 게이트. 없으면 한 공격 = 단발 1 + 연발 10 |
+| 2026-09-24 (H3) | 선정 규칙 없음(방향 발사) 패턴의 기준 방향 = **트리거 시점 조준 방향**(커밋 방향 또는 주 대상 쪽)을 버스트에 스냅샷 | 옛 `fireDir` → `template.direction`. 대상이 없을 때 「대상 쪽」을 재면 사수 자리가 나와 늘 +Z(북쪽)로 쐈다 |
+| 2026-09-24 (H4) | `targetAllies` 가 저작 마스크를 이긴다 → 대상 진영 = 방어유닛 단독, 공격 대상 층 0(빌더) | 옛 `DefenderTargetDefaults.Resolve`. 라이브 힐러 `targetFactions 98` 을 raw 로 실어 **적을 회복시켰다** |
+| 2026-09-24 (H5) | 해석된 대상 진영에 유닛 비트가 없는 적은 히트·도발 어그로를 **안 받는다**(`GrantAggro`) | 옛 `AggroStateSystem` 도발 범위 게이트. 마음사냥꾼이 가디언에게 끌려갔다 |
+| 2026-09-24 (M6) | 보스 면역 = **기절·수면·넉백만**. `EffectEligibility.AcceptsCc(victim, kind)` — 인자 없는 오버로드 없음 | 옛 `IsBossImmune(kind) = IsLock ∨ Impulse`. 종류 축을 잃어 감속까지 막았다 |
+| 2026-09-24 (M7) | 적의 공격 대상 층 = 0(무필터). 이동 정지 조건·감지 후보(`ReachProbe`)도 **공격 대상 층**을 본다 | 옛 적 `targetTraversalLayers` 미설정. 「자기 통행 층」을 대상 층으로 읽어 비행 적이 경로를 걷는 순찰병을 못 때리고 멈추지도 않았다 |
+| 2026-09-24 (빌더 의미) | 적 `attackMethod None`/산출물 없음 = 걷기만(`AttackDef.Unarmed`, 사거리 0) · 탄은 `Projectile` 방식만 · 직업 필터는 **존재가 게이트**(`HasClassFilter`, 적은 늘 켬 — 마스크 0 = 아무도 못 때림) · 폭탄맨 = 능력 ∧ `travelSec > 0` · 광역 = `Splash` 토큰 ∧ 반경 · 패턴 거절·클램프(옛 `TryToSpec`) · 패턴을 먼저 굽고 탄 표를 나중에 굳힌다 | 전부 잠복(라이브 무영향). 새 두 칸은 기본값이면 canonical 줄을 안 써 골든 `configHash` 를 보존한다 |
+| 2026-09-24 (enum 핀) | `MapTileType`·`EnemyTargetMode`·`EngageMovement` 이름 매핑 + 핀 · 도형 종류·층 비트 값 핀 · 스택 저작 종류도 `ToCoreStackKind` · `EnemySpawn` 의 교전 이동 clamp → 정의역 밖 loud | `PatternSelectionRule`(ec10619d)과 같은 모양의 나머지 쌍 |
+| 2026-09-24 (모드 배선) | `ModeValidation.Validate` 를 빌더가 부른다(문제 전부 loud) · 모드 `deck`(있으면 이김)·`plan`(저작 플랜 모드) 소비 — 드라이버도 같은 `ResolveDeck/Plan` · `costConfig` 누락 = loud 오류 | 검증이 테스트에서만 불렸고, 모드 덱·플랜 소비자 0, 배치 창 폴백이 옛 30초 → 0초로 뒤집혀 있었다. 맵 풀 로테이션은 이 spec 이 귀속을 정한다(미배선) |
 
 ## 규칙 → 증언 매핑 (전투 판정 「필수」 18)
 
