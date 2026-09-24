@@ -10,7 +10,7 @@
 
 | 항목 | 경로 |
 |---|---|
-| 기믹 바인딩 | `BattleCore/Trigger/GimmickBindings.cs` — `GimmickHost.Begin` 뒤 판 시작 1회 부착. 유닛 호스트 **2**(번아웃 피로 · 온천 열기) + Match 호스트 1(레드불 cadence) + 사망 seam 1(사직서 드랍) + 임계 1(운석 barrage) |
+| 기믹 바인딩 | `BattleCore/Trigger/GimmickBindings.cs` — `GimmickHost.Begin` 뒤 판 시작 1회 부착. 유닛 호스트 **2**(번아웃 피로 · 온천 열기) + Match 호스트 1(레드불 cadence) + 사망 seam 1(사직서 드랍). ~~임계 1(운석 barrage)~~ → **7b 로 이동**(리드 배정 2026-09-24 — `Trigger/ResignationBarrage.cs`, `ResignationThreshold` 사건의 소비자) |
 | 기믹 정의표 | `Match/CardDef.cs` 의 `GimmickDef` 확장(6b2 가 연 `GimmickKind` + 종류별 중첩 구조체)에 **주기·필터 값** append + canonicalize |
 | 분열 | `Trigger/SpawnUnitsIntent` 소비 — `World/BattleWorld.SpawnEnemy` 재사용 · `Match/EnemyDef.SplitRange`(정의표 줄) · salvage `Data/SplitChain.cs`(**104줄** — 순환 차단, 순수) |
 | 보스 | `Combat/ThreatTable.cs`(salvage **99줄** — unit 3 이월 C25) · `Combat/LandingSiteChoice.cs`(도약 착지 선정 — 옛 `DefenderDensity` 의 자) |
@@ -27,7 +27,7 @@
 1. **기믹의 주기는 판이 아니라 유닛이 소유한다**(정정 2 · C4). 번아웃 피로와 온천 열기는 둘 다 **per-unit lazy-attach 타이머**이고 위상이 **부착 시점**이다 — Match 호스트 하나로 접으면 전원이 같은 프레임에 같이 쌓인다. 판 시작·스폰 시 유닛 호스트 바인딩을 붙이고, `[Periodic]` seam(6b2 가 열어 둔 호출부)이 드레인한다.
 2. **대상 필터는 기믹마다 다르고 그대로 옮긴다.** 번아웃 = **defender 전용 · 사망 미제외** / 온천 = **전 유닛 · 사망·배치중 제외**. 통일하면 규칙이 바뀐다(critic 열린 질문 1). `subjectFilter` 는 **저작 노출 없음** — 코어 내부 바인딩 전용 축이다(rev 3 §1).
 3. **전역 주기는 하나뿐이다** — 레드불 스폰 cadence 만 **Match 호스트** 바인딩이다(정정 2 의 반대편). 소비는 매 틱 공간 폴링(6b2 가 제약 13 자로 이미 세웠다) → `PickupTaken` 사건, 재소비 락(`hasLastRun`)은 `subjectFilter`.
-4. **사직서는 드랍이 사망 seam, 임계가 level 폴링이다**(L12). 드랍 = 방어유닛 **자연 사망**(퇴근은 `Dead` 를 안 켜므로 배제 코드 0줄로 안 일어난다 — 불변식 11). 임계는 **한 틱에 여러 번 넘을 수 있고 그것이 사양**이다. 임계 뒤의 **운석 barrage**(Walk 타일 10곳 순차 낙하, 적 전용)가 이 unit 의 것이다 — 자리 난수는 `RngStreams.Meteor`(6b2 가 계열을 나눈 이유).
+4. **사직서는 드랍이 사망 seam, 임계가 level 폴링이다**(L12). 드랍 = 방어유닛 **자연 사망**(퇴근은 `Dead` 를 안 켜므로 배제 코드 0줄로 안 일어난다 — 불변식 11). 임계는 **한 틱에 여러 번 넘을 수 있고 그것이 사양**이다. 임계 뒤의 **운석 barrage**(Walk 타일 10곳 순차 낙하, 적 전용)는 **7b 가 먼저 세웠다**(`Trigger/ResignationBarrage.cs` · `ResignationBarrageTests` — 자리 난수 `RngStreams.Meteor`). 이 unit 에 남은 것은 **드랍 계기**(사망 seam)다.
 5. **피로 누적은 스탯 적용 «뒤»다 — 1틱 지연을 박제한다**(6b2 구현 5 와 같은 문장). 바인딩을 `[Periodic]`(`FieldPrepPhase` 끝)에 붙이면 **앞으로 당겨져 밸런스가 바뀐다.** 누적 자리는 6b2 가 정한 단계를 그대로 쓰고, 이 unit 은 **주기와 대상만** 준다.
 6. **기믹 활성 게이트는 하나다** — 「그 기믹이 뽑혔나」(`GimmickHost.Index`). 옛 4개 config 싱글턴 + `RequireForUpdate` 는 6b2 가 이미 걷었다. 바인딩 부착은 `GimmickHost.Begin` 뒤 판 시작 1회.
 7. **분열은 `OnSlain` 이다**(정정 4 · H7). `OnDeath`(모든 사망 경로)로 옮기면 분열 조건이 넓어진다 — 치명 타이머·순찰 수명으로 죽어도 갈라진다. intent `SpawnUnits` 는 **부모 셀 중심 양자화 칸**(연속 좌표에 더하면 자식이 옆 칸에 태어나 골이면 「처치했는데 유출」이 난다, E1) + 배치각 `2π·c/count` **인덱스 결정론**(난수 금지) + **첫 슬롯만** + 상한 8 + `SplitChain.Validate` 순환 차단. ⚠ **바인딩은 그릇은 붙이되 항목은 건너뛴다**(S8) — 초판 설계가 전용 큐·레지스트리·슬롯·이벤트·스탬프 다섯을 만들려다 리뷰가 걷어낸 자리다.

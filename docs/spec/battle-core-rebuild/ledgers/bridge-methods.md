@@ -34,23 +34,23 @@
 
 | # | 메서드 | 새 주인 | 비고 |
 |---|---|---|---|
-| 1 | `NotifyEnemyGoneIfMarked/1` | 미정 |  |
-| 2 | `IsEnemyMarked/1` | 미정 |  |
+| 1 | `NotifyEnemyGoneIfMarked/1` | HandDeck (7b) | 표식 등록부가 사라졌다 — 표식 = 적에게 붙은 카드 규칙. 적 소멸(처치·유출) → `HandDeck.Recover`(`UnitDestroyed` 구독) → `BindingRegistry.DetachCard` → `CardDetached` |
+| 2 | `IsEnemyMarked/1` | CardBindings (7b) | `CardBindings.IsMarked` — 적의 규칙 목록에 카드 표식이 있나(리티클 유효성은 7c 가 `HandDeck.WouldAttach` 로 묻는다) |
 | 3 | `ApplyDreamcatcherCard/2` | HandDeck |  |
 | 4 | `ApplyDreamcatcherCardHosted/1` | HandDeck |  |
 | 5 | `ApplyDreamcatcherCardInternal/2` | HandDeck |  |
 | 6 | `RevokeDreamcatcherEffects/1` | HandDeck |  |
 | 7 | `ApplyActiveDcEffectsTo/2` | HandDeck |  |
-| 8 | `ApplyPlacementSleep/2` | PlacementService |  |
+| 8 | `ApplyPlacementSleep/2` | PlacementSleepSkill (7b) | 배치 서비스는 오라를 모른다(7b 구현 5) — 배치 오라의 수면 규칙(`OnPlace(Any)` × `PlacementSleepSkill`, revoke false) |
 | 9 | `ApplyDreamcatcherCardToUnit/2` | HandDeck |  |
 | 10 | `WouldDreamcatcherCardApply/2` | HandDeck |  |
-| 11 | `ApplyBountyMark/2` | 미정 |  |
+| 11 | `ApplyBountyMark/2` | CardBindings · BountyMarkSkill (7b) | 판정 = `CardBindings.Plan`(적 전용 · 이중 표식 거절) · 실행 = `BountyMarkSkill`(원자 2효과) · 소비 = `HandDeck.OnSlain` × `UnitSlain.RewardMul` |
 | 12 | `PassesAttachRequirement/2` | HandDeck |  |
 | 13 | `LogAttachRequirementReject/2` | HandDeck |  |
-| 14 | `BuildHostProfile/1` | 미정 |  |
-| 15 | `TargetsEnemies/1` | 미정 |  |
-| 16 | `HasPositiveDamageOutput/1` | 미정 |  |
-| 17 | `RegisterPlacementAura/3` | PlacementService |  |
+| 14 | `BuildHostProfile/1` | Applicability (7b) | `Trigger/Applicability.cs` `HostProfile.Of` — 정책(폭탄) → 자기 발사 명세 → 표준, 경로는 실제로 타는 길 |
+| 15 | `TargetsEnemies/1` | Applicability (7b) | `HostProfile.Of` 의 `TargetsEnemies`(공격 대상 마스크 ∩ 적) |
+| 16 | `HasPositiveDamageOutput/1` | Applicability (7b) | `HostProfile.Of` 의 `HasDamageOutput` |
+| 17 | `RegisterPlacementAura/3` | CardDefinitionBuilder (7b) | 등록 영수증이 사라졌다 — 배치 오라 = 규칙 둘로 bake(공속 revoke true · 수면 false). 회수 = 숙주 소멸 시 슬롯 삭제 |
 | 18 | `MapDcEffect/3` | HandDeck |  |
 | 19 | `MapDcBuff/4` | HandDeck |  |
 | 20 | `MapDcCc/1` | HandDeck |  |
@@ -209,7 +209,7 @@
 | 107 | `DrainKnockupVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 108 | `DrainShieldBreakEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 109 | `FactionOfEntity/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
-| 110 | `HostBodyRadiusOf/1` | 삭제 (사건이 몸을 값으로 나른다) | 6c — 숙주 몸 반경은 사건의 `SiteFired.OriginBody` 스냅샷이다(제약 13 · 계약 7). 뷰는 `CoreDrawRadius` 로 짝을 합칠 뿐 다시 되묻지 않는다 |
+| 110 | `HostBodyRadiusOf/1` | 실드 파열 규칙 (7a/7b 확정) | 6c 는 「뷰」로 적었으나 유일 소비처가 **실드 파열 대상 수집**(`BattleBridge.cs:4620`·`:4635`)이라 판정이다. 새 코어에서 숙주 몸은 감지자가 사건에 값으로 싣는다(`TriggerDispatcher.RaiseShieldBreak` — `SiteBody = victim.HitRadius`) → `OnShieldBreak` 규칙(`SelfAreaBlastSkill`·`AreaSleepSkill`)이 소비 |
 | 111 | `DrainUnitAttackVisualEvents/0` | 뷰 풀 / 담당자 구독 (이벤트로 접힘) | 이 드레인 안의 공격 SFX 는 `CoreBattleAudio`(`AttackResolved`) — 구독자가 둘이다 |
 | 112 | `TickPendingHitVfx/1` | 뷰 풀 |  |
 | 113 | `DotAuraKind/1` | DotSlot.Element (뷰 = 6c) | 오라가 읽는 축은 **원소**다(출처가 아니다) — `DotSet` 이 그 값을 슬롯에 들고 있다 |
@@ -255,8 +255,8 @@
 | 153 | `ScreenDistanceToRect/2` | 삭제 | 화면 사각까지의 거리로 집던 보조 — 칸 점유로 집으면 필요 없다 |
 | 154 | `TryGetUnitScreenRect/3` | CoreUnitView.TryGetScreenRect | 뷰가 이미 갖고 있다 — 중개가 필요 없다 |
 | 155 | `TryGetDefenderData/2` | BattleDriver.DefenderAssets | 정의표 줄 번호 → 저작 에셋. 트레이 초상·이름이 읽는다 |
-| 156 | `SetDreamstones/1` | 미정 |  |
-| 157 | `ApplyPendingDreamstones/0` | 미정 |  |
+| 156 | `SetDreamstones/1` | MatchDefinitionBuilder (7b) | 판 진입 반입 — `Build(…, dreamstones)` → `CardDefinitionBuilder`(스탯 돌 = `MatchDefinition.MatchBindings` · 코스트 돌 = `CostRateMultiplier`) |
+| 157 | `ApplyPendingDreamstones/0` | BindingRegistry (7b) | `BattleMatch.Begin` → `AttachMatchRows` — 판 호스트 `OnPlace(Any)` 규칙이 배치 유닛에 상속(`DreamstoneStatSkill`, 출처 Dreamstone) |
 | 158 | `KnockbackOn/1` | 삭제 | 저작 술어(`거리>0 && 지속>0`)일 뿐이다. 넉백의 실체는 `CcState` 의 `Impulse` 슬롯이고, 「값이 있나」 판정은 부여 호출부에 이미 인라인돼 있다 |
 | 159 | `GetOrCreateSkillVfxIndex/1` | BindingRegistry / TriggerDispatcher |  |
 | 160 | `GetOrCreateProjectileDataIndex/1` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
