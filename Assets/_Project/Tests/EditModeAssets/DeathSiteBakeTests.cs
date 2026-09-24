@@ -27,6 +27,21 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void 라이브_분열_상한은_옛_브리지_상수_그대로_코어_기본값과_같다()
+        {
+            // M2 — 상한은 저작 사고 방어선이다(옛 `BattleBridge.MaxSplitChildren` = 코어 `MovementTuningDef.Default()`).
+            // 라이브 SO 가 그 값과 다르면 「기본값 = 라이브」 계약이 깨지고 canonical 줄이 생긴다.
+            var configs = All<MovementTuningConfig>("t:MovementTuningConfig");
+            Assert.IsNotEmpty(configs, "라이브 이동 저작이 없다면 테스트가 공허하다");
+            int expected = MovementTuningDef.Default().SplitMaxChildren;
+            foreach (var c in configs)
+            {
+                Assert.AreEqual(expected, c.SplitMaxChildren, c.name);
+                Assert.AreEqual(expected, MatchDefinitionBuilder.ToMovementDef(c).SplitMaxChildren, c.name + " — 빌더 매핑");
+            }
+        }
+
+        [Test]
         public void 라이브_분열체는_자식_줄과_자식_수를_싣고_자식은_표에_편입된다()
         {
             var slimes = new List<AttackUnitData>();

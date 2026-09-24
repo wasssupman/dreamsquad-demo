@@ -17,7 +17,7 @@ namespace Wassup.BattleCore
     // 배치(E1 — 옛 `SpawnSplitChildren`):
     //   · 기준점 = **부모 칸의 중심**(연속 좌표에 더하면 자식이 옆 칸에 태어나 골이면 「처치했는데 유출」).
     //   · 배치각 = `2π·c/count` — **인덱스 결정론**(난수 금지).
-    //   · 첫 분열 슬롯만 · 상한 8(빌더가 자른다) · 자기순환 차단(`SplitChain.Validate` 는 bake 가, 자기 자신은 여기서 한 번 더).
+    //   · 첫 분열 슬롯만 · 상한 = `MovementTuningDef.SplitMaxChildren`(빌더가 자르고 여기서 한 번 더) · 자기순환 차단(`SplitChain.Validate` 는 bake 가, 자기 자신은 여기서 한 번 더).
     //   · 자식은 부모의 레인·경로를 **안 물려받는다**(옛 `CreateEnemyEntity(child, pos)` 그대로 — 자기 저작 경로 · 칸의 흐름).
     //
     // 매니저가 아니다: 상태가 없고 판정은 「이번 틱에 피해로 죽은 분열체」 하나다. 조립은 `EnemySpawn` 한 문을 지난다.
@@ -53,6 +53,13 @@ namespace Wassup.BattleCore
                 int2 cell = map.CellOf(u.Position);
                 float radius = ctx.Def.Movement.SplitSpreadFraction * map.TileSize;
                 int count = d.SplitCount;
+                // M2 — 상한은 정의표 값이다. 빌더가 이미 잘랐어도 고정구·헤드리스는 빌더를 안 지난다 — 여기서 한 번 더.
+                int cap = ctx.Def.Movement.SplitMaxChildren;
+                if (cap > 0 && count > cap)
+                {
+                    ctx.Warn($"[Split] '{d.Id}' 의 분열 수 {count} 이 상한 {cap} 을 넘는다 — {cap}기만 세운다.");
+                    count = cap;
+                }
                 for (int c = 0; c < count; c++)
                 {
                     float angle = (math.PI * 2f * c) / count;

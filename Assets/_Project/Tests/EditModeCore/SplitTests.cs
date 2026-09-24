@@ -34,6 +34,24 @@ namespace Wassup.Tests.EditMode.Core
             => u.Inbox.Damage.Add(new DamageEntry { Amount = amount, Source = source });
 
         [Test]
+        public void 고정구가_상한보다_많이_넣어도_상한만큼만_선다()
+        {
+            // M2 — 상한은 빌더에도 있지만 고정구·헤드리스는 빌더를 안 지난다. 코어가 정의표 상한으로 한 번 더 자른다.
+            var def = Def(count: 20);
+            int cap = def.Movement.SplitMaxChildren;
+            Assert.Less(cap, 20, "상한이 20 보다 작아야 이 테스트가 뜻을 갖는다");
+            var m = CoreMatchFixtures.BeginBattle(def);
+            var said = new List<string>();
+            m.Report = said.Add;
+            var parent = CoreTriggerFixtures.SpawnEnemy(m, new int2(5, 2));
+            var killer = CoreTriggerFixtures.SpawnDefender(m, new int2(1, 1));
+            Hurt(parent, 1e6f, killer.Id);
+            m.Tick();
+            Assert.AreEqual(cap, Children(m).Count);
+            Assert.IsTrue(said.Exists(s => s.Contains("[Split]")), "자른 사실을 말한다(조용한 절단 금지)");
+        }
+
+        [Test]
         public void 증상_슬라임을_잡으면_그_칸에서_자식이_퍼진다()
         {
             var m = CoreMatchFixtures.BeginBattle(Def(count: 3));

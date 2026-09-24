@@ -137,9 +137,14 @@ namespace Wassup.BattleCoreUnity
                 Seed = seed,
                 Mode = mode,
                 Units = BuildUnits(defenders),
-                Enemies = BuildEnemies(enemies),
                 Map = BuildMap(in map, tileSize),
             };
+            // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
+            // 저작이 없으면 코어 기본값(= 옛 씬 값)을 그대로 둔다. 0 으로 덮지 않는다 —
+            // 그러면 몸 반지름 0(충돌 소멸)과 레인 1(분산 없음)이 조용히 성립한다.
+            // unit 7d 후속(M2) — 적 표보다 **먼저** 둔다: 분열 상한을 적 줄 bake 와 규칙 검증이 이 값에서 읽는다.
+            if (movement != null) def.Movement = ToMovementDef(movement);
+            def.Enemies = BuildEnemies(enemies, def.Movement.SplitMaxChildren);
             // unit 3 — 전투 저작(공격·탄·발사 명세)을 같은 줄에 채워 넣는다. **해시를 굽기 전**
             // 이어야 한다 — 뒤에 두면 「스탯을 바꿨는데 해시가 그대로」가 된다.
             // unit 6b — 탄 SO 목록을 **번호를 매긴 그 순회에서** 받는다(길막 역참조가 그 번호를 쓴다).
@@ -149,10 +154,6 @@ namespace Wassup.BattleCoreUnity
             CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets, board.Hazards, extraProjectiles, cards);
             // unit 6b — 판 위에 깔리는 것(존 장판 · 길막 · 효과 타일). **해시를 굽기 전**이다.
             BoardEffectDefinitionBuilder.Fill(def, assets, in board);
-            // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
-            // 저작이 없으면 코어 기본값(= 옛 씬 값)을 그대로 둔다. 0 으로 덮지 않는다 —
-            // 그러면 몸 반지름 0(충돌 소멸)과 레인 1(분산 없음)이 조용히 성립한다.
-            if (movement != null) def.Movement = ToMovementDef(movement);
             // unit 6a — 스택 저작. **해시를 굽기 전**이어야 한다(뒤에 두면 「임계를 바꿨는데
             // 해시가 그대로」가 된다). 안 넘기면 빈 표이고, 그러면 스택은 폴백 상한 5 로
             // 쌓이기만 하고 **임계가 하나도 안 터진다** — 그 상태를 조용히 두지 않으려고
@@ -318,6 +319,7 @@ namespace Wassup.BattleCoreUnity
             SpawnSpreadTopScale = c.SpawnSpreadTopScale,
             BossLeapFlightSeconds = c.BossLeapFlightSeconds,
             SplitSpreadFraction = c.SplitSpreadFraction,
+            SplitMaxChildren = c.SplitMaxChildren,
         };
 
         public static ModeDef ToModeDef(MatchModeData m)
@@ -888,10 +890,8 @@ namespace Wassup.BattleCoreUnity
             return list.ToArray();
         }
 
-        /// <summary>분열 자식 상한 — 밸런스 값이 아니라 저작 사고 방어선(옛 `BattleBridge.MaxSplitChildren`).</summary>
-        private const int MaxSplitChildren = 8;
-
-        private static EnemyDef[] BuildEnemies(AttackUnitData[] src)
+        /// <param name="splitCap">분열 자식 상한 — `MovementTuningDef.SplitMaxChildren`(저작 사고 방어선 · 옛 `BattleBridge.MaxSplitChildren`).</param>
+        private static EnemyDef[] BuildEnemies(AttackUnitData[] src, int splitCap)
         {
             if (src == null) return System.Array.Empty<EnemyDef>();
             var outp = new EnemyDef[src.Length];
@@ -926,10 +926,10 @@ namespace Wassup.BattleCoreUnity
                     TargetFactions = (int)e.targetFactions,
                     WaypointPathIndex = e.waypointPathIndex,
                 };
-                // unit 7d — 분열(첫 슬롯만 · 상한 8 · 자기순환 거절 — 옛 `SpawnSplitChildren` 과 같은 규약). 사슬 검증
+                // unit 7d — 분열(첫 슬롯만 · 상한 = 정의표 · 자기순환 거절 — 옛 `SpawnSplitChildren` 과 같은 규약). 사슬 검증
                 // (`SplitChain.Validate`)은 규칙 bake(`BindingDefinitionBuilder`)가 loud 하게 한다 — 여기선 값만 싣는다.
                 var child = SplitChain.NextInChain(e);
-                int count = Mathf.Clamp(SplitChain.CountAt(e), 0, MaxSplitChildren);
+                int count = Mathf.Clamp(SplitChain.CountAt(e), 0, splitCap);
                 int childIndex = System.Array.IndexOf(src, child);
                 if (child != null && child != e && count > 0 && childIndex >= 0)
                 {

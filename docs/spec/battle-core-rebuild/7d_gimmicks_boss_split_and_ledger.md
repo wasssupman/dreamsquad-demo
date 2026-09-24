@@ -85,6 +85,9 @@
 | `FieldSpawned` 페이로드 | 출구·반경이 없었다 → 포탈 출구 `SiteTarget` · 반경(칸) `AreaTiles`(값 스냅샷 · 트레이스 무변 — a·b·i·f 만 기록) | 계약 4·7(뷰가 되묻지 않는다) · `f45a9ae7e` |
 | 넘겨받은 WIP(커맨드 2종) | 진영 타입 이름 미해석으로 **컴파일이 안 됐다** → `Wassup.Battle.Units.Faction` 한정(규칙 무변) | `ff3094ac4` |
 | `TriggerDispatcher` 진단 칸 | 없음 → 종류별 **감지된 사실 수**(`SensedCount`) — 판정에 안 쓰는 관측값. 「감지자 없음」을 코드 목록이 아니라 관측으로 답한다 | `BindingDiagnosis` · `ff3094ac4` |
+| 이동 정의표의 「기본값이면 canonical 줄 생략」(리뷰 M1) | float `!=` 정확 비교 → 허용 오차 `CanonicalDefaultEpsilon`(1e-6) — SO 직렬화 왕복의 1 ulp 로 해시가 뒤집혀 골든이 「조건이 바뀌었다」고 오보할 수 있었다. 다른 `Canonicalize` 의 조건부 생략은 전부 int·bool·enum 이라 해당 없음(grep) | `MovementTuningDef.Canonicalize` · `MovementTuningTests.기본값_이웃_1ulp_는_canonical_줄을_안_쓴다`(옛 비교로 빨강 확인) |
+| 분열 상한 8 의 자리(리뷰 M2) | 빌더 두 곳의 리터럴 상수(`MatchDefinitionBuilder`·`BindingDefinitionBuilder`) → 정의표 `MovementTuningDef.SplitMaxChildren`(기본 8 = 옛 `BattleBridge.MaxSplitChildren` · 저작 `MovementTuningConfig.splitMaxChildren` · 기본값이면 canonical 줄 생략) + 코어 `EnemySplit` 이 한 번 더 자르고 말한다(고정구·헤드리스는 빌더를 안 지난다) | `SplitTests.고정구가_상한보다_많이_넣어도_상한만큼만_선다` · Assets `DeathSiteBakeTests.라이브_분열_상한은_옛_브리지_상수_그대로_코어_기본값과_같다`(작성만 · 리드 실행) |
+| `CoreFieldPresenter` 순회(리뷰 L1) | 사전 `foreach` → 다른 뷰 풀과 같이 id 목록 순회(키 조회만 사전) | `CoreFieldPresenter.ClearAll`/`Release` |
 
 ### 미배선 — 씬(Unity MCP 세션 끊김 · 열린 씬 YAML 외부 편집 금지)
 

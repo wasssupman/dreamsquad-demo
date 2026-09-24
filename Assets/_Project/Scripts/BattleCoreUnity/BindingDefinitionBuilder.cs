@@ -24,9 +24,6 @@ namespace Wassup.BattleCoreUnity
     // `CoreTriggerEnumPinTests` 가 이름·값·매핑을 고정한다.
     public static class BindingDefinitionBuilder
     {
-        /// <summary>분열 자식 상한 — 밸런스 값이 아니라 저작 사고 방어선(옛 `MaxSplitChildren`). 검증만 한다(실행은 7d).</summary>
-        private const int MaxSplitChildren = 8;
-
         /// <summary>
         /// 유닛·적 줄에 규칙 인덱스와 공격 수식자를 채운다. `CombatDefinitionBuilder.Fill` 이 **탄·패턴 표를 굳히기 전**에
         /// 부른다 — 규칙이 가리키는 탄·패턴이 같은 표에 등록돼야 한다.
@@ -45,7 +42,7 @@ namespace Wassup.BattleCoreUnity
                 var skill = d.GetAbility<UnitSkillAbility>();
                 if (skill?.mechanics != null)
                     Bake(skill.mechanics, hostIsEnemy: false, d.name, d.aggroCapacity > 0, null,
-                         projectiles, patterns, hazards, rows, mine, mods, view);
+                         projectiles, patterns, hazards, rows, mine, mods, def.Movement.SplitMaxChildren, view);
                 BakeShieldCast(d, rows, mine);
                 if (mine.Count > 0) def.Units[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Units[i].Attack.Mods = mods.ToArray();
@@ -57,7 +54,7 @@ namespace Wassup.BattleCoreUnity
                 var mods = new List<AttackModDef>();
                 var mine = new List<int>();
                 Bake(e.nightmareMechanics, hostIsEnemy: true, e.name, false, e,
-                     projectiles, patterns, hazards, rows, mine, mods, view);
+                     projectiles, patterns, hazards, rows, mine, mods, def.Movement.SplitMaxChildren, view);
                 if (mine.Count > 0) def.Enemies[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Enemies[i].Attack.Mods = mods.ToArray();
             }
@@ -89,7 +86,7 @@ namespace Wassup.BattleCoreUnity
                                  AttackUnitData enemyOwner,
                                  List<ProjectileData> projectiles, List<ProjectilePatternData> patterns,
                                  HazardSO[] hazards, List<BindingDef> rows, List<int> mine, List<AttackModDef> mods,
-                                 MatchViewAssets view = null)
+                                 int splitCap, MatchViewAssets view = null)
         {
             for (int i = 0; i < mechanics.Length; i++)
             {
@@ -108,7 +105,8 @@ namespace Wassup.BattleCoreUnity
                 {
                     if (m.payload.splitUnit == null) Error($"{label}: SplitOnDeath 인데 splitUnit 이 비었다 — 죽어도 안 갈라진다.");
                     else if (m.payload.magnitude < 1f) Error($"{label}: SplitOnDeath magnitude({m.payload.magnitude}) < 1 — 자식이 0기다.");
-                    else if (m.payload.magnitude > MaxSplitChildren) Error($"{label}: SplitOnDeath magnitude({m.payload.magnitude}) > {MaxSplitChildren} — {MaxSplitChildren}기로 잘린다.");
+                    // 상한 = 정의표(`MovementTuningDef.SplitMaxChildren` — 저작 사고 방어선). 빌더·코어가 같은 값으로 자른다.
+                    else if (m.payload.magnitude > splitCap) Error($"{label}: SplitOnDeath magnitude({m.payload.magnitude}) > {splitCap} — {splitCap}기로 잘린다.");
                     else if (enemyOwner != null && !SplitChain.Validate(enemyOwner, out string splitError)) Error($"{label}: {splitError}");
                     continue;
                 }

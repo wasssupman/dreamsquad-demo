@@ -24,7 +24,9 @@ namespace Wassup.BattleCoreUnity.View
         [SerializeField] private GameObject _tornadoPrefab;
         [SerializeField] private GameObject _portalPrefab;
 
+        // 다른 뷰 풀과 같은 모양 — 키 조회는 사전, **순회는 목록**(사전 foreach 는 열거 순서가 계약이 아니고 순회마다 열거자를 만든다 · L1).
         private readonly Dictionary<int, GameObject> _live = new Dictionary<int, GameObject>();
+        private readonly List<int> _liveIds = new List<int>();
         private readonly HashSet<string> _missingLogged = new HashSet<string>();
 
         /// <summary>지금 그려진 장 수(테스트 — 「사건 1 → 그림 1」의 오른쪽 항).</summary>
@@ -52,7 +54,7 @@ namespace Wassup.BattleCoreUnity.View
                     break;
                 case CoreEventKind.FieldSpawned: OnSpawned(e); break;
                 case CoreEventKind.FieldDespawned:
-                    if (_live.TryGetValue(e.A.Value, out var go)) { if (go != null) Destroy(go); _live.Remove(e.A.Value); }
+                    Release(e.A.Value);
                     break;
             }
         }
@@ -67,7 +69,10 @@ namespace Wassup.BattleCoreUnity.View
                 case FieldKind.Portal: go = SpawnPortal(e); break;
                 default: return;
             }
-            if (go != null) _live[e.A.Value] = go;
+            if (go == null) return;
+            Release(e.A.Value);   // 같은 id 재발행은 없지만(발급 단조) 방어 — 낡은 그림을 남기지 않는다
+            _live[e.A.Value] = go;
+            _liveIds.Add(e.A.Value);
         }
 
         private GameObject SpawnTornado(CoreEvent e)
@@ -113,10 +118,20 @@ namespace Wassup.BattleCoreUnity.View
             return root;
         }
 
+        private void Release(int id)
+        {
+            if (!_live.TryGetValue(id, out var go)) return;
+            if (go != null) Destroy(go);
+            _live.Remove(id);
+            _liveIds.Remove(id);
+        }
+
         private void ClearAll()
         {
-            foreach (var kv in _live) if (kv.Value != null) Destroy(kv.Value);
+            for (int i = 0; i < _liveIds.Count; i++)
+                if (_live.TryGetValue(_liveIds[i], out var go) && go != null) Destroy(go);
             _live.Clear();
+            _liveIds.Clear();
         }
 
         // 조용한 리턴 금지 — 슬롯이 비면 「사건은 나는데 화면만 조용한」 상태가 된다(옛 규약: 슬롯 null = 에러). 슬롯당 1회.
