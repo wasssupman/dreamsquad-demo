@@ -144,7 +144,7 @@ namespace Wassup.BattleCore
             {
                 var u = units[i];
                 var atk = u.Attack;
-                if (atk == null) continue;
+                if (atk == null || atk.Unarmed) continue;
                 // 배치 중·사망 대기는 공격자가 아니다(옛 쿼리 랭크 `WithNone` 의 후계).
                 if (u.Deploying || u.Dead) continue;
 
@@ -475,7 +475,7 @@ namespace Wassup.BattleCore
                 // 락이 **아직 합법 후보인가** — 여기서 표시하면 조회도 스캔도 늘지 않는다.
                 if (!atk.Lock.IsNone && c.SimId == atk.Lock.Value) lockStillCandidate = true;
                 if (c.U == u) continue;
-                if (atk.ClassMask != 0 && c.Class >= 0 && (atk.ClassMask & (1 << c.Class)) == 0) continue;
+                if (!ClassAllowed(atk, c.Class)) continue;
                 if (!AttackReach.InReach(u.Position, c.Pos, atk.Range, tileSize, u.HitRadius, c.Body)) continue;
 
                 float d2 = SqXZ(u.Position, c.Pos);
@@ -723,7 +723,7 @@ namespace Wassup.BattleCore
                     if (c.U == u) continue;
                     if ((c.Faction & atk.TargetMask) == 0) continue;
                     if (!LayerBits.CanTarget(atk.TargetLayers, c.Layers)) continue;
-                    if (atk.ClassMask != 0 && c.Class >= 0 && (atk.ClassMask & (1 << c.Class)) == 0) continue;
+                    if (!ClassAllowed(atk, c.Class)) continue;
                     if (!AttackReach.InReachShaped(u.Position, c.Pos, atk.Range, tileSize,
                                                    u.HitRadius, c.Body, in atk.Shape, dir)) continue;
                     float d2 = SqXZ(u.Position, c.Pos);
@@ -1373,6 +1373,13 @@ namespace Wassup.BattleCore
 
         // ── 공통 ─────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// 직업 필터. **필터의 존재가 게이트다** — 필터가 있으면 마스크 0 은 아무도 못 때린다
+        /// (옛 `AttackSystem` 의 `hasFilter`). 직업이 없는 후보(적·거점, -1)는 거르지 않는다.
+        /// </summary>
+        private static bool ClassAllowed(AttackState atk, int cls)
+            => !atk.HasClassFilter || cls < 0 || (atk.ClassMask & (1 << cls)) != 0;
+
         private bool Legal(in Candidate c, AttackState atk)
         {
             if ((c.Faction & atk.TargetMask) == 0) return false;
@@ -1452,6 +1459,8 @@ namespace Wassup.BattleCore
             s.TargetLayers = (byte)a.TargetLayers;
             s.PriorityClass = a.PriorityClass;
             s.ClassMask = a.ClassMask;
+            s.HasClassFilter = a.HasClassFilter;
+            s.Unarmed = a.Unarmed;
             s.Mode = (TargetMode)a.Mode;
             s.Policy = (AttackPolicy)a.Policy;
             s.ProjectileDefIndex = ClampRef(a.ProjectileDefIndex, projectiles);

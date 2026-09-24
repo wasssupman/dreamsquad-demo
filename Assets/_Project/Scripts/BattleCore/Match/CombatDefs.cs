@@ -165,8 +165,21 @@ namespace Wassup.BattleCore
 
         /// <summary>우선 클래스. **0 = 없음**(그 값이 곧 `DefenderClass.None` 이다).</summary>
         public int PriorityClass;
-        /// <summary>허용 클래스 비트. **0 = 전부**(미저작). 그 외는 허용 비트다.</summary>
+        /// <summary>
+        /// 허용 클래스 비트. **`HasClassFilter` 가 거짓이면 읽지 않는다**(제약 없음).
+        /// 필터가 있으면 **0 = 아무도 못 때린다** — 옛 `AttackSystem` 의 게이트는 필터의
+        /// **존재**였지 값 0 이 아니었다(2026-09-24 드리프트 감사). 값으로 「없음」을 겸하면
+        /// 저작자가 비트를 전부 끈 적이 「전부 허용」으로 뒤집힌다.
+        /// </summary>
         public int ClassMask;
+        /// <summary>직업 필터를 저작했나. 적은 저작 칸이 있어 참이고, 방어유닛은 축이 없어 거짓이다.</summary>
+        public bool HasClassFilter;
+        /// <summary>
+        /// **걷기만 하는 적**(무장 해제). 옛 `attackMethod: None` 또는 산출물 없음 → 공격 상태
+        /// 없이 구웠다(「피해 0 짜리 공격자」를 만들지 않는다). 공격·감지·어그로가 전부 닫힌다.
+        /// 공격 상태 자체는 남긴다 — 보스 면역이 그 자리에 산다.
+        /// </summary>
+        public bool Unarmed;
         /// <summary>지속 락 모드(`TargetMode`).</summary>
         public int Mode;
         /// <summary>정책(`AttackPolicy`).</summary>
@@ -232,6 +245,10 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "atkTargetLayers", TargetLayers, inv);
             MatchDefinition.Put(sb, "priorityClass", PriorityClass, inv);
             MatchDefinition.Put(sb, "classMask", ClassMask, inv);
+            // ⚠ 두 칸은 **기본값이면 줄을 안 쓴다** — 칸을 더했다는 사실만으로 저작을 안 건드린
+            // 판(골든 코퍼스)의 해시가 바뀌면 「조건 드리프트」 오보가 난다. 값이 켜지면 반응한다.
+            if (HasClassFilter) MatchDefinition.Put(sb, "classFilter", 1, inv);
+            if (Unarmed) MatchDefinition.Put(sb, "unarmed", 1, inv);
             MatchDefinition.Put(sb, "targetMode", Mode, inv);
             MatchDefinition.Put(sb, "policy", Policy, inv);
             MatchDefinition.Put(sb, "projectileDef", ProjectileDefIndex, inv);

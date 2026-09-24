@@ -163,8 +163,11 @@ namespace Wassup.BattleCore
         public byte TargetLayers;
         /// <summary>우선 클래스(`DefenderClass` int). -1 = 없음.</summary>
         public int PriorityClass = -1;
-        /// <summary>허용 클래스 비트. -1 = 전부.</summary>
+        /// <summary>허용 클래스 비트. `HasClassFilter` 가 참일 때만 읽는다(그때 0 = 아무도 못 때림).</summary>
         public int ClassMask = -1;
+        public bool HasClassFilter;
+        /// <summary>걷기만 하는 적. 공격 루프·감지·어그로가 전부 건너뛴다.</summary>
+        public bool Unarmed;
         public AttackShapeBaked Shape;
         public AttackPolicy Policy;
         public TargetMode Mode;
@@ -247,6 +250,8 @@ namespace Wassup.BattleCore
             TargetLayers = 0;
             PriorityClass = -1;
             ClassMask = -1;
+            HasClassFilter = false;
+            Unarmed = false;
             Shape = default;
             Policy = AttackPolicy.Target;
             Mode = TargetMode.None;

@@ -59,6 +59,9 @@ namespace Wassup.BattleCoreUnity
                 var e = enemies[i];
                 if (e == null) continue;
                 def.Enemies[i].Attack = BuildEnemyAttack(e, projectiles, patterns);
+                // 걷기만 하는 적은 **사거리도 0** 이다 — 이동·감지·어그로가 「공격 수단이 있나」를
+                // 사거리로 묻는다(`AttackRange > 0`). 공격 루프는 `Unarmed` 로 따로 막는다.
+                if (def.Enemies[i].Attack.Unarmed) def.Enemies[i].AttackRange = 0f;
             }
 
             // 거점은 **탄 표를 유닛·적과 공유한다**(본능 포탑의 탄이 그 판의 탄 목록에 든다).
@@ -66,12 +69,15 @@ namespace Wassup.BattleCoreUnity
             // 가리켜 조용히 근접으로 접힌다.
             FillStructures(def, structures, projectiles, viewAssets);
 
-            def.Projectiles = new ProjectileDef[projectiles.Count];
-            for (int i = 0; i < projectiles.Count; i++) def.Projectiles[i] = ToDef(projectiles[i]);
-
+            // ⚠ **패턴을 먼저 굽고 탄 표를 나중에 굳힌다.** 패턴 변환이 자기 탄(barrel)을 탄 목록에
+            // 등록하므로, 표를 먼저 굳히면 그 뒤 등록된 탄은 **표 밖**을 가리킨다(조용히 「패턴에
+            // 탄이 없다」). 예전엔 `CollectPatterns` 의 선등록 한 줄이 가림막이었다 — 순서로 막는다.
             def.Patterns = new PatternDef[patterns.Count];
             for (int i = 0; i < patterns.Count; i++)
                 def.Patterns[i] = ToDef(patterns[i], projectiles);
+
+            def.Projectiles = new ProjectileDef[projectiles.Count];
+            for (int i = 0; i < projectiles.Count; i++) def.Projectiles[i] = ToDef(projectiles[i]);
 
             // unit 5a — 뷰가 `DefIndex` 로 프리팹을 되찾을 수 있게 **번호를 매긴 그 목록**을 넘긴다.
             viewAssets?.SetProjectiles(projectiles);
@@ -108,8 +114,13 @@ namespace Wassup.BattleCoreUnity
             a.Mode = (int)TargetMode.Nearest;
 
             // 아키타입 → 정책 값. **타입 체크가 아니라 값**이다(census 「HasComponent 자연 분기」).
+            // 게이트 = 능력 에셋 존재 **+ 유효 비행 시간**(옛 `BattleBridge` 의 `travelSec > 0`).
+            // 0 이면 착지 시각이 없는 폭탄이다 — 폭탄맨으로 굽지 않고 평범한 공격자로 둔다.
             var bomb = d.GetAbility<BombThrowAbility>();
-            if (bomb != null)
+            if (bomb != null && bomb.travelSec <= 0f)
+                UnityEngine.Debug.LogWarning(
+                    $"[CombatDefinitionBuilder] {d.name}: 폭탄 능력의 travelSec 가 0 이다 — 폭탄맨으로 굽지 않는다.");
+            if (bomb != null && bomb.travelSec > 0f)
             {
                 a.Policy = (int)AttackPolicy.Bomb;
                 a.BombProjectileDefIndex = IndexOf(projectiles, d.projectile);
@@ -129,7 +140,7 @@ namespace Wassup.BattleCoreUnity
             }
 
             var volley = d.GetAbility<DirectionalVolleyAbility>();
-            if (volley != null) a.PatternDefIndices = CollectPatterns(volley, patterns, projectiles);
+            if (volley != null) a.PatternDefIndices = CollectPatterns(d, volley, patterns);
 
             return a;
         }
@@ -230,13 +241,24 @@ namespace Wassup.BattleCoreUnity
             // 순찰병을 조준 후보에서 떨군다(2026-09-24 드리프트 감사 M7). 방어유닛 쪽은 저작
             // 칸(`attackTargetLayers`)이 있어 근접이 하늘로 안 번지는 근거가 된다 — 비대칭이 의도다.
             a.TargetLayers = 0;
-            a.ProjectileDefIndex = IndexOf(projectiles, e.projectile);
+            // 공격 방식(옛 `BattleBridge` 적 베이크): `None` 또는 **산출물 없음** → 걷기만 한다
+            // (「피해 0 짜리 공격자」를 만들지 않는다). 탄은 `Projectile` 방식일 때만 붙는다 —
+            // 근접 적이 탄 참조를 들고 있어도 쏘지 않는다.
+            bool hasOutputs = e.outputs != null && e.outputs.Length > 0;
+            if (e.attackMethod != EnemyAttackMethod.None && !hasOutputs)
+                UnityEngine.Debug.LogWarning(
+                    $"[CombatDefinitionBuilder] {e.name}: attackMethod={e.attackMethod} 인데 outputs 가 비었다 — 걷기만 하는 적으로 굽는다.");
+            a.Unarmed = e.attackMethod == EnemyAttackMethod.None || !hasOutputs;
+            a.ProjectileDefIndex = !a.Unarmed && e.attackMethod == EnemyAttackMethod.Projectile
+                ? IndexOf(projectiles, e.projectile)
+                : -1;
             a.Outputs = ToOutputs(e.outputs);
             a.Mode = (int)e.targetMode;
-            // `DefenderClass.None`(0) = 우선 없음 · `DefenderClassFlags.Everything`(~0) = 전부.
-            // 둘 다 정의표의 「0/전체 비트 = 제약 없음」 규약과 그대로 맞는다.
+            // `DefenderClass.None`(0) = 우선 없음. 직업 필터는 적에게 **저작 칸이 있으므로 늘 켜진다**
+            // — `Everything`(~0) = 전부, `None`(0) = 아무도 못 때린다(옛 `AttackSystem` 의 `hasFilter`).
             a.PriorityClass = (int)e.targetPriorityClass;
             a.ClassMask = (int)e.targetClassMask;
+            a.HasClassFilter = true;
             // **보스 면역은 등급에서 나온다** — 별도 토글을 만들지 않는다(옛 전투도 `tier` 가
             // 유일한 출처였고, 토글을 두면 「보스인데 면역이 아닌」 저작이 가능해진다).
             a.BossImmune = e.tier == EnemyTier.Boss;
@@ -244,16 +266,44 @@ namespace Wassup.BattleCoreUnity
             return a;
         }
 
-        private static int[] CollectPatterns(DirectionalVolleyAbility volley,
-                                             List<ProjectilePatternData> patterns,
-                                             List<ProjectileData> projectiles)
+        /// <summary>
+        /// 평타 다연발 패턴을 표에 모은다. **잘못된 저작은 붙이지 않는다**(loud) — 옛
+        /// `BakeDefenderDirectionalPattern` + `ProjectilePatternData.TryToSpec` 의 거절을 옮겼다.
+        /// 거절된 유닛은 패턴 없이 단발로 쏜다(옛 전투와 같은 귀결).
+        /// </summary>
+        private static int[] CollectPatterns(DefenderUnitData d, DirectionalVolleyAbility volley,
+                                             List<ProjectilePatternData> patterns)
         {
             var pat = volley != null ? volley.pattern : null;
-            if (pat == null) return System.Array.Empty<int>();
-            if (pat.barrel != null) IndexOf(projectiles, pat.barrel);
+            string why = RejectPattern(d, pat);
+            if (why != null)
+            {
+                UnityEngine.Debug.LogError($"[CombatDefinitionBuilder] {d.name}: 다연발 패턴 거절 — {why}");
+                return System.Array.Empty<int>();
+            }
             int i = patterns.IndexOf(pat);
             if (i < 0) { patterns.Add(pat); i = patterns.Count - 1; }
             return new[] { i };
+        }
+
+        /// <summary>거절 사유. null = 유효.</summary>
+        private static string RejectPattern(DefenderUnitData d, ProjectilePatternData p)
+        {
+            if (p == null || p.barrel == null) return "패턴 또는 그 탄(barrel)이 비었다";
+            if (p.barrel != d.projectile) return "패턴의 탄이 유닛의 탄과 다르다";
+            int shots = p.shots != null ? p.shots.Length : 0;
+            if (shots == 0 || shots > ProjectilePatternData.MaxShotCount)
+                return $"발 수 {shots} 가 1~{ProjectilePatternData.MaxShotCount} 밖이다";
+            if (p.minAngleDeg > p.maxAngleDeg) return $"각도가 뒤집혔다({p.minAngleDeg} > {p.maxAngleDeg})";
+            if (p.randomizeShotsPerTrigger && p.randomIntervalMinSec > p.randomIntervalMaxSec)
+                return "무작위 간격의 최소가 최대보다 크다";
+            // 방향 탄 ↔ 대상 선정 없음은 **짝**이다. 한쪽만이면 방향 탄이 대상을 고르거나
+            // 대상 탄이 방향으로 나간다(한 탄에 조준이 둘).
+            bool direction = p.barrel.flightMode == ProjectileFlightMode.Directional;
+            bool noSelection = p.selection == PatternSelectionRule.None;
+            if (direction != noSelection)
+                return $"탄 궤적({p.barrel.flightMode})과 선정 규칙({p.selection})이 짝이 아니다";
+            return null;
         }
 
         private static void Bake(AttackShape authored, ref AttackDef a)
@@ -308,7 +358,9 @@ namespace Wassup.BattleCoreUnity
             d.MinFlightTime = p.minFlightTime;
             d.Movement = (int)movement;
             d.Payload = (int)payload;
-            d.SplashRadius = p.splashRadius;
+            // 광역은 **토큰과 반경 둘 다**여야 한다(옛 `ProjectileHitSystem`: `onHitEffect == Splash
+            // && splashRadius > 0`). 코어의 스위치는 반경 하나라 토큰을 여기서 반경으로 접는다.
+            d.SplashRadius = p.onHitEffect == OnHitEffectType.Splash ? p.splashRadius : 0f;
             d.SplashDamageMul = p.splashDamageMul;
             d.ImpactTileRange = p.impactTileRange;
             d.PierceCount = p.pierceCount;
@@ -462,21 +514,22 @@ namespace Wassup.BattleCoreUnity
                 MinAngleDeg = p.minAngleDeg,
                 MaxAngleDeg = p.maxAngleDeg,
                 RandomizeShotsPerTrigger = p.randomizeShotsPerTrigger,
-                RandomIntervalMinSec = p.randomIntervalMinSec,
-                RandomIntervalMaxSec = p.randomIntervalMaxSec,
+                // 정의역 접기 — 옛 `TryToSpec` 의 클램프(음수 시간·반경 금지, 방향 0~1).
+                RandomIntervalMinSec = UnityEngine.Mathf.Max(0f, p.randomIntervalMinSec),
+                RandomIntervalMaxSec = UnityEngine.Mathf.Max(0f, p.randomIntervalMaxSec),
                 ReselectPerShot = p.reselectPerShot,
-                TelegraphSec = p.telegraphSec,
-                ScopeTileRange = p.scopeTileRange,
+                TelegraphSec = UnityEngine.Mathf.Max(0f, p.telegraphSec),
+                ScopeTileRange = UnityEngine.Mathf.Max(0, p.scopeTileRange),
                 FanOutToAllCandidates = p.fanOutToAllCandidates,
-                FanOutStaggerSec = p.fanOutStaggerSec,
+                FanOutStaggerSec = UnityEngine.Mathf.Max(0f, p.fanOutStaggerSec),
             };
             int shots = p.shots != null ? p.shots.Length : 0;
             d.Shots = new PatternShotDef[shots];
             for (int i = 0; i < shots; i++)
                 d.Shots[i] = new PatternShotDef
                 {
-                    DirectionT = p.shots[i].directionT,
-                    IntervalAfterPreviousSec = p.shots[i].intervalAfterPreviousSec,
+                    DirectionT = UnityEngine.Mathf.Clamp01(p.shots[i].directionT),
+                    IntervalAfterPreviousSec = UnityEngine.Mathf.Max(0f, p.shots[i].intervalAfterPreviousSec),
                 };
             return d;
         }

@@ -182,5 +182,186 @@ namespace Wassup.Tests.EditMode
             for (int t = 0; t < 120; t++) m.Tick();
             return before - d.Health;
         }
+
+        [Test]
+        public void 공격_방식_없음인_적은_걷기만_한다()
+        {
+            // 옛 `BattleBridge`: `attackMethod: None` 또는 산출물 없음 → 공격 상태 없이 굽는다.
+            var target = Target();
+            var walker = Hitter(EnemyAttackMethod.None);
+            try { Assert.AreEqual(0f, DamageTakenNextTo(target, walker), 1e-3f, "걷기만 하는 적이 때렸다"); }
+            finally { Object.DestroyImmediate(target); Object.DestroyImmediate(walker); }
+        }
+
+        [Test]
+        public void 근접_적은_탄이_저작돼_있어도_탄을_쏘지_않는다()
+        {
+            // 옛: `attackMethod == Projectile && projectile != null` 일 때만 탄을 굽는다.
+            var target = Target();
+            var melee = Hitter(EnemyAttackMethod.Melee);
+            var shot = ScriptableObject.CreateInstance<ProjectileData>();
+            shot.id = "drift_shot";
+            melee.projectile = shot;
+            try
+            {
+                var def = MatchDefinitionBuilder.Build(new[] { target }, new[] { melee }, 1, ModeDef.Default());
+                Assert.AreEqual(-1, def.Enemies[0].Attack.ProjectileDefIndex, "근접 적에 탄이 붙었다");
+            }
+            finally { Object.DestroyImmediate(target); Object.DestroyImmediate(melee); Object.DestroyImmediate(shot); }
+        }
+
+        [Test]
+        public void 직업_필터를_전부_끈_적은_방어유닛을_못_때린다()
+        {
+            // 옛 `AttackSystem` 의 게이트는 필터의 **존재**였다 — 마스크 0 = 아무도 못 때린다.
+            // 코어가 「0 = 제약 없음」으로 읽어 뜻이 뒤집혀 있었다.
+            var target = Target();
+            target.role = DefenderClass.Fighter;
+            var picky = Hitter(EnemyAttackMethod.Melee);
+            picky.targetClassMask = DefenderClassFlags.None;
+            try { Assert.AreEqual(0f, DamageTakenNextTo(target, picky), 1e-3f, "직업 필터 0 인 적이 때렸다"); }
+            finally { Object.DestroyImmediate(target); Object.DestroyImmediate(picky); }
+        }
+
+        [Test]
+        public void 폭탄_비행_시간이_0_이면_폭탄맨이_아니다()
+        {
+            // 옛 `BattleBridge`: 게이트 = 능력 에셋 존재 **+ travelSec > 0**.
+            var d = Target("drift_bomber");
+            var bomb = ScriptableObject.CreateInstance<BombThrowAbility>();
+            bomb.travelSec = 0f;
+            bomb.damage = 50f;
+            d.abilities.Add(bomb);
+            try
+            {
+                var def = MatchDefinitionBuilder.Build(new[] { d }, new[] { dummy }, 1, ModeDef.Default());
+                Assert.AreNotEqual((int)AttackPolicy.Bomb, def.Units[0].Attack.Policy,
+                    "비행 시간 0 인 폭탄 능력이 폭탄맨 정책이 됐다");
+            }
+            finally { Object.DestroyImmediate(d); Object.DestroyImmediate(bomb); }
+        }
+
+        [Test]
+        public void 착탄_효과가_광역이_아닌_탄은_광역_반경을_안_싣는다()
+        {
+            // 옛 `ProjectileHitSystem`: `onHitEffect == Splash && splashRadius > 0` 둘 다.
+            var d = Target("drift_archer");
+            var shot = ScriptableObject.CreateInstance<ProjectileData>();
+            shot.id = "drift_arrow";
+            shot.onHitEffect = OnHitEffectType.None;
+            shot.splashRadius = 2f;
+            d.projectile = shot;
+            try
+            {
+                var def = MatchDefinitionBuilder.Build(new[] { d }, new[] { dummy }, 1, ModeDef.Default());
+                Assert.AreEqual(0f, def.Projectiles[def.Units[0].Attack.ProjectileDefIndex].SplashRadius, 1e-6f,
+                    "광역 토큰이 없는데 광역 반경이 실렸다");
+            }
+            finally { Object.DestroyImmediate(d); Object.DestroyImmediate(shot); }
+        }
+
+        private static (DefenderUnitData d, ProjectileData barrel, ProjectilePatternData pat, DirectionalVolleyAbility vol)
+            Volley()
+        {
+            var d = Target("drift_gunner");
+            var barrel = ScriptableObject.CreateInstance<ProjectileData>();
+            barrel.id = "drift_bullet";
+            barrel.flightMode = ProjectileFlightMode.Directional;
+            d.projectile = barrel;
+            var pat = ScriptableObject.CreateInstance<ProjectilePatternData>();
+            pat.id = "drift_volley";
+            pat.barrel = barrel;
+            pat.selection = Wassup.Data.PatternSelectionRule.None;
+            pat.minAngleDeg = -10f;
+            pat.maxAngleDeg = 10f;
+            pat.shots = new[]
+            {
+                new ProjectileShotStep { directionT = 0f, intervalAfterPreviousSec = 0f },
+                new ProjectileShotStep { directionT = 1f, intervalAfterPreviousSec = 0.1f },
+            };
+            var vol = ScriptableObject.CreateInstance<DirectionalVolleyAbility>();
+            vol.pattern = pat;
+            d.abilities.Add(vol);
+            return (d, barrel, pat, vol);
+        }
+
+        private static void Destroy(params Object[] objs) { foreach (var o in objs) if (o != null) Object.DestroyImmediate(o); }
+
+        [Test]
+        public void 발사_명세의_탄은_정의표_안을_가리킨다()
+        {
+            // 탄 표를 굳힌 **뒤** 패턴이 자기 탄을 등록하면 표 밖을 가리킨다. 오늘은 「가림막 한 줄」
+            // (`CollectPatterns` 의 선등록)이 막고 있었다 — 순서 자체로 막아야 한다.
+            var v = Volley();
+            try
+            {
+                var def = MatchDefinitionBuilder.Build(new[] { v.d }, new[] { dummy }, 1, ModeDef.Default());
+                Assert.AreEqual(1, def.Units[0].Attack.PatternDefIndices.Length);
+                int barrel = def.Patterns[def.Units[0].Attack.PatternDefIndices[0]].BarrelProjectileDefIndex;
+                Assert.That(barrel, Is.InRange(0, def.Projectiles.Length - 1), "패턴의 탄이 탄 표 밖이다");
+            }
+            finally { Destroy(v.d, v.barrel, v.pat, v.vol); }
+        }
+
+        [Test]
+        public void 잘못된_발사_명세는_거절된다()
+        {
+            // 옛 `ProjectilePatternData.TryToSpec` 의 거절 — 각도 뒤집힘 · 발 없음 · 방향 탄인데
+            // 대상 선정 규칙이 있음 · 탄이 유닛 탄과 다름. 거절된 패턴은 **붙지 않는다**(단발로 쏜다).
+            var v = Volley();
+            v.pat.minAngleDeg = 30f;
+            v.pat.maxAngleDeg = -30f;
+            try
+            {
+                LogAssert.ignoreFailingMessages = true;
+                var def = MatchDefinitionBuilder.Build(new[] { v.d }, new[] { dummy }, 1, ModeDef.Default());
+                Assert.AreEqual(0, def.Units[0].Attack.PatternDefIndices.Length, "각도가 뒤집힌 패턴이 붙었다");
+
+                v.pat.minAngleDeg = -10f; v.pat.maxAngleDeg = 10f;
+                v.pat.selection = Wassup.Data.PatternSelectionRule.RoundRobin;
+                def = MatchDefinitionBuilder.Build(new[] { v.d }, new[] { dummy }, 1, ModeDef.Default());
+                Assert.AreEqual(0, def.Units[0].Attack.PatternDefIndices.Length,
+                    "방향 탄인데 대상 선정 규칙이 있는 패턴이 붙었다");
+            }
+            finally { LogAssert.ignoreFailingMessages = false; Destroy(v.d, v.barrel, v.pat, v.vol); }
+        }
+
+        [Test]
+        public void 발사_명세_값은_정의역으로_접힌다()
+        {
+            // 옛 `TryToSpec` 의 클램프 — 방향 0~1 · 간격·예고·반경은 음수 금지.
+            var v = Volley();
+            v.pat.shots[0].directionT = 1.5f;
+            v.pat.shots[1].intervalAfterPreviousSec = -1f;
+            v.pat.telegraphSec = -2f;
+            v.pat.scopeTileRange = -3;
+            try
+            {
+                var def = MatchDefinitionBuilder.Build(new[] { v.d }, new[] { dummy }, 1, ModeDef.Default());
+                var p = def.Patterns[def.Units[0].Attack.PatternDefIndices[0]];
+                Assert.AreEqual(1f, p.Shots[0].DirectionT, 1e-6f);
+                Assert.AreEqual(0f, p.Shots[1].IntervalAfterPreviousSec, 1e-6f);
+                Assert.AreEqual(0f, p.TelegraphSec, 1e-6f);
+                Assert.AreEqual(0, p.ScopeTileRange);
+            }
+            finally { Destroy(v.d, v.barrel, v.pat, v.vol); }
+        }
+
+        // ── 모드 배선 ────────────────────────────────────────────────────────
+
+        private static MatchModeData Mode()
+        {
+            var m = ScriptableObject.CreateInstance<MatchModeData>();
+            m.modeId = "drift_mode";
+            m.costConfig = ScriptableObject.CreateInstance<CostConfig>();
+            return m;
+        }
+
+        private static void DropMode(MatchModeData m)
+        {
+            if (m == null) return;
+            if (m.costConfig != null) Object.DestroyImmediate(m.costConfig);
+            Object.DestroyImmediate(m);
+        }
     }
 }

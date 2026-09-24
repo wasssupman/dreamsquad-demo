@@ -672,6 +672,19 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(0, acquired.Count);
         }
 
+        // ── 적 공격 저작의 의미(2026-09-24 드리프트 감사) ────────────────────
+
+        private static float DefenderDamageTaken(MatchDefinition def, int ticks = 120)
+        {
+            var m = Match(def);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var d = First(m, UnitKind.Defender);
+            float before = d.Health;
+            Tick(m, ticks);
+            return before - d.Health;
+        }
+
         [Test]
         public void 비행_적은_지상을_걷는_아군을_멈춰_서서_때린다()
         {
@@ -691,6 +704,36 @@ namespace Wassup.Tests.EditMode.Core
             float before = d.Health;
             Tick(m, 120);
             Assert.Less(d.Health, before, "비행 적이 옆의 지상 순찰병을 안 때렸다");
+        }
+
+        [Test]
+        public void 걷기만_하는_적은_산출물이_있어도_때리지_않는다()
+        {
+            var def = Definition(defenderDamage: 0f, enemyDamage: 10f);
+            Assert.Greater(DefenderDamageTaken(def), 0f, "전제: 무장한 적은 옆의 방어유닛을 때린다");
+
+            def.Enemies[0].Attack.Unarmed = true;
+            def.ConfigHash = def.ComputeConfigHash();
+            Assert.AreEqual(0f, DefenderDamageTaken(def), 1e-4f);
+        }
+
+        [Test]
+        public void 직업_필터는_존재가_게이트다_마스크_0_은_아무도_못_때린다()
+        {
+            var def = Definition(defenderDamage: 0f, enemyDamage: 10f);
+            def.Units[0].Role = 3;
+            def.Enemies[0].Attack.ClassMask = 0;
+            def.Enemies[0].Attack.HasClassFilter = false;
+            def.ConfigHash = def.ComputeConfigHash();
+            Assert.Greater(DefenderDamageTaken(def), 0f, "필터가 없으면 직업을 묻지 않는다");
+
+            def.Enemies[0].Attack.HasClassFilter = true;
+            def.ConfigHash = def.ComputeConfigHash();
+            Assert.AreEqual(0f, DefenderDamageTaken(def), 1e-4f, "필터가 있고 마스크 0 = 아무도 못 때린다");
+
+            def.Enemies[0].Attack.ClassMask = 1 << 3;
+            def.ConfigHash = def.ComputeConfigHash();
+            Assert.Greater(DefenderDamageTaken(def), 0f, "허용 비트의 직업은 때린다");
         }
 
         // ── 헬퍼 ─────────────────────────────────────────────────────────────
