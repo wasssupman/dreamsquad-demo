@@ -50,17 +50,17 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.GreaterOrEqual(shaped, 0, "로스터에 부채꼴 유닛(말파이트류)이 없다 — 가이드를 증언할 수 없다");
             Assert.GreaterOrEqual(omni, 0, "로스터에 전방위 공격 유닛이 없다 — 대조군이 없다");
 
-            Assert.IsTrue(driver.Apply(Command.DebugSpawnEnemyInLane(0, 0)).Accepted, "적 스폰 거절");
-            var world = driver.Match.World;
-            Unit enemy = null;
-            for (int i = 0; i < world.Units.Count; i++)
-                if (world.Units[i].Kind == UnitKind.Enemy) enemy = world.Units[i];
+            // 판 가운데에 세운다 — 레인 스폰 자리는 적 본능 거점(역시 후보다)의 사거리 안이라, 거기선
+            // 「이 적 쪽」과 「후보가 없으면 안 뜬다」를 증언할 앵커가 없다(`TryAnchorInReach` 주석).
+            var size = driver.GridSize;
+            Assert.IsTrue(driver.Apply(Command.DebugSpawnEnemy(0, new int2(size.x / 2 - 1, size.y / 2))).Accepted, "적 스폰 거절");
+            Unit enemy = LatestEnemy(driver);
             Assert.IsNotNull(enemy, "적이 안 섰다");
             yield return null;
 
             // ── 방향 유닛: 뜬다 · 적을 향한다 · 길이 = 범위 + 자기 몸 ──
             Assert.IsTrue(TryAnchorInReach(driver, shaped, enemy, out int2 anchor, out float3 foot),
-                "적이 사거리 안에 드는 앵커가 판에 없다");
+                "그 적만 사거리 안에 드는 앵커가 판에 없다");
             overlay.ShowPlacement(shaped, anchor, true);
             yield return null;
             yield return null;
@@ -227,6 +227,15 @@ namespace Wassup.Tests.PlayMode.Core
 
         // 적이 그 유닛의 사거리 안에 드는 앵커. 도달은 **정본 진입점**으로 묻는다(테스트도 자를 새로 안 만든다).
         // 발밑 = 오버레이·배치와 같은 점(`CoreMapOverlay.PaintRange` — 앵커 x + (폭−1)/2, 앵커 y).
+        //
+        // ⚠ 그 적이 사거리 안 **유일한 후보**여야 한다. 후보 마스크(저작 98 = 적 진영 전부)에는 **적 거점**도
+        // 들고(옛 `DefenderTargetDefaults.Resolve` + `BattleBridge.cs:8135` 팩션 필터), 순위는 순수 최근접
+        // (`:8169` `RanksBefore`)이라 거점이 더 가까우면 옛 가이드도 거점을 봤다. 레인 0 스폰 옆에는 적 본능
+        // 거점이 서 있어, 첫 앵커를 그냥 쓰면 가이드가 거점 쪽(0.98)을 향한다 — 규칙이 아니라 배치가 틀린 것이다.
+        // 거점이 사거리 안에 **남아 있기만** 해도 그 적을 지운 뒤 가이드가 거점으로 옮겨 가(옛 것도 그랬다)
+        // 「후보가 없으면 안 뜬다」를 증언할 수 없다. 그래서 마스크 안의 다른 유닛이 사거리에 **하나라도** 드는
+        // 앵커는 건너뛴다 — 그 적이 유일한 후보인 자리만 쓴다(층·IsTargetable 은 안 걸러 더 보수적이다 —
+        // 건너뛰는 앵커가 늘 뿐 오판은 없다).
         private static bool TryAnchorInReach(BattleDriver driver, int defIndex, Unit enemy,
                                              out int2 anchor, out float3 foot)
         {
@@ -234,6 +243,8 @@ namespace Wassup.Tests.PlayMode.Core
             int w = math.max(1, u.FootprintWidth);
             float ts = driver.TileSize;
             var size = driver.GridSize;
+            int mask = TargetDefaults.ResolveDefender(u.TargetFactions);
+            var units = driver.Units;
             for (int y = 0; y < size.y; y++)
             for (int x = 0; x < size.x; x++)
             {
@@ -242,6 +253,14 @@ namespace Wassup.Tests.PlayMode.Core
                 if (dx * dx + dz * dz < 0.25f * ts * ts) continue;   // 같은 자리면 방향이 없다
                 if (!AttackReach.InReach(f, enemy.Position, u.AttackRange, ts, u.BodyRadiusTiles, enemy.HitRadius))
                     continue;
+                bool rivalInReach = false;
+                for (int i = 0; i < units.Count && !rivalInReach; i++)
+                {
+                    var o = units[i];
+                    if (o == enemy || ((int)o.Faction & mask) == 0) continue;
+                    rivalInReach = AttackReach.InReach(f, o.Position, u.AttackRange, ts, u.BodyRadiusTiles, o.HitRadius);
+                }
+                if (rivalInReach) continue;
                 anchor = new int2(x, y);
                 foot = f;
                 return true;
