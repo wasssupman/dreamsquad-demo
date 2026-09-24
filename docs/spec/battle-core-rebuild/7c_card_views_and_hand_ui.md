@@ -132,7 +132,7 @@
 - [x] 뷰·입력 코드(`Cards/` · `Input/CardInput.cs`)에 `Unity.Entities` **0건** · `Shader.Find` **0건** · 매니저·브리지·컨트롤러 이름의 클래스 **0건**(grep). 판정 0: 자격 = `HandDeck.UsableReason`/`WouldAttach` · 조준 = `CardDef.Kind`/`TargetsEnemies` · 반경 = `RangeCatalog` → `RadiusWithOrigin` 호출만.
 - [ ] 드래그 → 부착 e2e: 커맨드 → receipt → 카드 줄 표시 · 거절 사유 문구가 코어 답과 **같은 문자열** — 위 PlayMode 두 건(탭·끌기 부착 · 거절 문구)으로 건다. **Unity 실행 대기.**
 - [x] `ledgers/bridge-methods.md` **잔량 변화 없음(28)** — `check_ledgers.py` exit 0 · 미정 28. 카드 UI 의 브리지 행은 이미 「HandDeck」·「뷰 풀」로 배정돼 있어 이 unit 이 닫을 미정 행이 0 이다(아래 이행 메모).
-- [ ] `core-reviewer` APPROVE(Unity 층 — 매니저·브리지·컨트롤러 이름 0 · 판정 이전 0).
+- [x] `core-reviewer` APPROVE(2026-09-24 · finding 0 — `UsableReason` 읽기 전용 · 덱 굴림 시드 결정론 · 뷰 판정 재계산 0(범위 링 = `RadiusWithOrigin`, 대상 몸 없음) · formatter 직접 호출 · `Shader.Find` 0 · `additionalShaderChannels` 2곳 · 빔/오라 겸용 등록은 옛 결함으로 확정). 리드 export 재검증(`88617a8fe`): build 0 · test 630 · Check 0 · 미정 28. Unity lane·씬 배선은 MCP 세션 복구 뒤(대기).
 - [ ] **여기서 처음으로 카드가 손에 잡힌다.** 손맛 확인은 조각 D 전체 뒤(7d)의 사용자 플레이 2차로 미룬다 — 기믹·보스·분열이 빠진 채로 물으면 답이 항상 「아니다」가 된다(5c 의 규율). ⚠ 씬 배선(위 「미배선」 표)이 먼저다.
 
 > **이행 메모(2026-09-24).** 커밋: `b22e0708e`(preflight) · `87f9c5781`(덱 배선 · 뷰 표) · `e139d3625`(카드 사건의 그림) · `674829015`(손패 UI) · `1f7d524c2`(테스트) + 이 문서 커밋. 커밋마다 클린 export 3종: build 0 · test **630**(+1) · Check 0. EditModeAssets `CardViewAssetTests`(5) · PlayMode `CoreCardViewTests`(5)는 스크래치 csproj 로 **컴파일만** 확인(오류 0) — Unity EditMode 코어·Assets · PlayMode 코어 lane 은 MCP 세션 끊김으로 **미실행**. 골든: 코어 변경은 읽기 전용 메서드 하나라 사건·해시 무변 **예상**(골든 코퍼스는 SO 를 안 읽는다 — 빔 `DataIndex` 는 라이브 정의표만 바꾼다) — Unity 골든 11종 확인 대기.
