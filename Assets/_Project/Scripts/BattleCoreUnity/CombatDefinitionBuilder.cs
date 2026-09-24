@@ -85,6 +85,16 @@ namespace Wassup.BattleCoreUnity
                 for (int i = 0; i < extraProjectiles.Count; i++)
                     if (extraProjectiles[i] != null) IndexOf(projectiles, extraProjectiles[i]);
 
+            // unit 7d — **길막이 부서질 때 쓰는 폭발 탄**(폭탄 배럴)도 탄 표에 든다. 공격 표 밖의 탄이라 줄 번호가 없었다(6b 이식
+            // 제외 「탄 표 편입 — unit 7」). 탄 → 길막 → 폭발 탄의 역참조라 **목록이 자라는 동안** 훑는다(폭발 탄이 또 길막을 세우면
+            // 그것도 따라간다). 표를 굳히기 전이다 — 뒤에 넣으면 폭발 줄이 -1 로 남아 배럴이 조용히 안 터진다.
+            for (int i = 0; i < projectiles.Count; i++)
+            {
+                var blast = projectiles[i] != null && projectiles[i].spawnBlocker != null
+                    ? projectiles[i].spawnBlocker.explodeProjectile : null;
+                if (blast != null) IndexOf(projectiles, blast);
+            }
+
             // ⚠ **패턴을 먼저 굽고 탄 표를 나중에 굳힌다.** 패턴 변환이 자기 탄(barrel)을 탄 목록에
             // 등록하므로, 표를 먼저 굳히면 그 뒤 등록된 탄은 **표 밖**을 가리킨다(조용히 「패턴에
             // 탄이 없다」). 예전엔 `CollectPatterns` 의 선등록 한 줄이 가림막이었다 — 순서로 막는다.

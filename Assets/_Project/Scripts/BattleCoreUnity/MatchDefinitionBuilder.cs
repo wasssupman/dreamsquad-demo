@@ -317,6 +317,7 @@ namespace Wassup.BattleCoreUnity
             SpawnSpreadFraction = c.SpawnSpreadFraction,
             SpawnSpreadTopScale = c.SpawnSpreadTopScale,
             BossLeapFlightSeconds = c.BossLeapFlightSeconds,
+            SplitSpreadFraction = c.SplitSpreadFraction,
         };
 
         public static ModeDef ToModeDef(MatchModeData m)
@@ -382,6 +383,13 @@ namespace Wassup.BattleCoreUnity
                         Add(list, w.groups[g] != null ? w.groups[g].unit : null);
                 }
             if (bonus != null) Add(list, bonus.enemyUnit);
+            // unit 7d — **분열 자식**도 그 판에 나온다(사슬 전부 — 2단계 분열). 웨이브 풀 밖 에셋이라 여기서 편입한다 —
+            // 안 하면 자식 줄이 표 밖을 가리켜 분열이 조용히 죽는다. 뒤에 붙이므로 앞 줄 번호는 안 밀린다.
+            for (int i = 0; i < list.Count; i++)
+            {
+                var child = SplitChain.NextInChain(list[i]);
+                if (child != null && !list.Contains(child)) list.Add(child);
+            }
             return list.ToArray();
 
             void Add(System.Collections.Generic.List<AttackUnitData> into, params AttackUnitData[] units)
@@ -880,6 +888,9 @@ namespace Wassup.BattleCoreUnity
             return list.ToArray();
         }
 
+        /// <summary>분열 자식 상한 — 밸런스 값이 아니라 저작 사고 방어선(옛 `BattleBridge.MaxSplitChildren`).</summary>
+        private const int MaxSplitChildren = 8;
+
         private static EnemyDef[] BuildEnemies(AttackUnitData[] src)
         {
             if (src == null) return System.Array.Empty<EnemyDef>();
@@ -915,6 +926,16 @@ namespace Wassup.BattleCoreUnity
                     TargetFactions = (int)e.targetFactions,
                     WaypointPathIndex = e.waypointPathIndex,
                 };
+                // unit 7d — 분열(첫 슬롯만 · 상한 8 · 자기순환 거절 — 옛 `SpawnSplitChildren` 과 같은 규약). 사슬 검증
+                // (`SplitChain.Validate`)은 규칙 bake(`BindingDefinitionBuilder`)가 loud 하게 한다 — 여기선 값만 싣는다.
+                var child = SplitChain.NextInChain(e);
+                int count = Mathf.Clamp(SplitChain.CountAt(e), 0, MaxSplitChildren);
+                int childIndex = System.Array.IndexOf(src, child);
+                if (child != null && child != e && count > 0 && childIndex >= 0)
+                {
+                    outp[i].SplitCount = count;
+                    outp[i].SplitChildDefIndex = childIndex;
+                }
             }
             return outp;
         }

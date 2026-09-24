@@ -49,6 +49,12 @@ namespace Wassup.BattleCore
         /// </summary>
         public float BossLeapFlightSeconds;
 
+        /// <summary>
+        /// unit 7d — **분열 자식이 부모 칸 중심에서 퍼지는 반경(칸 폭 비).** 옛 브리지 리터럴 `tileSize * 0.25f` 의 저작 자리.
+        /// ⚠ 0.49 미만이어야 자식이 **부모와 같은 칸**에 남는다(옆 칸이 골이면 「처치했는데 유출」 — E1). 0 = 한 점에 겹쳐 난다.
+        /// </summary>
+        public float SplitSpreadFraction;
+
         /// <summary>옛 씬 값. 「기본값 = 라이브」가 이 표의 계약이다.</summary>
         public static MovementTuningDef Default() => new MovementTuningDef
         {
@@ -57,6 +63,7 @@ namespace Wassup.BattleCore
             SpawnSpreadFraction = 0.2f,
             SpawnSpreadTopScale = 0.5f,
             BossLeapFlightSeconds = 0.83f,
+            SplitSpreadFraction = 0.25f,
         };
 
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
@@ -69,6 +76,8 @@ namespace Wassup.BattleCore
             var d = Default();
             if (BossLeapFlightSeconds != d.BossLeapFlightSeconds)
                 MatchDefinition.Put(sb, "bossLeapFlightSeconds", BossLeapFlightSeconds, inv);
+            if (SplitSpreadFraction != d.SplitSpreadFraction)
+                MatchDefinition.Put(sb, "splitSpreadFraction", SplitSpreadFraction, inv);
         }
     }
 }

@@ -142,6 +142,10 @@ namespace Wassup.BattleCore
 
             // unit 7a — seam 순서표는 **파이프라인에서** 만든다(단계가 자기 seam 을 순서대로 말한다).
             _triggers.Install(_seams, SeamTickOrder.From(_pipeline));
+            // unit 7d — 사망 seam 의 코어 규칙 둘(스킬 레일 밖 — 규칙이 아니라 **개체의 성질**이다). 디스패처 드레인 **뒤**에
+            // 등록한다: 시체 폭발 같은 처치 규칙이 먼저 줄을 서고, 분열 자식은 전멸 판정(담당자 단계) 앞에 태어난다(X2 ①).
+            _seams.Register(Seam.Death, EnemySplit.Run);
+            _seams.Register(Seam.Death, BlockerSpawn.ExplodeBroken);
 
             _ctx = new TickContext
             {

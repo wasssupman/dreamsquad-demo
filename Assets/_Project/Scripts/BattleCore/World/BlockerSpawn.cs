@@ -42,6 +42,52 @@ namespace Wassup.BattleCore
                                pos, bd.BodyRadius, bd.MaxHealth, deploying: false, tick: tick);
         }
 
+        /// <summary>
+        /// unit 7d — **부서진 길막이 터진다**(사망 seam 핸들러). 옛 `BarrelExplosionSystem`: 이번 틱 피해로 부서진 설치물마다
+        /// 그 칸 중심에 즉발 광역 한 발 — 해결은 폭탄맨 평타와 **같은 길**(`TileAoe`)이다. 폭발 저작(`ExplodeDamage`)이 0 이면
+        /// 안 터진다(기존 길막 무회귀). 문은 「부서짐」 하나다 — 시한 만료는 은퇴했다(6b).
+        /// ⚠ **자리에 떨어지는 것**(몸 0 · 칸 반폭) · 적 전용(옛 `targetFaction = Enemy` 명시) · 통행 층 무필터(옛 기본 0).
+        /// ⚠ 처치 귀속 = **그 설치물**. 옛 처치 점수는 킬러를 안 봤다 — 출처 없이 쏘면 새 코어에서 배럴로 잡은 적이
+        /// 점수·각성을 안 준다(귀속된 죽음에만 처치 사건이 난다).
+        /// </summary>
+        public static void ExplodeBroken(TickContext ctx)
+        {
+            var def = ctx.Def;
+            if (def.BlockingHazards == null || def.BlockingHazards.Length == 0) return;
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                if (u.Kind != UnitKind.BlockingHazard || !u.Dead || u.DeathTick != ctx.Tick) continue;
+                if (u.DefIndex < 0 || u.DefIndex >= def.BlockingHazards.Length) continue;
+                ref var bd = ref def.BlockingHazards[u.DefIndex];
+                if (bd.ExplodeDamage <= 0f) continue;
+                if (bd.ExplodeProjectileDefIndex < 0 || bd.ExplodeProjectileDefIndex >= def.Projectiles.Length)
+                {
+                    ctx.Warn($"[Blocker] '{bd.Id}' 폭발 피해가 저작됐는데 폭발 탄 줄이 없다 — 안 터진다.");
+                    continue;
+                }
+                var map = ctx.Map;
+                float3 impact = map != null && map.Snapshot.CellCount > 0 ? map.CenterOf(map.CellOf(u.Position)) : u.Position;
+                var req = Combat.Projectile.ProjectileRequest.Empty;
+                req.DefIndex = bd.ExplodeProjectileDefIndex;
+                req.Movement = Combat.Projectile.MovementKind.SkyFall;
+                req.Payload = Combat.Projectile.PayloadKind.TileAoe;
+                req.Owner = u.Id;
+                req.OwnerFaction = Faction.DefenderUnit;   // 플레이어가 놓은 설치물 — 적을 때린다
+                req.TargetMask = (int)Faction.EnemyUnit;
+                req.TargetLayers = 0;
+                req.Origin = impact;
+                req.Impact = impact;
+                req.Damage = bd.ExplodeDamage;
+                req.ImpactTileRange = bd.ExplodeTileRange;
+                req.AoeTargetCap = bd.ExplodeTargetCap;
+                req.OriginBodyRadius = 0f;   // 자리형
+                req.FlightTime = 0f;         // 부서지는 순간이 폭발이다(예고를 주면 두 사건으로 갈린다)
+                ctx.World.ProjectileRequests.Add(req);
+            }
+        }
+
         private static Reject Validate(MapRuntime map, int2 center, int span)
         {
             if (map == null || map.Snapshot.CellCount == 0) return Reject.None;   // 맵 없는 픽스처

@@ -22,7 +22,7 @@ namespace Wassup.BattleCore
         /// 결정론이 구조적으로 성립한다. |오프셋| 은 반 칸을 못 넘는다(M14).
         /// </summary>
         public static Unit At(TickContext ctx, MapRuntime map, int defIndex, int lane,
-                              int2 cell, int conceptPathIndex, int tick)
+                              int2 cell, int conceptPathIndex, int tick, float2 offsetXZ = default)
         {
             ref var d = ref ctx.Def.Enemies[defIndex];
             var snapshot = map.Snapshot;
@@ -50,6 +50,9 @@ namespace Wassup.BattleCore
                                                       mt.SpawnSpreadTopScale);
                 pos += SpawnSpread.LateralOffset(frac, snapshot.TileSize, heading);
             }
+
+            // unit 7d — 분열 자식의 인덱스 결정론 배치(칸 중심 기준 — 스폰 사건이 처음부터 그 자리를 싣는다).
+            pos += new float3(offsetXZ.x, 0f, offsetXZ.y);
 
             var u = ctx.World.Spawn(UnitKind.Enemy, Faction.EnemyUnit, defIndex,
                                     pos, d.BodyRadius, d.Health, deploying: false, tick: tick);

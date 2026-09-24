@@ -25,9 +25,10 @@ namespace Wassup.Tests.EditMode.Core
         {
             var m = new BattleMatch(CoreCombatFixtures.Definition());
             m.Begin();
-            // unit 7a — 디스패처가 seam 마다 **하나**를 등록한다(그 외 핸들러는 없다).
+            // unit 7a — 디스패처가 seam 마다 **하나**를 등록한다. unit 7d — 사망 seam 에만 코어 규칙 둘(분열 · 길막 폭발)이
+            // 더 붙는다(개체의 성질이라 스킬 레일 밖이다). 그 외 핸들러는 없다.
             for (int s = 0; s < (int)Seam._Count; s++)
-                Assert.AreEqual(1, m.Seams.CountAt((Seam)s), ((Seam)s).ToString());
+                Assert.AreEqual((Seam)s == Seam.Death ? 3 : 1, m.Seams.CountAt((Seam)s), ((Seam)s).ToString());
             CoreCombatFixtures.Tick(m, 3);   // 빈 seam 으로도 돈다
 
             int calls = 0, lastTick = -1;

@@ -98,5 +98,48 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(0, blocker.DefIndex, "정의 줄을 가리킨다 — 노후화·모양이 따라온다");
             Assert.Less(blocker.Health, 80f, "노후화가 돈다");
         }
+    
+        // ── unit 7d — 부서지면 터진다(옛 `BarrelExplosionSystem`) ──────────────
+
+        private static BattleMatch Barrel(float explode, out int blastDef)
+        {
+            var def = Def(hp: 10f, decay: 0f);
+            blastDef = CoreTriggerFixtures.AddBlastProjectile(def);
+            def.BlockingHazards[0].ExplodeDamage = explode;
+            def.BlockingHazards[0].ExplodeTileRange = 1;
+            def.BlockingHazards[0].ExplodeProjectileDefIndex = blastDef;
+            def.ConfigHash = def.ComputeConfigHash();
+            return CoreMatchFixtures.BeginBattle(def);
+        }
+
+        [Test]
+        public void 폭발_저작이_있는_길막은_부서지는_틱에_그_칸에서_적만_때리는_즉발_광역을_낸다()
+        {
+            var m = Barrel(explode: 40f, out _);
+            var spawned = CoreCombatFixtures.Listen(m, CoreEventKind.ProjectileSpawned);
+            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 2)));
+            var barrel = CoreCombatFixtures.First(m, UnitKind.BlockingHazard);
+            var barrelId = barrel.Id;   // 개체는 풀로 돌아가면 비워진다 — id 를 먼저 쥔다
+            barrel.Inbox.Damage.Add(new DamageEntry { Amount = 100f, Source = SimEntityId.None });
+            CoreCombatFixtures.Tick(m, 2);
+
+            Assert.AreEqual(1, spawned.Count);
+            var e = spawned[0];
+            Assert.AreEqual(40f, e.Amount, 1e-4f);
+            Assert.AreEqual(0f, e.SiteFired.OriginBody, 1e-6f, "자리에 떨어지는 것 — 몸 0");
+            Assert.AreEqual(new int2(5, 2), m.Map.CellOf(e.SiteTarget.Pos), "그 칸 중심");
+            Assert.AreEqual(barrelId, e.B, "처치 귀속 = 그 설치물(옛 처치 점수는 킬러를 안 봤다 — 출처가 없으면 점수가 사라진다)");
+        }
+
+        [Test]
+        public void 폭발_저작이_없는_길막은_부서져도_안_터진다()
+        {
+            var m = Barrel(explode: 0f, out _);
+            var spawned = CoreCombatFixtures.Listen(m, CoreEventKind.ProjectileSpawned);
+            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 2)));
+            CoreCombatFixtures.First(m, UnitKind.BlockingHazard).Inbox.Damage.Add(new DamageEntry { Amount = 100f });
+            CoreCombatFixtures.Tick(m, 2);
+            Assert.IsEmpty(spawned, "기존 길막 무회귀");
+        }
     }
 }
