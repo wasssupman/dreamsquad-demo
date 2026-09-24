@@ -75,6 +75,10 @@ namespace Wassup.Tests.EditMode.Core
             var fields = CoreCombatFixtures.Listen(m, CoreEventKind.FieldSpawned);
             Assert.IsTrue(m.Apply(Command.CastActivePair(entry, new int2(3, 2), new int2(8, 2))).Accepted);
             Assert.AreEqual(1, fields.Count, "입구→출구 장이 섰다");
+            // unit 7d — 뷰가 두 소용돌이와 빔을 그리려면 출구가 사건에 값으로 실려야 한다(되묻지 않는다).
+            Assert.AreEqual(m.Map.CenterOf(new int2(3, 2)), fields[0].SiteFired.Pos, "입구");
+            Assert.AreEqual(m.Map.CenterOf(new int2(8, 2)), fields[0].SiteTarget.Pos, "출구");
+            Assert.AreEqual(4f, fields[0].Amount, 1e-4f, "지속");
         }
 
         [Test]

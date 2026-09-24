@@ -738,11 +738,17 @@ namespace Wassup.BattleCore
                              Site.AtCell(h.Center), Site.Nowhere,
                              h.Faction, h.RadiusTiles, 0f, h.DefIndex);
 
+        /// <summary>
+        /// 장이 섰다. unit 7d — 뷰(`CoreFieldPresenter`)가 **되묻지 않게** 그림 재료를 값으로 싣는다:
+        /// 포탈 = `SiteTarget` 에 출구 · 당김/아군 장 = `AreaTiles` 에 반경(칸, 자리형 — 원점 항은 칸 반폭).
+        /// </summary>
         public static CoreEvent FieldSpawned(int tick, FieldCarrier f)
             => new CoreEvent(CoreEventKind.FieldSpawned, tick,
                              f.Id, f.Source,
-                             Site.AtCell(f.Center), Site.Nowhere,
-                             (Faction)f.Faction, (int)f.Kind, f.Duration);
+                             Site.AtCell(f.Center),
+                             f.Kind == FieldKind.Portal ? Site.AtCell(f.Exit) : Site.Nowhere,
+                             (Faction)f.Faction, (int)f.Kind, f.Duration,
+                             areaTiles: f.Kind == FieldKind.Portal ? 0 : (int)math.round(f.Range));
 
         public static CoreEvent FieldDespawned(int tick, FieldCarrier f)
             => new CoreEvent(CoreEventKind.FieldDespawned, tick,
