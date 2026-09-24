@@ -648,6 +648,29 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(d.Id.Value, e.Aggro != null ? e.Aggro.Target.Value : -1);
         }
 
+        [Test]
+        public void 유닛을_노리지_않는_적은_가디언에게_끌려가지_않는다()
+        {
+            // 2026-09-24 드리프트 감사 H5 — 마음사냥꾼(`targetFactions` = 방벽·마음·본능, 유닛
+            // 비트 없음)이 가디언에게 맞으면 끌려가 **마음을 향한 행진을 멈췄다.** 옛 전투는
+            // 부착 한 곳(`AggroStateSystem`)에서 「유닛을 노리지 않는 적은 유인으로 못 막는다」
+            // 로 거절했다 — 죽여야만 막히는 적이 이 규칙의 존재 이유다.
+            var def = Definition(defenderDamage: 1f, aggroCapacity: 2);
+            def.Enemies[0].TargetFactions = (int)(Faction.BlockingHazard | Faction.DefenderCore
+                                                  | Faction.DefenderInstinct);
+            def.ConfigHash = def.ComputeConfigHash();
+            var m = Match(def);
+            var acquired = Listen(m, CoreEventKind.AggroAcquired);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var e = First(m, UnitKind.Enemy);
+
+            Tick(m, 3);
+            Assert.IsTrue(e.Aggro == null || e.Aggro.Target.IsNone,
+                "마음사냥꾼이 가디언에게 유인됐다 — 유닛을 노리지 않는 적은 도발·히트 어그로를 안 받는다");
+            Assert.AreEqual(0, acquired.Count);
+        }
+
         // ── 헬퍼 ─────────────────────────────────────────────────────────────
 
         private static int CountProjectiles(BattleMatch m) => m.World.Projectiles.Count;

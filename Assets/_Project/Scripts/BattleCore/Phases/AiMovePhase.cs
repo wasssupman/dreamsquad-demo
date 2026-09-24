@@ -195,9 +195,16 @@ namespace Wassup.BattleCore
                 // 히트는 선점(먼저 온 쪽이 이긴다) — 도발은 그것을 우회한다(나중에 부른 쪽이 이긴다).
                 if (!req.Taunt && already) continue;
 
+                var def = EnemyDefOf(ctx, enemy);
+
+                // **유닛을 노리지 않는 적은 유인으로 막을 수 없다**(히트·도발 둘 다) — 거점 전담
+                // 적(마음사냥꾼)은 죽여야만 막힌다. 옛 `AggroStateSystem` 의 도발 범위 게이트이고,
+                // 저작 **의도**(해석된 대상 진영)를 읽는다 — 0(미저작)은 기본 마스크로 풀려
+                // 유닛 비트를 갖는다(2026-09-24 드리프트 감사 H5).
+                if ((TargetDefaults.ResolveEnemy(def.TargetFactions) & Factions.AnyUnit) == 0) continue;
+
                 // 공격 수단이 없으면 가디언을 때릴 수 없으므로 거부한다 — 안 그러면
                 // 「못 때리는데 끌려가서 영원히 서 있는」 적이 생긴다.
-                var def = EnemyDefOf(ctx, enemy);
                 int tileRange = AggroChaseMath.ResolveTileRange(def.AttackRange > 0f, def.AttackRange, false, 0f);
                 if (tileRange == AggroChaseMath.NoAttack) continue;
 
