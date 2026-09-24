@@ -69,7 +69,7 @@
 | 라스트런 표식의 **닫힘 사건** | 켜짐은 `PickupTaken`, 닫힘(crash)은 사건이 없다. 임시 다리 = 같은 몸의 스탯 회수 사건 + 초당 1회 정본 플래그(`LastRunActive`) 확인 | **완료**(6c 후속 · 리드 결정) — 코어 `LastRunEnded`(55) 구독으로 끈다. 임시 다리 철거. 「고친 것」 행 |
 | **살찌운 제물 표식**(`Marked`) | 표식 등록부의 주인이 unit 7(저주 카드)이다 | 보류 · unit 7 |
 | **실드 파열 원샷 VFX** | 옛 코드에 **없다**(옛 파열 드레인은 페이로드 실행·카드 펄스뿐). 파열의 그림은 오버헤드 실드 칸이 0 이 되는 것이다. 새 원샷은 신규 저작 | 제거(범위 밖) |
-| 드래곤 **화염 브레스** VFX | 새 `AttackResolved` 에 브레스 축(방향·반각·사거리)이 없다 — 옛 것은 전용 플래그 사건(`hasAreaBreath`)이었다 | 보류 · 코어 사건 축 — **리드 결정** |
+| 드래곤 **화염 브레스** VFX | 6c 후속 3 이 `AttackResolved` 에 축·도형·사거리를 실었지만 **브레스는 그 값으로 그릴 수 없다** — 옛 브레스의 콘은 공격 도형이 아니라 **드림캐쳐 메커닉 슬롯**(`AreaBreath` = 21, `ConeBreathSkill`)의 `coneHalfAngleDeg`·`tileRange` 였다(옛 `AttackSystem.cs:1942-1971` · `BattleBridge.cs:4768-4776`). 드래곤 저작은 공격 도형 전방위 · 사거리 2칸, 브레스 슬롯 반각 50° · 3칸(`Enemy_Dragon.asset`) — 공격 사건으로 그리면 **틀린 콘**이 나온다. 새 코어에는 `ConeBreath` 스킬이 아직 없다(7a) | 보류 · unit 7a(`ConeBreath` 발화 사건이 콘 스냅샷을 싣는다) — **사용자 결정 필요**(리드 지시 3 의 브레스 라우팅 전제와 다르다) |
 | 길막 **절차 폴백 VFX**(떨어지는 돌·먼지) · 픽업 플레이스홀더의 **발광** | 파티클 수치가 전부 코드 리터럴이고 머티리얼이 `Shader.Find` 였다(제약 6 · 추가 제약). 프리팹이 비면 경고 + 그림 없음, 플레이스홀더는 `RuntimeMaterialFactory.CreateOpaque` | 제거 |
 | 옛 장판 프리팹의 **자기 수명 시계**(`HazardVisualLifetime`) | 실시간으로 자기를 파괴해 정지·슬로모에서 규칙보다 먼저 사라졌다. 스폰 시 떼고 소멸 사건만 지운다(Play 스모크에서 실측) | 제거(계약 7) |
 | 배치 **폴백 펄스**(`PlayFallbackDeploymentPulse`) | 배치 모션은 5a 가 `DefenderActivated` → 뷰 `PlayDeploy` 로 이미 옮겼다 | 제거(선행) |
@@ -94,6 +94,7 @@
 | `ViewOrder` += `Board 15` · `Effect 35` · `Status 45` | 구현 7. `CoreViewOrderTests` 가 씬 순서를 뒤집어 확인 |
 | **어그로 풀림 = 사건**(6c 후속 · 리드 결정 1) — `CoreEvent.AggroReleased`(**54**, 트레이스 **52**, `Arg` = `AggroReleaseReason`{`Expired` · `GuardianGone` · `Rebuilt`}). 해제 자리 셋(시한 · 가디언 부재 · 추격판 무효화)이 `FieldPrepPhase.Release` **한 함수**를 부르고 그 함수가 낸다. 상태 표식 풀이 `AggroAcquired`/`AggroReleased` 로 어그로 표식을 켜고 끈다 | 이식 제외 「어그로 표식」 행. 옛 것은 `Aggroed` 보유를 매 프레임 폴링했다(`BattleBridge.cs:3525`). 적 자신의 소멸은 풀림이 아니다(`UnitDestroyed` 가 거둔다) · 도발 갈아타기도 아니다(획득이 한 번 더 온다). ⚠ 가디언이 빠지면 그 몸(장애물)이 풀려 **같은 틱의 추격판 무효화가 먼저** 히트 어그로를 푼다 — 사유가 `Rebuilt` 인 것이 그 순서의 증언이다(`DetectionRulesTests` 3건 · PlayMode `CoreEffectViewTests` 어그로 표식 1건). 골든 코퍼스는 어그로 획득 0건이라 무변 |
 | **라스트런 닫힘 = 사건**(6c 후속 · 리드 결정 2) — `CoreEvent.LastRunEnded`(**55**, 트레이스 **53**, `Arg` = `LastRunEndReason`{`Crash` · `Death` · `Retire` · `Removed`}). 닫히는 문 둘(시간 끝 `CrashLastRun` · 중단 정책 `InterruptProgress`)이 `BattleWorld` 에 있고 사건은 거기 한 곳에서 난다. `ProgressiveStates.Interrupt` 는 「이 중단이 창을 닫았나」를 **전후 값 비교**로 돌려준다(정책 표를 두 번 적지 않는다). 퇴근은 제거 **앞**에 `Retire` 로 닫고, 그 밖의 제거(유출 등)는 `Destroy` 가 `Removed` 로 닫는다 | 이식 제외 「라스트런 닫힘」 행. 6c 의 임시 다리(스탯 회수 계기 + 초당 `LastRunActive` 확인)를 철거했다 — 표식은 레드불 `PickupTaken` 에 켜지고 이 사건에 꺼진다. 퇴근 경로는 전에는 중단 정책을 **안 불렀다**(`Reset` 이 대신 지웠다) — 규칙 결과는 같고, 사유가 「퇴근」으로 남는 것만 달라졌다(`PickupTests` 4건 · PlayMode `CoreEffectViewTests` 라스트런 1건). 골든 코퍼스는 픽업 0건이라 무변 |
+| **`AttackResolved` 가 공격의 축·도형·사거리를 싣는다**(6c 후속 · 리드 결정 3) — 필드 append `AttackDir`(월드 XZ 정규화) · `AttackShape`(bake 형 그대로 — 반각은 `sinHalf`/`cosHalf`) · `AttackRange`(런타임 칸). 근접은 부가 타격을 고른 **그 축**, 평타 탄은 조준 방향. 폭탄·소환은 기본값. 참격 자국(`CoreVfxSpawner`)이 이 스냅샷으로만 그린다 | 5a~6c 의 참격은 공격자를 **되물어** `Attack.Shape`·`Attack.Range` 를 읽었다(계약 4·7 위반 — 옛 브리지 `BattleBridge.cs:4869-4884` 의 드레인 시점 `AttackState` 읽기를 옮긴 모양). 번호 무변 · **트레이스 무변**(채널 여섯 칸) → 골든 무변. `CombatRulesTests.공격_성사_사건은_판정한_도형_축_사거리를_값으로_싣는다`. 브레스 라우팅은 안 했다(위 이식 제외) |
 
 ## 완료 기준
 
@@ -120,7 +121,7 @@
 | **착탄 예고 표식** | 예고 반경이 스킬 intent 값(7a) | 없음(반경 없이 칠하면 규칙을 지어낸다) |
 | **강화 오라**(드림캐쳐 출처 스탯) · 카드 페이로드 오라 | 카드 부착·시전(7b) | `CoreDcAuraVisualPool` 섬(판정 = 코어 순수 함수) |
 | **살찌운 제물 표식** | 저주 카드(7b) | 등록부 `Marked` 줄만 |
-| 드래곤 브레스 | 코어 **사건 부재**(위 이식 제외) — 리드 결정 | 없음 |
+| 드래곤 브레스 | 콘이 공격 도형이 아니라 `ConeBreath` 스킬 슬롯 값이다(위 이식 제외) — 스킬이 7a | 없음 |
 
 
 ## 추가 (2026-09-24 투사체 이식 감사)

@@ -532,6 +532,39 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(units[3].MaxHealth, units[3].Health, 1e-3f, "도형 밖은 안 맞는다");
         }
 
+        [Test]
+        public void 공격_성사_사건은_판정한_도형_축_사거리를_값으로_싣는다()
+        {
+            // 6c 후속 — 참격 자국은 이 스냅샷으로만 그린다(뷰가 공격자를 되묻지 않는다). 사거리는
+            // **런타임 값**이라 저작값이 아니라 RESOLVE 시점의 `Attack.Range` 여야 한다.
+            var def = Definition(defenderDamage: 5f, defenderRange: 4f, defenderTargetCount: 3);
+            def.Units[0].Attack.ShapeKind = Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind;
+            def.Units[0].Attack.ShapeSinHalf = math.sin(math.radians(15f));
+            def.Units[0].Attack.ShapeCosHalf = math.cos(math.radians(15f));
+            def.ConfigHash = def.ComputeConfigHash();
+
+            var m = Match(def);
+            var resolved = Listen(m, CoreEventKind.AttackResolved);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 2)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(4, 5)));   // 주 대상 — +Z 축
+            foreach (var u in m.World.Units) if (u.Move != null) u.Move.Speed = 0f;
+
+            Tick(m, 1);
+            CoreEvent e = default;
+            bool found = false;
+            foreach (var r in resolved)
+                if (r.Faction == Faction.DefenderUnit) { e = r; found = true; break; }
+            Assert.IsTrue(found, "방어유닛의 공격이 성사돼야 한다");
+
+            var attacker = m.World.Units[0];
+            Assert.AreEqual(Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind, e.AttackShape.kind);
+            Assert.AreEqual(attacker.Attack.Shape.sinHalf, e.AttackShape.sinHalf, 1e-6f, "반각 = 판정 bake 그대로");
+            Assert.AreEqual(attacker.Attack.Range, e.AttackRange, 1e-6f, "사거리 = 런타임 값");
+            Assert.AreEqual(0f, e.AttackDir.x, 1e-5f, "축 = 주 대상 방향(+Z)");
+            Assert.AreEqual(1f, e.AttackDir.y, 1e-5f);
+            Assert.AreEqual(attacker.HitRadius, e.SiteFired.OriginBody, 1e-6f, "원점 항 = 내 몸(따로 나른다)");
+        }
+
         // ── strict lapse ────────────────────────────────────────────────────
 
         [Test]

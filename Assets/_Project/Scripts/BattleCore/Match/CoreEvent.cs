@@ -289,10 +289,34 @@ namespace Wassup.BattleCore
         /// <summary>이 착탄의 페이로드 종류(`ProjectileHit` 전용). 뷰가 광역 폭발을 고르는 손잡이다.</summary>
         public readonly Combat.Projectile.PayloadKind Payload;
 
+        // ── unit 6c 후속 — 공격의 도형(`AttackResolved` 전용, 그 외 사건은 기본값) ──
+        //
+        // 참격 자국은 **판정 도형 그대로** 그려야 한다(판정보다 작게 그린 참격은 규칙을 틀리게 가르친다).
+        // 사건에 도형이 없으면 뷰가 공격자를 되물어 `Attack.Shape`·`Attack.Range` 를 읽어야 하는데,
+        // 그것은 계약 4·7 이 막는 되묻기이고 드레인 시점엔 이미 다른 값일 수 있다(사거리 버프·퇴근).
+        // 그래서 **RESOLVE 시점 스냅샷**으로 싣는다. 트레이스에는 안 실린다(채널 여섯 칸) — 골든 무변.
+
+        /// <summary>
+        /// 이 공격의 **축**(월드 XZ, 정규화). 근접은 부가 타격 도형을 세운 방향(주 대상 쪽),
+        /// 탄은 조준 방향이다. 축이 없는 공격(폭탄·소환)은 0.
+        /// </summary>
+        public readonly float2 AttackDir;
+
+        /// <summary>이 공격의 판정 도형(bake 형 — 반각은 `sinHalf`/`cosHalf`, 띠는 `halfWidth`). 전방위 = 기본값.</summary>
+        public readonly Combat.AttackShapeBaked AttackShape;
+
+        /// <summary>
+        /// 이 공격의 **런타임 사거리(칸)** — 제약 13 산식의 「범위」 항. 원점 항(내 몸)은 여기 더하지 않는다 —
+        /// `SiteFired.OriginBody` 가 따로 나른다. 축이 없는 공격은 0.
+        /// </summary>
+        public readonly float AttackRange;
+
         private CoreEvent(CoreEventKind kind, int tick, SimEntityId a, SimEntityId b,
                           Site siteFired, Site siteTarget, Faction faction, int arg, float amount,
                           int defIndex = -1, int areaTiles = 0,
-                          Combat.Projectile.PayloadKind payload = default)
+                          Combat.Projectile.PayloadKind payload = default,
+                          float2 attackDir = default, Combat.AttackShapeBaked attackShape = default,
+                          float attackRange = 0f)
         {
             Kind = kind;
             Tick = tick;
@@ -306,6 +330,9 @@ namespace Wassup.BattleCore
             DefIndex = defIndex;
             AreaTiles = areaTiles;
             Payload = payload;
+            AttackDir = attackDir;
+            AttackShape = attackShape;
+            AttackRange = attackRange;
         }
 
         public static CoreEvent MatchStartedAt(int tick)
@@ -383,14 +410,20 @@ namespace Wassup.BattleCore
         // 살아 있어 되묻기가 «성립은» 하지만, 그 예외를 허용하면 다음 사람이 소멸 사건에도
         // 같은 모양을 쓴다 — 계약 7 이 막는 것이 그 습관이다(`Spawned` 가 같은 이유로 싣는다).
         // ⚠ 가리키는 표는 `Faction` 과 짝이다(적이면 적 표, 방어유닛이면 유닛 표).
+        // 6c 후속 — 축·도형·사거리(위 필드 주석)는 **축이 있는 공격**(근접 · 평타 탄)만 싣는다.
+        // 폭탄·소환은 「자리」나 「개체」를 내는 공격이라 기본값이다.
         public static CoreEvent AttackResolved(int tick, Unit attacker, SimEntityId target,
                                                float3 targetPos, float targetBody,
-                                               int hitCount, float period)
+                                               int hitCount, float period,
+                                               float2 attackDir = default,
+                                               Combat.AttackShapeBaked attackShape = default,
+                                               float attackRange = 0f)
             => new CoreEvent(CoreEventKind.AttackResolved, tick,
                              attacker.Id, target,
                              new Site(attacker.Position, attacker.HitRadius),
                              new Site(targetPos, targetBody),
-                             attacker.Faction, hitCount, period, attacker.DefIndex);
+                             attacker.Faction, hitCount, period, attacker.DefIndex,
+                             attackDir: attackDir, attackShape: attackShape, attackRange: attackRange);
 
         /// <summary>
         /// 탄 발사. `SiteFired.OriginBody` 가 **제약 13 의 원점 항**을 경계 너머로 나른다 —

@@ -150,28 +150,29 @@ namespace Wassup.BattleCoreUnity.View
             Vector3 facing = default;
             if (data.attackVfxFacesTarget)
             {
-                // 방향의 원점 = 그림의 원점. 발밑 참격은 발밑에서, 타격점 VFX 는 캐스트 앵커에서 잰다.
-                Vector3 originView = default;
-                bool haveOrigin = atAttacker;
-                if (atAttacker) originView = (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteFired.Pos);
-                else if (_units != null) haveOrigin = _units.TryResolveViewPosition(e.A, true, out originView);
-                if (haveOrigin) facing = (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteTarget.Pos) - originView;
+                // 방향의 원점 = 그림의 원점. 발밑 참격은 **사건이 나른 공격 축**(`AttackDir` — 부가 타격을
+                // 고른 그 방향)을 뷰 공간으로 옮긴다. 타격점 VFX 는 캐스트 앵커에서 대상 자리로 잰다.
+                if (atAttacker && math.lengthsq(e.AttackDir) > 0f)
+                {
+                    var axis = new float3(e.AttackDir.x, 0f, e.AttackDir.y);
+                    facing = (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteFired.Pos + axis)
+                             - (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteFired.Pos);
+                }
+                else if (!atAttacker && _units != null && _units.TryResolveViewPosition(e.A, true, out var originView))
+                    facing = (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteTarget.Pos) - originView;
             }
 
-            // 참격 자국 = **판정 도형에서 실시간 생성한 메시**. 길이 = 런타임 사거리 + 내 몸
-            // (`SiteFired.OriginBody` — 사건이 나른 몸이다). 메시가 이미 월드 단위라 저작 배율은 1.
+            // 참격 자국 = **판정 도형에서 실시간 생성한 메시**. 도형·사거리·몸이 전부 사건의 스냅샷이다 —
+            // 길이 = RESOLVE 시점 사거리(`AttackRange`) + 내 몸(`SiteFired.OriginBody`). 공격자를 되묻지 않는다
+            // (계약 4·7 — 옛 브리지 `BattleBridge.cs:4869-4884` 는 `AttackState` 를 드레인 시점에 읽었다).
+            // 메시가 이미 월드 단위라 저작 배율은 1.
             Mesh mark = null;
             float scale = data.attackVfxScale;
-            if (atAttacker)
+            if (atAttacker && !e.AttackShape.IsOmni && _driver != null)
             {
-                var attacker = _driver != null ? _driver.Find(e.A) : null;
-                if (attacker != null && attacker.Attack != null && !attacker.Attack.Shape.IsOmni)
-                {
-                    var shape = attacker.Attack.Shape;
-                    mark = _projectiles.GetShapeMarkMesh(ShapeMarkOf(shape,
-                        attacker.Attack.Range + e.SiteFired.OriginBody, _driver.TileSize));
-                    scale = 1f;
-                }
+                mark = _projectiles.GetShapeMarkMesh(ShapeMarkOf(e.AttackShape,
+                    e.AttackRange + e.SiteFired.OriginBody, _driver.TileSize));
+                scale = 1f;
             }
             _projectiles.PlayHit(data.attackVfxPrefab, simPos, scale: scale, facingViewDir: facing,
                                  eulerOffset: data.attackVfxEulerOffset, meshOverride: mark);

@@ -616,13 +616,18 @@ namespace Wassup.BattleCore
                 // (2026-09-24 드리프트 감사 H2).
                 if (atk.PatternSlots.Count == 0)
                     EmitProjectile(ctx, u, atk, primary, primaryPos, tileSize);
+                var aim = AimDirection(u, atk, primaryPos);
                 ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, primary, primaryPos,
-                                                         primaryBody, 1, atk.Period(IntervalMul(u))));
-                FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary), AimDirection(u, atk, primaryPos));
+                                                         primaryBody, 1, atk.Period(IntervalMul(u)),
+                                                         aim, atk.Shape, atk.Range));
+                FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary), aim);
                 return;
             }
 
             // 근접 — 즉시 해결. 주 대상 + 부가 타격(도형 AND).
+            // 도형의 축 = 부가 타격을 고른 **그 방향**(`SelectHits` 가 같은 식으로 세운다). 사건이 그 값을
+            // 그대로 나르므로 참격 자국이 판정과 다른 방향을 가리킬 수 없다(제약 13 — 뷰는 다시 재지 않는다).
+            var shapeAxis = math.normalizesafe(new float2(primaryPos.x - u.Position.x, primaryPos.z - u.Position.z));
             int hitCount = SelectHits(ctx, u, atk, primary, primaryPos, tileSize);
 
             // 가디언 대표 — **실제로 때린 적**을 주 대상으로 세운다(C6). 넉백·로그가
@@ -656,7 +661,8 @@ namespace Wassup.BattleCore
             }
 
             ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, primary, primaryPos,
-                                                     primaryBody, hitCount, atk.Period(IntervalMul(u))));
+                                                     primaryBody, hitCount, atk.Period(IntervalMul(u)),
+                                                     shapeAxis, atk.Shape, atk.Range));
             FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary), AimDirection(u, atk, primaryPos));
         }
 
