@@ -35,7 +35,7 @@ namespace Wassup.Tests.EditMode.Core
                 },
             };
 
-        public static GimmickDef ClockOut(int threshold = 3, int meteorCount = 4)
+        public static GimmickDef ClockOut(int threshold = 3, int meteorCount = 4, int meteorProjectile = -1)
             => new GimmickDef
             {
                 Id = "fixture_clockout",
@@ -48,6 +48,7 @@ namespace Wassup.Tests.EditMode.Core
                     MeteorTileRange = 1,
                     MeteorWarningSec = 1f,
                     MeteorStaggerSec = 0.2f,
+                    MeteorProjectileDefIndex = meteorProjectile,   // -1 = 없음(S4 — 0 은 유효 줄이다)
                 },
             };
 

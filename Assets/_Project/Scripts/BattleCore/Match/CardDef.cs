@@ -231,9 +231,8 @@ namespace Wassup.BattleCore
     /// <summary>
     /// 사직서 → 운석. 옛 `ClockOutGimmickData` 의 수치.
     ///
-    /// ⚠ 운석 **실행**(barrage)은 unit 7 이다 — 이 unit 은 임계 도달을 사건으로만 낸다.
-    /// 수치는 지금 싣는다(제약 6 — 판 안의 기믹 수치는 전부 정의표에서 온다). 운석 투사체 저작
-    /// (`meteorProjectile`)의 탄 표 편입은 실행이 오는 unit 7 의 것이다.
+    /// 임계 도달은 6b2 가 사건으로 내고, 운석 **실행**(barrage)은 unit 7b 의 `ResignationBarrage` 다.
+    /// 운석 탄(`meteorProjectile`)도 7b 가 탄 표에 편입했다(`MeteorProjectileDefIndex`).
     /// </summary>
     public struct ClockOutSpec
     {
@@ -244,6 +243,11 @@ namespace Wassup.BattleCore
         public int MeteorTileRange;
         public float MeteorWarningSec;
         public float MeteorStaggerSec;
+        /// <summary>
+        /// unit 7b — 운석의 탄 줄(`MatchDefinition.Projectiles`). **-1 = 없음** → barrage 가 loud 하게 떨어진다
+        /// (옛 `meteorProjectile 미지정 — 드롭`). ⚠ struct 기본값 0 은 유효 index 라 빌더가 명시로 채운다(S4).
+        /// </summary>
+        public int MeteorProjectileDefIndex;
 
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
@@ -253,6 +257,7 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "clockout.meteorTileRange", MeteorTileRange, inv);
             MatchDefinition.Put(sb, "clockout.meteorWarningSec", MeteorWarningSec, inv);
             MatchDefinition.Put(sb, "clockout.meteorStaggerSec", MeteorStaggerSec, inv);
+            MatchDefinition.Put(sb, "clockout.meteorProjectile", MeteorProjectileDefIndex, inv);
         }
     }
 

@@ -50,6 +50,7 @@ namespace Wassup.BattleCore
         private readonly Trigger.IntentApplier _intents;
         private readonly Trigger.CoreSkillContext _skills;
         private readonly Trigger.TriggerDispatcher _triggers;
+        private readonly Trigger.ResignationBarrage _barrage;
 
         private readonly IMatchGoal _goal;
         private readonly MatchGoalContext _goalCtx;
@@ -99,6 +100,8 @@ namespace Wassup.BattleCore
             _triggers = new Trigger.TriggerDispatcher(_world, _def, _bus, _bindings, _skills);
             // unit 7b — 손패는 효과를 모른다. 규칙 레이어(등록부·디스패처)를 **핸들로만** 쥐어 카드를 넘긴다.
             _hand.Bind(_bindings, _triggers, _map);
+            // unit 7b — 사직서 임계 → 운석(`ResignationThreshold` 사건의 소비자). 판정(어느 칸)과 발사는 이 담당자의 것이다.
+            _barrage = new Trigger.ResignationBarrage(_bus, _world, _def, _map, _gimmick, _rng, _intents);
 
             // 이동 단계는 **붙들어 둔다**(unit 5b). 거점 선택의 후보 배열이 그 안에 있고,
             // 예고선이 같은 답을 받아야 하기 때문이다(M18) — 배열을 밖으로 복제하는 대신
@@ -208,6 +211,7 @@ namespace Wassup.BattleCore
                 _triggers.Report = value;
                 _skills.Report = value;
                 _intents.Report = value;
+                _barrage.Report = value;
             }
         }
 

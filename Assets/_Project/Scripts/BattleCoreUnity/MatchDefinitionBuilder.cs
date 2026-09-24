@@ -51,7 +51,8 @@ namespace Wassup.BattleCoreUnity
             plan = ResolvePlan(mode, plan);
             var enemies = CollectEnemies(deck, plan, bonus);
             var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
-                            viewAssets, movement, stackModifiers, imbueCaps, board);
+                            viewAssets, movement, stackModifiers, imbueCaps, board,
+                            extraProjectiles: GimmickProjectilesOf(mode));
 
             def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
             def.WaveDeck = ToDeckDef(deck, enemies);
@@ -121,7 +122,8 @@ namespace Wassup.BattleCoreUnity
                                             MovementTuningConfig movement = null,
                                             StackModifierSO[] stackModifiers = null,
                                             ImbueCapConfig imbueCaps = null,
-                                            BoardEffectAuthoring board = default)
+                                            BoardEffectAuthoring board = default,
+                                            System.Collections.Generic.IReadOnlyList<ProjectileData> extraProjectiles = null)
         {
             var def = new MatchDefinition
             {
@@ -137,7 +139,7 @@ namespace Wassup.BattleCoreUnity
             // 뷰가 없는 판(테스트·헤드리스)에서도 필요하므로 없으면 로컬 한 벌을 만든다.
             var assets = viewAssets ?? new MatchViewAssets();
             // unit 7a — 장판 표(규칙의 `SpawnHazard` 가 가리킨다)를 함께 넘긴다.
-            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets, board.Hazards);
+            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures, assets, board.Hazards, extraProjectiles);
             // unit 6b — 판 위에 깔리는 것(존 장판 · 길막 · 효과 타일). **해시를 굽기 전**이다.
             BoardEffectDefinitionBuilder.Fill(def, assets, in board);
             // ⚠ **해시를 굽기 전**이어야 한다 — 뒤에 두면 「분산 폭을 바꿨는데 해시가 그대로」가 된다.
@@ -567,6 +569,20 @@ namespace Wassup.BattleCoreUnity
         /// 이미 같은 자산의 줄이 있으면 그 줄을 가리키고, 없으면 끝에 붙인다. 그래서 `def` 의 스택
         /// 표가 **먼저** 차 있어야 한다(`Build` 안의 순서).
         /// </summary>
+        /// <summary>
+        /// unit 7b — 기믹 후보가 가리키는 탄(퇴근 기믹의 운석). **탄 표를 굳히기 전에** 넘겨야 기믹 줄이 그 탄의 줄 번호를
+        /// 찾는다(`ToGimmickDef`) — 뒤에 넣으면 운석이 표 밖을 가리켜 barrage 가 떨어진다.
+        /// </summary>
+        public static System.Collections.Generic.List<ProjectileData> GimmickProjectilesOf(MatchModeData mode)
+        {
+            var list = new System.Collections.Generic.List<ProjectileData>(1);
+            if (mode == null || !mode.gimmickEnabled || mode.gimmickPool == null) return list;
+            foreach (var g in mode.gimmickPool)
+                if (g is ClockOutGimmickData co && co.meteorProjectile != null && !list.Contains(co.meteorProjectile))
+                    list.Add(co.meteorProjectile);
+            return list;
+        }
+
         public static GimmickDef[] ToGimmickDefs(MatchModeData mode, MatchDefinition def)
         {
             if (mode == null || !mode.gimmickEnabled || mode.gimmickPool == null)
@@ -631,7 +647,13 @@ namespace Wassup.BattleCoreUnity
                         MeteorTileRange = co.meteorTileRange,
                         MeteorWarningSec = co.meteorWarningSec,
                         MeteorStaggerSec = co.meteorStaggerSec,
+                        // unit 7b — 운석 탄 줄. **명시 -1**(S4 — 0 은 유효 줄). 탄 표에 없으면 barrage 가 loud 하게 떨어진다.
+                        MeteorProjectileDefIndex = ProjectileRowOf(def, co.meteorProjectile),
                     };
+                    if (co.meteorProjectile == null)
+                        Debug.LogError($"[MatchDefinitionBuilder] 퇴근 기믹 '{g.gimmickId}' 에 운석 탄(meteorProjectile)이 없다 — 임계에 닿아도 운석이 안 떨어진다.", g);
+                    else if (row.ClockOut.MeteorProjectileDefIndex < 0)
+                        Debug.LogWarning($"[MatchDefinitionBuilder] 퇴근 기믹 '{g.gimmickId}' 의 운석 탄이 탄 표에 없다 — `GimmickProjectilesOf` 를 거치지 않은 빌드다(운석 barrage 가 떨어진다).", g);
                     break;
                 default:
                     // 모르는 SO 는 고르기·알리기만 된다(셈판 없음). loud 하게 — 새 기믹을 만들고 여기를
@@ -641,6 +663,15 @@ namespace Wassup.BattleCoreUnity
                     break;
             }
             return row;
+        }
+
+        // 탄 자산의 줄(같은 id). 없으면 -1. 탄 표는 `CombatDefinitionBuilder.Fill` 이 이미 굳혔다.
+        private static int ProjectileRowOf(MatchDefinition def, ProjectileData asset)
+        {
+            if (asset == null || def?.Projectiles == null || string.IsNullOrEmpty(asset.id)) return -1;
+            for (int i = 0; i < def.Projectiles.Length; i++)
+                if (def.Projectiles[i].Id == asset.id) return i;
+            return -1;
         }
 
         // 그 스택 자산의 줄. 이미 있으면(같은 이름) 그 줄, 없으면 끝에 붙인다. null 이면 -1.

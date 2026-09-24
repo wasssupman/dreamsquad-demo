@@ -31,7 +31,8 @@ namespace Wassup.BattleCoreUnity
                                 AttackUnitData[] enemies,
                                 IReadOnlyList<StructureEntry> structures = null,
                                 MatchViewAssets viewAssets = null,
-                                HazardSO[] hazards = null)
+                                HazardSO[] hazards = null,
+                                IReadOnlyList<ProjectileData> extraProjectiles = null)
         {
             var projectiles = new List<ProjectileData>();
             var patterns = new List<ProjectilePatternData>();
@@ -73,6 +74,11 @@ namespace Wassup.BattleCoreUnity
             // 표를 굳히기 **전**에 채우는 이유가 이것이다 — 뒤로 미루면 본능의 탄만 표 밖을
             // 가리켜 조용히 근접으로 접힌다.
             FillStructures(def, structures, projectiles, viewAssets);
+
+            // unit 7b — 유닛·적·거점이 아닌 **판 규칙**이 가리키는 탄(퇴근 기믹의 운석). 같은 이유로 표를 굳히기 전이다.
+            if (extraProjectiles != null)
+                for (int i = 0; i < extraProjectiles.Count; i++)
+                    if (extraProjectiles[i] != null) IndexOf(projectiles, extraProjectiles[i]);
 
             // ⚠ **패턴을 먼저 굽고 탄 표를 나중에 굳힌다.** 패턴 변환이 자기 탄(barrel)을 탄 목록에
             // 등록하므로, 표를 먼저 굳히면 그 뒤 등록된 탄은 **표 밖**을 가리킨다(조용히 「패턴에
