@@ -71,6 +71,9 @@ namespace Wassup.Tests.EditMode
             try
             {
                 pattern.barrel = barrel;
+                // 다연발의 탄은 **유닛의 탄**이어야 붙는다(옛 `BakeDefenderDirectionalPattern` 거절 —
+                // 2026-09-24 드리프트 감사로 복원). 유효한 저작이어야 규칙까지 간다.
+                defender.projectile = barrel;
                 pattern.selection = PatternSelectionRule.RoundRobin;   // 저작 0
                 volley.pattern = pattern;
                 defender.abilities.Add(volley);
