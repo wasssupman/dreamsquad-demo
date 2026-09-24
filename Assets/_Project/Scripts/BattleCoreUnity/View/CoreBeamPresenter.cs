@@ -88,6 +88,18 @@ namespace Wassup.BattleCoreUnity.View
                     break;
                 }
 
+                // unit 7c — **스킬의 대상별 빔**(버스터즈 개시 빔 — `AreaDot` 가 `SkillVisual(Beam)` 을 요청한다). 키 = **맞는 쪽**
+                // (옛 규약: 공격 빔은 공격자, 대상별 조사는 대상 — 한 시전이 여러 적에게 빔을 동시에 낸다). 프리팹은 규칙 줄이
+                // 실은 스킬 연출 번호(`DefIndex`)로 되찾는다(`MatchViewAssets.SkillVfx`), 수명 = 그 조사의 지속(초 — 배틀 시간).
+                case CoreEventKind.SkillVisual:
+                {
+                    if ((Wassup.Skills.SkillVisualKind)e.Arg != Wassup.Skills.SkillVisualKind.Beam || e.B.IsNone || e.Amount <= 0f) return;
+                    var prefab = _driver != null ? _driver.ViewAssets.SkillVfx(e.DefIndex) : null;
+                    if (prefab == null) return;
+                    Open(e.B.Value, prefab, e.A, e.B, e.Amount);
+                    break;
+                }
+
                 // 쏘는 쪽이 사라지면 즉시 끊는다. 맞는 쪽이 사라지면 **마지막 끝점으로 TTL 까지** 버틴다 —
                 // 끊으면 다음 대상으로 넘어가는 한 박자에 빔이 깜빡인다(옛 동작).
                 case CoreEventKind.UnitSlain:

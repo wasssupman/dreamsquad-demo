@@ -86,6 +86,14 @@ namespace Wassup.BattleCoreUnity.View
             return n;
         }
 
+        /// <summary>그 종류로 **켜져야 하는** 표식 수(뷰가 서기 전 프레임도 센다). 부팅 스모크의 「표식 수 = 코어 표식 수」.</summary>
+        public int WantedCountOfKind(StatusFxKind kind)
+        {
+            int n = 0;
+            foreach (var k in _wanted) if (k.Kind == kind) n++;
+            return n;
+        }
+
         private void OnEnable()
         {
             if (_driver != null) _driver.Subscribe(ViewOrder.Status, OnCoreEvent);
@@ -147,6 +155,16 @@ namespace Wassup.BattleCoreUnity.View
                     Unwant(new Key(e.A.Value, StatusFxKind.LastRun));
                     break;
 
+                // unit 7c — **표식**(살찌운 제물). 적에게 붙은 카드 규칙이 곧 표식이다(7b — 표식 등록부 없음). 옛 브리지는 등록부를
+                // 매 프레임 훑어 `Marked` 표식을 세웠다 — 여기는 부착 사건이 켜고, 떨어짐(처치·유출 = 숙주 소멸)이 끈다.
+                // 「적을 겨누는 카드인가」는 코어의 한 칸(`TargetsEnemies`)이다 — 메커닉을 뒤져 추측하지 않는다.
+                case CoreEventKind.CardAttached:
+                    if (IsMarkCard(e.DefIndex)) _wanted.Add(new Key(e.A.Value, StatusFxKind.Marked));
+                    break;
+                case CoreEventKind.CardDetached:
+                    if (IsMarkCard(e.DefIndex)) Unwant(new Key(e.A.Value, StatusFxKind.Marked));
+                    break;
+
                 // 숙주가 사라지면 그 몸의 표식은 **전부** 간다. 피해로 죽은 순간(`UnitSlain`)에도 거둔다 —
                 // 사망 모션 동안 별이 도는 시체는 「아직 기절 중」으로 읽힌다.
                 case CoreEventKind.UnitSlain:
@@ -156,6 +174,12 @@ namespace Wassup.BattleCoreUnity.View
                     DropHost(e.A.Value);
                     break;
             }
+        }
+
+        private bool IsMarkCard(int cardIndex)
+        {
+            var def = _driver != null ? _driver.Definition : null;
+            return def != null && cardIndex >= 0 && cardIndex < def.Cards.Length && def.Cards[cardIndex].TargetsEnemies;
         }
 
         private static bool TryCcKind(CcSlotKind kind, out StatusFxKind fx)
