@@ -67,15 +67,73 @@
 | 벤더 VFX 프리팹 **신규 저작** | 이 unit 은 **배선**이다. 옛 씬이 쓰던 프리팹을 그대로 가리킨다 | 범위 밖 |
 | 카드 문안의 에셋 `description` 우선 | formatter 가 이긴다(구현 3) — 에셋은 폴백 | 소유 이전 |
 
+### 이식 제외 — 구현에서 더한 행
+
+| 안 옮긴 것 | 이유 | 등급 |
+|---|---|---|
+| 카드 문안 formatter 의 **사본**(`CoreCardText.cs` ← `DreamcatcherCardText` 648줄 복사) | 그 formatter 는 아웃게임 덱 페이지·카드 상세(범위 밖, 옛 컨트롤러 그대로)도 쓰는 **단일 문안원**이다. 두 벌이면 로비와 전투가 같은 카드를 다르게 설명한다(= 구현 3 의 실패형). 엔진·브리지 참조 0 인 순수 static 이라 새 층이 **부른다**(unit 9 는 `Battle/`·`Bridge/` 만 지운다). `CoreCardText` 는 브리핑 문안 + 거절 사유 문장만 갖는다 | 공유(복사 안 함) |
+| 순수 뷰 부품 7종의 사본(`CardAbsorbFlightPresenter` · `DreamcatcherTargetArrow` · `HandDismissTapCatcher` · `JarFigurePile`·`JarFigurePhysics` · `SpineFigureBuilder` · `AwakeningCharge` · `DreamcatcherFocusConfig`) | 엔진·브리지·옛 컨트롤러 참조 **0** 인 UI 부품이라 그대로 부른다(5a~6c 가 `KeyringSim`·`UnitOverheadView` 를 부른 선례). 브리지·ECS 를 잡던 넷(손패 뷰·드래그 슬롯·포커스·항아리)과 `Shader.Find` 를 쓰던 카드면 메쉬만 새로 옮겼다 | 공유(복사 안 함) |
+| `DcActionFlipbookView`(213줄 — 선택 유닛 주변 「이동」 버튼) | 재배치 진입구다 — 재배치는 이식 제외(7d · 진입구가 이미 꺼져 있다 `DcInspectController.RelocationEnabled`) | 범위 밖(7d) |
+| 옛 bake 의 **빔 프리팹 겸용 오라 등록**(`BakeUnitMechanics` 가 `AreaDot` 의 `auraPrefab` 을 빔 index 로 싣고 **이어서** 오라 풀에도 등록) | 한 필드가 빔·오라를 겸한 뒤 가드가 안 생긴 결함 — 버스터즈 빔 프리팹이 숙주에 기본 방향으로 박혀 떠 있게 된다. 빔 쪽만 옮긴다(`CardViewAssetTests.메커닉이_선언한_빔과_오라는_뷰_표에_실린다` 가 둘이 안 겹침을 건다) | 제거(결함) · ⚠ 사용자 플레이 확인 항목 |
+| 손패 컨트롤러의 C# 이벤트 셋(`GaugeChanged` · `AwakeningOverflowed` · `AwakeningGainedAt` · `HandChanged`) | 각성은 **연속값**이라 사건이 없다 — 항아리가 코스트 물통처럼 매 프레임 `HandDeck.Gauge`·`OverflowLost` 를 읽는다. 흡수 비행의 출발점은 `UnitSlain` 의 자리(값 스냅샷). 손패 변화는 커밋 receipt(사용) · `CardDetached`(회수) · `MatchStarted`(리셋)가 계기다 | 제거(구조로 접힘) |
+| 항아리 **ready 임계 = 종류별 저작 값 셋의 최솟값**(`AwakeningCharge.UnitCost(costSquad, costUnit, costActive)`) | 값의 주인이 카드로 옮겨졌다(D15 · 정의표 `CardDef.Cost`). 임계 = 이 판 카드 값의 최솟값 — 라이브 저작(20/20/20)에서 같은 값이다 | 소유 이전 |
+| 온보딩 첫 손패 고정(`PinTutorialFirstHand` · D5) | 튜토리얼 콘텐츠는 전량 제거됐고(76038c26) 코어는 `pinnedFront` 칸만 갖는다 — 밀어 넣는 쪽(G11)이 생길 때 배선한다 | 보류 |
+| 덱 확정 기록(`LogDeck` → `PersistMatchDeck` · D22) | 아웃게임 기록(토너먼트 대기 기록)이라 5c 의 제출 게이트와 한 묶음이다 — 이 unit 의 질문(카드가 손에 잡히나)에 불필요 | 후속 후보 |
+
 ## 고친 것 (기존 코어·Unity 층 변경)
 
-*(구현 중 채운다.)*
+| 무엇 | 전 → 후 | 근거 |
+|---|---|---|
+| `HandDeck.UsableReason(entryId)` | 없음 → 손패·대기·각성 **읽기 전용 preflight**(커밋 앞단과 같은 순서 — 대기 &gt; 각성) | 딤·드래그 게이트·거절 문구가 뷰의 자기 셈(`gauge >= cost`) 대신 코어 답을 읽게(구현 6·9). 숙주 종속은 기존 `WouldAttach`, 국면은 커맨드가 답한다 · `MatchHandDeckTests.쓸_수_있나_preflight_는_커밋과_같은_답이다` |
+| `MatchViewAssets` | 탄·거점·장판 → + **카드 줄 → 카드 에셋** · **규칙 줄 → 부착 오라** · **스킬 연출(빔) 표** | 번호를 매긴 순회(`CardDefinitionBuilder.Fill` — 빈 칸을 건너뛴다 · `BindingDefinitionBuilder.Bake`)가 채운다. 뷰가 덱을 다시 모으면 빈 칸 하나에 번호가 밀린다 |
+| `BindingDefinitionBuilder` · `AreaDot` | 빔 index 안 실음(7a — 「무연출 · 7c 이월」) → **빔 = `DataIndex`**(스킬 연출 표) · 그 밖 `auraPrefab` = 오라 | `AreaDotSkill` 은 `HasData` 일 때만 빔을 요청한다 — 번호가 없으면 버스터즈 개시 빔이 **요청조차 안 된다**. 정의표 해시는 라이브 판에서만 변한다(골든 코퍼스는 SO 를 안 읽는다 — 골든 무변) |
+| `BattleDriver` 덱 | `_cards` 저작만(「프로필·액티브 롤은 7c」) → `_cards` 가 비면 **프로필 확정 덱 + 판 시드 액티브 롤**(`CoreDeckComposition`) · 채우면 개발 덮어쓰기 · `Mode` 읽기 창구 | `rule-holders.md` D2·D3·D4 · S1~S5(새 주인 = 판 밖 빌드). ⚠ S2 — 굴림 시드를 **판 시드에서 파생**(옛 = 벽시계) · 난수 = `Unity.Mathematics.Random`(옛 `System.Random` 순열과 다르다) |
+| `CoreMapOverlay` | 배치 오버레이만 → + **카드 조준 채널**(부착 범위 링 · 액티브 칸 원 · 칸 집합) | 옛 브리지 범위 채널의 카드 몫. 반경 = `RangeSpec.RadiusWithOrigin(host 몸)` 호출만 · 배치 드래그에 양보(옛 H-2) · 스타일 = `DreamcatcherFocusConfig.attachRangeStyle` · `TileSetData.aimRingStyle`(옛 두 채널 값) |
+| `CoreVfxSpawner` | 카드 슬롯 없음 → **카드 흡수 임팩트**(옛 `cardAbsorbPrefab` · 폴백 링+버스트) · **카드 규칙 발동 임팩트**(펀치 · 흰 플래시 · 흡수 VFX, 숙주당 `DcVisualConfig.ProcImpactMinIntervalSec` — 5a 가 소비처 0 으로 세워 둔 자산의 개통) · **SkillVisual 적중 펄스**(탄 `hitPrefab`) | 옛 `DrainDcTriggerFiredEvents` · `SpawnCardAbsorbVfx` — 카메라 킥·흡수음은 발동 쪽에서 뺀다(옛 결정) |
+| `CoreBeamPresenter` | 공격 빔만 → + **SkillVisual 빔**(키 = 맞는 쪽 · 수명 = 조사 지속) | 7a 이월(스킬 대상별 빔) |
+| `CoreDcAuraVisualPool` | 드림캐쳐 출처 스탯 오라만 → + **메커닉 선언 부착 오라**(`BindingAttached` → 뷰 표) | 6c 이식 제외의 「카드 페이로드 오라」 행 해소 · 옛 규약(숙주당 하나 · 앵커 추종) |
+| `CoreStatusFxSpawner` | 표식 줄 대기 → **표식**(`CardAttached` × `TargetsEnemies` → `Marked` · `CardDetached` 가 끈다) | 6c 「살찌운 제물 표식」 행 해소. 변경 대상 표의 `CoreBountyMarkView` 는 **따로 세우지 않았다** — 옛 그림이 곧 상태 표식 등록부의 `Marked` 줄이었다(`BattleBridge.cs:3666`) |
+| `CoreUnitOverheadUiLayer` · `CoreSelectionPanel` | 카드 줄 없음 → **부착 카드 줄 두 자리**(자기 구독 · 부착 순) · 발동 펄스(`PulseCards`) | 6c 「부착 카드 줄」 행 해소 · D20 |
+| `SelectionInput` | 선택 = 패널만 → 선택이 **손패를 연다**(선택 전환 = 재딜 없이 대상만) · 닫기가 손패도 닫는다 · 비-부착 조준 시 선택만 놓기 · 손패 열린 동안 보드 탭 라우팅 | 2026-08-19 사용자 결정(손패 진입구 = 유닛 선택뿐) · 옛 `DcInspectController` 의 선택 ↔ 손패 핸드오프 |
+| `CoreDefenderTray` · `CoreCostDisplay` | → 칸 줄 창구(`StripRect` — 손패가 접는다, 접힌 동안 칸 픽 없음) · 코스트 배지 억제(`SetSuppressed`) | 옛 트레이 ↔ 손패 뒤집기 · `CostDisplay.SetSuppressed` |
+| `RuntimeMaterialFactory` | + `CreateCardCrumpleUi`(always-included `Resources/RuntimeMaterials/CardCrumpleUI.mat`) | 옛 카드면 메쉬는 셰이더를 이름으로 찾았다(추가 제약 · 구현 10) — `CoreCardFaceMesh` 는 이 창구만 쓴다 |
+| `ViewOrder` | + `Hand = 55`(오버헤드 뒤) | 몸에 붙는 것(표식·아이콘)이 선 뒤 손패가 같은 사건으로 창을 다시 읽는다 |
+| `BattleCoreUnity.Check.csproj` | + `Rendering/RuntimeMaterialFactory.cs` 명시 컴파일 | 에디터가 새 메서드를 컴파일하기 전 `Wassup.Runtime.dll` 이라(5a~6a2 의 새 SO 와 같은 이유) |
+
+### `rule-holders.md` 귀속 행 → 코드 포인터(7c 몫)
+
+| 행 | 새 자리 |
+|---|---|
+| D2 덱 = 저장 부착 + 판마다 굴린 액티브(섞기는 코어 한 곳) | `CoreDeckComposition.Compose` → `BattleDriver.Begin`(판 밖) → `HandDeck.Begin`(섞기) |
+| D3 저장 덱 무효 = 빈 부착 덱(폴백 없음) | `CoreDeckComposition.ResolveAttachDeck` · `CardViewAssetTests.확정_덱이_무효면_부착_덱은_비어_있다` |
+| D4 감싸는 액티브가 없으면 그 장만 빠진다 | `CoreDeckComposition.Compose`(경고) |
+| D21 표식 픽 반경 = 저작 노브 | `CoreHandView.EnemyPickRadiusTiles`(모드 `AwakeningConfig`) → `CoreCardTargets.TryPickNearestEnemy` |
+| D23 손패는 실시간 · 감속은 손패 화면의 몫 | `CoreHandView.TickSlomo`(카드를 잡는 동안만 `TimeManager` 리스 — 판은 발행률로만 느려진다) |
+| S1·S3 시드 부분 셔플 · 빈 풀/0장 = 빈 목록 | `CoreDeckComposition.RollActives` · `CardViewAssetTests.액티브_굴림은_판_시드로_재현된다` |
+| S2 시드 = 판 시드 파생(벽시계 금지) | 같은 곳(`seed ^ RollSalt`) |
+| S4·S5 숨긴 카드의 스킬은 풀에서 뺀다 | `SkillLoadoutController.FilterHiddenSkills`(순수 함수 — 그대로 부른다) |
+
+### 미배선 — 씬(Unity MCP 세션 끊김 · 열린 씬 YAML 외부 편집 금지)
+
+`BattleCoreScene` 에 아래를 더하면 끝난다. 컴포넌트는 비어 있는 **씬 참조**를 같은 씬에서 찾아 경고와 함께 쓰므로(배선이 정본) 테스트는 씬 배선 없이 돈다(`CoreCardViewTests` 가 없으면 세운다).
+
+| 오브젝트 | 컴포넌트 · 칸 | 값(옛 `BattleScene` 저작) |
+|---|---|---|
+| `CardHand`(새, HUD 캔버스 밖 — 자기 캔버스 5) | `CoreHandView`: `_driver` · `_units` · `_overlay` · `_selection` · `_tray` · `_costDisplay` · `_gauge` · `_vfx` · `_mainCamera` | 씬 오브젝트 |
+| | `_focusConfig` · `_defenderCatalog` · `_labelFont` · `_numberFont` · `_trayConfig` | `Data/Dreamcatcher/DreamcatcherFocusConfig.asset`(4c0ee755…) · `Data/DefenderCatalog.asset`(346c00d9…) · Jua SDF(218cce73…) · Anton SDF(7f50de03…) · `Data/Config/BattleHudTrayConfig.asset`(903c6fe7…) |
+| `JarDock`(새 — 자기 캔버스 7) | `CoreAwakeningGaugeView`: `_driver` · `_tray` · `labelFont` · `numberFont` · `representativeUnit` · `figureSkeletonMaterial` | 폰트 위와 같음 · a2fc7863… · b66cf7a1… |
+| `Vfx` | `CoreVfxSpawner._cardAbsorbPrefab` · `_cardAbsorbScale` · `_dcVisual` | 37f1dda3…(옛 `cardAbsorbPrefab`) · 0.6 · `Data/BattleView/DcVisualConfig.asset` |
+| `BattleDriver` | `_profile` · `_cardCatalog` · `_activePool` · `_activeCount` · `_activeCards` | `Data/PlayerProfile.asset` · `Data/Dreamcatcher/DreamcatcherCardCatalog.asset` · 옛 `SkillLoadoutController.defaultPool` · 2 · 옛 `DreamcatcherHandController.activeCards`(`Active_*.asset` 6) |
+| `SelectionPanel` | `CoreSelectionPanel._defenderCatalog` | `Data/DefenderCatalog.asset` |
 
 ## 완료 기준
 
-- [ ] **새 PlayMode lane 초록** — `CoreCardViewTests`: `CardAttached` 1건 → 카드 줄 1개 · `CardDetached` → 회수 · 숙주 소멸 → 붙어 있던 표식·카드 줄 전부 회수 · `ViewOrder` 로 정렬(씬 순서를 뒤집어 확인) · 부팅 스모크의 「뷰 수 = 코어 개체 수」에 **표식**을 추가.
-- [ ] 뷰·입력 코드에 `Unity.Entities` **0건** · **판정 0건**(반경·자격 재계산 없음 — grep) · `Controller` 이름 **0건** · `Shader.Find` **0건**.
-- [ ] 드래그 → 부착 e2e: 커맨드 → receipt → 카드 줄 표시 · 거절 사유 문구가 코어 답과 **같은 문자열**(5b 의 트레이 거절 표시와 같은 규율).
-- [ ] `ledgers/bridge-methods.md` **잔량 변화 없음(28)** — 카드 UI 의 브리지 행은 이미 「HandDeck」·「뷰 풀」로 배정돼 있어 **이 unit 이 닫을 미정 행이 0** 이다. 잔량을 안 줄이는 unit 이라는 사실을 상태 라인에 명시한다(6b2 의 선례 — 누락으로 읽히지 않게).
+- [ ] **새 PlayMode lane 초록** — `CoreCardViewTests`(5): 탭 부착 → 오버헤드 카드 아이콘 1 · 패널 카드 줄 1 · 퇴근 → 회수 · 끌기 부착 범위 링 = N + host 몸 · 거절 문구 = 코어 답 · 표식 → 숙주 소멸로 회수 · `ViewOrder`(구독을 뒤집어 건다) + 부팅 스모크 「표식 수 = 코어 표식 수」. **작성·헤드리스 컴파일만**(스크래치 csproj — nunit·TestRunner·UnityEditor 참조, 오류 0) — Unity MCP 세션이 끊겨 **실행 못 함**.
+- [x] 뷰·입력 코드(`Cards/` · `Input/CardInput.cs`)에 `Unity.Entities` **0건** · `Shader.Find` **0건** · 매니저·브리지·컨트롤러 이름의 클래스 **0건**(grep). 판정 0: 자격 = `HandDeck.UsableReason`/`WouldAttach` · 조준 = `CardDef.Kind`/`TargetsEnemies` · 반경 = `RangeCatalog` → `RadiusWithOrigin` 호출만.
+- [ ] 드래그 → 부착 e2e: 커맨드 → receipt → 카드 줄 표시 · 거절 사유 문구가 코어 답과 **같은 문자열** — 위 PlayMode 두 건(탭·끌기 부착 · 거절 문구)으로 건다. **Unity 실행 대기.**
+- [x] `ledgers/bridge-methods.md` **잔량 변화 없음(28)** — `check_ledgers.py` exit 0 · 미정 28. 카드 UI 의 브리지 행은 이미 「HandDeck」·「뷰 풀」로 배정돼 있어 이 unit 이 닫을 미정 행이 0 이다(아래 이행 메모).
 - [ ] `core-reviewer` APPROVE(Unity 층 — 매니저·브리지·컨트롤러 이름 0 · 판정 이전 0).
-- [ ] **여기서 처음으로 카드가 손에 잡힌다.** 손맛 확인은 조각 D 전체 뒤(7d)의 사용자 플레이 2차로 미룬다 — 기믹·보스·분열이 빠진 채로 물으면 답이 항상 「아니다」가 된다(5c 의 규율).
+- [ ] **여기서 처음으로 카드가 손에 잡힌다.** 손맛 확인은 조각 D 전체 뒤(7d)의 사용자 플레이 2차로 미룬다 — 기믹·보스·분열이 빠진 채로 물으면 답이 항상 「아니다」가 된다(5c 의 규율). ⚠ 씬 배선(위 「미배선」 표)이 먼저다.
+
+> **이행 메모(2026-09-24).** 커밋: `b22e0708e`(preflight) · `87f9c5781`(덱 배선 · 뷰 표) · `e139d3625`(카드 사건의 그림) · `674829015`(손패 UI) · `1f7d524c2`(테스트) + 이 문서 커밋. 커밋마다 클린 export 3종: build 0 · test **630**(+1) · Check 0. EditModeAssets `CardViewAssetTests`(5) · PlayMode `CoreCardViewTests`(5)는 스크래치 csproj 로 **컴파일만** 확인(오류 0) — Unity EditMode 코어·Assets · PlayMode 코어 lane 은 MCP 세션 끊김으로 **미실행**. 골든: 코어 변경은 읽기 전용 메서드 하나라 사건·해시 무변 **예상**(골든 코퍼스는 SO 를 안 읽는다 — 빔 `DataIndex` 는 라이브 정의표만 바꾼다) — Unity 골든 11종 확인 대기.
+> 복사·적응 실측: 새 파일 9(손패 1,410 · 포커스 666 · 항아리 648 · 드래그 582 · 카드면 194 · 조준 기하 192 · 문안 103 · 덱 조립 82 · 입력 68 = 3,945줄) + 기존 12 파일 보강. 옛 순수 부품 8 과 formatter 는 **부른다**(위 이식 제외).
