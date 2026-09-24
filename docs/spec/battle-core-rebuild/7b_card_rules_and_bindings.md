@@ -78,6 +78,7 @@ unit 4 의 `HandDeck` 은 자원만 움직이고 효과 자리를 **진단 통�
 
 - [ ] **헤드리스 초록** · **EditMode 코어 lane 초록** + 새 테스트 7묶음: `CardAttachTests`(순서 ①②③ · 실패 무차감 · 상한 3 · `Immediate` 콜스택) · `SquadCardTests`(**퇴근해도 회수된다** · 이후 배치분 상속 · 회수 = 슬롯 삭제) · `PlacementAuraTests`(바인딩 2 · `revokeOnExpire` 비대칭) · `BountyMarkTests`(`fireCap 1` + 소멸까지 부착 · 두 효과 원자 · 상한 밖) · `RetireRecallTests`(선언 카드는 뒤 · 나머지는 부착 순서로 앞 · **사망 경로엔 안 붙는다**) · `ActiveCastTests`(쿨다운 = 판의 시계 · 성사와 차감이 한 함수 · 슬로모에서 느려진다) · `ApplicabilityTests`(preflight 와 bake 가 같은 답).
 - [ ] **증상 단언 3건**: ⑴ Squad 카드를 붙인 유닛을 **퇴근시키면 판 전체 버프가 사라진다** ⑵ 표식 붙인 적을 잡으면 각성이 **배로** 들어오고 카드가 손패로 돌아온다 ⑶ 인수인계 카드를 든 유닛을 퇴근시키면 **그 유닛의 다른 카드가 손패 맨 앞**에 온다.
+- [ ] **부여 생산자를 여는 커밋은 그 키의 `ImbueCapConfig` 줄을 같이 저작한다**(6a2 리뷰 F1). 상한 줄이 없으면 관문이 그 부여를 거절하므로(빌더는 어떤 키가 쓰일지 모른다) **카드가 조용히 안 걸린다.** 「생산자마다 상한 줄이 있다」를 테스트로 건다 — 카드 저작이 여는 `ImbueKey` 전부가 `MatchDefinition.ImbueCaps` 에 줄을 갖는지 훑는 한 건이면 된다.
 - [ ] `HandDeck` 안에 **효과가 한 줄도 없다**(unit 4 헤더의 약속) — 효과는 `BindingRegistry` 호출로만 나간다(grep).
 - [ ] **장부 두 장을 가른다.** `ledgers/rule-holders.md` 의 **D8·D9·D10·D11·D12·D14·D17·D20·D24 · K2**(unit 4 가 `4_match_owners_and_mode.md:87-104` 에 표로 든 그 행들)와 `ledgers/rules.md` 의 **F1 · S11 · S12 · S13 · S16 · E2 · E4** 가 각각 코드 포인터로 매핑된다. ⚠ 두 장부에 **같은 기호가 다른 뜻**으로 있다(`rules.md` 의 `C5` = 바늘 캐리어 · `rule-holders.md` 의 `C5` = 코스트) — 기호만 보고 옮기지 말 것.
 - [ ] `rules.md` **E4 문면 정정**: 「사망은 첫 하나만 발동한다」는 부정확하다 — 실측은 **같은 `skillId` 만 억제**하고 종류가 다른 규칙은 사망에서도 각각 발동한다. 결정 ① 의 답과 함께 문면을 고친다.
