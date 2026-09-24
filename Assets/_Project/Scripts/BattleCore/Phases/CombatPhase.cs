@@ -614,7 +614,7 @@ namespace Wassup.BattleCore
                 EmitProjectile(ctx, u, atk, primary, primaryPos, tileSize);
                 ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, primary, primaryPos,
                                                          primaryBody, 1, atk.Period(IntervalMul(u))));
-                FirePatterns(ctx, u, atk, tileSize);
+                FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary));
                 return;
             }
 
@@ -653,7 +653,7 @@ namespace Wassup.BattleCore
 
             ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, primary, primaryPos,
                                                      primaryBody, hitCount, atk.Period(IntervalMul(u))));
-            FirePatterns(ctx, u, atk, tileSize);
+            FirePatterns(ctx, u, atk, ShotDamage(ctx, u, atk, primary));
         }
 
         // 주 대상 + 부가 타격. **획득은 원, 부가 타격만 도형**이다 — 도형은 넓히지 못한다.
@@ -748,6 +748,24 @@ namespace Wassup.BattleCore
             return speed > 0f ? 1f / speed : 1f;
         }
 
+        /// <summary>
+        /// 평타 탄 한 발의 피해 = 공격 산출물 피해 합 × 배율. 단발탄과 연발탄이 **같은 값**을
+        /// 쓴다 — 연발의 피해를 정하는 것도 공격 산출물이다(옛 `AttackSystem` 의
+        /// `spec.damage = projectileDamage` 「defender damage는 output/modifier가 결정한다」).
+        ///
+        /// 탄의 피해는 **발사 시점 스냅샷**이다 — 「군중 제어에 걸린 적」 배율도 그때의
+        /// 의도 대상을 본다(착탄 시점에 다시 재면 날아가는 동안 풀린 적이 배율을 잃는다).
+        /// </summary>
+        private static float ShotDamage(TickContext ctx, Unit u, AttackState atk, SimEntityId target)
+        {
+            float damageMul = EffectApply.DamageMul(u, ctx.World.Find(target));
+            float damage = 0f;
+            for (int o = 0; o < atk.Outputs.Length; o++)
+                if (atk.Outputs[o].Kind == AttackOutputKind.Damage)
+                    damage += atk.Outputs[o].Magnitude * damageMul;
+            return damage;
+        }
+
         private void EmitProjectile(TickContext ctx, Unit u, AttackState atk,
                                     SimEntityId target, float3 targetPos, float tileSize)
         {
@@ -758,13 +776,7 @@ namespace Wassup.BattleCore
             }
             ref var pd = ref ctx.Def.Projectiles[atk.ProjectileDefIndex];
 
-            // 탄의 피해는 **발사 시점 스냅샷**이다 — 「군중 제어에 걸린 적」 배율도 그때의
-            // 의도 대상을 본다(착탄 시점에 다시 재면 날아가는 동안 풀린 적이 배율을 잃는다).
-            float damageMul = EffectApply.DamageMul(u, ctx.World.Find(target));
-            float damage = 0f;
-            for (int o = 0; o < atk.Outputs.Length; o++)
-                if (atk.Outputs[o].Kind == AttackOutputKind.Damage)
-                    damage += atk.Outputs[o].Magnitude * damageMul;
+            float damage = ShotDamage(ctx, u, atk, target);
 
             var req = ProjectileRequest.Empty;
             req.DefIndex = atk.ProjectileDefIndex;
@@ -794,7 +806,12 @@ namespace Wassup.BattleCore
         //
         // 「누구를·몇 발·어떤 간격·얼마나 벌려」. **탄의 성질은 복제하지 않는다.**
         // 버스트 중에는 쿨다운을 마지막 탄 뒤로 미룬다.
-        private void FirePatterns(TickContext ctx, Unit u, AttackState atk, float tileSize)
+        //
+        // ⚠ **전탄의 피해는 `damage`(트리거 시점 공격 실효값)다.** 패턴 저작 피해
+        // (`PatternDef.Damage`)는 보스·스킬 경로의 값이고 공격 루프는 읽지 않는다 — unit 7 이
+        // 그 경로를 스킬 문맥으로 옮길 때 그쪽에서 읽는다. 라이브 머신거너 패턴 저작이 0 이라
+        // 이걸 읽으면 연발 전탄이 피해 0 이 된다(2026-09-24 드리프트 감사 H1).
+        private void FirePatterns(TickContext ctx, Unit u, AttackState atk, float damage)
         {
             if (atk.PatternSlots.Count == 0) return;
 
@@ -817,6 +834,7 @@ namespace Wassup.BattleCore
                 inst.EnsureCapacity(shots);
                 inst.PatternDefIndex = slot.PatternDefIndex;
                 inst.LockedTarget = SimEntityId.None;
+                inst.Damage = damage;
                 for (int i = 0; i < shots; i++)
                 {
                     inst.Directions[i] = pat.Shots[i].DirectionT;
@@ -956,7 +974,7 @@ namespace Wassup.BattleCore
             req.Target = target;
             req.Origin = u.Position;
             req.Impact = targetPos;
-            req.Damage = pat.Damage;
+            req.Damage = inst.Damage;
             req.OriginBodyRadius = 0f;
             req.SwingIndex = shotIndex;
             req.FlightTime = pat.TelegraphSec;

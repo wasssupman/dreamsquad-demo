@@ -99,6 +99,11 @@ namespace Wassup.BattleCore
         public int PatternDefIndex = -1;
         public Combat.Emission.EmitterRuntime Runtime;
         public SimEntityId LockedTarget = SimEntityId.None;
+        /// <summary>
+        /// 이 버스트 전탄의 피해 — **트리거 시점 실효값 스냅샷**(공격 산출물 피해 합 × 배율).
+        /// 패턴 저작 피해(`PatternDef.Damage`)가 아니다(2026-09-24 드리프트 감사 H1).
+        /// </summary>
+        public float Damage;
         /// <summary>이 발사에 쓰는 탄막 난수 씨앗 — `hash(사수 SimEntityId, 발사 카운터)`.</summary>
         public uint Seed;
         /// <summary>이 인스턴스가 쓸 간격표. 난수 저작이면 씨앗에서 매 트리거 다시 뽑는다.</summary>
