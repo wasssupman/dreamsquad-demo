@@ -145,7 +145,7 @@
 - [x] 코어에 `Unity.Entities` 0 · `Wassup.Skills` 는 **한 줄도 안 고쳤다**(git diff 0줄 — 엔진 무참조가 이미 참이라는 증거).
 - [x] `ledgers/rules.md` **S1·S4·S8·S9·S18·S19·S20·S22·S23·S24·S25·S26·S27 · E2 · C5** 가 코드 포인터로 매핑. S20 은 「`IntentApplier` 단일 표면 + 아키텍처 테스트」로 **보류 → 결정**. ⚠ `rules.md` 의 `C5`(바늘 캐리어)와 `rule-holders.md` 의 `C5`(코스트)는 **다른 행**이다 — 장부를 섞지 말 것.
 - [x] `ledgers/bridge-methods.md` 미정 **44 → 36**(8행): `RoutingProbe/2` · `TryBuildPatternSlot/5` · `BuildPatternTemplate/4` · `ConeCosSq/1` · `SpawnProjectile/2` · `CanDefenderTargetMover/2` · `TryPickNearestEnemy/4` · `AddTraversalMask/2`.
-- [ ] `core-reviewer` APPROVE — **매니저 0**(`SkillManager`·`TriggerManager` 같은 이름이 없다) · 하드코딩 0(깊이 4 와 상한 3종만 상수 + 근거 주석) · 틱 phase 수 무변.
+- [x] `core-reviewer` APPROVE(2026-09-24 · finding 0 — 매니저 0 · 엔진 무참조 · `Wassup.Skills` diff 0 · 사건 56~59 append-only · 결정론(전순서 키·세대 BFS·enum 비교 0) · 사용자 결정 4건 이행 · 골든 무변 타당). 리드 export 재검증(`752bb7a63`): build 0 · test 590 · Check 0 · 미정 36. Unity lane 은 MCP 세션 복구 뒤 실행(대기).
 - [ ] 7a 단독으로는 **카드가 아직 안 붙는다**(7b) — 라이브 확인은 유닛 저작 스킬(적 악몽 · 배치 스킬)로 한다.
 
 > **구현 기록(2026-09-24)** — `eaa3abc72`(어휘·라우팅·형) · `cac943bcc`(바인딩 코어) · `7498ea35b`(유닛 저작 bake) + 문서 커밋.
