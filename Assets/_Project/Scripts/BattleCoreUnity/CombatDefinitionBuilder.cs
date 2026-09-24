@@ -225,7 +225,11 @@ namespace Wassup.BattleCoreUnity
                                                   List<ProjectilePatternData> patterns)
         {
             var a = AttackDef.Default();
-            a.TargetLayers = (int)e.EffectiveTraversalLayers;
+            // ⚠ **적의 공격은 통행 층을 거르지 않는다(0)** — 옛 `AttackState.targetTraversalLayers`
+            // 는 적에게 설정된 적이 없다. 「자기 통행 층」을 실으면 비행 적(하늘 4)이 지상|경로(3)
+            // 순찰병을 조준 후보에서 떨군다(2026-09-24 드리프트 감사 M7). 방어유닛 쪽은 저작
+            // 칸(`attackTargetLayers`)이 있어 근접이 하늘로 안 번지는 근거가 된다 — 비대칭이 의도다.
+            a.TargetLayers = 0;
             a.ProjectileDefIndex = IndexOf(projectiles, e.projectile);
             a.Outputs = ToOutputs(e.outputs);
             a.Mode = (int)e.targetMode;

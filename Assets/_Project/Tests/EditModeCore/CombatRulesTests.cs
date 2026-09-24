@@ -4,6 +4,7 @@ using Wassup.Battle.Units;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat.Projectile;
 using Wassup.BattleCore.Effects;
+using Wassup.BattleCore.Map;
 using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
 
 namespace Wassup.Tests.EditMode.Core
@@ -669,6 +670,27 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsTrue(e.Aggro == null || e.Aggro.Target.IsNone,
                 "마음사냥꾼이 가디언에게 유인됐다 — 유닛을 노리지 않는 적은 도발·히트 어그로를 안 받는다");
             Assert.AreEqual(0, acquired.Count);
+        }
+
+        [Test]
+        public void 비행_적은_지상을_걷는_아군을_멈춰_서서_때린다()
+        {
+            // 2026-09-24 드리프트 감사 M7 — 적의 공격·정지·감지는 통행 층을 거르지 않는다(옛
+            // `targetTraversalLayers` 0). 「자기 통행 층」(하늘)을 대상 층으로 읽으면 경로를
+            // 걷는 순찰병이 후보에서 빠지고, 정지 조건도 거짓이라 **옆에 두고 멈추지도 않는다.**
+            var def = Definition(defenderDamage: 0f, enemyDamage: 10f);
+            def.Enemies[0].TraversalLayers = LayerBits.Air;
+            def.Enemies[0].Attack.TargetLayers = 0;
+            def.ConfigHash = def.ComputeConfigHash();
+            var m = Match(def);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var d = First(m, UnitKind.Defender);
+            // 경로를 걷는 아군(순찰병)의 이동 상태 — 흐름장 슬롯이 있는 층(경로)을 준다.
+            d.Move = new MoveState { Speed = 0f, TraversalLayers = LayerBits.Path };
+            float before = d.Health;
+            Tick(m, 120);
+            Assert.Less(d.Health, before, "비행 적이 옆의 지상 순찰병을 안 때렸다");
         }
 
         // ── 헬퍼 ─────────────────────────────────────────────────────────────

@@ -109,5 +109,78 @@ namespace Wassup.Tests.EditMode
 
         // ── M7 · 비행 적이 순찰병을 못 때린다 ───────────────────────────────
 
+        [Test]
+        public void 비행_적은_지상_경로를_걷는_순찰병을_때린다()
+        {
+            // 옛 전투의 적 공격은 통행 층을 거르지 않았다(`AttackState.targetTraversalLayers`
+            // 미설정 = 0). 빌더가 「자기 통행 층」을 실어 드래곤(하늘 4)이 순찰병(지상|경로 3)을
+            // 조준 후보에서 떨궜다.
+            var patrol = Load<DefenderUnitData>(DefendersDir + "Defender_PatrolSoldier.asset");
+            var flyer = Dummy();
+            flyer.traversalLayers = PlacementLayer.Air;
+            flyer.attackMethod = EnemyAttackMethod.Melee;
+            flyer.attackRange = 1f;
+            flyer.attackCooldown = 0.5f;
+            flyer.outputs = new[] { new AttackOutput { kind = Wassup.Data.AttackOutputKind.Damage, magnitude = 10f } };
+            try
+            {
+                var def = MatchDefinitionBuilder.Build(new[] { patrol }, new[] { flyer }, 1, ModeDef.Default());
+                Assert.AreEqual(0, def.Enemies[0].Attack.TargetLayers,
+                    "적의 공격 대상 층은 무필터(0)다 — 자기 통행 층이 아니다");
+
+                var m = Run(def);
+                m.Apply(Command.DebugSpawnDefender(0, new int2(6, 4)));
+                m.Apply(Command.DebugSpawnEnemy(0, new int2(7, 4)));
+                m.Tick();
+                var soldier = Nth(m, UnitKind.Defender, 0);
+                // 순찰병은 걷는 유닛이다 — 통행 층을 가진 이동 상태를 보장한다.
+                if (soldier.Move == null) soldier.Move = new MoveState();
+                soldier.Move.TraversalLayers = LayerBits.Path;
+                soldier.Move.Speed = 0f;
+                float before = soldier.Health;
+                for (int t = 0; t < 120; t++) m.Tick();
+                var foe = Nth(m, UnitKind.Enemy, 0);
+                Assert.Less(soldier.Health, before, "비행 적이 옆의 순찰병을 때리지 않았다 — "
+                    + $"soldier pos={soldier.Position} dead={soldier.Dead} dep={soldier.Deploying} lay={soldier.Move.TraversalLayers} role={def.Units[0].Role} | "
+                    + $"foe pos={foe?.Position} range={foe?.Attack?.Range} mask={foe?.Attack?.TargetMask} tl={foe?.Attack?.TargetLayers} cm={foe?.Attack?.ClassMask} hcf={foe?.Attack?.HasClassFilter} un={foe?.Attack?.Unarmed} cd={foe?.Attack?.CooldownRemaining} out={foe?.Attack?.Outputs.Length}");
+            }
+            finally { Object.DestroyImmediate(flyer); }
+        }
+
+        // ── 빌더 의미(잠복 결함) ─────────────────────────────────────────────
+
+        private static DefenderUnitData Target(string id = "drift_target")
+        {
+            var d = ScriptableObject.CreateInstance<DefenderUnitData>();
+            d.id = id;
+            d.health = 500f;
+            d.attackRange = 0f;
+            d.outputs = System.Array.Empty<AttackOutput>();
+            return d;
+        }
+
+        private static AttackUnitData Hitter(EnemyAttackMethod method)
+        {
+            var e = Dummy();
+            e.attackMethod = method;
+            e.attackRange = 1f;
+            e.attackCooldown = 0.5f;
+            e.outputs = new[] { new AttackOutput { kind = Wassup.Data.AttackOutputKind.Damage, magnitude = 10f } };
+            return e;
+        }
+
+        /// <summary>적 하나가 방어유닛 옆에 2초 서 있을 때 방어유닛이 받은 피해.</summary>
+        private static float DamageTakenNextTo(DefenderUnitData target, AttackUnitData enemy)
+        {
+            var def = MatchDefinitionBuilder.Build(new[] { target }, new[] { enemy }, 1, ModeDef.Default());
+            var m = Run(def);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(6, 4)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(7, 4)));
+            m.Tick();
+            var d = Nth(m, UnitKind.Defender, 0);
+            float before = d.Health;
+            for (int t = 0; t < 120; t++) m.Tick();
+            return before - d.Health;
+        }
     }
 }
