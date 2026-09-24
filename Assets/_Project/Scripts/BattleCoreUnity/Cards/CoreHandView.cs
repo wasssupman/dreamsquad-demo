@@ -497,7 +497,8 @@ namespace Wassup.BattleCoreUnity.Cards
             var captured = slot;
             Tween.ShakeLocalPosition(slot.rect, new Vector3(flinchStrengthX, 0f, 0f),
                     flinchDuration, frequency: flinchFrequency)
-                .OnComplete(() => captured.flinching = false);
+                // 표시 플래그만 되돌리는 콜백 — 움찔 도중 손패가 사라져도(판 종료·씬 전환) 할 일이 없으니 경고를 끈다.
+                .OnComplete(() => captured.flinching = false, warnIfTargetDestroyed: false);
             SoundManager.Instance?.PlayCardReturn();
             EnsureCameraDirector()?.Kick(rejectKickStrength, rejectKickDuration);
         }

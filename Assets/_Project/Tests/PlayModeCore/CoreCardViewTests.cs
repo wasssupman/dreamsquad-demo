@@ -122,8 +122,11 @@ namespace Wassup.Tests.PlayMode.Core
             var c = new Ctx();
             yield return Boot(c, TremorPlate, Offering, Meteor);
             // 배치 국면 — 액티브는 **전투 중에만** 시전된다(코어 `HandDeck.Cast` 의 국면 거절 · preflight 밖의 사유).
-            SimEntityId host = SimEntityId.None;
-            yield return PlaceAndActivate(c, id => host = id);
+            // 이 모드는 배치 국면에 손 배치를 닫아 두므로(`inputEnabledDuringPlacement`) 디버그 스폰으로 세운다.
+            Assert.IsTrue(TryFindFreeCell(c.Driver, out int defIndex, out int2 cell0), "빈 칸이 없다");
+            Assert.IsTrue(c.Driver.Apply(Command.DebugSpawnDefender(defIndex, cell0)).Accepted, "디버그 스폰 거절");
+            var host = LastOfKind(c.Driver, UnitKind.Defender);
+            yield return null;
             Assert.AreEqual(MatchPhase.Placement, c.Driver.Match.Clock.Phase, "시험 전제: 배치 국면");
             c.Selection.SelectAt(host);
             yield return WaitHandSettled(c);
@@ -327,6 +330,28 @@ namespace Wassup.Tests.PlayMode.Core
                 if (units[i].Kind == kind) return units[i].Id;
             Assert.Fail("판에 그 종류의 개체가 없다: " + kind);
             return SimEntityId.None;
+        }
+
+        private static bool TryFindFreeCell(BattleDriver driver, out int defIndex, out int2 cell)
+        {
+            var placement = driver.Match.Placement;
+            var size = driver.GridSize;
+            for (int i = 0; i < driver.Definition.Units.Length; i++)
+            {
+                if (!placement.InRoster(i)) continue;
+                for (int y = 0; y < size.y; y++)
+                for (int x = 0; x < size.x; x++)
+                {
+                    var c = new int2(x, y);
+                    if (placement.CellStateAt(c) != PlacementService.CellState.Free) continue;
+                    defIndex = i;
+                    cell = c;
+                    return true;
+                }
+            }
+            defIndex = -1;
+            cell = default;
+            return false;
         }
 
         private static bool TryFindPlaceable(BattleDriver driver, out int defIndex, out int2 anchor)
