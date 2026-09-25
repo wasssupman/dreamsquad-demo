@@ -103,6 +103,8 @@ N/A — 새 정거장이 없다. 지우는 정거장은 8c 가 맵에서 이미 
 - [ ] **Android QA 빌드 2회째**(Entities 없이) 성공 · APK 크기 전후 기록 · 실기기 1판. — **보류** 미시도(사용자 몫).
 - [ ] `.githooks/commit-msg` 없음 · `git config --get core.hooksPath` 빈 값(main 머지 뒤) · 리뷰 감지기는 `Scripts/BattleCore/` 에서만 울린다. — **△** 훅 파일 삭제 · 감지기 = 코어 경로만(임시 저장소로 확인 — 옛 `Scripts/Battle/` 변경에는 안 울린다) · hooksPath unset 은 머지 뒤(리드).
 - [x] 문서 18편 + 스킬 5 + CLAUDE.md 편집 목록 전 행 처리 · `grep -rn "\[옛 전투" CLAUDE.md` = 0. — **○** `66e122ec6`·`45d43c8a0`·`10ea8cffe`(스킬 5번째 = 생성기 삭제 커밋) · 루트 README 도 · grep 0.
-- [ ] `core-reviewer` APPROVE(삭제 diff 는 `retire-set.md` 대조로). — **보류** 리드 몫.
+- [x] `core-reviewer` **APPROVE**(2026-09-25 — CRITICAL·HIGH·MEDIUM 0 · LOW 2 = 장부의 `BoardSpaceTests` 표기(이식 대체 주석으로 정정) · `[Explicit]` 어셈블리 실행 제한 미기록(`test-procedure.md` 에 기록)). 삭제 = 퇴역 목록 1:1 · 코어 diff 는 네임스페이스 치환만 · [Ignore] 4건은 옛 규칙과 코어의 차이가 맞다(독립 판정).
 
 구현 2026-09-25 — `66e122ec6`~`9a8756016` + 훅 삭제(마지막 커밋). 옛 규칙 변경 0(규칙이 다른 4건은 `[Ignore]` 로 기록만).
+
+리드 재검증 2026-09-25 — HEAD `2c298b3b1`(= `d2f70a7a8` + Check csproj 의 Entities·Transforms dll 참조 제거 — `60c09db21` 에서 빠진 spec 변경 대상 :56~57): 클린 export build 0 · test 876/880(Ignore 4) · Check 0(Entities 참조 없이) · manifest entities 0 · 장부 3종 exit 0 · 옛 폴더 4 부재 · asmdef 에 Entities/Burst/Transforms 0 · 골든 파일 diff 0. Unity: 도메인 Entities 어셈블리 0 · 로비 콜드 스타트 fps 60 · EditMode 3 어셈블리 2496/2498(선행 2) · PlayMode 코어 95/95 · 아웃게임 `PresetBarPopupLayerTest` 2/2 · 골든 Verify 11 일치. 남은 것 = 옛 규칙 차이 4건 사용자 결정 · 플레이 4차 · main 머지(→ `core.hooksPath` unset) · Android QA 빌드.

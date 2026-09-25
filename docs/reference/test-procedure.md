@@ -14,7 +14,7 @@
 | `Wassup.Tests.EditMode.Assets` | 실에셋(SO·맵·덱·카탈로그·프리팹) 저작 검증 |
 | `Wassup.Tests.EditMode.Core` | **전투 코어**(`Wassup.BattleCore`)의 규칙. 엔진을 안 쓰고 씬도 안 연다 |
 | `Wassup.Tests.PlayMode.Core` | 전투 씬(`BattleCoreScene`) 부팅 스모크 · 뷰 방출 순서 · 틱 발행률 · 배치 사슬 · 씬 배선 · 뷰가 자를 새로 만들지 않았나 |
-| `Wassup.Tests.PlayMode` | **아웃게임 PlayMode · 씬 부팅 없음.** 남은 것은 `AuthE2ETest`·`DeckInfoPresetApplyLiveE2ETest`(둘 다 `[Explicit]` — 라이브 서버가 필요해 명시 실행할 때만 돈다)·`PresetBarPopupLayerTest`. 옛 전투 씬을 부팅하던 테스트는 unit 9 에서 은퇴했다(`retire-set.md` 7번 묶음) |
+| `Wassup.Tests.PlayMode` | **아웃게임 PlayMode · 씬 부팅 없음.** 남은 것은 `AuthE2ETest`·`DeckInfoPresetApplyLiveE2ETest`(둘 다 `[Explicit]` — 라이브 서버가 필요하다. ⚠ Unity Test Runner 는 **어셈블리 단위 실행에서 `[Explicit]` 을 걸러 주지 않는다**(NUnit 어댑터의 알려진 제한) — 어셈블리째 돌리면 둘이 딸려 돌아 환경 빨강이 나고 `AuthE2ETest` 는 실서버에 가입을 시도한다. 아웃게임 lane 은 `PresetBarPopupLayerTest` 만 이름으로 지정해 돌린다)·`PresetBarPopupLayerTest`. 옛 전투 씬을 부팅하던 테스트는 unit 9 에서 은퇴했다(`retire-set.md` 7번 묶음) |
 
 `Wassup.DepthParallax.Tests` 는 모듈 로컬이라 전체 실행 때만 따라온다.
 

@@ -135,7 +135,7 @@ Assets/_Project/Tests/EditMode/BattleBridgeDraftMapTests.cs
 Assets/_Project/Tests/EditMode/BattleScaledRateManagerTests.cs
 Assets/_Project/Tests/EditMode/Bezier3Tests.cs
 Assets/_Project/Tests/EditMode/BlinkMathTests.cs
-Assets/_Project/Tests/EditMode/BoardSpaceTests.cs
+# (이식으로 대체 — `7482f7ba6` 에서 `EditModeCore` 로 옮기며 이미 삭제됨) Assets/_Project/Tests/EditMode/BoardSpaceTests.cs
 Assets/_Project/Tests/EditMode/BonusWaveScheduleTests.cs
 Assets/_Project/Tests/EditMode/BoomerangBakeAndDrainTests.cs
 Assets/_Project/Tests/EditMode/BoomerangTests.cs
