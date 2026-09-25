@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
 using Wassup.BattleCore;
+using Wassup.BattleCore.Map;
 using Wassup.BattleCore.Move;
 using Wassup.BattleCore.Wave;
 
@@ -328,12 +329,8 @@ namespace Wassup.Tests.EditMode.Core
 
         // 옛 WaveSpawnForecastTests::LaneDefaultRoute_ResolvesIntoForecast_WhenUnitHasNoAuthoredPath — 예보의 경로 해석 = 스폰의 경로 해석(레인 기본)
         // 옛 WaveSpawnForecastTests::AuthoredUnitPath_BeatsLaneDefaultRoute — 적 저작 경로가 레인 기본을 이긴다
+        // 사용자 결정 ⑧-2(2026-09-25) — 옛 방식 복원: 예고선은 적이 **실제로 갈 길**을 그린다.
         [Test]
-        [Ignore("unit 9 — 옛 규칙과 다름: 옛 예보는 스폰과 같은 해석(적 저작 > 레인 기본 > 최단)을 `WaypointRouting.ResolvePathIndex` "
-              + "로 공유해 실었다(Scripts/Data/WavePatternGenerator.cs `BuildSpawnGuideForecasts(detailed, laneRoutes)`). "
-              + "코어 예보는 **컨셉 슬롯 경로만** 싣는다(Scripts/BattleCore/Owners/WaveScheduler.cs:171 `s.PathIndex`) — "
-              + "해석은 스폰 때만 일어난다(Scripts/BattleCore/World/EnemySpawn.cs:68). 레인 기본 축은 어느 맵도 저작하지 않았다(M24) · "
-              + "적 저작 경로(비행)가 있는 적의 예고선은 골 직행으로 그려진다.")]
         public void 예보의_경로는_스폰과_같은_해석을_따른다()
         {
             var m = CoreMatchFixtures.BeginBattle(ThreeLaneDef(d =>
@@ -350,6 +347,78 @@ namespace Wassup.Tests.EditMode.Core
                     m.Definition.Enemies[e.EnemyIndex].WaypointPathIndex, -1, m.Definition.Map.RouteForSpawn(e.Lane));
                 Assert.AreEqual(expected, e.PathIndex, $"입구 {e.Lane}: 예고선이 실제 적과 다른 길을 그린다");
             }
+        }
+
+        // 사용자 결정 ⑧-2 — 해석 3단이 각각 예고선에 나타난다: 적 저작 경로(비행) > 레인 기본 > 최단(-1).
+        // 편성 우연에 기대지 않게 입구를 지정한 저작 플랜으로 세 단을 한 판에 세운다.
+        [Test]
+        public void 예보_경로는_적_저작_레인_기본_최단_순으로_이긴다()
+        {
+            const int FlyerPath = 0, LaneDefaultPath = 2;
+            const int Walker = 0, Flyer = 1;
+            var def = ThreeLaneDef(d =>
+            {
+                d.Map.SpawnRoutes = new[] { -1, LaneDefaultPath, -1 };
+                d.Enemies[Walker].WaypointPathIndex = -1;
+                d.Enemies[Flyer].WaypointPathIndex = FlyerPath;       // 강을 건너는 비행 적의 저작 경로
+                d.Enemies[Flyer].TraversalLayers = LayerBits.Path | LayerBits.Air;
+                d.Mode.WaveSource = WaveSourceKind.AuthoredPlan;
+                d.WavePlan = new WavePlanDef
+                {
+                    DisplayName = "t",
+                    Waves = new[]
+                    {
+                        new AuthoredWaveDef
+                        {
+                            DurationSec = 20f,
+                            IntervalSec = Spacing,
+                            Groups = new[]
+                            {
+                                new AuthoredGroupDef { EnemyIndex = Walker, Count = 1, TriggerTimeSec = 5f, LaneIndex = 1, PathIndex = -1 },
+                                new AuthoredGroupDef { EnemyIndex = Walker, Count = 1, TriggerTimeSec = 5f, LaneIndex = 2, PathIndex = -1 },
+                                new AuthoredGroupDef { EnemyIndex = Flyer,  Count = 1, TriggerTimeSec = 6f, LaneIndex = 1, PathIndex = -1 },
+                            },
+                        },
+                    },
+                };
+            });
+            def.ConfigHash = def.ComputeConfigHash();
+            var m = CoreMatchFixtures.BeginBattle(def);
+            m.Tick();
+
+            var f = Forecast(m);
+            Assert.AreEqual(3, f.Count, "입구 1 의 두 종은 길이 달라 따로 선다");
+            int flyer = 0, laneDefault = 0, shortest = 0;
+            foreach (var e in f)
+            {
+                if (e.EnemyIndex == Flyer)
+                {
+                    Assert.AreEqual(1, e.Lane);
+                    Assert.AreEqual(FlyerPath, e.PathIndex, "비행 적의 예고선은 레인 기본이 있어도 그 적의 저작 경로를 따른다");
+                    flyer++;
+                }
+                else if (e.Lane == 1)
+                {
+                    Assert.AreEqual(LaneDefaultPath, e.PathIndex, "저작 없는 적은 레인 기본 경로");
+                    laneDefault++;
+                }
+                else
+                {
+                    Assert.AreEqual(2, e.Lane);
+                    Assert.AreEqual(-1, e.PathIndex, "저작도 레인 기본도 없으면 최단(골 직행)");
+                    shortest++;
+                }
+            }
+            Assert.AreEqual((1, 1, 1), (flyer, laneDefault, shortest), "세 단이 한 줄씩");
+
+            // 예고선 = 실제 길: 나온 세 적의 (종 × 경로) 모음이 예고 세 줄의 모음과 같다.
+            var forecastPaths = new List<(int, int)>();
+            foreach (var e in f) forecastPaths.Add((e.EnemyIndex, e.PathIndex));
+            TickUntil(m, 6.5f);
+            var actualPaths = new List<(int, int)>();
+            foreach (var u in m.World.Units)
+                if (u.Kind == UnitKind.Enemy && u.Move != null) actualPaths.Add((u.DefIndex, u.Move.PathIndex));
+            CollectionAssert.AreEquivalent(forecastPaths, actualPaths, "예고선이 그린 길 = 적이 실제로 가는 길");
         }
 
         // ════════════════════════════════════════════════════════════════════

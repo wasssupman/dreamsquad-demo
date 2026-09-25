@@ -121,13 +121,13 @@ namespace Wassup.BattleCore
         // 대기열이 이미 정본이라 굽지 않고 **읽는다** — 구워 두면 당김·보너스가 대기열을
         // 바꿨을 때 예보만 옛 값으로 남는다.
 
-        /// <summary>아직 안 나온 스폰의 (레인 × 경로)별 **첫 시각**. 예고선 한 줄의 입력이다.</summary>
+        /// <summary>아직 안 나온 스폰의 (레인 × 실제 경로)별 **첫 시각**. 예고선 한 줄의 입력이다.</summary>
         public readonly struct SpawnForecast
         {
             /// <summary>스폰 레인 번호. 입구 칸이 여기서 나온다.</summary>
             public readonly int Lane;
 
-            /// <summary>저작 경로 번호. 웨이포인트 목록이 여기서 나온다.</summary>
+            /// <summary>그 적이 실제로 따를 경로 번호(`EnemySpawn.PathFor`). 웨이포인트 목록이 여기서 나온다.</summary>
             public readonly int PathIndex;
 
             /// <summary>그 줄의 적(통행 층을 읽는다). 한 레인에 여러 종이면 **먼저 나올 쪽**.</summary>
@@ -162,17 +162,22 @@ namespace Wassup.BattleCore
                 var s = _pending[i];
                 if (s.Bonus) continue;
 
+                // 경로 = 그 적이 **실제로 갈 길**(스폰과 같은 해석 — 사용자 결정 ⑧-2). 대기열의
+                // `PathIndex` 는 컨셉 슬롯일 뿐이라 그대로 실으면 저작 경로가 있는 적(비행)의
+                // 예고선이 거짓이 된다. 병합 키도 해석된 경로다 — 같은 입구·같은 길은 한 줄(⑧-1).
+                int path = EnemySpawn.PathFor(_def, _map.Snapshot, s.EnemyIndex, s.Lane, s.PathIndex);
+
                 int at = -1;
                 for (int k = 0; k < into.Count; k++)
-                    if (into[k].Lane == s.Lane && into[k].PathIndex == s.PathIndex) { at = k; break; }
+                    if (into[k].Lane == s.Lane && into[k].PathIndex == path) { at = k; break; }
 
                 if (at < 0)
                 {
-                    into.Add(new SpawnForecast(s.Lane, s.PathIndex, s.EnemyIndex, s.AtSec));
+                    into.Add(new SpawnForecast(s.Lane, path, s.EnemyIndex, s.AtSec));
                     continue;
                 }
                 if (s.AtSec >= into[at].FirstSpawnSec) continue;
-                into[at] = new SpawnForecast(s.Lane, s.PathIndex, s.EnemyIndex, s.AtSec);
+                into[at] = new SpawnForecast(s.Lane, path, s.EnemyIndex, s.AtSec);
             }
             return into.Count;
         }

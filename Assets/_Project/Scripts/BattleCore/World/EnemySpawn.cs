@@ -64,10 +64,7 @@ namespace Wassup.BattleCore
             // ⚠ 모르는 값을 **조용히 접지 않는다** — clamp 는 새 값을 가장 가까운 옛 값으로 숨긴다.
             // 빌더가 이름 매핑(`ToCoreEngage`)으로 싣고, 여기선 정의역 밖이면 loud 하게 멈춤으로 둔다.
             u.Move.Engage = EngageOf(ctx, d.EngageMovement);
-            // 경로 선택 — **좁은 쪽이 이긴다**: 적 정의 > 웨이브 컨셉 > 레인 기본.
-            u.Move.PathIndex = WaypointRouting.ResolvePathIndex(
-                d.WaypointPathIndex, conceptPathIndex,
-                lane >= 0 ? snapshot.RouteForSpawn(lane) : -1);
+            u.Move.PathIndex = PathFor(ctx.Def, snapshot, defIndex, lane, conceptPathIndex);
 
             // **감지 0 = 오늘과 같은 경로.** 부착 자체가 게이트다 — 분기가 아니라 부재로 표현한다.
             if (d.DetectionRange != 0f)
@@ -80,6 +77,18 @@ namespace Wassup.BattleCore
             u.Attack = CombatPhase.BuildAttackState(in d, ctx.Def, ctx.World.Parts);
             return u;
         }
+
+        /// <summary>
+        /// 그 적이 **실제로 따를** 경로. 좁은 쪽이 이긴다 — 적 정의 > 웨이브 컨셉 > 레인 기본(없으면 -1 = 최단).
+        /// `lane` 은 이미 입구 수로 접힌 값(-1 = 입구 없음).
+        ///
+        /// 예고선(`WaveScheduler.CollectForecast`)도 **이 함수를 부른다**(사용자 결정 ⑧-2) — 예보가
+        /// 해석을 따로 하면 비행 적처럼 경로를 저작한 적의 예고선이 실제 길과 갈린다.
+        /// </summary>
+        public static int PathFor(MatchDefinition def, MapSnapshot snapshot, int defIndex, int lane, int conceptPathIndex)
+            => WaypointRouting.ResolvePathIndex(
+                def.Enemies[defIndex].WaypointPathIndex, conceptPathIndex,
+                lane >= 0 ? snapshot.RouteForSpawn(lane) : -1);
 
         private static EngageMovement EngageOf(TickContext ctx, int raw)
         {

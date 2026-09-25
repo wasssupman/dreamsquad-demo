@@ -122,6 +122,9 @@ namespace Wassup.Tests.EditMode.Core
             StabilityDamage = 30,
             DetectionRange = 0f,
             AwakeningReward = reward,
+            // 라이브 기본값(`AttackUnitData.waypointPathIndex = -1` = 저작 없음). struct 기본 0 은
+            // 「경로 0 을 저작했다」로 읽혀 예보·스폰의 경로 해석을 조용히 가린다.
+            WaypointPathIndex = -1,
             Attack = AttackDef.Default(),
         };
 
