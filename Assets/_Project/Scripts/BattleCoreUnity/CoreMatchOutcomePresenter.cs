@@ -159,32 +159,8 @@ namespace Wassup.BattleCoreUnity
                 Debug.LogWarning("[CoreMatchOutcomePresenter] 결과 화면이 배선되지 않았다 — 판은 끝났는데 화면이 없다.", this);
                 return;
             }
-            _resultScreen.Show(ToTally(in outcome));
-        }
-
-        // 옛 결과 화면은 `MatchTally` 를 받는다. 그 타입을 새로 만들지 않고 **어댑터 한 줄**로
-        // 잇는 이유: `MatchTally` 는 이미 「조립 지점 하나」라는 같은 계약의 값이고, 화면 쪽
-        // 레이아웃·랭킹 렌더링 700줄을 다시 쓰는 것은 이 unit 의 질문에 답하지 않는다.
-        // `MatchOutcome` 이 그것의 후계이고, unit 8 에서 화면이 후계를 직접 받게 된다.
-        //
-        // ⚠ 화면의 히어로 숫자는 단위가 **「기」로 못박혀** 있다(1킬 = 1점이라 마리 수 = 점수).
-        // `WaveClear`·`TimeAttack` 의 점수는 웨이브·밀리초라 그 단위가 거짓이 된다 — 오늘은
-        // 모드 SO 가 `KillScoreTimed` 하나뿐이라 닿지 않는다(5c 「아직 안 보이는 것」).
-        private static MatchTally ToTally(in MatchOutcome outcome)
-            => new MatchTally(LabelOf(outcome.Reason), outcome.Score,
-                              outcome.Stability, outcome.StabilityMax,
-                              outcome.WaveReached, outcome.Leaks);
-
-        // 로그 라벨 셋. `MatchEndReason` 의 문자열 짝이고 **여기가 유일한 변환 지점**이다 —
-        // 두 곳이 되면 서버에 올라간 라벨과 화면이 말한 라벨이 갈린다.
-        private static string LabelOf(MatchEndReason reason)
-        {
-            switch (reason)
-            {
-                case MatchEndReason.Submitted: return "submitted";
-                case MatchEndReason.StressFull: return "stress_full";
-                default: return "complete";
-            }
+            // unit 8a — 결과 화면이 후계(`MatchOutcome`)를 **직접** 받는다. 5c 의 `MatchTally` 어댑터는 걷었다.
+            _resultScreen.Show(in outcome);
         }
     }
 }
