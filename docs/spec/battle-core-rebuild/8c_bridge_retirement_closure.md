@@ -55,13 +55,71 @@ N/A — 규칙을 옮기지 않는다. 옮기는 것은 타입의 **집**뿐이�
 
 이 unit 이 `object-pipeline-map.md` 를 새로 쓴다(구현 7). 모든 정거장이 코어/새 층 심볼을 가리키고, 해당 없는 칸은 `N/A + 이유`.
 
+## 고친 것 (2026-09-25 구현)
+
+| 무엇 | 어떻게 | 커밋 |
+|---|---|---|
+| 새 층·저작 SO 가 부르는데 옛 폴더에 살던 타입 | 파일째 `.meta` 동반 이동(`BlockingHazardSO` · `BlockingHazardPresenter` · `HazardShape` · `HazardEffect` · `HazardCastKind` · `DcTrigger`) + 열거형만 떼어 새 파일(`StatKind`·`StackKind`·`CombineOp` · `CcKind` · `DotElement` · `EnemyTargetDefaults`) → `Scripts/Data/Authoring/`. 네임스페이스·값·번호 무변 | `66c77be6c` `[old-battle]` |
+| 길막 프리팹 2 의 컴포넌트가 ECS 를 참조 | `BlockingHazardPresenter` 의 `Entity` 보관을 걷었다(읽는 곳 0) · 옛 브리지 호출만 `Bind()` 로 | `66c77be6c` `[old-battle]` |
+| 살아남는 파일 안에 섞인 옛 씬 전용 입력 | `CameraDirector`·`SoundManager` 의 `GameManager` 구독, `ResultScreen.Show(MatchTally)`, `WavePatternStripView.RebuildFromDeck` 를 `*.OldBattle.cs` 부분 파일로 분리 — unit 9 는 **파일만 지운다**(`partial void` 는 구현이 사라지면 호출째 빠진다) | `1f4f934f2` |
+| 새 층이 규칙 보유자의 순수 함수를 부름 | `SkillLoadoutController.FilterHiddenSkills` 본문 → `CoreDeckComposition.FilterHiddenSkills`(옛 쪽은 위임) | `1f4f934f2` |
+| 옛 씬 폴더 안 볼륨 4 · 옛 씬 경로를 든 도구·테스트 | 볼륨 → `Art/Theme/<맵>/`(GUID 보존) · `MapStageDuelGenerator` 경로 상수 · `SpineUpgradeSmoke` → `BattleCoreScene` · `MarkerPropStyleAssetTests`·`DcAttachRequirementWiringTests` → `BattleCoreScene` 의 후계 뷰. 빈 옛 씬 폴더는 지웠다 | `236497b39` |
+| 코드·자산 도달성 · 새 주인 실재를 재는 기계 | `Retire.Check.csproj` · `check_ledgers.py --retire-prune`/`--retire-assets`/`--owners` | `e7a3cdf34` |
+| 퇴역 집합 · 장부 | `ledgers/retire-set.md` · `owner-aliases.md` 신설 · bridge-methods 168행 심볼 보강 · 실체 없던 14행 「삭제」 정정(기존 결정 인용) · bridge-fields 15행 대조 + 28 「삭제」 · rule-holders 「실현 위치」 133행 · tools 12행 | `54d01eb2d` |
+| 파이프라인 맵 | 아키타입 16표 전면 재작성 · 백틱 심볼 254개 해석 확인 | `7b3931631` |
+
+## 이식 제외
+
+N/A — 규칙을 옮기지 않았다. 옮긴 것은 타입의 **집**뿐이다(`BuilderEnumPinTests`·`CoreSkillEnumPinTests` 가 속한 Assets·Core lane 초록 — 아래 수치).
+
+## 판정 (에이전트)
+
+| 무엇 | 판정 | 근거 |
+|---|---|---|
+| 옛 웨이브 생성기(`WavePatternGenerator`)·`BonusWaveSchedule`·`BattleConfig`(+자산) | **퇴역**(unit 9 「잔여 이중화」의 컴파일 확인) | 스트립 덱 경로를 떼자 남는 소비처 0 — `Retire.Check` 오류 0. 8c 표의 `:639` 행은 이사하지 않고 생성기와 함께 사라진다 |
+| `ReachDebugGizmos` | 은퇴 | 대체물 `CoreMapOverlay.PaintRange` · `AttackReachParityTests` — 옛 spec 결정의 인용이 아니다(`tools.md` 12행) |
+| dev 씬 `MapTest`·`FluidScratch` | 남긴다 | 퇴역 스크립트를 하나도 안 부른다 · 자산 도달성 뿌리에 넣었다 |
+| 장부의 실체 없는 배정 14행(로그 · 재배치 · 드래프트 · 유출 칸 · 자석 스냅 · 휴면 코드) | 「삭제」 정정 | 행마다 기존 결정을 인용했다(rules X28 · X21 · tools 11 · 계약 9 · 사용자 결정 2026-09-23 · 옛 호출처 0) |
+
+## 사용자·리드 결정 필요
+
+1. **보류 2 — `IngameCharacterTest` · `MenuPopup` dev 토글 「캐릭터/포스트」.** 옛 spec 에서 은퇴 결정을 못 찾았다(찾은 것은 「오브젝트를 껐다」 `camera-direction/15` 와 「실험대가 이미 증명했다」 `distance-based-range/20:47` 뿐). `retire-set.md` 「보류」 — (a) 옛 씬과 함께 은퇴 · (b) 새 씬으로 옮긴다. 둘 다 잎이라 어느 답이든 컴파일 증명은 그대로다.
+2. **새 씬에 없는 옛 기능 — 「새 주인」은 배정됐는데 실체가 없다**(`--owners` 가 「미실현」으로 센다 · 새 층 호출처 0 을 grep 으로 확인). 전부 플레이어가 보거나 로그로 읽던 것이다:
+   - 효과 타일 칸 표시(T15) — 규칙은 돌지만 판 위에 어느 칸인지 안 그린다
+   - 궁극기 착지 예고 칸(T16·T17 · `ShowLandingTelegraph`) — 「예고 중 유닛을 빼는 것」이 그 스킬의 놀이다
+   - 마음 붕괴 연출(`PlayCoreBurst` · `DrainGoalCollapsedEvents` — VFX + 슬로모 `coreBurstTimeScale`)
+   - 배치 드래그 중 적 흐리게(`SetEnemiesDimmed`) · 적 체력 틴트(`EvaluateEnemyHealthTint`)
+   - 소환사 유지 애니메이션(`SyncSummonerAnimationState`) · 방어유닛 AI 전이 트레이스(`TraceDefenderAiTransition`)
+   - 사거리 칸 채움(T3·T13) — 새 오버레이는 링과 표식만 그린다. 옛 채움은 링이 있으면 투명이라 보이는 차이는 작을 수 있다
+   → **리드 판단(2026-09-25): 8c 안에서 이식하지 않고 unit 9 앞의 필수 unit `8a2_view_transfer_remainder.md` 로 뗐다**(위 7행). ⚠ **사거리 칸 채움(T3·T13)은 8a2 목록에 없다** — 8a2 가 끝나도 이 2행이 남으면 `--owners` 는 exit 1 이다. 8a2 에 넣을지, 은퇴(사용자 결정)로 닫을지 정해야 한다.
+
+## 검증 수치 (HEAD `7b3931631` · 2026-09-25)
+
+| lane | 결과 | 기준선(8b) |
+|---|---|---|
+| 헤드리스 build · test · Check | 0 · **685** · 0 | 0 · 685 · 0 |
+| `Retire.Check`(퇴역 309 줄 + 보류 2 줄 → 618 항목을 지운 export) | **오류 0** · 음성 대조(남는 `BlockingHazardSO.cs` 를 지우면 오류 26) | — |
+| `check_ledgers.py`(기본) · `--retire-assets` | exit 0 · exit 0(뿌리 18 · 폐포 1,925 · 퇴역 스크립트 576 중 폐포 안 0 · 옛 경로 문자열 0) | exit 0 |
+| `--owners` | **exit 1** — bridge-methods 미실현 7 · rule-holders 미실현 5(위 결정 2). 나머지 실패 0(심볼 278/85/114 · 삭제 82/6/14) | — |
+| Unity EditMode Core + Assets | **1005/1007**(선행 2 `boomerang`·`bomb_man` 만) · 골든 무변 | 1005/1007 |
+| `DreamSquadMobileBuildCliTests` | 63/63 | 63/63 |
+| Unity PlayMode Core | **85/85** | 85/85 |
+| 옛 PlayMode 부분집합 6 | 35/38 → `BonusWavePullTest` 3건 단독 재실행 13/13 → **38/38**(함정 20 — 코어 lane 직후 러너 잔류) | 38/38 |
+| 이사 GUID | `.cs.meta`·볼륨 `.asset.meta` rename 100% · `.prefab`/`.asset`/`.unity` diff 0(`9d2d8083a..HEAD`) · 길막 프리팹 2 Missing Script 0 · 볼륨 부르는 프리팹 5 가 새 자리를 가리킨다(`VolumeProfile` 컴포넌트 7) · `MapStageDuelGenerator` 경로 상수 2 로드 성공 | — |
+
+⚠ 스테이지 포스트 효과 **육안 대조는 하지 않았다** — 자산이 바이트 동일(rename 100%)하고 프리팹 참조가 같은 GUID 라 그림이 바뀔 경로가 없다. 플레이 4차에서 같이 본다.
+
 ## 완료 기준
 
-- [ ] `Retire.Check.csproj` — 퇴역 후보를 지운 export 사본에서 Runtime + Editor + 남는 테스트 **컴파일 오류 0**. 후보 목록(파일 수·줄 수)을 `ledgers/retire-set.md` 에.
-- [ ] `--retire-assets` exit 0 — 뿌리 폐포 안의 퇴역 스크립트 GUID 0 · 남는 에디터 코드의 옛 씬 경로 문자열 0.
-- [ ] `--owners` exit 0 — 「삭제」 아닌 행 전원 심볼 해석 · `rule-holders` 133 행 실현 위치 또는 삭제 근거.
-- [ ] 이사한 SO·컴포넌트의 자산이 그대로 열린다: `.asset`·`.prefab` diff 0 · 이사한 `.cs.meta` 의 `guid:` 무변 · 길막 프리팹 2 Missing Script 0 · Assets lane 초록.
-- [ ] 볼륨 4개를 부르는 프리팹 5 불변 · `MapStageDuelGenerator` 실행 가능 · 새 씬 스테이지 포스트 효과 육안 무변.
-- [ ] `object-pipeline-map.md` 에서 `BattleBridge`·`EntityManager`·`NativeQueue` 가 이력 줄 밖에 0.
-- [ ] 헤드리스 3종 · EditMode 선행 2 외 빨강 0 · PlayMode 코어 초록 · 골든 11종 무변.
-- [ ] `core-reviewer` APPROVE · **사용자 플레이 4차 통과(8b)** → main 머지(squash 금지, 푸시 승인제) — **조각 E 경계 1**. 이 머지로 동료·GitLab 이 새 전투를 받는다(README 결정 ③).
+- [x] `Retire.Check.csproj` — 퇴역 후보를 지운 export 사본에서 Runtime + Editor + 남는 테스트 **컴파일 오류 0**. 후보 목록(파일 수·줄 수)을 `ledgers/retire-set.md` 에. — 퇴역 590 파일(C# 574 · 113,228줄) + 보류 2(456줄) · 오류 0 (2026-09-25 `7b3931631`)
+- [x] `--retire-assets` exit 0 — 뿌리 폐포 안의 퇴역 스크립트 GUID 0 · 남는 에디터 코드의 옛 씬 경로 문자열 0. — 남는 코드 전부(런타임·에디터·테스트)로 넓혀 0 (2026-09-25)
+- [ ] `--owners` exit 0 — 「삭제」 아닌 행 전원 심볼 해석 · `rule-holders` 133 행 실현 위치 또는 삭제 근거. — **보류**: 133행 열은 채웠고 해석 실패 0 이지만 「미실현」 12행(bridge-methods 7 · rule-holders 5)이 남아 exit 1 — 10행은 8a2 가 닫는다 · T3·T13 은 처분 미정(「사용자·리드 결정 필요」 2)
+- [x] 이사한 SO·컴포넌트의 자산이 그대로 열린다: `.asset`·`.prefab` diff 0 · 이사한 `.cs.meta` 의 `guid:` 무변 · 길막 프리팹 2 Missing Script 0 · Assets lane 초록. — 위 수치 표 (2026-09-25)
+- [ ] 볼륨 4개를 부르는 프리팹 5 불변 · `MapStageDuelGenerator` 실행 가능 · 새 씬 스테이지 포스트 효과 육안 무변. — 프리팹 5 불변 · 경로 상수 로드 성공 ○ · **육안은 플레이 4차로 보류**(자산 바이트 동일)
+- [x] `object-pipeline-map.md` 에서 `BattleBridge`·`EntityManager`·`NativeQueue` 가 이력 줄 밖에 0. — 0 · 본문 심볼 254 해석 (2026-09-25 `7b3931631`)
+- [x] 헤드리스 3종 · EditMode 선행 2 외 빨강 0 · PlayMode 코어 초록 · 골든 11종 무변. — 0·685·0 · 1005/1007 · 85/85 · 옛 부분집합 38/38 (2026-09-25 `7b3931631`)
+- [x] `core-reviewer` **APPROVE**(2026-09-25 — CRITICAL·HIGH 0 · MEDIUM 1 = T3·T13 처분(→ 8a2 행 8) · LOW 1 = `BlockingHazardPresenter.cs:270~278` `Shader.Find`+`new Material` 선행 위반, 후속 후보) · [ ] **사용자 플레이 4차 통과(8b)** → main 머지(squash 금지, 푸시 승인제) — **조각 E 경계 1**. 이 머지로 동료·GitLab 이 새 전투를 받는다(README 결정 ③).
+
+리드 재검증 2026-09-25 — HEAD `e08b2ba4b` 클린 export: build 0 · test 685/685 · Check 0 · `check_ledgers.py` exit 0 · `--retire-assets`(워크트리) exit 0(뿌리 18 · 폐포 1925 · 폐포 안 퇴역 0 · 총계 590 일치) · `--owners` 미실현 12(전부 8a2 행)만 · `--retire-prune` 620 항목 → `Retire.Check` 오류 0(6.7초 실컴파일) · 음성 대조(`BlockingHazardSO.cs` 삭제) 오류 13. Unity EditMode 1005/1007(선행 2) · PlayMode 코어 85/85 · 옛 씬 부분집합 35/38 → `BonusWavePullTest` 단독 13/13(코어 lane 직후 재현 2회 — 함정 20, 옛 lane 은 unit 9 에서 사라진다) · CLI 63/63.
+
+**리드 결정 2026-09-25(보류 2)**: `IngameCharacterTest` · `MenuPopup` dev 토글 「캐릭터/포스트」 = **(a) 옛 씬과 함께 은퇴** — 둘 다 플레이어 규칙이 아니라 개발 실험대이고, 실험의 목적(하이브리드 그림자 증명)은 달성됐으며 블롭 값은 8a 에서 SO 로 승격됐다. `retire-set.md` 의 `hold` 블록은 unit 9 가 `retire` 로 옮기며 총계 줄을 같이 갱신한다(사용자가 그 전에 뒤집으면 (b)). T3·T13 = 8a2 행 8(이식, 사용자 은퇴 선택 가능).
