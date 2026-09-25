@@ -7,9 +7,7 @@
         "Wassup.UnitAi",
         "PrimeTween.Runtime",
         "Unity.Mathematics",
-        "Unity.Entities",
         "Unity.Collections",
-        "Unity.Transforms",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
