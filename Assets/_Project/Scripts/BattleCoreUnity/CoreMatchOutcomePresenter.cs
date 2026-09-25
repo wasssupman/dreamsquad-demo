@@ -37,6 +37,20 @@ namespace Wassup.BattleCoreUnity
         [Tooltip("붕괴 박자(붙드는 시간·시간 배율). 비우면 박자 없이 즉시 표시한다.")]
         [SerializeField] private HeartHudConfig _heartHud;
 
+        [Tooltip("「한 판 해봤다」(G15)를 적을 프로필. 이번 세션에 읽은 프로필일 때만 저장한다.")]
+        [SerializeField] private PlayerProfileSO _profile;
+
+        /// <summary>
+        /// 프로필 저장 seam(옛 `GameManager.ProfileSaver`). 테스트가 개발자의 실제 `profile.json` 을 재작성하지 않게 갈아 끼운다.
+        /// </summary>
+        public System.Action<PlayerProfile> ProfileSaver { get; set; } = ProfileStore.Save;
+
+        /// <summary>이 판을 「플레이한 판」으로 적었나(판당 1회 래치 — G15).</summary>
+        public bool MatchRecorded => _recorded;
+
+        /// <summary>나가기로 떠났나(0점 마감 1회).</summary>
+        public bool Abandoned { get; private set; }
+
         /// <summary>결과 화면을 띄운 횟수. **판당 한 번**이고 테스트가 그 한 번을 증언한다.</summary>
         public int ShownCount { get; private set; }
 
@@ -49,6 +63,7 @@ namespace Wassup.BattleCoreUnity
         private Coroutine _holdRoutine;
         private TimeLease _holdLease;
         private bool _holdLeased;
+        private bool _recorded;               // G15 래치 — 결과·나가기 두 통로가 함께 불러도 +1
 
         private void OnEnable()
         {
@@ -75,6 +90,8 @@ namespace Wassup.BattleCoreUnity
             MatchOutcome outcome = _driver.Match.Outcome;
 
             Submit(in outcome);
+            // G15 — 결과로 끝난 판도 「한 판」이다(옛 `SetPhase(Result)` → `RecordMatchPlayed`).
+            RecordMatchPlayed();
 
             // 터지는 판에만 박자를 준다. 「종료 사유 표기」가 아니라 **사건이 있을 때만 그
             // 사건의 연출**이다 — 만료·제출은 터지는 것이 없어 즉시 결과 화면이다.
@@ -104,10 +121,9 @@ namespace Wassup.BattleCoreUnity
 
             Submitted = true;
             var screen = _resultScreen;
-            // 덱 스냅샷은 **아직 없다** — 그 주인(`GameManager.Logger`)은 브리지 밖 규칙
-            // 보유자 10 에 들어 unit 8 에서 이사한다. 지금 넘기면 그 로거를 새 씬이 들어야 하고,
-            // 그것이 곧 두 번째 매니저다. 서버는 점수만 받고 경고 한 줄을 남긴다.
-            TournamentMatchReporter.ReportResult(outcome.Score, null,
+            // unit 8b — 덱 스냅샷은 드라이버가 반입·덱 확정 두 시점에 지은 문자열이다(`TournamentDeckInfo.Serialize` 직접 —
+            // 로거를 새 씬에 들이지 않는다, 결정 ⑷). 나가기(`AbandonMatch`)도 같은 문자열을 싣는다.
+            TournamentMatchReporter.ReportResult(outcome.Score, _driver.DeckInfoJson,
                 ranking =>
                 {
                     if (screen != null)
@@ -115,6 +131,44 @@ namespace Wassup.BattleCoreUnity
                 },
                 onError: _ => NoticePopup.ShowAlert("점수 전송 실패",
                     "이번 판 점수가 서버에 전송되지 않았습니다.\n네트워크 상태를 확인해 주세요."));
+        }
+
+        // ── 나가기 · 기록 ─────────────────────────────────────────────────────
+        //
+        // 옛 `MenuPopup.OnExit`(`:136~161`) 의 후계. 판이 끝나기 전에 떠나는 통로는 **참가 포기 0점 마감**이다 —
+        // 앱이 살아 있는 동안 지금 보낸다(덱 포함). 그 판도 히스토리에 자기 엔트리로 남으므로 「한 판」으로 센다.
+        // ⚠ **씬 전환 앞이어야 한다** — 전환 뒤엔 이 컴포넌트가 이미 파괴돼 기록이 유실된다.
+        /// <summary>나가기: 0점 마감(덱 포함) → 「한 판」 기록 → 로비. 제출 전의 판에서만 부른다(제출 뒤엔 「성적 확정」).</summary>
+        public void AbandonAndLeave(bool loadLobby = true)
+        {
+            if (!Abandoned)
+            {
+                Abandoned = true;
+                TournamentMatchReporter.AbandonMatch(_driver != null ? _driver.DeckInfoJson : null);
+            }
+            RecordMatchPlayed();
+            if (loadLobby) SceneTransition.Go(SceneNames.Outgame);
+        }
+
+        /// <summary>
+        /// G15 — 이 판을 「플레이한 판」으로 적는다. **판당 한 번**(래치)이고, 이번 세션에 읽은 프로필일 때만 저장한다 —
+        /// 에디터 직접 진입은 프로필이 없어, 그때 저장하면 빈 메모리 상태가 디스크의 편성·덱을 덮는다(옛 `RecordMatchPlayed`).
+        /// </summary>
+        public void RecordMatchPlayed()
+        {
+            if (_recorded) return;
+            if (_profile == null || !_profile.IsLoadedThisSession || _profile.profile == null)
+            {
+                Debug.Log("[CoreMatchOutcomePresenter] matchesPlayed 기록 생략 — 이번 세션에 로드된 프로필이 아니다.", this);
+                return;
+            }
+            _recorded = true;
+            _profile.profile.matchesPlayed++;
+            try { (ProfileSaver ?? ProfileStore.Save)(_profile.profile); }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[CoreMatchOutcomePresenter] matchesPlayed 저장 실패 — 무시하고 진행한다: {ex.Message}", this);
+            }
         }
 
         // ── 박자 ─────────────────────────────────────────────────────────────

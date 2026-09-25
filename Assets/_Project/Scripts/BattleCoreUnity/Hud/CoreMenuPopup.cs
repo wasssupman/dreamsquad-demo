@@ -15,8 +15,12 @@ namespace Wassup.BattleCoreUnity.Hud
     // 그 증상은 「게임이 멈췄다」로만 보여 원인이 이 파일이라는 걸 아무도 못 찾는다.
     // 그래서 비활성·파괴 경로에도 반납을 건다.
     //
-    // 판 종료·결과 화면·나가기는 **5c** 다. 여기서 「나가기」를 먼저 만들면 그 버튼이
-    // 무엇을 정리해야 하는지를 이 파일이 결정하게 된다. (나가기·성적 확정은 8b.)
+    // unit 8b — **「나가기」·「성적 확정」**(옛 `MenuPopup.cs:113~161`). 버튼 하나가 **제출 해금을 기점으로 정체를 바꾼다**:
+    // 해금 전 = 나가기(참가 포기 0점 마감 → 기록 → 로비), 해금 뒤 = 성적 확정(현재 킬로 판을 끝내고 결과 화면으로 —
+    // 로비 직행이 아니다, 확정해 놓고 리더보드를 못 보면 안 된다). 여는 순간 한 번만 판정한다 — 열려 있는 동안
+    // 판이 멈춰 있어 시계가 안 흐르므로 열린 채로 정체가 바뀌는 일이 구조적으로 없다(옛 주석 그대로).
+    // 「포기」류 어휘를 제출 버튼에 쓰지 않는다(옛 사용자 확정). 무엇을 정리하는지는 이 파일이 정하지 않는다 —
+    // 마감·기록은 `CoreMatchOutcomePresenter`, 판 종료는 코어 `Submit` 커맨드다.
     //
     // unit 8a — **공격 패턴 브리핑**(옛 `MenuPopup.cs:80~106`). 메뉴가 열리면 이번 판의 웨이브 카드
     // 스트립이 위에서 펼쳐지고, 닫히면 말려 올라간다. 입력은 코어가 실제로 쓰는 플랜이다
@@ -26,6 +30,8 @@ namespace Wassup.BattleCoreUnity.Hud
     public sealed class CoreMenuPopup : MonoBehaviour
     {
         [SerializeField] private BattleDriver _driver;
+        [Tooltip("나가기의 마감·기록 주인(G15 · 0점 마감).")]
+        [SerializeField] private CoreMatchOutcomePresenter _outcome;
 
         // 옛 `MenuPopup` 의 두 상수 그대로 — 스트립을 팝업 **아래**로 올리고 버튼은 그 위.
         private const int StripSortingOrder = 950;
@@ -38,6 +44,17 @@ namespace Wassup.BattleCoreUnity.Hud
         private TimeLease _lease;
         private bool _paused;
         private bool _built;
+        private Button _exit;
+        private Image _exitImage;
+        private TMPro.TextMeshProUGUI _exitLabel;
+        private bool _submitMode;
+
+        /// <summary>지금 그 버튼이 「성적 확정」인가(여는 순간 판정). 테스트의 창.</summary>
+        public bool ExitIsSubmit => _submitMode;
+        /// <summary>나가기/성적 확정 버튼을 누른다(테스트·온보딩 도구 창 — 사람 손과 같은 경로).</summary>
+        public void PressExit() => OnExit();
+        /// <summary>메뉴를 연다(테스트 창 — 「II」 버튼과 같은 경로).</summary>
+        public void Open() { if (!_built && _driver != null) Build(); SetPaused(true); }
 
         public bool IsOpen => _paused;
 
@@ -93,6 +110,13 @@ namespace Wassup.BattleCoreUnity.Hud
                             new Color(0.1f, 0.08f, 0.05f, 1f));
             resume.onClick.AddListener(() => SetPaused(false));
 
+            // 오른쪽 짝 — 옛 「나가기」 자리·크기(하단 +150,120 · 260×96). 색은 옛 두 값(확정 = 파랑 · 포기 = 빨강).
+            _exit = CoreHudUi.Button("Exit", _panel, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                                     new Vector2(150f, 120f), new Vector2(260f, 96f), CoreHudUi.Panel);
+            _exitImage = _exit.targetGraphic as Image;
+            _exitLabel = CoreHudUi.Label("ExitLabel", _exit.transform, "나가기", 44f, Color.white);
+            _exit.onClick.AddListener(OnExit);
+
             _panel.gameObject.SetActive(false);
         }
 
@@ -104,7 +128,40 @@ namespace Wassup.BattleCoreUnity.Hud
 
             if (on) _lease = TimeManager.Instance.Request(TimeDomain.Battle, 0f);
             else Release();
+            if (on) RefreshExitButton();
             Brief(on);
+        }
+
+        private void RefreshExitButton()
+        {
+            _submitMode = _driver != null && _driver.Running && !_driver.Match.Clock.Ended
+                          && _driver.Match.Clock.SubmitUnlocked;
+            if (_exitLabel != null) _exitLabel.text = _submitMode ? "제출" : "나가기";
+            if (_exitImage != null)
+                _exitImage.color = _submitMode
+                    ? new Color(0.16f, 0.42f, 0.62f, 0.96f)   // 제출 = 확정. 경고색이 아니다
+                    : new Color(0.6f, 0.2f, 0.2f, 0.96f);     // 나가기 = 0점 포기
+        }
+
+        private void OnExit()
+        {
+            if (_submitMode && _driver != null && _driver.Running)
+            {
+                // 일시정지 리스를 먼저 놓아야 마감이 정상 진행된다(옛 `Close()` → `SubmitMatch`).
+                SetPaused(false);
+                var receipt = _driver.Apply(Wassup.BattleCore.Command.Submit());
+                if (!receipt.Accepted)
+                    Debug.LogWarning($"[CoreMenuPopup] 성적 확정이 거절됐다 — {receipt.Reason}", this);
+                return;
+            }
+            // 나가기 — 리스를 놓고 떠난다(씬 전환의 도메인 리셋이 한 번 더 지워도 무해하다).
+            if (_paused) { _paused = false; Release(); }
+            if (_outcome != null) _outcome.AbandonAndLeave();
+            else
+            {
+                Debug.LogWarning("[CoreMenuPopup] 결과 주인이 배선되지 않았다 — 0점 마감·기록 없이 로비로 간다.", this);
+                Wassup.Core.SceneTransition.Go(Wassup.Core.SceneNames.Outgame);
+            }
         }
 
         // 옛 `MenuPopup.Open/Close` 의 스트립 몫. 여는 순간 **이 판의 플랜**으로 다시 그린다.
