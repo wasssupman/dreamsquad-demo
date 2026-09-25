@@ -42,6 +42,10 @@ namespace Wassup.BattleCore
         private Unit[] _victims = new Unit[64];
         private float[] _victimDistSq = new float[64];
         private int[] _victimPick = new int[64];
+        // 경로 스윕 — 그 틱에 가로지른 후보(진행 방향 거리 · 맞힌 기록 슬롯)를 모아 앞에서부터 소비한다.
+        private Unit[] _swept = new Unit[64];
+        private float[] _sweptAlong = new float[64];
+        private int[] _sweptSlot = new int[64];
         // unit 6a2 — 관문이 이번 발사에서 접는 칸들. 발사마다 비운다.
         private readonly List<FoldSlot> _foldSlots = new List<FoldSlot>(4);
 
@@ -942,17 +946,47 @@ namespace Wassup.BattleCore
             float lastAlong = float.MinValue;
             float2 sweepDir = p.Position.xz - p.PrevPos.xz;
 
-            for (int i = 0; i < units.Count && p.PierceRemaining > 0; i++)
+            // 1) 그 틱에 가로지른 후보를 모은다 — 순회는 `SimEntityId` 오름차순이다.
+            int n = 0;
+            for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
                 if (!u.IsTargetable() || !IsUnitPoolLegal(u, p)) continue;
                 float reach = p.HitThreshold + u.HitRadius * tileSize;
                 if (!SweepHitMath.SegmentHits(p.PrevPos.xz, p.Position.xz, u.Position.xz, reach)) continue;
                 if (!PathHits.CanHit(p.HitRecords, u.Id, p.Elapsed, p.RehitCooldown, out int slot)) continue;
+                if (n >= _swept.Length) Grow(ref _swept, ref _sweptAlong, ref _sweptSlot);
+                _swept[n] = u;
+                _sweptAlong[n] = math.dot(u.Position.xz - p.PrevPos.xz, sweepDir);
+                _sweptSlot[n] = slot;
+                n++;
+            }
+
+            // 2) unit 9 감사 A — **진행 방향 앞에서부터** 관통을 쓴다(옛 `ProjectileHitSystem`
+            //    7f9b496e1 :536~545 「a 1-pierce shot must stop at the nearest enemy it crossed」).
+            //    순회 순서(id)로 쓰면 관통 1 탄이 가까운 적을 지나 먼 적을 맞힌다. 안정 삽입 정렬이라
+            //    같은 거리는 수집 순서 = `SimEntityId` 오름차순으로 남는다(결정론).
+            for (int a = 1; a < n; a++)
+            {
+                var ku = _swept[a]; float ka = _sweptAlong[a]; int ks = _sweptSlot[a];
+                int b = a - 1;
+                while (b >= 0 && _sweptAlong[b] > ka)
+                {
+                    _swept[b + 1] = _swept[b]; _sweptAlong[b + 1] = _sweptAlong[b]; _sweptSlot[b + 1] = _sweptSlot[b];
+                    b--;
+                }
+                _swept[b + 1] = ku; _sweptAlong[b + 1] = ka; _sweptSlot[b + 1] = ks;
+            }
+
+            for (int k = 0; k < n && p.PierceRemaining > 0; k++)
+            {
+                var u = _swept[k];
+                int slot = _sweptSlot[k];
+                if (!u.IsTargetable()) continue;   // 앞선 피해·산출물로 이 틱에 쓰러졌다
 
                 Deal(ctx, p, u, p.Damage);
                 hits++;
-                float along = math.dot(u.Position.xz - p.PrevPos.xz, sweepDir);
+                float along = _sweptAlong[k];
                 if (lastVictim == null || along > lastAlong) { lastVictim = u; lastAlong = along; }
 
                 // 기록은 **창**이다. 슬롯을 제자리에 덮어쓴다 — 매 바퀴 append 하면 버퍼가 자란다.

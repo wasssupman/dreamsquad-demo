@@ -306,6 +306,28 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(2, hurt, "관통 예산 2 를 넘지 않는다");
         }
 
+        // unit 9 감사 A — 옛 `ProjectileHitSystem`(7f9b496e1 :536~545) 「a 1-pierce shot must stop at the
+        // nearest enemy it crossed」. 한 틱에 둘을 가로지르면 **진행 방향으로 앞(가까운 쪽)**부터 관통을
+        // 쓴다 — `SimEntityId` 순이 아니다. 먼 적을 먼저 소환해 작은 id 를 준다(순회 순서가 이기면 빨강).
+        [Test]
+        public void 관통_1_탄은_한_틱에_가로지른_적_중_가까운_쪽에서_멈춘다()
+        {
+            var m = Match(WithProjectile(MovementKind.DirectionalLinear, PayloadKind.PathHit,
+                                         damage: 5f, range: 6f, pierce: 1, maxDistance: 8f, speed: 600f));
+            m.Apply(Command.DebugSpawnDefender(0, new int2(1, 1)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            var far = m.World.Units[m.World.Units.Count - 1];
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(3, 1)));
+            var near = m.World.Units[m.World.Units.Count - 1];
+            foreach (var u in m.World.Units) if (u.Move != null) u.Move.Speed = 0f;
+            Assert.Less(far.Id.CompareTo(near.Id), 0, "전제 — 먼 적의 id 가 더 작다");
+
+            Tick(m, 60);
+            Assert.Less(near.Health + far.Health, near.MaxHealth + far.MaxHealth, "전제 — 탄이 누군가를 맞혔다");
+            Assert.Less(near.Health, near.MaxHealth, "관통 1 은 가까운 적을 맞힌다");
+            Assert.AreEqual(far.MaxHealth, far.Health, 1e-4f, "관통 1 이 먼 적까지 갔다(순회 순서가 기하 순서를 이겼다)");
+        }
+
         [Test]
         public void 길막_페이로드는_설치물을_세운다()
         {
