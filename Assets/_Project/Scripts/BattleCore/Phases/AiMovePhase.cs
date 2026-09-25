@@ -568,8 +568,14 @@ namespace Wassup.BattleCore
                 {
                     var f = fields[p];
                     if (f.Kind != FieldKind.Portal) continue;
-                    float pdx = current.x - f.Center.x, pdz = current.z - f.Center.z;
-                    if (pdx * pdx + pdz * pdz > f.Range * f.Range) continue;
+                    float pinv = _map.TileSize > 1e-6f ? 1f / _map.TileSize : 1f;
+                    // 제약 13 「자리에 떨어지는 것」 — 입구는 칸이다(원점 항 = 칸 반폭, 진입점의 성질).
+                    // 대상 몸 0 = **옛 규칙**: 포탈은 «발밑 중심이 입구 칸에 들어섰나» 를 묻는다(옛
+                    // `SpawnPortal(…, tileSize * 0.5, …)` 의 점 판정). 몸을 붙이면 큰 적이 먼저 빨려
+                    // 들어가는 규칙 변경이다 — 그건 사용자 결정 사항이라 여기서 바꾸지 않는다.
+                    if (!Wassup.Skills.SkillMath.ReachFromCell(
+                            (current.x - f.Center.x) * pinv, (current.z - f.Center.z) * pinv,
+                            f.Range, 0f)) continue;
                     u.Position = new float3(f.Exit.x, current.y, f.Exit.z);
                     current = u.Position;
                     break;

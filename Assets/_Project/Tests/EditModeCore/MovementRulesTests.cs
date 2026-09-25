@@ -202,11 +202,39 @@ namespace Wassup.Tests.EditMode.Core
                 Kind = FieldKind.Portal,
                 Center = new float3(0f, 0f, 2f),
                 Exit = new float3(6f, 0f, 2f),
-                Range = 1f,
+                Range = 0f,
             }, 0);
             match.Tick();
 
             Assert.Greater(match.World.Units[0].Position.x, 5.5f);
+        }
+
+        // unit 9 감사 B — 입구 판정이 정본 진입점(`ReachFromCell`)으로 옮겨도 **값은 옛 그대로**다:
+        // 발밑 중심이 입구 중심에서 칸 반폭(옛 `tileSize * 0.5`) 안이면 들어가고, 밖이면 안 들어간다.
+        [TestCase(0.45f, true)]
+        [TestCase(0.55f, false)]
+        public void 포탈_입구는_칸_반폭_안의_발밑만_빨아들인다(float offsetTiles, bool expectTeleport)
+        {
+            var map = CoreMapFixtures.Open(9, 5, new int2(8, 2), new int2(0, 2));
+            var match = new BattleMatch(CoreMapFixtures.Definition(map));
+            match.Begin();
+            match.Apply(Command.DebugSpawnEnemyInLane(0, 0));
+            var u = match.World.Units[0];
+            u.Move.Speed = 0f;
+            float ts = map.TileSize;
+            var entry = u.Position + new float3(offsetTiles * ts, 0f, 0f);
+
+            match.World.SpawnField(new FieldCarrier
+            {
+                Kind = FieldKind.Portal,
+                Center = new float3(entry.x, 0f, entry.z),
+                Exit = new float3(6f * ts, 0f, u.Position.z),
+                Range = 0f,
+            }, 0);
+            match.Tick();
+
+            Assert.AreEqual(expectTeleport, u.Position.x > 5.5f * ts,
+                $"입구 중심에서 {offsetTiles} 칸 — 옛 입구 반경은 칸 반폭(0.5)");
         }
 
         [Test]

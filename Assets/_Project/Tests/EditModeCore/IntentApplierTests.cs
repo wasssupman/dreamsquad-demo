@@ -173,6 +173,7 @@ namespace Wassup.Tests.EditMode.Core
                                   Cell = new int2(1, 1), Cell2 = new int2(8, 1), Duration = 2f });
             Assert.AreEqual(3, _m.World.Fields.Count);
             Assert.AreEqual(FieldKind.Portal, _m.World.Fields[2].Kind);
+            Assert.AreEqual(0f, _m.World.Fields[2].Range, "포탈 입구 = 그 칸 자체(칸 반폭은 판정 진입점의 성질)");
         }
 
         [Test]

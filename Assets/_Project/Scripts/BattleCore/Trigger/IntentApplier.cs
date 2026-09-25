@@ -351,10 +351,10 @@ namespace Wassup.BattleCore.Trigger
                                            Speed = i.Amount, Duration = i.Duration };
                     break;
                 case SkillFieldKind.Portal:
-                    // 입구 반경 = 칸 반폭(월드) — 옛 `SpawnPortal(…, tileSize * 0.5, …)`.
+                    // 입구 = **그 칸 자체**(반경 0 칸, 자리형) — 옛 `SpawnPortal(…, tileSize * 0.5, …)`.
+                    // 칸 반폭은 판정 진입점(`SkillMath.ReachFromCell`)의 성질이라 여기서 싣지 않는다(제약 13).
                     f = new FieldCarrier { Kind = FieldKind.Portal, Center = CenterOf(i.Cell), Exit = CenterOf(i.Cell2),
-                                           Range = TileSize * Wassup.Skills.SkillMath.CellShapePaddingTiles,
-                                           Duration = i.Duration };
+                                           Range = 0f, Duration = i.Duration };
                     break;
                 default:
                     Warn($"[Intent] 모르는 장 {(SkillFieldKind)i.Selector} — 깔지 않는다.");

@@ -31,7 +31,7 @@ namespace Wassup.Data
     {
         public Vector2Int playAreaCells = Vector2Int.one;
         public float previewTileSize = 1f;   // 저작 기즈모 표시값 — 런타임과 다르면 형식 오류(기즈모가 거짓말)
-        public float runtimeTileSize = 1f;   // 양자화 정본 (BattleBridge.tileSize)
+        public float runtimeTileSize = 1f;   // 양자화 정본 (옛 BattleBridge.tileSize — 이력)
         public readonly List<RectInt> blockedRects = new List<RectInt>();
         public readonly List<RectInt> placementBlockRects = new List<RectInt>();
         public readonly List<StageSpawnPoint> spawns = new List<StageSpawnPoint>();
