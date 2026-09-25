@@ -128,6 +128,6 @@
 - [x] EditMode 코어+Assets 선행 2 외 빨강 0 · 헤드리스 3종(build 0 · test · Check 0 — **커밋마다**, 구현 7 의 순서로) · 골든 11종 무변(코어 변경 0 이 기대값). (EditMode **993/995** — `bomb_man`·`boomerang` · 클린 export 6 SHA 전부 build 0 · test 678~679 · Check 0 · 골든 무변 — 코어 변경은 읽기 창 2개뿐)
 - [ ] Play 육안(옛 씬과 나란히): 당김 알약 · 보너스 포탈 · 보스 배너 · 메뉴 브리핑 · 손패 배경 · BGM · 프랍 틸트. 콘솔 에러 0.
       **에이전트 스모크(새 씬만)**: 보스 배너 · 당김 알약 · 메뉴 브리핑(12장) 캡처 · `BgmPlaying = true` · 콘솔 에러·경고 0. 보너스 포탈·손패 배경·옛 씬 나란히는 사용자 플레이 몫(프랍 틸트는 오늘 새 씬 판에 프랍이 없다).
-- [ ] `core-reviewer` APPROVE.
+- [x] `core-reviewer` APPROVE(2026-09-25 · finding 0 — 코어 변경 = `WaveScheduler` 읽기 창 2 · 옛 씬 구독 삭제 0 · 씬 diff 추가만 +559 · canvas 5/7/9/950/960 일관). 리드 재검증(HEAD `c548e4bc2`): export build 0 · test 679 · Check 0 · 미정 0 · Unity EditMode 코어+Assets 993/995(선행 2) · PlayMode 코어 71/71 · 골든 무변.
 
 > **사용자 답(2026-09-25) (a)**: 코스트 바는 그대로, 당김 알약은 새 씬 설정에서 (40,110) 으로 올려 둔다(`04db286ee`). 코드 기본값은 옛 값 유지.
