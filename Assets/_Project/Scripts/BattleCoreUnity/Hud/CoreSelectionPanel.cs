@@ -247,6 +247,12 @@ namespace Wassup.BattleCoreUnity.Hud
         public bool ActionEnabled => _built && _action != null && _action.interactable
                                      && _action.gameObject.activeInHierarchy;
 
+        /// <summary>
+        /// unit 8b — 액션(철수) 버튼의 사각. 첫 판 온보딩이 구멍을 뚫는 자리다(옛 `DcInspectPanelView.ActionRect`).
+        /// 눌릴 수 없으면 null — 패널이 접히면 곧바로 null 이 되어 대기가 빠져나간다.
+        /// </summary>
+        public RectTransform ActionRect => ActionEnabled && IsVisible ? (RectTransform)_action.transform : null;
+
         /// <summary>지금 보여 주는 이름. 「갈아탔나」를 밖에서 확인하는 창구.</summary>
         public string ShownName => _built && _unitName != null ? _unitName.text : "";
 

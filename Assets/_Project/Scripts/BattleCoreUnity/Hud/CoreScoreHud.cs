@@ -58,6 +58,9 @@ namespace Wassup.BattleCoreUnity.Hud
             if (_driver != null) _driver.Unsubscribe(OnCoreEvent);
         }
 
+        /// <summary>unit 8b — 시계 줄의 사각(옛 `ScoreHudView.TimerFocusRect`). 온보딩 생존 안내가 가리키는 자리.</summary>
+        public RectTransform TimerFocusRect => _clock != null ? (RectTransform)_clock.rectTransform.parent : null;
+
         private void OnCoreEvent(CoreEvent e)
         {
             // 점수는 **사건으로** 튄다. 매 프레임 읽어도 숫자는 맞지만 「방금 올랐다」가 안 읽힌다.

@@ -310,6 +310,16 @@ namespace Wassup.BattleCoreUnity.Hud
             return false;
         }
 
+        /// <summary>unit 8b — 그 칸의 사각(옛 `DefenderSelector.TryGetSlotRect`). 온보딩이 구멍을 뚫는 자리. 칸 줄이 접혀 있으면 false.</summary>
+        public bool TryGetSlotRect(int defIndex, out RectTransform rect)
+        {
+            rect = null;
+            if (_row == null || !_row.gameObject.activeInHierarchy) return false;
+            for (int i = 0; i < _slots.Count; i++)
+                if (_slots[i].DefIndex == defIndex) { rect = _slots[i].Root; return true; }
+            return false;
+        }
+
         /// <summary>그 칸의 화면 중심. 거절된 드롭이 「돌아가는」 목적지다.</summary>
         public bool TryGetSlotScreenCenter(int defIndex, Camera uiCamera, out Vector2 screenPos)
         {
