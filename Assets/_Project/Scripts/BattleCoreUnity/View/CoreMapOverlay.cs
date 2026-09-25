@@ -257,6 +257,136 @@ namespace Wassup.BattleCoreUnity.View
             }
         }
 
+        // ── ⑧ 궁극기 착지 예고(unit 8a2 행 2 — rule-holders T16·T17) ────────────────────────
+        //
+        // 옛 `BattleBridge.UltimateLeap.cs:87 ShowLandingTelegraph` → `TilemapMapView.SetTelegraphRing`(`:690`)의 후계.
+        // 매체는 **원 링 하나**다(점 + 거리 — 옛 2026-09-07 사용자 지시 「타일말고 점기준으로」). 칸을 열거하지 않는다.
+        //
+        // ⚠⚠ **채널은 «전용» 이다**(T16). 위 카드 채널(`_area`)도 배치 링도 공유하지 않는다 — 예고 중에 유닛을 빼고 다시
+        // 놓는 것이 이 스킬의 놀이라, 배치 프리뷰가 예고를 지우거나 예고가 배치 링을 지우면 안 된다(옛 `:641-649`).
+        // 그래서 `_hasDrag` 에 양보하지 않고, 반납은 **그 도약자의 강하**만 한다.
+        // 반경 = 슬램 칸 수 + 칸 반폭(자리형 — 보스의 몸을 읽지 않는다, 옛 `CenteredRingRadius`). 호출부가 사건 값으로 낸다.
+        // 색 = 저작(`LeapVisualConfig.LandingTelegraphColor`) — 알파는 채움 세기, 선은 불투명(옛 `:699-703`).
+        private SimEntityId _landingLeaper = SimEntityId.None;
+        private float3 _landingCenter;
+        private float _landingRadius;
+        private Color _landingColor;
+        private LineRenderer _landingRing;
+        private MeshRenderer _landingFill;
+        private Mesh _landingFillMesh;
+        private bool _landingFillWarned;
+        private readonly List<Vector3> _landingPoints = new List<Vector3>(80);
+
+        /// <summary>착지 예고를 건다(궁극기 이탈 순간). 동시 예고는 없다(궁극기는 생존당 1회 — T16 비고) — 마지막이 이긴다.</summary>
+        public void ShowLandingTelegraph(SimEntityId leaper, float3 centerSim, float radiusTiles, Color color)
+        {
+            if (!leaper.IsEntity || radiusTiles <= 0f) return;
+            _landingLeaper = leaper;
+            _landingCenter = centerSim;
+            _landingRadius = radiusTiles;
+            _landingColor = color;
+        }
+
+        /// <summary>그 도약자의 예고를 내린다(강하 확정 순간 — 강하 연출 끝까지 남기면 「아직 피할 수 있다」는 거짓 신호).</summary>
+        public void HideLandingTelegraph(SimEntityId leaper)
+        {
+            if (_landingLeaper == leaper) _landingLeaper = SimEntityId.None;
+        }
+
+        /// <summary>테스트 창구 — 지금 떠 있는 착지 예고(도약자 · 중심 sim · 반경 칸). 없으면 false.</summary>
+        public bool TryGetLandingTelegraph(out SimEntityId leaper, out float3 centerSim, out float radiusTiles)
+        {
+            leaper = _landingLeaper; centerSim = _landingCenter; radiusTiles = _landingRadius;
+            return !_landingLeaper.IsNone && _landingRing != null && _landingRing.enabled;
+        }
+
+        private void PaintLandingTelegraph()
+        {
+            // 도약자가 판에서 사라졌으면(강하 전 소멸 — 궁극기는 무적이라 드물다) 예고를 남기지 않는다.
+            if (!_landingLeaper.IsNone && !_driver.IsAlive(_landingLeaper)) _landingLeaper = SimEntityId.None;
+            if (_landingLeaper.IsNone)
+            {
+                if (_landingRing != null && _landingRing.enabled) _landingRing.enabled = false;
+                if (_landingFill != null && _landingFill.enabled) _landingFill.enabled = false;
+                return;
+            }
+            if (_landingRing == null)
+                _landingRing = CreateLine("LandingTelegraphRing", _ringWidth, BoardSortOrder.RangeRingOrder, _landingColor);
+            var line = _landingColor; line.a = 1f;   // 선은 불투명 — 알파는 채움의 몫(옛 `:699-703`)
+            BuildRing(_landingPoints, _landingCenter, _landingRadius);
+            _landingRing.positionCount = _landingPoints.Count;
+            for (int i = 0; i < _landingPoints.Count; i++) _landingRing.SetPosition(i, _landingPoints[i]);
+            _landingRing.startColor = _landingRing.endColor = line;
+            _landingRing.enabled = true;
+
+            // T17 — 채움을 못 그리면 **한 번은 시끄럽게** 알린다(예고가 안 보이면 회피 불가 = 불공정). 선은 계속 그린다.
+            if (!EnsureDiscFill("LandingTelegraphFill", ref _landingFill, ref _landingFillMesh))
+            {
+                if (!_landingFillWarned)
+                {
+                    _landingFillWarned = true;
+                    Debug.LogWarning("[CoreMapOverlay] 착지 예고 채움 머티리얼을 만들 수 없다(RuntimeMaterials 미배선) — "
+                                     + "링 선만 그린다. 예고가 옅으면 회피가 어렵다.", this);
+                }
+                return;
+            }
+            FillDisc(_landingFill, _landingFillMesh, _landingCenter, _landingPoints, _landingColor);
+        }
+
+        // 원 둘레 점(view, 보드 평면 + 띄움). 링 셋(배치·카드·착지 예고)이 **같은 사상**으로 짓는다.
+        private void BuildRing(List<Vector3> points, float3 centerSim, float radiusTiles)
+        {
+            float ts = _driver.TileSize;
+            Vector3 lift = SurfaceLift();
+            points.Clear();
+            for (int i = 0; i <= _ringSegments; i++)
+            {
+                float a = i / (float)_ringSegments * math.PI * 2f;
+                var p = new float3(centerSim.x + math.cos(a) * radiusTiles * ts, 0f,
+                                   centerSim.z + math.sin(a) * radiusTiles * ts);
+                points.Add((Vector3)BoardSpace.ToView(p) + lift);
+            }
+        }
+
+        // 원 안 채움 = 같은 둘레의 부채 메시(선과 채움이 **정의상 같은 곡선**이다 — 칸 계단이 원을 사각형처럼 보이게 하지 않는다).
+        private void FillDisc(MeshRenderer fill, Mesh mesh, float3 centerSim, List<Vector3> rim, Color color)
+        {
+            var center = (Vector3)BoardSpace.ToView(new float3(centerSim.x, 0f, centerSim.z)) + SurfaceLift();
+            var verts = new Vector3[rim.Count + 1];
+            verts[0] = center;
+            for (int i = 0; i < rim.Count; i++) verts[i + 1] = rim[i];
+            var tris = new int[(rim.Count - 1) * 3];
+            for (int i = 0; i < rim.Count - 1; i++)
+            {
+                tris[i * 3] = 0; tris[i * 3 + 1] = i + 2; tris[i * 3 + 2] = i + 1;
+            }
+            mesh.Clear();
+            mesh.vertices = verts;
+            mesh.triangles = tris;
+            mesh.RecalculateBounds();
+            Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(fill.sharedMaterial, color);
+            fill.enabled = true;
+        }
+
+        private bool EnsureDiscFill(string n, ref MeshRenderer fill, ref Mesh mesh)
+        {
+            if (fill != null) return true;
+            var mat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(Color.white);
+            if (mat == null) return false;
+            var go = new GameObject($"{name}_{n}");
+            go.transform.SetParent(transform, false);
+            mesh = new Mesh { name = n };
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            fill = go.AddComponent<MeshRenderer>();
+            fill.sharedMaterial = mat;
+            fill.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            fill.receiveShadows = false;
+            fill.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            fill.sortingOrder = BoardSortOrder.RangeRingOrder - 1;
+            fill.enabled = false;
+            return true;
+        }
+
         private void ClearArea()
         {
             _area = AreaKind.None;
@@ -375,6 +505,7 @@ namespace Wassup.BattleCoreUnity.View
             if (_showGrid && !_gridBuilt) BuildGrid();
             if (_grid != null) _grid.enabled = _showGrid;
             PaintCardArea();
+            PaintLandingTelegraph();   // 전용 채널 — 드래그에 양보하지 않는다(T16)
 
             if ((!_hasDrag || _dragDefIndex < 0) && _briefing != Briefing.None)
             {
@@ -1004,6 +1135,8 @@ namespace Wassup.BattleCoreUnity.View
             if (_areaFill != null && _areaFill.sharedMaterial != null) Destroy(_areaFill.sharedMaterial);
             if (_areaFillMesh != null) Destroy(_areaFillMesh);
             if (_shapeRimMesh != null) Destroy(_shapeRimMesh);
+            if (_landingFill != null && _landingFill.sharedMaterial != null) Destroy(_landingFill.sharedMaterial);
+            if (_landingFillMesh != null) Destroy(_landingFillMesh);
         }
     }
 }

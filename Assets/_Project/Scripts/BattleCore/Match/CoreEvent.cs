@@ -573,12 +573,18 @@ namespace Wassup.BattleCore
                              target.Faction, (int)(height * 1000f), seconds);
 
         /// <summary>도약 이탈. `ultimate` = 궁극기(판 밖으로 나간다) / 일반(비행 중에도 맞는다).</summary>
-        public static CoreEvent LeapAscend(int tick, Unit u, float3 landing, bool ultimate, float seconds)
+        /// <summary>
+        /// 도약 이탈. unit 8a2 — `areaTiles` = **착지 슬램 반경(칸)**(궁극기만 · 0 = 예고 없음). 착지 예고 링의 범위 항이고
+        /// 원점 항은 `SiteTarget.OriginBody`(0 = 자리형 → 칸 반폭)가 나른다. 발화 시점 스냅샷이라 뷰가 도약자를 되묻지 않는다.
+        /// 트레이스에는 안 실린다(채널 여섯 칸) — 골든 무변.
+        /// </summary>
+        public static CoreEvent LeapAscend(int tick, Unit u, float3 landing, bool ultimate, float seconds,
+                                           int areaTiles = 0)
             => new CoreEvent(CoreEventKind.LeapAscend, tick,
                              u.Id, SimEntityId.None,
                              new Site(u.Position, u.HitRadius),
                              new Site(landing, 0f),   // 착지 자리는 **자리형**이다(0 = 칸)
-                             u.Faction, ultimate ? 1 : 0, seconds);
+                             u.Faction, ultimate ? 1 : 0, seconds, areaTiles: areaTiles);
 
         public static CoreEvent LeapDescend(int tick, Unit u, float3 landing, bool ultimate)
             => new CoreEvent(CoreEventKind.LeapDescend, tick,

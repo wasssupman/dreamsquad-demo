@@ -31,6 +31,10 @@ namespace Wassup.BattleCoreUnity.View
         [Tooltip("착지 눌림을 재생할 유닛 뷰 풀. 비어 있으면 눌림 없이 진행한다.")]
         [SerializeField] private CoreUnitViewPool _units;
 
+        [Tooltip("궁극기 착지 예고 링을 그리는 오버레이(unit 8a2 — 전용 채널). 비면 씬에서 한 번 찾는다.")]
+        [SerializeField] private CoreMapOverlay _overlay;
+        private bool _overlayMissWarned;
+
         private readonly Dictionary<int, (float3 simPos, float viewHeight)> _flight =
             new Dictionary<int, (float3, float)>();
 
@@ -45,6 +49,9 @@ namespace Wassup.BattleCoreUnity.View
         private void OnDisable()
         {
             if (_driver != null) _driver.Unsubscribe(OnCoreEvent);
+            // 예고가 판 너머로 살아남지 않게(옛 teardown `ClearTelegraphRing` — `BattleBridge.UltimateLeap.cs:62`).
+            if (_overlay != null)
+                foreach (var kv in _flight) _overlay.HideLandingTelegraph(new SimEntityId(kv.Key));
             // 오버라이드를 비우면 진행 중 코루틴이 다음 프레임에 자진 종료한다 —
             // 공중에 뷰가 멈춘 채 남지 않는다.
             _flight.Clear();
@@ -74,12 +81,17 @@ namespace Wassup.BattleCoreUnity.View
                 case CoreEventKind.LeapAscend:
                     // 키가 있으면 이미 비행 중 — 무시(경계 동시 관통 방어).
                     if (_flight.ContainsKey(e.A.Value)) return;
-                    if (e.Arg == 1) StartCoroutine(RunUltimateAscend(e));
+                    if (e.Arg == 1) { ShowLandingTelegraph(e); StartCoroutine(RunUltimateAscend(e)); }
                     else StartCoroutine(RunBossLeap(e));
                     break;
 
                 case CoreEventKind.LeapDescend:
-                    if (e.Arg == 1) StartCoroutine(RunUltimateDescend(e));
+                    if (e.Arg == 1)
+                    {
+                        // 예고는 **여기서** 끈다 — 코어가 착지를 확정한 순간이다(옛 `BattleBridge.UltimateLeap.cs:117-120`).
+                        ResolveOverlay()?.HideLandingTelegraph(e.A);
+                        StartCoroutine(RunUltimateDescend(e));
+                    }
                     break;
             }
         }
@@ -192,6 +204,32 @@ namespace Wassup.BattleCoreUnity.View
 
             _flight.Remove(key);
             PlayLandingSquash(e.A, _config.UltimateLandingSquash, _config.UltimateLandingSquashSeconds);
+        }
+
+        // unit 8a2 행 2 — 착지 예고(옛 `BattleBridge.UltimateLeap.cs:87 ShowLandingTelegraph`). 중심 = 착지 **칸** 중심
+        // (옛 `leap.landingCell`), 반경 = 슬램 칸 수(사건 값 `AreaTiles`) + 원점 항(자리형 → 칸 반폭 — 보스의 몸을 안 읽는다).
+        // 규칙이 아니라 그림이다 — 피해·텔레포트는 코어가 끝냈다.
+        private void ShowLandingTelegraph(CoreEvent e)
+        {
+            var overlay = ResolveOverlay();
+            var map = _driver != null ? _driver.Match?.Map : null;
+            if (overlay == null || map == null) return;
+            var center = map.CenterOf(map.CellOf(e.SiteTarget.Pos));
+            overlay.ShowLandingTelegraph(e.A, center, CoreDrawRadius.AreaTiles(e.AreaTiles, e.SiteTarget.OriginBody),
+                                         _config.LandingTelegraphColor);
+        }
+
+        private CoreMapOverlay ResolveOverlay()
+        {
+            if (_overlay != null) return _overlay;
+            _overlay = FindAnyObjectByType<CoreMapOverlay>();
+            if (_overlay == null && !_overlayMissWarned)
+            {
+                _overlayMissWarned = true;
+                // T17 — 예고가 아예 안 뜨면 회피가 불가능하다 = 불공정. 한 번은 시끄럽게.
+                Debug.LogWarning("[CoreLeapPresenter] CoreMapOverlay 가 없다 — 궁극기 착지 예고를 그릴 수 없다.", this);
+            }
+            return _overlay;
         }
 
         private void PlayLandingSquash(SimEntityId id, float amount, float seconds)

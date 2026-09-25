@@ -382,7 +382,8 @@ namespace Wassup.BattleCore.Trigger
             pg.SlamTileRange = math.max(0, i.TileRange);
             pg.SlamProjectileDefIndex = i.DataIndex;
             if (u.Move != null) u.Move.Locked = true;
-            _bus.Publish(CoreEvent.LeapAscend(Tick, u, i.Position, ultimate: true, pg.LeapRemaining));
+            _bus.Publish(CoreEvent.LeapAscend(Tick, u, i.Position, ultimate: true, pg.LeapRemaining,
+                                               areaTiles: pg.SlamTileRange));
         }
 
         // unit 7d — 일반 도약 비행 창 개시. 굴리는 것은 `CombatPhase.StepLeap`(창 끝 = 착지 슬램). 겹쳐 오면 **새 착지점이

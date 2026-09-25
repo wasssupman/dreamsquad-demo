@@ -61,6 +61,12 @@ namespace Wassup.Data.BattleView
         [SerializeField, Range(0f, 0.4f)] private float ultimateLandingSquash = 0.14f;
         [SerializeField, Range(0.02f, 0.3f)] private float ultimateLandingSquashSeconds = 0.06f;
 
+        // battle-core-rebuild unit 8a2 행 2 — 착지 예고 링의 색. 옛 `TilemapMapView.landingTelegraphColor`
+        // (`TilemapMapView.cs:40` · 옛 씬 `BattleScene.unity:588` = (1, 0.45, 0.08, 0.42))의 새 주인.
+        // **알파는 「채움」 세기**이고 선은 불투명하게 올린다(옛 `SetTelegraphRing` `:699-703` 규약 그대로).
+        [Tooltip("궁극기 착지 예고 링 색. 알파 = 내부 채움 세기(선은 불투명). 배치 사거리 링과 **색으로** 갈린다.")]
+        [SerializeField] private Color landingTelegraphColor = new Color(1f, 0.45f, 0.08f, 0.42f);
+
         public float BossTotalSeconds => bossTotalSeconds;
         public float BossRecoilSeconds => bossRecoilSeconds;
         public float BossRecoilDip => bossRecoilDip;
@@ -77,5 +83,6 @@ namespace Wassup.Data.BattleView
         public float UltimateHeight => ultimateHeight;
         public float UltimateLandingSquash => ultimateLandingSquash;
         public float UltimateLandingSquashSeconds => ultimateLandingSquashSeconds;
+        public Color LandingTelegraphColor => landingTelegraphColor;
     }
 }
