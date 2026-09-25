@@ -193,12 +193,11 @@ namespace Wassup.Tests.EditMode.Core
             Assert.Less(barrier.Health, BarrierHealth, "길막을 겨눈 직격까지 막으면 길막이 무적이 된다");
         }
 
-        // ── unit 9c 행 5 — 스플래시·스윕·튕김·재조준은 «유닛»만 고른다 ─────────
+        // ── 사용자 결정 ⑦-2(2026-09-25) — 부가 피해는 거점도 친다 ─────────────
         //
-        // 옛 `ProjectileHitSystem` 의 부가 피해자 풀은 `OpponentUnitsOf`(유닛 진영 하나)였고
-        // (:330 스플래시 · :384 튕김 · :504 스윕 · :651 방향탄 튕김), 재조준 풀은 적 유닛
-        // (`ProjectileMoveSystem.cs:78`)이었다 — **거점(마음·본능)은 빠진다.** 칸 광역만 진영
-        // 파생 그룹(`AnyDefender`/`AnyEnemy`)이라 거점을 포함한다(아래 대조 테스트).
+        // 스플래시·경로 스윕·튕김·재조준은 공격 마스크를 그대로 따른다 — 거점(마음·본능)도 맞고,
+        // 튕김·재조준도 거점을 고를 수 있다. 옛 풀(`OpponentUnitsOf` · 유닛만)을 복원했던 9c 행 5 는
+        // 이 결정으로 철회됐다. 길막(방벽) 면제(행 4)는 그대로다 — 위 방벽 테스트가 지킨다.
 
         private const float StructureHealth = 200f;
 
@@ -206,7 +205,7 @@ namespace Wassup.Tests.EditMode.Core
             => m.World.Spawn(UnitKind.Structure, faction, -1, at, 0.5f, StructureHealth, deploying: false, tick: 0);
 
         [Test]
-        public void 적_탄의_스플래시는_마음을_치지_않는다()
+        public void 적_탄의_스플래시는_마음도_친다()
         {
             var (m, enemy, defender, _) = BarrierBoard();
             var heart = SpawnStructure(m, Faction.DefenderCore, new float3(5.5f, 0f, 3.5f));   // 방어유닛 바로 옆
@@ -215,16 +214,16 @@ namespace Wassup.Tests.EditMode.Core
             m.World.ProjectileRequests.Add(shot);
             Tick(m, 60);
             Assert.Less(defender.Health, defender.MaxHealth, "전제 — 직격이 닿았다");
-            Assert.AreEqual(StructureHealth, heart.Health, 1e-4f, "적 스플래시가 마음을 쳤다");
+            Assert.Less(heart.Health, StructureHealth, "적 스플래시가 마음을 치지 않았다(결정 ⑦-2)");
         }
 
         [Test]
-        public void 방어유닛_탄의_재조준은_거점을_고르지_않는다()
+        public void 방어유닛_탄의_재조준은_거점을_고를_수_있다()
         {
             var (m, _, defender, _) = BarrierBoard();
             m.Apply(Command.DebugSpawnEnemy(0, new int2(2, 3)));
             var doomed = m.World.Units[m.World.Units.Count - 1];
-            SpawnStructure(m, Faction.EnemyCore, new float3(3.5f, 0f, 3.5f));   // 더 가깝다
+            var core = SpawnStructure(m, Faction.EnemyCore, new float3(3.5f, 0f, 3.5f));   // 더 가깝다
             m.Apply(Command.DebugSpawnEnemy(0, new int2(3, 4)));   // 거점보다 멀고 (8,3) 의 적보다 가깝다
             var farther = m.World.Units[m.World.Units.Count - 1];
             var shot = AreaShot(defender, 1, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
@@ -235,16 +234,17 @@ namespace Wassup.Tests.EditMode.Core
             m.Apply(Command.DebugDestroy(doomed.Id));
             Tick(m, 1);
             Assert.AreEqual(1, m.World.Projectiles.Count, "전제 — 재조준으로 살아남았다");
-            Assert.AreEqual(farther.Id, m.World.Projectiles[0].Target, "재조준이 거점을 골랐다");
+            Assert.AreNotEqual(farther.Id, m.World.Projectiles[0].Target, "재조준이 거점을 건너뛰고 먼 적을 골랐다");
+            Assert.AreEqual(core.Id, m.World.Projectiles[0].Target, "재조준은 가장 가까운 거점을 고른다(결정 ⑦-2)");
         }
 
         [Test]
-        public void 방어유닛_탄의_튕김은_거점을_고르지_않는다()
+        public void 방어유닛_탄의_튕김은_거점을_고를_수_있다()
         {
             var (m, _, defender, _) = BarrierBoard();
             m.Apply(Command.DebugSpawnEnemy(0, new int2(2, 3)));
             var first = m.World.Units[m.World.Units.Count - 1];
-            SpawnStructure(m, Faction.EnemyCore, new float3(3.5f, 0f, 3.5f));   // 더 가깝다
+            var core = SpawnStructure(m, Faction.EnemyCore, new float3(3.5f, 0f, 3.5f));   // 더 가깝다
             m.Apply(Command.DebugSpawnEnemy(0, new int2(0, 3)));
             var farther = m.World.Units[m.World.Units.Count - 1];
             var shot = AreaShot(defender, 1, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
@@ -256,11 +256,12 @@ namespace Wassup.Tests.EditMode.Core
             for (int i = 0; i < 60 && first.Health >= first.MaxHealth; i++) Tick(m, 1);
             Assert.Less(first.Health, first.MaxHealth, "전제 — 첫 적이 맞았다");
             Assert.AreEqual(1, m.World.Projectiles.Count, "전제 — 튕겨서 살아남았다");
-            Assert.AreEqual(farther.Id, m.World.Projectiles[0].Target, "튕김이 거점을 골랐다");
+            Assert.AreNotEqual(farther.Id, m.World.Projectiles[0].Target, "튕김이 거점을 건너뛰고 먼 적을 골랐다");
+            Assert.AreEqual(core.Id, m.World.Projectiles[0].Target, "튕김은 가장 가까운 거점을 고른다(결정 ⑦-2)");
         }
 
         [Test]
-        public void 방어유닛의_경로_스윕은_적_거점을_지나친다()
+        public void 방어유닛의_경로_스윕은_적_거점도_친다()
         {
             var (m, _, defender, _) = BarrierBoard();
             var instinct = SpawnStructure(m, Faction.EnemyInstinct, new float3(7.5f, 0f, 2.5f));
@@ -273,10 +274,10 @@ namespace Wassup.Tests.EditMode.Core
             m.World.ProjectileRequests.Add(shot);
             Tick(m, 60);
             Assert.Less(behind.Health, behind.MaxHealth, "전제 — 스윕이 뒤의 적까지 닿았다");
-            Assert.AreEqual(StructureHealth, instinct.Health, 1e-4f, "스윕이 적 거점을 쳤다");
+            Assert.Less(instinct.Health, StructureHealth, "스윕이 적 거점을 지나쳤다(결정 ⑦-2)");
         }
 
-        // 대조 — 칸 광역은 옛 풀(`AnyEnemy`)이 거점을 품었다(옛 TileAoe_EnemyFaction_IncludesEnemyStructures).
+        // 칸 광역도 거점을 친다 — 옛 풀(`AnyEnemy`)도 그랬고(옛 TileAoe_EnemyFaction_IncludesEnemyStructures) 결정 ⑦-2 와 같다.
         [Test]
         public void 방어유닛의_칸_광역은_적_거점도_친다()
         {
@@ -285,7 +286,7 @@ namespace Wassup.Tests.EditMode.Core
             m.World.ProjectileRequests.Add(AreaShot(defender, 0, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask,
                                                     heart.Position));
             Tick(m, 10);
-            Assert.Less(heart.Health, StructureHealth, "칸 광역은 적 거점을 친다(옛 규칙)");
+            Assert.Less(heart.Health, StructureHealth, "칸 광역이 적 거점을 치지 않았다");
         }
 
         [Test]

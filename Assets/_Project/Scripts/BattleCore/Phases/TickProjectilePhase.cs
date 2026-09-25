@@ -868,7 +868,7 @@ namespace Wassup.BattleCore
                 for (int i = 0; i < units.Count; i++)
                 {
                     var u = units[i];
-                    if (u == direct || !u.IsTargetable() || !IsUnitPoolLegal(u, p)) continue;
+                    if (u == direct || !u.IsTargetable() || !IsAreaLegal(u, p)) continue;
                     float dx = u.Position.x - p.Position.x;
                     float dz = u.Position.z - p.Position.z;
                     float reach = p.SplashRadius + u.HitRadius * tileSize;
@@ -951,7 +951,7 @@ namespace Wassup.BattleCore
             for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
-                if (!u.IsTargetable() || !IsUnitPoolLegal(u, p)) continue;
+                if (!u.IsTargetable() || !IsAreaLegal(u, p)) continue;
                 float reach = p.HitThreshold + u.HitRadius * tileSize;
                 if (!SweepHitMath.SegmentHits(p.PrevPos.xz, p.Position.xz, u.Position.xz, reach)) continue;
                 if (!PathHits.CanHit(p.HitRecords, u.Id, p.Elapsed, p.RehitCooldown, out int slot)) continue;
@@ -1091,27 +1091,22 @@ namespace Wassup.BattleCore
             return LayerBits.CanTarget(p.TargetLayers, theirs);
         }
 
-        // ── 직격이 아닌 피해자 풀(unit 9c) ──────────────────────────────────
+        // ── 직격이 아닌 피해자 풀(unit 9c · 사용자 결정 ⑦-2) ────────────────────
         //
         // 공격 마스크는 **겨눠서 치는** 권리다 — 적의 마스크는 방벽·마음을 품는다(`TargetDefaults.EnemyMask`).
         // 직격은 `IsLegal` 그대로라 그것들을 겨눈 탄은 맞는다(안 그러면 길막이 무적이 되고 공성이 안 된다).
-        // 직격이 아닌 풀은 옛 `ProjectileHitSystem` 이 **페이로드마다 다른 진영 그룹**으로 골랐고, 그 차이를 옮긴다.
+        // 직격이 아닌 풀(스플래시·칸 광역·경로 스윕·튕김/재조준 후보)은 공격 마스크에서 **방벽만** 뺀다.
+        // 거점(마음·본능)은 부가 피해도 맞는다 — 사용자 결정 ⑦-2(2026-09-25)가 옛 풀(`OpponentUnitsOf`
+        // · 유닛만)을 복원했던 9c 행 5 를 철회하고 이 동작을 유지했다.
 
         /// <summary>
-        /// **칸 광역** 피해자인가. 옛 풀 = 진영 파생 그룹(`AnyDefender`/`AnyEnemy`) — 거점은 품고
-        /// **길막(방벽)은 어느 쪽에도 없다**(옛 GoalProjectileTests::TileAoe_BlockingHazard_IsVictimOfNeitherPool).
+        /// **광역 피해자**인가 — 스플래시·칸 광역·경로 스윕·튕김/재조준 후보. 직격 대상이 아닌 전부다.
+        /// ⚠ **길막(방벽)은 어느 쪽 광역에도 안 맞는다**(unit 9c 행 4 · 옛 광역 풀은 진영 파생 그룹이라
+        /// 방벽 비트가 없었다 — 옛 GoalProjectileTests::TileAoe_BlockingHazard_IsVictimOfNeitherPool).
+        /// 거점은 품는다(결정 ⑦-2).
         /// </summary>
         private static bool IsAreaLegal(Unit u, Projectile p)
             => u.Faction != Faction.BlockingHazard && IsLegal(u, p);
-
-        /// <summary>
-        /// **스플래시·경로 스윕·튕김·재조준** 피해자인가 — **유닛만**. 옛 풀 = `OpponentUnitsOf`
-        /// (`ProjectileHitSystem.cs:330`·`:384`·`:504`·`:651`) · 재조준 = 적 유닛(`ProjectileMoveSystem.cs:78`).
-        /// 거점(마음·본능)과 방벽은 빠진다 — 적 스플래시가 마음을 치지 않고, 스윕이 적 본능을 뚫지 않는다.
-        /// 공격 마스크와 교집합을 쓰므로 힐러처럼 아군 유닛을 겨누는 저작도 그대로 따라간다.
-        /// </summary>
-        private static bool IsUnitPoolLegal(Unit u, Projectile p)
-            => ((int)u.Faction & Factions.AnyUnit) != 0 && IsLegal(u, p);
 
         /// <summary>
         /// 한 피해자에게 **이 착탄이 내는 것 전부**를 얹는다(unit 6a2).
@@ -1161,7 +1156,7 @@ namespace Wassup.BattleCore
                 if (!u.IsTargetable()) continue;
                 if (u.Id == exclude) continue;
                 if (u.Id == p.Owner) continue;
-                if (((int)u.Faction & Factions.AnyUnit) == 0) continue;   // 유닛만 — `IsUnitPoolLegal` 과 같은 이유
+                if (u.Faction == Faction.BlockingHazard) continue;   // 광역 풀과 같은 이유(`IsAreaLegal`)
                 if (n >= _bounceCands.Length)
                 {
                     System.Array.Resize(ref _bounceCands, _bounceCands.Length * 2);
