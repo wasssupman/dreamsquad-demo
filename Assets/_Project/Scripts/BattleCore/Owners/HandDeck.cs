@@ -121,7 +121,7 @@ namespace Wassup.BattleCore
         /// 밸런스도 골든도 특정 순열에 기대지 않는다.
         /// </summary>
         public void Begin(int[] cardIndices, int seed, in AwakeningDef awakening,
-                          int handSize, int attachCap, int pinnedFront = 0)
+                          int handSize, int attachCap)
         {
             _queue.Clear();
             _outOfPool.Clear();
@@ -152,11 +152,9 @@ namespace Wassup.BattleCore
                 }
             }
 
-            // Fisher-Yates(앞으로). `pinnedFront` 앞 N 장은 준 순서를 지키고 나머지만 섞는다 —
-            // **뒤는 계속 섞는다**(손패가 통째로 고정되면 그 판의 이후 드로우까지 대본이 된다).
-            int start = math.clamp(pinnedFront, 0, _queue.Count);
+            // Fisher-Yates(앞으로).
             var rng = new Unity.Mathematics.Random(seed != 0 ? (uint)math.abs(seed) : 1u);
-            for (int i = start; i < _queue.Count - 1; i++)
+            for (int i = 0; i < _queue.Count - 1; i++)
             {
                 int j = i + rng.NextInt(0, _queue.Count - i);
                 var tmp = _queue[i];

@@ -279,14 +279,11 @@ namespace Wassup.BattleCore
             _placement.Begin(_def.Roster, mode.PlacementInputEnabled, mode.RetireEnabled,
                              mode.BoardCap, _def.EffectTileCount,
                              Wassup.Core.MatchSeed.DeriveMapSeed(_def.Seed));
-            // unit 8b — 억제는 판 경계 리셋 밖의 외부 주입이다(X6). 정의표가 켰으면 켠다 — **끄지는 않는다**(판 시작 전
-            // 담당자에 직접 넣은 억제를 지우면 X6 이 깨진다). 판마다 새 `BattleMatch` 라 지난 판의 값은 애초에 없다.
-            if (_def.BonusPullSuppressed) _waves.BonusPullSuppressed = true;
             _waves.Begin(in _def.WaveDeck, in _def.WavePlan,
                          mode.WaveSource == WaveSourceKind.AuthoredPlan,
                          _def.Enemies, _def.Seed,
                          System.Math.Max(1, _def.Map.Spawns.Length), _ctx.Report);
-            _hand.Begin(null, _def.Seed, in mode.Awakening, mode.HandSize, mode.AttachCap, _def.PinnedHandFront);
+            _hand.Begin(null, _def.Seed, in mode.Awakening, mode.HandSize, mode.AttachCap);
             // unit 7b — 판 호스트의 판 수명 규칙(드림스톤 — 판 진입 장비). 배치 사건으로 상속된다.
             _bindings.AttachMatchRows(_def.MatchBindings, 0);
             _gimmick.Begin(mode.GimmickEnabled, _def.Seed);

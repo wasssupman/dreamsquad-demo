@@ -138,16 +138,6 @@ namespace Wassup.BattleCore
         /// 커맨드 콜스택(`Immediate` seam)에서 드레인된다 — tools.md 「트리거 강제 발화」.
         /// </summary>
         DebugFireBinding = 25,
-
-        // ── unit 8b ───────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// `Target` 에게 **최대 체력의 `Magnitude` 비율**(0~1 클램프)만큼 출처 없는 피해를 넣는다 — 다음 피해 단계가 소모한다.
-        /// 첫 판 온보딩이 첫 유닛의 체력바를 낮춰 「철수」의 이유를 화면에 만드는 문이다(옛
-        /// `BattleBridge.TryQueueDeployedDefenderMaxHealthDamage` — `IncomingDamage{ source = Null }`).
-        /// 출처가 없으므로 이것으로 죽어도 처치 보상이 안 난다(옛 규약 그대로). 판정은 없다.
-        /// </summary>
-        DamageMaxHealthRatio = 26,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -636,18 +626,6 @@ namespace Wassup.BattleCore
             DefIndex = -1,
             Target = owner,
             Count = instanceId,
-            Lane = -1,
-            CardIndex = -1,
-            ProjectileDefIndex = -1,
-        };
-
-        /// <summary>unit 8b — 최대 체력 비율 피해(`CommandKind.DamageMaxHealthRatio`).</summary>
-        public static Command DamageMaxHealthRatio(SimEntityId target, float ratio) => new Command
-        {
-            Kind = CommandKind.DamageMaxHealthRatio,
-            DefIndex = -1,
-            Target = target,
-            Magnitude = ratio,
             Lane = -1,
             CardIndex = -1,
             ProjectileDefIndex = -1,

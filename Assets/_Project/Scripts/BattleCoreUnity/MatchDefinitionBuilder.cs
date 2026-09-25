@@ -21,19 +21,15 @@ namespace Wassup.BattleCoreUnity
     // ⚠ 정의표에 필드를 추가하면 `MatchDefinition.Canonicalize` 도 같이 고친다.
     // 안 고치면 「스탯을 바꿨는데 해시가 그대로」라는 조용한 실패가 된다.
     /// <summary>
-    /// unit 8b — 로비·테스트·온보딩이 정의표에 싣는 진입 입력(모드 밖). 전부 기본값이면 오늘까지의 빌드와 같다
+    /// unit 8b — 로비·테스트가 정의표에 싣는 진입 입력(모드 밖). 전부 기본값이면 오늘까지의 빌드와 같다
     /// (골든은 이 칸을 안 쓴다). 규칙은 없다 — 푸는 것은 `MatchEntry`, 싣는 것은 `Build` 다.
     /// </summary>
     public struct EntryAuthoring
     {
-        /// <summary>① 테스트 모드 플랜 · ② 온보딩 플랜. 모드 플랜보다도 이긴다(「지금 이 플랜을 보겠다」는 명시 지시).</summary>
+        /// <summary>① 테스트 모드 플랜. 모드 플랜보다도 이긴다(「지금 이 플랜을 보겠다」는 명시 지시).</summary>
         public WavePlanAsset ForcedPlan;
         /// <summary>④ 맵 풀 엔트리의 플랜(맵과 한 몸). 모드 플랜에 진다.</summary>
         public WavePlanAsset EncounterPlan;
-        /// <summary>정의표 카드 앞 N 장을 섞지 않는다(온보딩 첫 손패).</summary>
-        public int PinnedHandFront;
-        /// <summary>보너스 당김 억제(온보딩 판).</summary>
-        public bool BonusPullSuppressed;
     }
 
     public static class MatchDefinitionBuilder
@@ -67,8 +63,9 @@ namespace Wassup.BattleCoreUnity
         {
             // 모드가 고른 저작이 호출자(드라이버)의 것을 이긴다 — 모드는 「어느 자산을 쓸지」를 고른다.
             deck = ResolveDeck(mode, deck);
-            // unit 8b — 웨이브 원천 7단(8b 문서): ① 테스트 · ② 온보딩(= `entry.ForcedPlan`) > ③ 모드 플랜 > ④ 맵 풀 엔트리 플랜
+            // unit 8b — 웨이브 원천 7단(8b 문서): ① 테스트(= `entry.ForcedPlan`) > ③ 모드 플랜 > ④ 맵 풀 엔트리 플랜
             // (= `entry.EncounterPlan`) > 덱 생성. ⑤~⑦ 덱 서열은 `ResolveDeck` + 호출자 덱(= 풀 덱 ?? 드라이버 덱)이 담는다.
+            // ② 자리는 비어 있다 — 첫 판 전용 플랜이었고 사용자 결정 ④(2026-09-25)로 지웠다.
             var entryPlan = ResolveEntryPlan(entry.ForcedPlan, mode, entry.EncounterPlan);
             plan = ResolveWavePlan(mode, plan, in entry);
             var enemies = CollectEnemies(deck, plan, bonus);
@@ -86,12 +83,10 @@ namespace Wassup.BattleCoreUnity
             def.Gimmicks = ToGimmickDefs(mode, def);
             def.Roster = RosterOf(defenders);
 
-            // unit 8b — 모드 밖에서 온 플랜(①②④)은 **그 플랜의 원천과 시계**로 돈다. 옛 게임은 저작 플랜이 있으면
+            // unit 8b — 모드 밖에서 온 플랜(①④)은 **그 플랜의 원천과 시계**로 돈다. 옛 게임은 저작 플랜이 있으면
             // 웨이브도 그 플랜, 판 길이도 `plan.timerDurationSec`(0 = 끝없음)였다(`BattleBridge.cs:1651` · `:2115`).
             // 모드 플랜(③)은 모드가 제 시계를 들고 오므로 건드리지 않는다.
             if (entryPlan != null) ApplyEntryPlanClock(ref def.Mode, entryPlan);
-            def.PinnedHandFront = System.Math.Max(0, entry.PinnedHandFront);
-            def.BonusPullSuppressed = entry.BonusPullSuppressed;
 
             // ⚠ 정의표가 다 찬 **뒤에** 굽는다. 먼저 구우면 「덱을 바꿨는데 해시가 그대로」가 된다.
             def.ConfigHash = def.ComputeConfigHash();
@@ -125,7 +120,7 @@ namespace Wassup.BattleCoreUnity
                 : fallback;
 
         /// <summary>
-        /// unit 8b — **모드 밖에서 온 플랜**을 서열대로 푼다: 강제(테스트·온보딩) &gt; 모드 플랜 &gt; 맵 풀 엔트리 플랜.
+        /// unit 8b — **모드 밖에서 온 플랜**을 서열대로 푼다: 강제(테스트) &gt; 모드 플랜 &gt; 맵 풀 엔트리 플랜.
         /// 모드 플랜이 이기면 **null** 을 돌려준다 — 그 플랜은 `ResolvePlan` 이 모드 제 것으로 싣는다(시계도 모드 것).
         /// ⚠ 드라이버도 적 목록을 모을 때 이 함수를 지난다(적 줄 번호가 정의표와 갈리면 안 된다).
         /// </summary>
@@ -135,7 +130,7 @@ namespace Wassup.BattleCoreUnity
             return entryPlan != null ? entryPlan : ResolvePlan(mode, fallback);
         }
 
-        /// <summary>모드 밖 플랜만 푼다(①②④ — 모드 플랜이 이기면 null). 시계를 플랜으로 바꿀지의 판별이 이 값이다.</summary>
+        /// <summary>모드 밖 플랜만 푼다(①④ — 모드 플랜이 이기면 null). 시계를 플랜으로 바꿀지의 판별이 이 값이다.</summary>
         public static WavePlanAsset ResolveEntryPlan(WavePlanAsset forced, MatchModeData mode, WavePlanAsset encounter)
         {
             if (forced != null) return forced;
@@ -145,7 +140,7 @@ namespace Wassup.BattleCoreUnity
 
         /// <summary>
         /// unit 8b — 모드 밖 저작 플랜의 원천·시계. 원천 = 저작 타임라인, 판 길이 = `timerDurationSec`, 0 이면 **끝없는
-        /// 판**(`CountUp` — 옛 「0 = endless」). 온보딩 플랜 60초(「튜토리얼 1분」)와 테스트 플랜 0(끝없음)이 이 두 갈래다.
+        /// 판**(`CountUp` — 옛 「0 = endless」). 시간을 적은 플랜과 테스트 플랜 0(끝없음)이 이 두 갈래다.
         /// </summary>
         public static void ApplyEntryPlanClock(ref ModeDef mode, WavePlanAsset plan)
         {

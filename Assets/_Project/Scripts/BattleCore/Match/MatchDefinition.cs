@@ -148,19 +148,6 @@ namespace Wassup.BattleCore
         /// </summary>
         public MovementTuningDef Movement = MovementTuningDef.Default();
 
-        /// <summary>
-        /// unit 8b — 섞기 전에 **앞에 고정할** 카드 수(`HandDeck.Begin` 의 `pinnedFront`). 첫 판 온보딩의 첫 손패다
-        /// (옛 `DreamcatcherHandController.PinTutorialFirstHand`). 정의표 `Cards` 의 앞 N 줄이 그 카드들이다 —
-        /// 순서를 맞추는 것은 빌더의 몫. 0 = 전량 섞기(라이브 기본).
-        /// </summary>
-        public int PinnedHandFront;
-
-        /// <summary>
-        /// unit 8b — 보너스 당김 억제(G12 · `WaveScheduler.BonusPullSuppressed`). **판마다 정의표가 값을 준다** —
-        /// 옛 「조건 밖에서 무조건 설정」의 후계다(정의표는 판마다 새로 지어지므로 지난 판의 값을 물려받을 길이 없다).
-        /// </summary>
-        public bool BonusPullSuppressed;
-
         public MapSnapshot Map = MapSnapshot.Empty();
 
         /// <summary>
@@ -205,9 +192,6 @@ namespace Wassup.BattleCore
                 for (int i = 0; i < parts.Length; i++) parts[i] = MatchBindings[i].ToString(inv);
                 Put(sb, "matchBindings", string.Join(",", parts));
             }
-            // unit 8b — 기본값이면 안 적는다(골든 해시 무변 — `matchBindings` 와 같은 관용).
-            if (PinnedHandFront > 0) Put(sb, "pinnedHandFront", PinnedHandFront, inv);
-            if (BonusPullSuppressed) Put(sb, "bonusPullSuppressed", "1");
             Movement.Canonicalize(sb, inv);
             Heart.Canonicalize(sb, inv);
             Bonus.Canonicalize(sb, inv);

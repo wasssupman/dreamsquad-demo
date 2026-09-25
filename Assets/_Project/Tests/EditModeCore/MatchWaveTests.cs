@@ -218,31 +218,6 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
-        public void 억제_플래그는_판_경계_리셋에서_안_지워진다()
-        {
-            var def = CoreMatchFixtures.Definition();
-            def.Bonus = new BonusWaveDef
-            {
-                EnemyIndex = 1, EnemyCount = 2, KillThreshold = 1,
-                MaxStressToOffer = 100f, SpawnIntervalSec = 0.1f,
-            };
-            def.ConfigHash = def.ComputeConfigHash();
-
-            var match = new BattleMatch(def);
-            match.Waves.BonusPullSuppressed = true;   // 판 시작 **전** 외부 주입
-            var offered = CoreMatchFixtures.Listen(match, CoreEventKind.BonusOffered);
-            match.Begin();
-            match.Apply(Command.FinishPlacement());
-
-            Assert.IsTrue(match.Waves.BonusPullSuppressed,
-                "리셋에 넣으면 켜 둔 억제가 판 시작에 지워진다(X6)");
-            match.Tick();
-            for (int t = 0; t < 120; t++) match.Tick();
-            KillAllEnemies(match);
-            Assert.AreEqual(0, offered.Count);
-        }
-
-        [Test]
         public void 전멸_판정은_보너스_적을_세지_않는다()
         {
             var match = Battle(d =>

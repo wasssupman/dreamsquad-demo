@@ -178,13 +178,6 @@ namespace Wassup.BattleCore
         }
 
         /// <summary>
-        /// 보너스 당김 억제. **판 경계 리셋에서 지우지 않는다**(X6) — 판 시작 **전** 외부
-        /// 주입이라, 리셋에 넣으면 켜 둔 억제가 판 시작에 지워진다. 다른 모든 보너스 상태와
-        /// 규칙이 다르고, 그 차이가 이 프로퍼티가 `Begin` 에 없는 이유다.
-        /// </summary>
-        public bool BonusPullSuppressed { get; set; }
-
-        /// <summary>
         /// **마지막 웨이브가 나갔고 필드가 비었다.** `WaveClear`·`TimeAttack` 이 읽는 한 줄이고
         /// 옛 `NoQueuedAttackersRemain` 의 후계다. 목표가 이 술어를 **다시 쓰지 않는다** —
         /// 두 벌이면 「목표는 끝났다는데 웨이브는 안 끝났다」가 난다.
@@ -265,7 +258,6 @@ namespace Wassup.BattleCore
             _bonusConsumed = 0;
             _bonusOfferLatched = false;
             _bonusInFlight = false;
-            // ⚠ `BonusPullSuppressed` 는 **여기서 지우지 않는다**(X6).
         }
 
         /// <summary>
@@ -435,7 +427,6 @@ namespace Wassup.BattleCore
         private void EvaluateBonusOffer()
         {
             if (_bonusOfferLatched || _bonusInFlight) return;
-            if (BonusPullSuppressed) return;
             ref var bonus = ref _def.Bonus;
             if (!bonus.Enabled) return;
             if (_map.Snapshot.BonusSpawns.Length == 0) return;
