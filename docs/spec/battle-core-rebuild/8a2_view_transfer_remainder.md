@@ -62,8 +62,10 @@
 - [x] `check_ledgers.py --owners` exit 0(8c 가 보류한 줄이 닫힌다). — bridge-methods 심볼 285 · 삭제 82 · rule-holders 심볼 119 · 삭제 14 · 미실현 0 · 기본·`--retire-assets` 도 exit 0 (2026-09-25 `41b57d06d`)
 - [ ] 새 씬 Play: 효과 타일 칸이 보인다 · 궁극기 이탈 뒤 착지 칸 예고가 보인다 · 마음 붕괴 시 연출 + 슬로모 · 드래그 중 적이 흐려진다 · 적 체력에 따라 틴트 · 소환사 유지 루프. — **보류(플레이 4차)**: 9행 중 8행을 PlayMode 로(행 7 은 EditMode) 사건/입력 → 뷰 호출을 증언했다. 육안 확인은 하지 않았다. ⚠ 틴트는 라이브 모드(통합 머리 위)에서 옛 판처럼 흰색이다 — 위 「옛 규칙과 다른 점」
 - [x] PlayMode 코어 +7(또는 +8) 초록 · EditMode 선행 2 외 빨강 0 · 골든 무변 · 헤드리스 3종 · Retire.Check 0. — PlayMode 코어 **93/93**(85 + 8 — 행 7 은 EditMode 코어 2건이 증언) · EditMode 코어+Assets **1011/1013**(선행 2 `boomerang`·`bomb_man` · 신규 6) · 골든 파일 diff 0 · 옛 부분집합 38/38 · CLI 63/63 · 헤드리스 export 0 · 687 · 0 · Retire.Check 0 (2026-09-25 `41b57d06d`)
-- [ ] `core-reviewer` APPROVE → 8c 의 머지 게이트(플레이 4차)에 합류.
+- [x] `core-reviewer` **APPROVE**(2026-09-25 — 행 1~8 finding 0 · 행 9 부록 finding 0) → [ ] 8c 의 머지 게이트(플레이 4차)에 합류.
 
 ### 검증 중 발견 — 옛 lane 잔류는 도메인 리로드까지 간다
 
 PlayMode 코어 lane 직후 옛 `BonusWavePullTest` 3건(보너스 적 스폰 0)이 **단독 재실행 두 번에도** 빨갰다. 8a2 파일 전부를 `a4e0180d1` 로 되돌려 재컴파일하자 13/13, HEAD 로 복원해 재컴파일하자 다시 13/13 이었다. 원인은 8a2 가 아니라 **코어 lane 이 남긴 잔류이고, 그 잔류는 도메인 리로드 전까지 살아 있다**(함정 20 의 「단독 재실행으로 판별」은 부족하다). 옛 부분집합은 **리로드 직후, 코어 lane 앞에서** 돌린다.
+
+리드 재검증 2026-09-25 — HEAD `03982fae7` 클린 export: build 0 · test 687/687 · Check 0 · `check_ledgers.py` 기본·`--owners`(미실현 0)·`--retire-assets`(총계 590) 전부 통과 · `--retire-prune` 618 항목 뒤 `Retire.Check` 오류 0 · 골든 diff 0 · 씬 diff = 배선 6줄 · 옛 폴더 무변. Unity: 옛 씬 부분집합 38/38(리로드 직후·코어 lane 앞) · EditMode 코어+Assets 1011/1013(선행 2) · PlayMode 코어 93/93 · CLI 63/63. 남은 것 = 새 씬 육안(플레이 4차).
