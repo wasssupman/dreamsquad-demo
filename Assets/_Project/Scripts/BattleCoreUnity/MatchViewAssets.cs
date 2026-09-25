@@ -54,6 +54,26 @@ namespace Wassup.BattleCoreUnity
             if (rows != null) _blockers.AddRange(rows);
         }
 
+        // unit 8a2 행 1 — 효과 타일의 그림(옛 `EffectTileData.overlayTile` · 테마 `effectTileMaterial`). 같은 규율:
+        // **`BoardEffectDefinitionBuilder.FillEffectTiles` 가 `MatchDefinition.EffectTiles` 줄을 매긴 그 순회**가 채운다 —
+        // 정의표 줄이 0 이면(테마 없음·스테이지가 끔) 여기도 0 이다. 뷰는 칸의 종류 번호(`PlacementService.EffectTileKindAt`)로 되찾는다.
+        private readonly List<EffectTileData> _effectTiles = new List<EffectTileData>();
+
+        public IReadOnlyList<EffectTileData> EffectTiles => _effectTiles;
+
+        /// <summary>효과 타일 전용 머티리얼(부드러운 발광 펄스 — 옛 `TilemapMapView.SetEffectTileMaterial`). 비면 오버레이 기본.</summary>
+        public UnityEngine.Material EffectTileMaterial { get; private set; }
+
+        public void SetEffectTiles(EffectTileData[] rows, UnityEngine.Material material)
+        {
+            _effectTiles.Clear();
+            if (rows != null) _effectTiles.AddRange(rows);
+            EffectTileMaterial = rows != null && rows.Length > 0 ? material : null;
+        }
+
+        public EffectTileData EffectTile(int kind)
+            => kind >= 0 && kind < _effectTiles.Count ? _effectTiles[kind] : null;
+
         public HazardSO Hazard(int defIndex)
             => defIndex >= 0 && defIndex < _hazards.Count ? _hazards[defIndex] : null;
 

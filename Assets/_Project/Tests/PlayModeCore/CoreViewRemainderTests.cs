@@ -53,6 +53,34 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsEmpty(CoreSceneFixture.Errors, string.Join("\n", CoreSceneFixture.Errors));
         }
 
+        // ── 행 1 — 효과 타일 칸 표시(T15) ────────────────────────────────────────────
+        [UnityTest]
+        public IEnumerator 행1_효과_타일_칸이_판_위에_그_종류의_그림으로_칠해진다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return Boot(d => driver = d);
+            var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
+            Assert.IsNotNull(overlay, "씬에 CoreMapOverlay 가 없다");
+            yield return Ticks(driver, 0);
+
+            var placement = driver.Match.Placement;
+            var armed = placement.ArmedEffectTiles;
+            // 라이브 테마(시즌 등록부 → 맵 테마)는 3칸이다 — 0 이면 새 씬이 시즌을 안 묶은 것이다(옛 `BattleBridge.Awake:685`).
+            Assert.Greater(armed.Count, 0, "효과 타일이 한 칸도 안 뽑혔다 — 드라이버 _seasonRegistry 배선 확인");
+            Assert.AreEqual(armed.Count, overlay.EffectTileCellCount, "뽑힌 칸 수 = 칠한 칸 수");
+            for (int i = 0; i < armed.Count; i++)
+            {
+                Assert.IsTrue(overlay.TryGetEffectTileCell(i, out var cell, out var sprite), $"칸 {i} 가 칠해지지 않았다");
+                Assert.AreEqual(armed[i], cell, "칠한 칸 = 코어가 뽑은 칸");
+                var data = driver.ViewAssets.EffectTile(placement.EffectTileKindAt(cell));
+                var tile = data != null ? data.overlayTile as UnityEngine.Tilemaps.Tile : null;
+                Assert.IsNotNull(tile, "종류의 저작 타일");
+                Assert.AreSame(tile.sprite, sprite, "그림 = 그 종류의 저작 타일(옛 SetEffectTile)");
+            }
+            AssertNoErrors();
+        }
+
         // ── 행 2 — 궁극기 착지 예고(T16·T17) ──────────────────────────────────────
         [UnityTest]
         public IEnumerator 행2_궁극기_이탈에_착지_칸_예고가_뜨고_배치_드래그가_지우지_않으며_강하에_내린다()

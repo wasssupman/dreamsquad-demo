@@ -61,6 +61,10 @@ namespace Wassup.BattleCoreUnity
 
         [SerializeField, Min(0.01f)] private float _tileSize = 1f;
 
+        [Tooltip("시즌 등록부(옛 브리지 `seasonRegistry` · bridge-fields 21). 활성 시즌의 **맵 테마**가 효과 타일 종류·개수를 준다. "
+                 + "판을 짓기 전에 `SeasonRuntime` 에 묶는다 — 새 씬에 묶는 자가 없으면 효과 타일이 0 이 된다(unit 8a2).")]
+        [SerializeField] private Wassup.Data.Season.SeasonRegistry _seasonRegistry;
+
         [Tooltip("적이 어떻게 서고 어떻게 퍼지나. 비우면 코어 기본값(= 옛 씬 값)이 쓰인다.")]
         [SerializeField] private MovementTuningConfig _movementTuning;
 
@@ -290,6 +294,13 @@ namespace Wassup.BattleCoreUnity
                 Debug.LogError("[BattleDriver] 매치 모드 SO 가 비었다 — 판을 짓지 않는다.", this);
                 return;
             }
+            // unit 8a2 행 1 — 시즌 등록부를 묶는다(옛 `BattleBridge.Awake` `:685-690` 그대로 — 옛 씬만 묶어서, 로비 → 새 씬
+            // 경로에서는 `SeasonRuntime.Active` 가 null 이라 효과 타일이 **한 칸도** 안 뽑혔다). 규칙이 아니라 저작 선택이다.
+            Wassup.Data.Season.SeasonRuntime.Bind(_seasonRegistry);
+            var season = Wassup.Data.Season.SeasonRuntime.Active;
+            if (season == null || season.mapTheme == null)
+                Debug.LogError("[BattleDriver] SeasonRegistry / activeSeason / mapTheme 가 배선되지 않았다 — 효과 타일 없이 짓는다. "
+                               + "BattleCoreScene 드라이버에 SeasonRegistry.asset 을 연결하라.", this);
             // unit 8b — **진입 해석**(G3·G5·G7·G11·G13). 순서는 옛 것 그대로: 시드 → (기믹 = 코어가 시드로) → 맵.
             // 시드 0 은 「아무도 안 골랐다」다 — 고정 노브, 그것도 0 이면 새 난수(G3).
             var entry = MatchEntry.Resolve(new MatchEntry.Sources

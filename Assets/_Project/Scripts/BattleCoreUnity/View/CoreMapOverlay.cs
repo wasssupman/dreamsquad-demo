@@ -257,6 +257,78 @@ namespace Wassup.BattleCoreUnity.View
             }
         }
 
+        // ── ⑨ 효과 타일 칸(unit 8a2 행 1 — rule-holders T15) ──────────────────────────────
+        //
+        // 옛 `BattleBridge.AddEffectTile`(`:9075`) → `TilemapMapView.SetEffectTile`(`:1025`)의 후계. **어느 칸이 효과 타일인가**를
+        // 판 위에 그린다. 소유는 코어다(`PlacementService.ArmedEffectTiles` — 판 시작에 한 번 뽑고 판 내내 안 바뀐다, 칸 소비
+        // 없음). 여기는 「보이는 곳」만 — 판마다 한 번 칠한다(소비·회복 사건이 없어 구독할 것이 없다).
+        // 그림 = 그 종류의 저작 타일(`EffectTileData.overlayTile` 의 스프라이트·색) · 머티리얼 = 테마 `effectTileMaterial`(펄스) —
+        // 둘 다 `MatchViewAssets` 가 정의표 줄과 같은 순회로 나른다. 정렬 = `BoardSortOrder.EffectTileOrder`(옛 −15).
+        private readonly List<SpriteRenderer> _effectCells = new List<SpriteRenderer>(4);
+        private readonly List<int2> _effectCellList = new List<int2>(4);
+        private BattleMatch _effectPaintedFor;
+
+        /// <summary>테스트 창구 — 칠한 효과 타일 칸 수.</summary>
+        public int EffectTileCellCount
+        {
+            get
+            {
+                int n = 0;
+                for (int i = 0; i < _effectCells.Count; i++) if (_effectCells[i] != null && _effectCells[i].enabled) n++;
+                return n;
+            }
+        }
+
+        /// <summary>테스트 창구 — 칠한 효과 타일 칸(칠한 순서).</summary>
+        public bool TryGetEffectTileCell(int index, out int2 cell, out Sprite sprite)
+        {
+            cell = default; sprite = null;
+            if (index < 0 || index >= _effectCellList.Count || index >= _effectCells.Count) return false;
+            cell = _effectCellList[index];
+            sprite = _effectCells[index] != null ? _effectCells[index].sprite : null;
+            return _effectCells[index] != null && _effectCells[index].enabled;
+        }
+
+        private void PaintEffectTilesOnce()
+        {
+            var match = _driver.Match;
+            if (match == null || ReferenceEquals(match, _effectPaintedFor)) return;
+            _effectPaintedFor = match;
+
+            var cells = match.Placement.ArmedEffectTiles;
+            var assets = _driver.ViewAssets;
+            _effectCellList.Clear();
+            int used = 0;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var data = assets.EffectTile(match.Placement.EffectTileKindAt(cells[i]));
+                // 저작 그림이 없으면 **안 그린다**(절차적 사각을 지어내면 그게 다음 사람의 정본이 된다 — 가이드와 같은 규약).
+                var tile = data != null ? data.overlayTile as UnityEngine.Tilemaps.Tile : null;
+                if (tile == null || tile.sprite == null) continue;
+
+                while (_effectCells.Count <= used)
+                {
+                    var go = new GameObject($"{name}_effectTile_{_effectCells.Count}");
+                    go.transform.SetParent(transform, false);
+                    _effectCells.Add(go.AddComponent<SpriteRenderer>());
+                }
+                var sr = _effectCells[used++];
+                sr.sprite = tile.sprite;
+                sr.sortingOrder = BoardSortOrder.EffectTileOrder;
+                var mat = assets.EffectTileMaterial;
+                sr.sharedMaterial = mat != null ? mat : Material();
+                sr.color = tile.color;                     // 펄스 머티리얼은 정점색을 읽는다(옛 타일맵 = 타일 색 × 흰 타일맵)
+                if (mat == null) Tint(sr, tile.color);     // 오버레이 기본 머티리얼은 프로퍼티 블록 색을 읽는다
+                sr.transform.position = ViewOf(CellCenterSim(cells[i]));
+                sr.transform.rotation = PlaneRotation();
+                float w = tile.sprite.bounds.size.x;
+                sr.transform.localScale = Vector3.one * (_driver.TileSize / (w > 1e-5f ? w : 1f));   // 한 칸을 덮는다
+                sr.enabled = true;
+                _effectCellList.Add(cells[i]);
+            }
+            SetCount(_effectCells, used);
+        }
+
         // ── ⑧ 궁극기 착지 예고(unit 8a2 행 2 — rule-holders T16·T17) ────────────────────────
         //
         // 옛 `BattleBridge.UltimateLeap.cs:87 ShowLandingTelegraph` → `TilemapMapView.SetTelegraphRing`(`:690`)의 후계.
@@ -504,6 +576,7 @@ namespace Wassup.BattleCoreUnity.View
 
             if (_showGrid && !_gridBuilt) BuildGrid();
             if (_grid != null) _grid.enabled = _showGrid;
+            PaintEffectTilesOnce();    // 판마다 한 번 — 드래그와 무관하게 늘 보인다
             PaintCardArea();
             PaintLandingTelegraph();   // 전용 채널 — 드래그에 양보하지 않는다(T16)
 

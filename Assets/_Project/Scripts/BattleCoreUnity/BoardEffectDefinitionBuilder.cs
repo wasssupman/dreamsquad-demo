@@ -52,6 +52,10 @@ namespace Wassup.BattleCoreUnity
                 assets.SetBlockers(blockerAssets);
             }
             FillEffectTiles(def, board.Theme, board.SuppressEffectTiles);
+            // unit 8a2 행 1 — 줄을 매긴 **같은 판단**으로 그림 표도 채운다(줄 0 이면 그림 0 — 두 벌이 갈리지 않게).
+            if (assets != null)
+                assets.SetEffectTiles(def.EffectTiles.Length > 0 ? board.Theme.effectTiles : null,
+                                      def.EffectTiles.Length > 0 ? board.Theme.effectTileMaterial : null);
         }
 
         // ── 존 장판 ──────────────────────────────────────────────────────────
