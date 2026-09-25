@@ -201,6 +201,31 @@ namespace Wassup.Tests.EditMode.Core
                 "0 은 무기한 센티널이고 >0 만 감소한다");
         }
 
+        // unit 9c — 옛 AggroStateSystemTests::Taunt_Refresh_KeepsTheLongerRemainder(옛 `AggroStateSystem.cs:289-290`).
+        // 겹친 배치(배스티온 둘)가 남은 시간을 깎지 않는다 — CC 갱신 관례와 같은 방향(더 긴 쪽).
+        [Test]
+        public void 도발을_다시_걸면_남은_시간은_긴_쪽이_남는다()
+        {
+            var map = CoreMapFixtures.Open(10, 5, new int2(9, 2), new int2(0, 2));
+            var def = CoreMapFixtures.Definition(map, defenderW: 1, defenderH: 1, aggroCapacity: 1);
+            var match = new BattleMatch(def);
+            match.Begin();
+            match.Apply(Command.PlaceDefender(0, new int2(5, 2)));
+            match.Apply(Command.DebugSpawnEnemyInLane(0, 0));
+            match.Tick();
+            match.World.Find(new SimEntityId(1)).Attack = null;   // 히트 재획득이 끼어들지 못하게(위 테스트와 같은 이유)
+
+            const float longTaunt = 10f, shortTaunt = 2f;
+            match.World.AggroRequests.Add(AggroRequest.Taunted(new SimEntityId(2), new SimEntityId(1), longTaunt));
+            match.Tick();
+            match.World.AggroRequests.Add(AggroRequest.Taunted(new SimEntityId(2), new SimEntityId(1), shortTaunt));
+            match.Tick();
+
+            var enemy = match.World.Find(new SimEntityId(2));
+            Assert.IsFalse(enemy.Aggro.Target.IsNone, "전제 — 도발 중");
+            Assert.Greater(enemy.Aggro.Remaining, shortTaunt + 0.5f, "짧은 도발이 긴 잔여를 깎았다");
+        }
+
         // ── 6c 후속 — 어그로의 끝도 사건이다(계약 7) ─────────────────────────
         //
         // 켜는 사건(`AggroAcquired`)만 있으면 표식을 끄는 쪽이 폴링으로 되묻는다. 해제 자리 셋이

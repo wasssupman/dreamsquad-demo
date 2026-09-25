@@ -230,9 +230,13 @@ namespace Wassup.BattleCore
                     continue;
                 }
 
+                // unit 9c — 도발을 다시 걸면 **남은 시간은 긴 쪽**이다(옛 `AggroStateSystem.cs:289-290`).
+                // 겹친 배치가 남은 시간을 깎지 않게 — CC 갱신 관례와 같은 방향. 히트 어그로의 잔여 0 은
+                // 무기한 센티널이라 max 에서 자연히 진다(도발이 시한을 준다 — 옛 규칙 그대로).
+                float prevRemaining = already && req.Taunt ? enemy.Aggro.Remaining : 0f;
                 enemy.Aggro = enemy.Aggro ?? ctx.World.Parts.RentAggro();   // F4 — 틱 중 할당 0
                 enemy.Aggro.Target = req.Guardian;
-                enemy.Aggro.Remaining = req.Seconds;
+                enemy.Aggro.Remaining = req.Taunt ? math.max(req.Seconds, prevRemaining) : req.Seconds;
                 enemy.Aggro.Taunted = req.Taunt;
                 enemy.Aggro.Chase = cache;
                 if (!already) guardian.Aggro.Held++;
