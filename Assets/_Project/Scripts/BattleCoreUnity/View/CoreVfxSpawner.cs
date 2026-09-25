@@ -428,6 +428,18 @@ namespace Wassup.BattleCoreUnity.View
             _scratch.Clear();
         }
 
+        /// <summary>
+        /// unit 8a — 퇴근 비행이 **뽑히는 순간** 떠난 칸에 치는 링. 옛 `VfxSpawner.SpawnPlacementRing`
+        /// (`Presentation/VfxSpawner.cs:71~83`) 그대로 — 배치 때 나는 그 링(같은 프리팹 · 0.02 띄움 · 0.6초)이다.
+        /// 옛 것은 sim 을 받아 진입부에서 `ToView` 했다. 여기는 **view 를 받는다**(호출자가 이미 view 공간에 있다).
+        /// </summary>
+        public void SpawnPlacementRing(Vector3 viewPos)
+        {
+            if (_placementRingPrefab == null) { MissingSlot(nameof(_placementRingPrefab)); return; }
+            var go = Instantiate(_placementRingPrefab, viewPos + Vector3.up * 0.02f, Quaternion.identity, transform);
+            Destroy(go, 0.6f);
+        }
+
         private void PlayDeploymentLanding(SimEntityId id)
         {
             var u = _driver.Find(id);

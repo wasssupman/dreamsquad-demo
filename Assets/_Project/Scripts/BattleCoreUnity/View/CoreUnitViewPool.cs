@@ -214,6 +214,17 @@ namespace Wassup.BattleCoreUnity.View
         public bool TryGet(SimEntityId id, out CoreUnitView view)
             => _byId.TryGetValue(id.Value, out view) && view != null;
 
+        /// <summary>
+        /// unit 8a — 뷰를 풀에서 **떼어 넘긴다**(옛 `SpineUnitPool.Detach` 의 계약). 이 순간부터 뷰의 수명은
+        /// 받은 쪽(퇴근 비행)의 것이다 — 풀은 뒤따르는 소멸 사건에서 그 뷰를 모른다. 없으면 false.
+        /// </summary>
+        public bool TryDetach(SimEntityId id, out CoreUnitView view)
+        {
+            if (!TryGet(id, out view)) return false;
+            _byId.Remove(id.Value);
+            return true;
+        }
+
         public bool TryGetQuad(SimEntityId id, out CoreQuadUnitView view)
             => _quadById.TryGetValue(id.Value, out view) && view != null;
 
