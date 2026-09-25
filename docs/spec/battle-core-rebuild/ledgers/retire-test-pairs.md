@@ -15,7 +15,7 @@
 ## 이식 결과 (2026-09-25 · `7482f7ba6`)
 
 「규칙 누락 의심」 34 중 **33 을 코어 테스트로 옮겼다**(31 `TilemapMapViewTests` 는 대상 `TilemapMapView` 가 퇴역이라 제외). 새 파일: EditModeCore `Retired{CombatRule,TargetLock,EffectRule,DetectionMove,WaveRule,WaveForecast}PortTests` · EditModeAssets `Retired{WaveAuthoring,DeckFilter}PortTests` · EditMode `BoardSpaceAuthorityTests`·`CoreProjectileVariationTests` · PlayModeCore `Retired{Beam,SpriteBackend}PortTest`. 각 테스트 위 주석이 옛 `파일::테스트` 를 가리킨다.
-**옛 규칙과 코어가 다른 4건**은 코어를 고치지 않고 `[Ignore("unit 9 — 옛 규칙과 다름: …")]` 로 남겼다 — 방향탄 관통 소진 뒤 호밍 튕김 · 감지 후보의 직업 필터 · 같은 입구 다른 종의 예고 병합 · 예보 경로 해석(사용자 결정 대기). 「부분 공백」(아래)은 README 후속 후보로 넘긴다.
+**옛 규칙과 코어가 다른 4건**은 코어를 고치지 않고 `[Ignore("unit 9 — 옛 규칙과 다름: …")]` 로 남겼다 — 방향탄 관통 소진 뒤 호밍 튕김 · 감지 후보의 직업 필터 · 같은 입구 다른 종의 예고 병합 · 예보 경로 해석(사용자 결정 대기). **9c 실현**: 앞 둘은 옛 규칙으로 복원하고 `[Ignore]` 해제(`27297a0cb`·`125d002b0`) — 뒤 둘(표현)은 대기. 「부분 공백」(아래)은 README 후속 후보로 넘긴다.
 
 ## 총계
 
@@ -147,7 +147,7 @@
 | PlacementMaskLivePathTests | 라이브 경로 — 열린 칸 층 · 차단 존은 배치만 닫음 · 스폰·골 칸 전 층 폐쇄 | 짝 | DioramaMapBuilderTests::Assemble_BlockZone_ClosesPlacement_KeepsTraversal(잔류) · MatchStructureTests::스폰_골_본능_자리에는_못_놓는다 · Assets:StagePoolBuildabilityTests |
 | ProjectileEmitterIntegrationTests | 버스트 1발 1캐리어 · 죽은 숙주 새 버스트 없음 · 빈 풀 발 소비 · 방향 패턴 무대상 발사 · 적 숙주는 방어유닛을 | 짝 | PatternEmissionTests::후보가_없으면_발사를_소비하고_건너뛴다 · 간격_0_이_이어지면_같은_틱에_전부_나간다 · TriggerSymptomTests::캐논_융단폭격은_미사일_수가_반경_안_적_수다. ⚠ 부분 공백: 죽은 숙주는 새 버스트를 안 연다 |
 | ProjectileOriginRadiusCarryTests | 원점 몸 반경이 요청→상태로 건너온다(자리형은 0) · 실으면 착탄 판정이 넓어진다 | 짝 | ProjectileBehaviorTests::자리형_탄은_원점_몸을_안_싣는다 · TriggerSymptomTests::적을_죽인_자리에서_시체_폭발이_터지고_그_시체의_몸만큼_넓다 · UnitSkillTests::짱쎈_경계_자폭은_층을_안_가리고_시전자_몸만큼_넓다 · ReachEntryPointGuardTests(잔류) |
-| ProjectileRetargetAndBounceTests | 탄 재조준(대상 사망 시 근처 적으로·옵트인) · 끄면 옛 소멸 · 길 전용 재조준은 공중 무시 · 방향탄 관통 소진 → 호밍 튕김 | 짝 없음 — 규칙 누락 의심 | 순수 선정만 — ProjectileMathTests::튕김은_제외한_최근접을_고른다 · ProjectileBehaviorTests::방향_바인딩은_재조준_반경을_0_으로_접는다. 재조준·관통 소진 튕김이 **탄 수명에 붙었는가**(본 파일의 글루) 단언 0 |
+| ProjectileRetargetAndBounceTests | 탄 재조준(대상 사망 시 근처 적으로·옵트인) · 끄면 옛 소멸 · 길 전용 재조준은 공중 무시 · 방향탄 관통 소진 → 호밍 튕김 | 짝 없음 — 규칙 누락 의심 · **9c 실현**(관통 소진 튕김) | 순수 선정만 — ProjectileMathTests::튕김은_제외한_최근접을_고른다 · ProjectileBehaviorTests::방향_바인딩은_재조준_반경을_0_으로_접는다. 재조준·관통 소진 튕김이 **탄 수명에 붙었는가**(본 파일의 글루) 단언 0 |
 | ProjectileSystemTests | 탄 이동·소멸 · 착탄 피해 · 착탄 넉백(피해자 진행 반대) · 스플래시 · 길 전용 탄은 공중 무피해 · 포물선 · 칸 광역 · 우선 대상 보너스 | 짝 | ProjectileBehaviorTests::유도탄은_맞히고_사라진다 · 임자가_사라지면_탄도_사라진다 · 칸_광역은_반경_안_전원을_때린다 · 요청은_한_틱_뒤에_탄이_된다 · AttackModTests::최전방_수식자가_있으면_최전방을_물고_주_대상에_배율이_붙는다. ⚠ 부분 공백: **착탄 넉백**(`ProjectileState` Knockback 칸) · 스플래시가 직격 대상 제외 · 길 전용 탄의 공중 무피해 |
 | ProjectileVariationTests | 탄 색 hue 변주 · 같은 시드 같은 순열 · 풀 재사용 누적 없음 | 짝 없음 — 규칙 누락 의심 | 없음(뷰). 새 `CoreProjectileViewPool.ApplyHueShift`(`:624`) 에 테스트 0 |
 | RangeDisplayContractTests | 화면이 판정을 좁게 가르치지 않는다(표준 몸 · 사거리 1 = 8이웃) | 짝 | PlayCore:CoreViewRemainderTests::행8_배치_드래그의_사거리_칸은_판정과_같은_자로_세고_링_안을_한_겹으로_채운다 · PlayCore:CoreViewYardstickTests::오버레이의_도달_판정은_정본_진입점_하나다 |
@@ -355,7 +355,7 @@
 | # | 옛 테스트(파일::테스트명) | 증언하는 규칙(한 줄, 게임 언어) | 코어의 규칙 위치(파일:줄) | 비고 |
 |---:|---|---|---|---|
 | 1 | AggroStateSystemTests::Preemption_SameTick_FirstGuardianWins · Preemption_AcrossTicks_KeepsFirstGuardian | 한 가디언에게 이미 물린 적은 다른 가디언이 때려도 넘어가지 않는다(먼저 문 쪽 유지) | Phases/AiMovePhase.cs:200 | |
-| 2 | AggroStateSystemTests::Taunt_Refresh_KeepsTheLongerRemainder | 같은 적에게 도발을 다시 걸면 남은 시간은 긴 쪽이 남는다 | Phases/AiMovePhase.cs:235 | **규칙 누락** — 매 부여마다 `Remaining = req.Seconds` 로 덮어써 짧은 도발이 긴 잔여를 깎는다(`max` 없음) |
+| 2 | AggroStateSystemTests::Taunt_Refresh_KeepsTheLongerRemainder | 같은 적에게 도발을 다시 걸면 남은 시간은 긴 쪽이 남는다 | Phases/AiMovePhase.cs:235 | ~~**규칙 누락**~~ **9c 실현**(`356596355`) — `AiMovePhase.cs:239` `max` · DetectionRulesTests::도발을_다시_걸면_남은_시간은_긴_쪽이_남는다 |
 | 3 | AggroStateSystemTests::AirEnemy_ChaseFieldUsesAirLayer_AcrossGroundWalls | 끌려가는 비행 적은 지상 벽을 넘어 공중 길로 간다 | Phases/AiMovePhase.cs:941 (`BuildChase` 가 자기 통행 층 nav 로 굽는다) | |
 | 4 | AggroStateSystemTests::ChaseField_UnreachableEnemy_Refused | 가디언까지 갈 길이 없는 적에게는 어그로가 붙지 않는다(도발도) | Phases/AiMovePhase.cs:224 · :950 | |
 | 5 | AttackReachTests::DerivedBody_IsHalfWidth_ColumnsOnly | 방어유닛 몸 반경 = 가로 칸 수 / 2(세로는 무관) | Data:DefenderUnitData.cs:80 → Unity:MatchDefinitionBuilder.cs:379 | 코어 밖 저작 파생 — 코어는 정의표 값을 받기만 한다 |
@@ -380,7 +380,7 @@
 | 24 | EnemyTierBakeTests::EliteWithMechanic_GetsSlot_ButNoBossAttachments | 엘리트는 규칙 슬롯은 받되 보스 면역(군중 제어·어그로)은 안 받는다 | Unity:CombatDefinitionBuilder.cs:290 → Phases/AiMovePhase.cs:196 | |
 | 25 | FlowFieldSingletonTests::IsGoalCell_GoalsSet_TrueForEachGoal_FalseOtherwise · IsGoalCell_DuplicateGoals_Harmless | 골이 여럿이면 어느 골 칸에 닿아도 도착이다 | Map/MapSnapshot.cs:128 | 미생성·빈 골 폴백 2종은 옛 싱글턴 기계 — 이식 제외 |
 | 26 | GoalProjectileTests::TileAoe_DefenderFaction_IncludesGoal · TileAoe_EnemyFaction_IgnoresGoal · TileAoe_EnemyFaction_IncludesEnemyStructures · TileAoe_DefenderFaction_ExcludesEnemyStructures | 광역 탄은 쏜 쪽의 상대 진영만(거점 포함) 맞힌다 — 적 광역은 우리 마음을, 우리 운석은 적 마음·본능을 | Combat/TargetDefaults.cs:19 · :21 → Phases/TickProjectilePhase.cs:1016 | |
-| 27 | GoalProjectileTests::TileAoe_BlockingHazard_IsVictimOfNeitherPool | 길막(방벽)은 어느 쪽 광역에도 안 맞는다 | Combat/TargetDefaults.cs:19 | **규칙 다름 의심** — 적 기본 마스크에 방벽 비트가 있고 적 탄이 그 마스크를 들고 간다(Phases/CombatPhase.cs:878) → 적 광역이 방벽을 친다. 우리 쪽(`AnyEnemy`)은 안 친다. 사용자 확인 필요 |
+| 27 | GoalProjectileTests::TileAoe_BlockingHazard_IsVictimOfNeitherPool | 길막(방벽)은 어느 쪽 광역에도 안 맞는다 | Combat/TargetDefaults.cs:19 | ~~**규칙 다름 의심**~~ **9c 실현**(`ea73d1ddd`) — `TickProjectilePhase.cs:1067` `IsAreaLegal`(칸 광역·스플래시·스윕·튕김 후보에서 방벽 제외, 직격 유지) · ProjectileBehaviorTests 3 |
 | 28 | HealAppliedEventTests::RegenOnly_DoesNot_Enqueue_HealApplied | 초당 재생은 회복 연출 사건을 안 낸다 | Phases/CombatPhase.cs:1286 | |
 | 29 | HealAppliedEventTests::MultiPulse_IncomingHeal_Sums_Into_Single_Event | 한 틱에 회복이 여러 번 들어와도 사건은 합산 1건 | Phases/CombatPhase.cs:1257 | |
 | 30 | ModifierMathTests::Override_WinsOverAddAndMul_ButStillClamped | 강제 고정 버프는 가산·곱셈을 무시하되 스탯 경계로 잘린다 | Effects/ModifierMath.cs:45 | 부분 — ModifierSetTests::회수는_항등값_재발행이_아니라_슬롯_삭제다 가 단독 Override 만(동거·클램프 0) |
