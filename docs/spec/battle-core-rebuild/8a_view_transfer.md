@@ -32,6 +32,8 @@
 
 측정: `BattleScene.unity` 의 스크립트 GUID 56 − 패키지 스크립트 8 = 48 을 `BattleCoreScene.unity` 와 대조. 재측정할 수 있도록 **새 짝 열**을 둔다.
 
+**재측정(8a 구현 첫 작업, 2026-09-25)**: `m_Script` GUID 기준 옛 씬 **63**(패키지·에셋 밖 11 제외 = 프로젝트 스크립트 **52**) · 새 씬 42. 초판 48 과의 차이는 세는 법(고유 GUID vs 컴포넌트)이다. 프로젝트 52 중 새 씬에 짝이 없는 것을 전수로 대조했고, **표에 없던 행이 하나** 나왔다 — `DefenderRetireFlight`(아래 굵은 행). 나머지 짝 없음은 전부 이미 새 짝이 있다(`ScoreHudView`→`CoreScoreHud` · `CostDisplay`→`CoreCostDisplay` · `DefenderSelector`→`CoreDefenderTray` · `PlacementInput`→`DragPlacementInput` · `DcInspectController`/`DcInspectPanelView`→`SelectionInput`/`CoreSelectionPanel` · `SpineUnitPool`→`CoreUnitViewPool` 등) 이거나 표의 삭제·8b·8c 행이다. `DefenderRelocationController` 는 재배치 은퇴(`tools.md` 11 · 7d)로 삭제.
+
 | 옛 컴포넌트 | 라이브? | 새 짝 | 처분 |
 |---|---|---|---|
 | `NextWaveDock` | ○ | 없음 | **이식** |
@@ -46,6 +48,7 @@
 | `DcActionFlipbookView` | ✕ — 재배치 진입구 꺼짐 | — | 삭제(`defender-clock-out/0` · tools 11) |
 | `DraftController`·`DraftView`·`DraftCardFanView`·`SquadPrepView` | 뽑기 폴백·옛 준비 단계 | — | 삭제(계약 9) |
 | `IngameCharacterTest` | 그림자 실험대(파일 헤더) | — | **8c 에서 확인** — 은퇴 근거를 옛 spec 에서 못 찾으면 사용자에게 묻는다 |
+| **`DefenderRetireFlight`**(재측정이 더한 행) | ○(퇴근 = 키링이 걸려 버티다 뽑혀 날아간다 ~1.6초) | 없음 — 새 씬에서는 퇴근한 유닛이 그냥 사라졌다. 장부 bridge-fields 33 이 「5c」로 배정만 했다(1·31·55 와 같은 모양) | **이식**(`View/CoreRetireFlightPresenter.cs`) |
 | `FirstRunTutorialController` + `OutgameTutorialOverlay`(`:78`) + `TutorialGuidanceView` | ○ | 없음 | **8b**(사용자 결정 ①) |
 | `ReturnToMenuButton`·`MenuPopup` 나가기 | ○ | 없음 | **8b** |
 | `UiSafeAreaFitter` | ○ | `UiCanvasSetup.Ensure` 가 런타임 부착 | 해당 없음 |
@@ -63,6 +66,31 @@
 9. **HUD 게이팅.** `MatchEnded` 뒤 전투 HUD 를 숨긴다 — 옛 `GamePhase.Tally/Result` 게이팅과 같은 결과(5c ⚠).
 10. **브리지 static 미러 3곳을 끊는다.** 새 씬에서 `BattleBridge.PropDistanceTiltFactor` 는 0 이라 **스테이지 프랍 37개의 거리 틸트가 꺼져 있다**(`PropBillboard.cs:43` — factor 0 = 비활성). 스테이지 블롭 40개는 옛 씬 색(bridge-fields 66)이 아니라 코드 기본값을 쓴다. ⚠ 스테이지는 `BattleDriver.cs:404` 가 `Instantiate` 하고 `BlobShadow` 는 **`Awake` 에서 값을 읽는다**(`:31~37`). 그러니 생성 뒤 주입은 늦다. 값의 주인(`BlobShadowConfig`·`CharacterViewConfig`)을 **컴포넌트가 직접 참조**하게 한다(제약 12 판단 순서 (a)·(b)). 옛 씬에서도 같은 SO 값이 읽히므로 무회귀다(그 SO 의 값 = 옛 씬 브리지 블록 복사, bridge-fields 머리말).
 
+## 고친 것 (2026-09-25 구현)
+
+| 무엇 | 옛 근거 | 새 자리 | 커밋 |
+|---|---|---|---|
+| **브리지 static 미러 3곳 끊기** — 프랍 거리 틸트·스테이지 블롭 외형 | `BlobShadow.cs:31~37` · `PropBillboard.cs:42~61` 가 `BattleBridge.*` static 을 읽었다 | 컴포넌트가 값의 주인 SO(`BlobShadowConfig`·`CharacterViewConfig`)를 **직렬화 참조**로 든다. 프랍 프리팹 37(블롭 36)에 참조 한 줄씩 · `PropDataEditor` 가 생성 시 같은 참조를 굽는다. 두 SO 값 = 옛 씬 브리지 블록(0.78/28/62 · (0,0,0.08,0.75)) | `6bcdee28a` |
+| `SoundManager.SetPhase` · `BgmPlaying` · `GamePhase` → `Core/GamePhase.cs` · `ResultScreen.Show(in MatchOutcome)` | `SoundManager.cs:133~151` 구독은 존치 · `GameManager.cs:24` · 5c 어댑터 약속 | 구현 7 순서 ① | `a6552b029` |
+| 페이즈 먹이 `CoreCameraFeed` → `View/CorePhaseFeed.cs`(`.meta` 보존) — 카메라 + **BGM** | 5b 헤더 · 5c 「아직 안 보이는 것」 BGM | 한 값을 둘에 민다. Check lane 에 URP core 참조 추가(`Volume`) | `7376ec084` |
+| 당김·보너스 알약 `Hud/CoreNextWaveDock.cs` | `UI/NextWaveDock.cs`(rev 9) | 코어 읽기 모델(`WaveReached`·`WaveCount`·`PullsLeft`·`BonusOffered`·`AuthoredPlan`) + 커맨드 `PullWave`·`PullBonus` + receipt | `3b40c13c5` |
+| 보너스 포탈 `View/CoreBonusPortalPresenter.cs` | `BattleBridge.BonusWave.cs:161~167·234~258` | 판의 시계 · `BonusWaveSchedule.Build` 호출만 · `portalLingerSec` 는 `BonusWaveData` 에서(정의표 밖) | `3b40c13c5` |
+| 보스 경보 `Hud/CoreBossWarning.cs` | `UI/BossWarningView.cs` · 구동 `BattleBridge.cs:10116~10121` | `UnitSpawned` 의 `DefIndex` → `tier == Boss` | `3b40c13c5` |
+| 기믹 리빌 `Hud/CoreGimmickReveal.cs` | `UI/GimmickPhaseView.cs` | 코어 `GimmickAssigned` 사건 → 리빌 동안 Battle 도메인 리스 0, 끝나면 반납(기믹 없는 판은 붙들지 않는다) | `3b40c13c5` |
+| 메뉴 브리핑 `CoreMenuPopup` + `Hud/CoreBriefingPlan.cs` | `MenuPopup.cs:80~106` · 950/960 층 · 「no double-dim」 | 코어 `WaveScheduler.WaveAt` → `GeneratedWavePlan` 어댑터. 덱 경로·옛 생성기 호출 0. 「계속하기」 버튼을 옛 「재개」 자리(하단 −150,120 · 260×96)로 — 가운데면 카드 줄과 겹친다 | `3b40c13c5` |
+| 손패 유체 배경 `Cards/CoreHandFluidBackdrop.cs` + 씬 캔버스 | `DreamcatcherFluidBackdrop.cs` · 옛 씬 캔버스(ScreenSpaceCamera · plane 2 · order 4 · 1920×1080) | 상태원만 `CoreHandView.State` | `3b40c13c5` |
+| 퇴근 비행 `View/CoreRetireFlightPresenter.cs`(재측정 행) | `UI/DefenderRetireFlight.cs` · 링 `VfxSpawner.cs:71~83` · 키링 `DefenderDragPlacementController.cs:1811~1890` | `Retired` 사건 → `CoreUnitViewPool.TryDetach`(소유권 이전) · `CoreVfxSpawner.SpawnPlacementRing` · 키링은 같은 `DragSwaySettings`·`KeyringStyle` | `5a7c36e2c` |
+| 결과 뒤 HUD 게이팅 `Hud/CoreHudGate.cs` · `MatchTally` 어댑터 제거 | 옛 조각별 `PhaseChanged` 게이트 6곳(`ScoreHudView:842~873` 외) | 결과 표시 순간 HUD 루트 캔버스를 끈다(붕괴 박자 동안은 점수판 유지 = 옛 Tally). `ResultScreen.Show(in MatchOutcome)` 직접 | `83c979953` |
+| 새 씬 배선 + PlayMode 10 · 도크 (40,110) | — | `CoreScreenTransferTests` · 씬 diff 는 추가뿐(+559) | `e81fbb210` · `04db286ee` |
+
+⚠ **표를 쓰며 드러난 사실 둘**:
+1. 오늘 새 씬의 스테이지(`MapStage_Duel`)에는 **프랍·블롭이 0** 이다. 「스테이지 프랍 37개의 틸트가 꺼져 있다」는 프랍 **프리팹** 수였고 오늘 판 위에서는 안 보인다 — 맵 풀이 들어오는 8b 부터 보인다. 그래서 테스트는 판 위가 아니라 프리팹 전수 + 인스턴스 1개의 `Awake` 색을 본다.
+2. 새 씬 코스트 바(5b `CoreCostDisplay`, (40,40) 300×56)가 **옛 도크 자리**에 있다. 옛 게임은 코스트가 트레이 왼쪽 물통 칸이라 겹치지 않았다. 당김 알약을 새 씬 직렬화에서 (40,110)으로 올려 둘 다 보이게 했다(C# 기본값은 옛 값 그대로) — **사용자 결정 필요**(아래).
+
+## 사용자 결정 필요 (8a)
+
+1. **코스트 바와 당김 알약의 자리.** 옛 게임은 코스트가 트레이 왼쪽 물통 칸이라 당김 알약(좌하단 40,40)과 겹치지 않았다. 새 씬의 코스트 바(5b)는 바로 그 자리(40,40 · 300×56)다. 지금은 알약을 **코스트 바 위(40,110)** 로 올려 둘 다 보이게 했다. 선택지: (a) 지금대로 둔다 · (b) 옛 게임처럼 코스트를 트레이 물통 칸으로 옮기고 알약을 (40,40)으로 되돌린다(`CoreCostDisplay` 이식 — 8a 범위 밖) · (c) 코스트 바를 다른 자리로 옮긴다.
+
 ## 이식 제외
 
 | 안 옮긴 것 | 이유 | 등급 |
@@ -71,6 +99,10 @@
 | `TileHealthGaugeLayer`·`DcActionFlipbookView`·드래프트 4종 | 위 표 | 제거(선행) |
 | 공격음을 START 에 내기 | 5c 가 「플레이에서 어색하면」으로 미뤘다 | 후속 후보 |
 | `WaveClear`·`TimeAttack` 결과 단위 표기 | 모드 선택 UI 와 같이(5c) | 후속 후보 |
+| 메뉴 「나가기」·「성적 확정」 | 변경 대상 표가 8b 로 뒀다(`ReturnToMenuButton`·`MenuPopup` 나가기 행) — 버튼 자리(하단 150,120)만 비워 뒀다 | 8b |
+| `SoundManager.PlayNextWave`(당김 버튼 전용 소리) | 옛 라이브에 **호출처 0** 이다(`grep PlayNextWave` = 선언뿐) — 옛 도크도 안 불렀다 | 제거(옛 라이브에 없음) |
+| 퇴근 비행의 절차적 키링 폴백(`Shader.Find("Sprites/Default")`) | 라이브 `DragSwaySettings.style` = `KeyringStyleHologram` 이라 스타일 경로만 돈다. 폴백은 `RuntimeMaterialFactory.CreateTransparent` 로 바꿔 옮겼다(추가 제약) | 규칙 무관 — 머티리얼 경로만 |
+| ⚠ 「`DragSwaySettings` 키링 칸 제거(unit 9)」 정정 | 5b 는 키링 칸(`ropeLength`·`cordWidth`·`cordColor`·`ringRadius`·`style`)이 옛 라이브에서 안 쓰인다고 적었지만 **퇴근 비행이 라이브로 쓴다**(`DefenderRetireFlight` → `CreateKeyringHardware`). 새 퇴근 비행도 같은 칸을 읽는다 — unit 9 는 **드롭 하마 잔류물 칸만** 지운다 | 정정 |
 
 ## 파이프라인 커버리지
 
@@ -88,10 +120,14 @@
 
 ## 완료 기준
 
-- [ ] 대조표 재측정을 이 문서에 반영 · 삭제 행 전부 옛 spec 인용.
-- [ ] `grep -rn "BattleBridge\." Assets/_Project/Scripts/Presentation/BlobShadow.cs Assets/_Project/Scripts/Presentation/PropBillboard.cs Assets/_Project/Editor/PropDataEditor.cs` = 0.
+- [x] 대조표 재측정을 이 문서에 반영 · 삭제 행 전부 옛 spec 인용. (52 대조 · 더한 행 1 = `DefenderRetireFlight` · 삭제 행 인용: bridge-fields 49 · `defender-clock-out/0` + tools 11 · 계약 9)
+- [x] `grep -rn "BattleBridge\." Assets/_Project/Scripts/Presentation/BlobShadow.cs Assets/_Project/Scripts/Presentation/PropBillboard.cs Assets/_Project/Editor/PropDataEditor.cs` = 0. (`6bcdee28a`)
 - [ ] 옛 씬 무회귀: 로비 → 옛 씬 1판에서 카메라 페이즈 레시피·BGM·결과 화면이 전과 같다(`GameManager` 구독 존치).
-- [ ] PlayMode 코어: 당김 → receipt → 웨이브 도착 · 보너스 → 포탈 열림/닫힘 틱 · 보스 스폰 → 배너 1회 · 결과 뒤 HUD 비활성 · 스테이지 프랍 틸트 factor = `CharacterViewConfig` 값 · 브리핑 웨이브 수 = 코어 `WavePlan` 웨이브 수. 기존 57 + 신규 전부 초록.
-- [ ] EditMode 코어+Assets 선행 2 외 빨강 0 · 헤드리스 3종(build 0 · test · Check 0 — **커밋마다**, 구현 7 의 순서로) · 골든 11종 무변(코어 변경 0 이 기대값).
+      **자동 증언까지(2026-09-25)**: `GameManager`·`CameraDirector`·`SoundManager` 구독 삭제 0 · 옛 PlayMode lane 부분집합 **40/40**(`TallyFlowTest`·`OutgameFlowSmokeTest`·`SceneTransitionSmokeTest`·`DioramaStagePlayTests`·`DefenderRetireTest`·`BonusWavePullTest`·`WavePullCapTest`·`GoalStabilityTest`). 옛 씬 1판 육안(카메라 레시피·BGM 귀)은 사용자 플레이 몫.
+- [x] PlayMode 코어: 당김 → receipt → 웨이브 도착 · 보너스 → 포탈 열림/닫힘 틱 · 보스 스폰 → 배너 1회 · 결과 뒤 HUD 비활성 · 스테이지 프랍 틸트 factor = `CharacterViewConfig` 값 · 브리핑 웨이브 수 = 코어 `WavePlan` 웨이브 수. 기존 57 + 신규 전부 초록. (**71/71** = 기존 57 + 플레이 3차 4 + 8a 10 · 프랍은 판 위가 아니라 프리팹 전수 — 「고친 것」 ⚠1)
+- [x] EditMode 코어+Assets 선행 2 외 빨강 0 · 헤드리스 3종(build 0 · test · Check 0 — **커밋마다**, 구현 7 의 순서로) · 골든 11종 무변(코어 변경 0 이 기대값). (EditMode **993/995** — `bomb_man`·`boomerang` · 클린 export 6 SHA 전부 build 0 · test 678~679 · Check 0 · 골든 무변 — 코어 변경은 읽기 창 2개뿐)
 - [ ] Play 육안(옛 씬과 나란히): 당김 알약 · 보너스 포탈 · 보스 배너 · 메뉴 브리핑 · 손패 배경 · BGM · 프랍 틸트. 콘솔 에러 0.
-- [ ] `core-reviewer` APPROVE.
+      **에이전트 스모크(새 씬만)**: 보스 배너 · 당김 알약 · 메뉴 브리핑(12장) 캡처 · `BgmPlaying = true` · 콘솔 에러·경고 0. 보너스 포탈·손패 배경·옛 씬 나란히는 사용자 플레이 몫(프랍 틸트는 오늘 새 씬 판에 프랍이 없다).
+- [x] `core-reviewer` APPROVE(2026-09-25 · finding 0 — 코어 변경 = `WaveScheduler` 읽기 창 2 · 옛 씬 구독 삭제 0 · 씬 diff 추가만 +559 · canvas 5/7/9/950/960 일관). 리드 재검증(HEAD `c548e4bc2`): export build 0 · test 679 · Check 0 · 미정 0 · Unity EditMode 코어+Assets 993/995(선행 2) · PlayMode 코어 71/71 · 골든 무변.
+
+> **사용자 답(2026-09-25) (a)**: 코스트 바는 그대로, 당김 알약은 새 씬 설정에서 (40,110) 으로 올려 둔다(`04db286ee`). 코드 기본값은 옛 값 유지.
