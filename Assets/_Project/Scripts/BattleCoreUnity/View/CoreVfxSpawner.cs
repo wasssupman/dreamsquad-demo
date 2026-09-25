@@ -49,6 +49,10 @@ namespace Wassup.BattleCoreUnity.View
         [Tooltip("실드 부여 이펙트 스케일(타일 1 유닛 기준)")]
         [SerializeField] private float _shieldGrantedScale = 0.7f;
         [SerializeField] private GameObject _detectionMarkPrefab;
+        [Tooltip("마음 붕괴 원샷(옛 `VfxSpawner.goalCollapsePrefab` — unit 8a2 행 3). 비면 배치 링 펄스로 폴백(옛 폴백 그대로).")]
+        [SerializeField] private GameObject _goalCollapsePrefab;
+        [Tooltip("마음 붕괴 이펙트 스케일(옛 `goalCollapseScale` · 옛 씬 `BattleScene.unity:4455` = 1.2)")]
+        [SerializeField] private float _goalCollapseScale = 1.2f;
         [Tooltip("⚠ 짝 = `DetectionMark_SKELETON/BodyFlash` 의 localPosition.y — 하나를 바꾸면 다른 하나를 같이 본다.")]
         [SerializeField] private float _detectionMarkLift = 0.9f;
         [Tooltip("유닛별 공격 광역(회오리)의 지속 배수. 수명 = 공격 주기 × 이 값(동시 인스턴스 수로 읽는다).")]
@@ -116,6 +120,7 @@ namespace Wassup.BattleCoreUnity.View
                     _awaitingLanding.Clear();
                     _procLastImpact.Clear();
                     SpawnedCount = 0;
+                    CollapsedMarkerCount = 0;
                     ProcImpactCount = 0;
                     _telegraphProjectile = SimEntityId.None;
                     break;
@@ -141,6 +146,8 @@ namespace Wassup.BattleCoreUnity.View
                     OneShot(_detectionMarkPrefab, nameof(_detectionMarkPrefab), e.SiteFired.Pos,
                             _detectionMarkLift, 1f, 0f, oneShot: true);
                     break;
+
+                case CoreEventKind.HeartCollapsed: OnHeartCollapsed(); break;
 
                 case CoreEventKind.Placed:
                     _awaitingLanding.Add(e.A);
@@ -339,6 +346,60 @@ namespace Wassup.BattleCoreUnity.View
             for (int i = 0; i < renderers.Length; i++) renderers[i].sortingOrder += BoardSortOrder.AreaBreathOrder;
             Destroy(go, ConfigureOneShot(go));
             SpawnedCount++;
+        }
+
+        // ── 마음 붕괴 (unit 8a2 행 3) ─────────────────────────────────────────
+        //
+        // 옛 `BattleBridge.PlayCoreBurst`(`:7308-7319`) + `DrainGoalCollapsedEvents`(`:9596-9609`)의 후계. **규칙은 하나도 없다** —
+        // 판을 끝낸 것은 `HeartMeter`(첫 붕괴 = 판의 끝)이고, 붕괴 박자의 슬로모(1.25초 · 0.3)는 `CoreMatchOutcomePresenter` 가
+        // 도메인 리스로 이미 건다(5c — `HeartHudConfig.CoreBurst*`). 여기는 그 한 박자에 보이는 것 둘뿐:
+        //   · 마음 칸마다 붕괴 원샷(옛 `SpawnGoalCollapse` — 칸 중심 · 0.08 띄움 · 저작 스케일 · 루프 프리팹 단발화)
+        //   · 스테이지의 골 마커를 「무너졌다」로(옛 `GoalMarker.MarkCollapsed` — 어두운 틴트 + 주저앉음)
+        // 마음 칸 = 정의표의 골(`Map.Goals` — 마음 타워는 골당 하나이고 체력 저수지를 공유한다 X29 — 그래서 무너질 때 전부 무너진다).
+        // 사건은 자리를 안 나르지만 골은 **정의표 값**(판 중 불변)이라 되묻기가 아니다.
+        private void OnHeartCollapsed()
+        {
+            var def = _driver != null ? _driver.Definition : null;
+            var map = _driver != null ? _driver.Match?.Map : null;
+            if (def == null || map == null) return;
+            var goals = def.Map.Goals;
+            for (int i = 0; i < goals.Length; i++)
+            {
+                var center = map.CenterOf(goals[i]);
+                if (_goalCollapsePrefab != null)
+                    OneShot(_goalCollapsePrefab, nameof(_goalCollapsePrefab), center, 0.08f,
+                            Mathf.Max(0.1f, _goalCollapseScale), 0f, oneShot: true);
+                else
+                {
+                    // 옛 폴백 그대로 — 최소한 붕괴 지점 링 펄스(`VfxSpawner.cs:242-246`). 한 번은 알린다.
+                    if (_missingSlotLogged.Add(nameof(_goalCollapsePrefab)))
+                        Debug.LogWarning("[CoreVfxSpawner] _goalCollapsePrefab 미할당 — 배치 링 펄스로 폴백.", this);
+                    OneShot(_placementRingPrefab, nameof(_placementRingPrefab), center, 0.02f, 1f, 0.6f, oneShot: false);
+                }
+            }
+            MarkGoalMarkersCollapsed(goals);
+        }
+
+        /// <summary>이번 판에 무너뜨린 골 마커 수(테스트).</summary>
+        public int CollapsedMarkerCount { get; private set; }
+
+        // 골 마커 ↔ 칸: 스테이지 로컬 → 칸(옛 `BattleBridge.cs:1164-1169` 의 `_goalMarkersByCell` 과 같은 사상).
+        private void MarkGoalMarkersCollapsed(Unity.Mathematics.int2[] goals)
+        {
+            var stage = _driver.StageRoot;
+            if (stage == null) return;
+            foreach (var marker in stage.GetComponentsInChildren<Wassup.Core.GoalMarker>(false))
+            {
+                var local = stage.transform.InverseTransformPoint(marker.transform.position);
+                var cell = Wassup.Data.MapStageMath.LocalToCell(local, stage.gridOriginLocal, _driver.TileSize);
+                for (int i = 0; i < goals.Length; i++)
+                {
+                    if (goals[i].x != cell.x || goals[i].y != cell.y) continue;
+                    marker.MarkCollapsed();
+                    CollapsedMarkerCount++;
+                    break;
+                }
+            }
         }
 
         // ── 카드 (unit 7c) ───────────────────────────────────────────────────

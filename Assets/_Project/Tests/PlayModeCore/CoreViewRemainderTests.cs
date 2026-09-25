@@ -306,5 +306,56 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.AreEqual(loop, view.CurrentAnimationName, "유지 루프가 돌아야 한다(옛 SyncSummonerAnimationState)");
             AssertNoErrors();
         }
+        // ── 행 3 — 마음 붕괴 연출 + 슬로모 ────────────────────────────────────────
+        [UnityTest]
+        public IEnumerator 행3_마음이_무너지면_마음_칸에_붕괴_연출이_나고_마커가_주저앉고_박자_동안_판_시간이_느려진다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return Boot(d => driver = d);
+            var vfx = Object.FindAnyObjectByType<CoreVfxSpawner>();
+            Assert.IsNotNull(vfx, "씬에 CoreVfxSpawner 가 없다");
+            var world = driver.Match.World;
+
+            // 방패(살아 있는 방어 본능)를 먼저 걷는다 — 방패 중엔 마음 피해가 버려진다(HeartMeter 백스톱).
+            for (int i = world.Units.Count - 1; i >= 0; i--)
+                if (world.Units[i].Faction == Wassup.Battle.Units.Faction.DefenderInstinct)
+                    driver.Apply(Command.DebugDestroy(world.Units[i].Id));
+            yield return Ticks(driver, 1);
+
+            Unit tower = null;
+            for (int i = 0; i < world.Units.Count; i++)
+                if (world.Units[i].Faction == Wassup.Battle.Units.Faction.DefenderCore) tower = world.Units[i];
+            Assert.IsNotNull(tower, "마음 타워가 없다(덱이 마음을 저작하지 않았다)");
+            int spawnedBefore = vfx.SpawnedCount;
+
+            // 코어의 문 — 타워 인박스(피해 단계가 그 개체를 건너뛰고 `HeartMeter` 가 드레인한다).
+            tower.Inbox.Damage.Add(new DamageEntry { Amount = driver.Match.Heart.MaxHealth * 2f, Source = SimEntityId.None });
+            yield return Ticks(driver, 1);
+
+            Assert.IsTrue(driver.Match.Heart.Collapsed, "마음이 무너져야 한다");
+            Assert.AreEqual(MatchEndReason.StressFull, driver.Match.Clock.EndReason, "첫 붕괴 = 판의 끝");
+            int goals = driver.Definition.Map.Goals.Length;
+            Assert.AreEqual(spawnedBefore + goals, vfx.SpawnedCount, "마음 칸마다 붕괴 원샷 하나(옛 PlayCoreBurst)");
+            if (driver.StageRoot != null && driver.StageRoot.GetComponentInChildren<Wassup.Core.GoalMarker>() != null)
+                Assert.AreEqual(goals, vfx.CollapsedMarkerCount, "골 마커가 무너짐 표시로(옛 MarkCollapsed)");
+
+            // 슬로모 = 도메인 리스(틱 발행률 축) — 박자 동안 전투 시간 배율이 저작값(옛 coreBurstTimeScale 0.3)이다.
+            var heartHud = UnityEditorLoad<Wassup.Data.BattleView.HeartHudConfig>(
+                "Assets/_Project/Data/BattleView/HeartHudConfig.asset");
+            float scale = Wassup.Core.TimeControl.TimeManager.Instance.ScaleOf(Wassup.Core.TimeControl.TimeDomain.Battle);
+            if (heartHud != null)
+                Assert.AreEqual(heartHud.CoreBurstTimeScale, scale, 1e-4f, "붕괴 박자 동안 판 시간 = 저작 배율");
+            AssertNoErrors();
+        }
+
+        private static T UnityEditorLoad<T>(string path) where T : Object
+        {
+#if UNITY_EDITOR
+            return UnityEditor.AssetDatabase.LoadAssetAtPath<T>(path);
+#else
+            return null;
+#endif
+        }
     }
 }
