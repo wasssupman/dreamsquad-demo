@@ -35,7 +35,7 @@ description: Use when authoring a new VFX (particle prefab + material) for this 
 | --- | --- | --- | --- |
 | **A. 스프라이트 빌보드** | 스파크·퍼프·링·글리프 | `renderMode Billboard`, 알파/가산, 버스트 1~2발 | `DetectionMark_SKELETON`, `DamageNumberSpark_SKELETON` |
 | **B. 절차 텍스처 + 쿼드 메시** | **지면에 눕는 도형**(배치 링, 방향이 있는 것) | `Texture2D.SetPixels → EncodeToPNG` 로 텍스처, `Mesh` 에셋(꼭짓점 원점·+Y 전방), `renderMode Mesh`, `alignment Local`, `startRotation3D x=90°`, 알파 블렌드, `scalingMode Hierarchy`(크기는 호출부 `scale` 인자) | — |
-| **B′. 실시간 메시 + 램프 텍스처** | 지면 도형이 **판정 데이터를 따라야 할 때**(참격 부채꼴/띠) | 모양은 굽지 않는다 — `Presentation/ShapeMeshBuilder`(배치 가이드와 같은 빌더)가 bake·사거리·내 몸에서 메시를 만들고 `ProjectileViewPool.GetShapeMarkMesh` 가 캐시, `PlayHit(meshOverride:)` 로 교체. 채움/테는 `uv.x` 0/1 + 4×1 램프 텍스처(정점색은 파티클 색 스트림에 덮여 못 쓴다). 파티클 모듈은 B 와 같고 크기는 `scale 1`(메시가 월드 단위) | `SlashMark_SKELETON` |
+| **B′. 실시간 메시 + 램프 텍스처** | 지면 도형이 **판정 데이터를 따라야 할 때**(참격 부채꼴/띠) | 모양은 굽지 않는다 — `Presentation/ShapeMeshBuilder`(배치 가이드와 같은 빌더)가 bake·사거리·내 몸에서 메시를 만들고 `CoreProjectileViewPool.GetShapeMarkMesh` 가 캐시, `PlayHit(meshOverride:)` 로 교체. 채움/테는 `uv.x` 0/1 + 4×1 램프 텍스처(정점색은 파티클 색 스트림에 덮여 못 쓴다). 파티클 모듈은 B 와 같고 크기는 `scale 1`(메시가 월드 단위) | `SlashMark_SKELETON` |
 | **C. 벤더 사본 스트립** | 이미 좋은 벤더 팩(PixPlays·GA·WALLCOEUR)이 있을 때 | `_Project` 로 복사 → 무버/RB/Collider/제어 스크립트 제거 → 정렬·자세·활성 그룹 수동 | `StatusAura_*`, `Burnout_Smoke`, `BusterBeam`, `WeaponTrail_*` |
 
 레시피 B 를 고르는 기준: **카메라 pitch(배치 55°/전투 ~50°)에 파편 팬이 눌려 발밑 빛으로만 보인다.** 지면 도형은 쿼드에
@@ -73,7 +73,7 @@ description: Use when authoring a new VFX (particle prefab + material) for this 
 ## Red Flags (이 프로젝트에서 실제로 난 사고)
 - **다축 모듈의 축별 커브 모드 불일치**(velocity/force/limit: y 만 Curve, x·z Constant) — 에디터는 멀쩡, 재생 시 콘솔 에러 폭주.
   상수 축도 `AnimationCurve.Constant` 로 승격. 전역 가드 = `ParticleCurveModeConsistencyTests`.
-- **`VfxSpawner.ConfigureOneShot` 이 emission 을 덮어쓴다**(t0 버스트 최소 4). shape 를 켜면 글리프가 넷으로 보인다. 저작 시점엔
+- **`CoreVfxSpawner.ConfigureOneShot` 이 emission 을 덮어쓴다**(t0 버스트 최소 4). shape 를 켜면 글리프가 넷으로 보인다. 저작 시점엔
   안 보이고 라이브에서만 깨진다 — 원샷 경로 프리팹은 버스트 수를 이 하한과 맞춘다.
 - **벤더 프리팹 3종 함정**: ① 단계 그룹이 `activeSelf=false` 로 와서 스크립트를 떼면 아무도 안 켠다 ② `sortingOrder 0~2` 로 와서
   보드 유닛(수백대) 뒤에 깔린다 — 자체 풀이면 `BoardSortOrder` 로 직접 올린다 ③ 자세는 코드로 추측하지 말고 데이터 knob
@@ -108,4 +108,4 @@ description: Use when authoring a new VFX (particle prefab + material) for this 
 
 ## Handoff
 산출물 = `.prefab + .mat (+ png/mesh)` + 오프스크린 시트 PNG 경로 + `prefab-skeleton-template.md` 양식의 메모.
-Renderer 슬롯·SerializeField·브리지 드레인은 `unity-vfx-integration` 스킬.
+Renderer 슬롯·SerializeField·코어 사건 구독은 `unity-vfx-integration` 스킬.

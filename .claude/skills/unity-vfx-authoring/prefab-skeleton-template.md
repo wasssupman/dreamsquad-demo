@@ -12,8 +12,8 @@
 - Effect name / 프리팹 경로:
 - Role: oneshot / looping / warning / impact / ground-shape
 - 레시피: A 스프라이트 / B 절차 텍스처+쿼드 / C 벤더 사본
-- 원점: 공격자 발밑(`attackVfxAtAttacker`) / 대상 / 자리(칸) — 방향: 없음 / `attackVfxFacesTarget`(재생 시점 재측정) / 데이터 knob(`attackVfxEulerOffset`)
-- Trigger path: direct call / NativeQueue(sim 시점) / `hitDelaySec` 지연(`PendingHitVfx`)
+- 원점: 공격자 발밑(`attackVfxAtAttacker`) / 대상 / 자리(칸) — 방향: 없음 / `attackVfxFacesTarget`(사건의 공격 축 · 공격자→대상) / 데이터 knob(`attackVfxEulerOffset`)
+- Trigger path: 입력 층 직접 호출(프리뷰·조준) / 코어 사건(판정 시점 — 어느 `CoreEventKind`, 받는 `Core*` 뷰 풀)
 - Renderer slots needed(SO 필드명):
 - Required material(`.mat` 경로) / 절차 텍스처·메시 에셋:
 - 오프스크린 시트 PNG 경로(방향 효과는 3방향):

@@ -1,6 +1,6 @@
 ---
 name: unity-prop-tile-authoring
-description: Use when adding a new map decoration prop or ground tile from a source image (PNG) — importing the sprite, creating PropData/prefab or Tile/TileSetData assets, or registering them into MapThemeData pools (tileProps / tileSet).
+description: Use when adding a new map decoration prop or ground tile from a source image (PNG) — importing the sprite, creating PropData/prefab or Tile/TileSetData assets, or placing them on the map (stage prefab `MapStage` is the map visual; legacy MapThemeData pools / tileSet have no battle-core runtime consumer — see the ⚠ notes).
 ---
 
 # Unity Prop/Tile Authoring
@@ -27,17 +27,20 @@ description: Use when adding a new map decoration prop or ground tile from a sou
    - 디자인 값(사람 판단): `placementWeight`, `category`(+`sameCategoryMinDistanceCells`), `billboardMode`/`tiltAngle`, `visualScale`. baseline 복사값을 기본 제안으로.
 3. **프리팹 생성**: 에디터에서 PropData 인스펙터의 **"Generate Billboard Prefab" 버튼** (또는 UnityMCP `execute_code` 로 `Wassup.Editor.PropDataEditor` 의 private static `GeneratePrefab` reflection 호출). 도구가 자동 처리: 임포트 설정(Sprite/Single, **PPU 256 고정**, mipmap off, Bilinear, Clamp, **Uncompressed RGBA32 전 플랫폼**), Root+Visual 계층, `PropBillboard.Configure`(data 자기참조), `data.prefab` 역참조, `Prefabs/Props/{theme}/` 저장.
    - 피벗은 도구가 **BottomCenter(7) 로 강제**한다 (`ConfigureTextureImporter`, 2026-07-02 fix — Center 피벗이면 Tilted 모드에서 절반이 지면에 묻힘). 도구를 거치지 않고 임포트한 텍스처만 `spriteAlignment` 수동 확인.
-   - 도구가 **BlobShadow 자식을 자동 내장** (footprint 종횡비 + 틸트 투영 기본값). 그림자 위치/크기의 source of truth 는 프리팹 — 아트 여백 따라 프리팹에서 미세조정하고, 재생성해도 기존 블롭 튜닝은 보존됨. 색/알파는 전역(BattleBridge) 소유.
+   - 도구가 **BlobShadow 자식을 자동 내장** (footprint 종횡비 + 틸트 투영 기본값). 그림자 위치/크기의 source of truth 는 프리팹 — 아트 여백 따라 프리팹에서 미세조정하고, 재생성해도 기존 블롭 튜닝은 보존됨. 색/알파는 전역 외형 SO `Assets/_Project/Data/BattleView/BlobShadowConfig.asset`(`BlobShadowConfig`) 소유 — 도구가 `BlobShadow.MarkAuthored` 로 그 SO 를 프리팹에 굽고, 런타임 `BlobShadow.Awake` 가 그 값으로 정규화한다.
    - **PPU 256 고정 → 캔버스 px 가 월드 크기 결정**: `visualScale = 목표 월드폭 ÷ (캔버스px/256)`. 소스를 다른 해상도로 교체하면 visualScale·블롭 재점검.
 4. **머티리얼**: 생성 직후 Visual 의 SpriteRenderer 에 공용 `Prefabs/Props/forest/mat/PropOutline_Sprite_Unlit.mat` 할당. **프랍별 `_cast` mat 복제 금지** (구세대 레거시 패턴).
 5. **테마 등록**: `Map/Theme/{theme}/{theme}.asset` 의 `tileProps` 배열에 PropData guid append. 순서 무의미.
+   - ⚠ (2026-09-25 확인) `MapThemeData` 에 `tileProps` 필드는 없다(현재 이름 `playAreaProps`/`distantRingProps`, `WeightedProp[]`). 그리고 두 풀을 읽는 런타임 코드가 0 건이다 — 맵 비주얼은 디오라마 스테이지 프리팹(`MapStage`)이 정본이라 프랍은 **스테이지 프리팹에 직접 배치**한다(`docs/reference/map-stage-authoring.md`). 테마 풀 등록이 필요하다고 판단되면 정지하고 질문.
 6. 에디터 없이 파일 레벨로 작업해야 하면: 3번 도구가 강제하는 값과 **동일하게** .meta/.prefab 을 작성한다 (위 괄호 값이 스펙).
 
 ## B. 바닥 타일 파이프라인
 
-활성 체인: `MapThemeData.tileSet` → `TileSetData.{walk|place|env|deco}Tile` → `Tile.m_Sprite`. 배치는 `Tilemap.SetTilesBlock` — GameObject/프리팹 없음.
+옛 체인: `MapThemeData.tileSet` → `TileSetData.{walk|place|env|deco}Tile` → `Tile.m_Sprite`, 배치는 `Tilemap.SetTilesBlock`(옛 `TilemapMapView`).
 
-1. **STOP 게이트**: 대상 테마의 `tileSet` 이 null 이면 (예: forest) **정지하고 질문**. `TileSet_{Theme}.asset` 신설은 아키텍처 결정이다. 폴백(`BattleBridge.cs:702`)은 per-slot 이 아닌 **whole-object 스왑**이라, 일부 존만 채운 TileSet 을 연결하면 나머지 존이 전부 null 이 되어 맵이 깨진다 — 신설하려면 전 슬롯을 채워야 하고, scene fallback 에서 **스냅샷 복사하면 drift 위험** — 복사 vs 참조 유지 방침을 사용자가 정한다.
+⚠ **battle-core-rebuild unit 9 에서 이 체인의 런타임 소비자가 사라진다** — 테마 `tileSet` 을 고르던 옛 전투 게이트웨이와 페인터 `Core/TilemapMapView.cs` 가 둘 다 퇴역 목록(`docs/spec/battle-core-rebuild/ledgers/retire-set.md`)에 있다. 새 전투(`BattleCoreScene`)의 지면은 스테이지 프리팹(`MapStage`)에 구운 비주얼이고, 새 층에서 `TileSetData` 를 읽는 곳은 `BattleCoreUnity/View/CoreMapOverlay.cs` 의 `_tileSet`(오버레이 색·조준 링 스타일·배치 페이드) 하나뿐이다 — walk/place/env/deco 타일 슬롯은 읽지 않는다. 그래서 아래 절차로 만든 Tile 은 **스테이지 프리팹의 Tilemap 에 칠해야** 화면에 나온다. 새 바닥 타일 요청이 오면 먼저 「어느 스테이지 프리팹에 칠할 것인가」를 묻는다.
+
+1. **STOP 게이트**: `TileSet_{Theme}.asset` 신설은 아키텍처 결정이다 — **정지하고 질문**. (옛 전투에서는 테마 `tileSet` 이 null 이면 씬 폴백으로 **whole-object 스왑**됐는데, 그 폴백은 unit 9 에서 퇴역한다. 새 층에서 `TileSetData` 를 바꾸면 영향받는 것은 `CoreMapOverlay` 오버레이 색뿐이다.)
 2. **임포트 설정** (레거시 meta 값 유지 금지, 아래로 정렬): Sprite/Single, PPU = 텍스처 한 변 픽셀(1셀 = 텍스처 전체), mipmap **on**, filter **Bilinear**(Trilinear 금지), wrap **Repeat**, 무압축(격자선 방지 규칙).
 3. **Tile 애셋**: `Assets/_Project/Data/TileSets/Tile_{Name}.asset` (표준 `UnityEngine.Tilemaps.Tile`).
 4. **등록**: `TileSetData` 의 해당 존 필드에 연결. 어느 존(walk/place/env/deco)인지는 Step 0 질문에 포함.
