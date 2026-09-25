@@ -7,7 +7,7 @@ namespace Wassup.Core
     // overlapping one-shots (score tick, projectile fire) + a dedicated looping BGM
     // source. All clips are authored-time assets (ElevenLabs) played locally — no
     // runtime API calls. BGM auto-plays during the Battle phase (GameManager.PhaseChanged).
-    public class SoundManager : MonoBehaviour
+    public partial class SoundManager : MonoBehaviour
     {
         public static SoundManager Instance { get; private set; }
 
@@ -92,7 +92,6 @@ namespace Wassup.Core
         private AudioSource _bgmSource;
         private float _lastProjectileFire = -100f;
         private float _lastAttackSfx = -100f;
-        private bool _subscribed;
 
         private void Awake()
         {
@@ -129,20 +128,9 @@ namespace Wassup.Core
         // Lazy-subscribe to phase changes (GameManager.Instance may not exist in Awake).
         private void Update() => EnsureSubscribed();
 
-        private void EnsureSubscribed()
-        {
-            if (_subscribed || !bgmOnlyInBattle) return;
-            if (GameManager.Instance == null) return;
-            GameManager.Instance.PhaseChanged += OnPhaseChanged;
-            _subscribed = true;
-            OnPhaseChanged(GameManager.Instance.CurrentPhase);
-        }
-
-        private void Unsubscribe()
-        {
-            if (_subscribed && GameManager.Instance != null) GameManager.Instance.PhaseChanged -= OnPhaseChanged;
-            _subscribed = false;
-        }
+        // battle-core-rebuild unit 8c — 옛 씬의 `GameManager.PhaseChanged` 구독은 `SoundManager.OldBattle.cs` 에 있다(unit 9 가 지운다).
+        partial void EnsureSubscribed();
+        partial void Unsubscribe();
 
         private void OnPhaseChanged(GamePhase phase)
         {

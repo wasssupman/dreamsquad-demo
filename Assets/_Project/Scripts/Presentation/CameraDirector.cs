@@ -20,7 +20,7 @@ namespace Wassup.Presentation
     // (revert 가 이중 차감이 됨)라서 킥을 채널로 흡수하고 해당 컴포넌트는 은퇴.
     [DefaultExecutionOrder(-90)]
     [RequireComponent(typeof(Camera))]
-    public class CameraDirector : MonoBehaviour
+    public partial class CameraDirector : MonoBehaviour
     {
         [Header("이 카메라의 씬 포즈(Transform·FOV)는 런타임에 쓰이지 않는다 — 에디터 미리보기 전용.\n포즈는 config 의 상태 레시피에서 매 프레임 계산된다.")]
         [SerializeField] private Wassup.Data.CameraDirectionConfig config;
@@ -136,22 +136,13 @@ namespace Wassup.Presentation
             }
         }
 
-        private Wassup.Core.GameManager _gm; // 구독 대상 캐시 — 언구독이 teardown 순서 무관하도록
+        // battle-core-rebuild unit 8c — 옛 씬의 `GameManager.PhaseChanged` 구독은 `CameraDirector.OldBattle.cs` 에 있다(unit 9 가 지운다).
+        private void Start() { SubscribeOldBattlePhase(); }
 
-        private void Start()
-        {
-            // 구독은 Start — GameManager(-100)와 Awake 순서가 동률이라 Instance 보장 지점 사용.
-            // 이미 지나간 페이즈(GameManager.Start 가 먼저 돈 경우)는 CurrentPhase 스냅으로 커버.
-            _gm = Wassup.Core.GameManager.Instance;
-            if (_gm == null) return; // BattleScene 외 씬 — 비행 채널 비활성
-            _gm.PhaseChanged += OnPhaseChanged;
-            OnPhaseChanged(_gm.CurrentPhase);
-        }
+        private void OnDestroy() { UnsubscribeOldBattlePhase(); }
 
-        private void OnDestroy()
-        {
-            if (_gm != null) _gm.PhaseChanged -= OnPhaseChanged;
-        }
+        partial void SubscribeOldBattlePhase();
+        partial void UnsubscribeOldBattlePhase();
 
         // unit 11 — 페이즈는 «기록» 만 한다. 어느 카메라 상태인지는 LateUpdate 가 매 프레임
         // 해석한다 — 이벤트 시점에 결정하면 «직전에 뭐였는지» 에 결과가 의존해 재현이 어렵다.

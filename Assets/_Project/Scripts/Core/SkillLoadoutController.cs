@@ -82,26 +82,10 @@ namespace Wassup.Core
         // 제외 조건: 카탈로그에 이 스킬을 래핑하는 Active 카드가 존재하고 그 **전부**가
         // visible == 0. 래핑 카드가 없는 스킬은 보존한다 — 기존 "No Active card wraps
         // skill" 경고 경로(gift 시점) 그대로. catalog/pool null 은 무필터/빈 리스트.
+        // battle-core-rebuild unit 8c — 본문은 새 층 `CoreDeckComposition.FilterHiddenSkills` 로 이사했다(이 컨트롤러는 옛 씬과
+        // 함께 unit 9 에 지워지고, 새 층이 이 순수 함수를 부른다). 여기는 옛 호출처를 위한 위임뿐 — 규칙 무변.
         public static List<SkillData> FilterHiddenSkills(IEnumerable<SkillData> pool, DreamcatcherCardCatalog catalog)
-        {
-            var result = new List<SkillData>();
-            if (pool == null) return result;
-            var cards = catalog != null ? catalog.cards : null;
-            foreach (var skill in pool)
-            {
-                if (skill == null || cards == null) { result.Add(skill); continue; }
-                bool wrapped = false, anyVisible = false;
-                for (int i = 0; i < cards.Length; i++)
-                {
-                    var c = cards[i];
-                    if (c == null || c.type != CardType.Active || c.skill != skill) continue;
-                    wrapped = true;
-                    if (c.visible != 0) { anyVisible = true; break; }
-                }
-                if (!wrapped || anyVisible) result.Add(skill);
-            }
-            return result;
-        }
+            => Wassup.BattleCoreUnity.Cards.CoreDeckComposition.FilterHiddenSkills(pool, catalog);
 
         // Produces a new random picked set. Idempotent per seed: same seed always
         // yields same picks, so logs can replay sessions exactly.

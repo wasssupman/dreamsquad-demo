@@ -26,7 +26,7 @@ namespace Wassup.UI
     //
     // The pure row model below is deliberately untouched — ResultLeaderboardModelTests
     // covers it.
-    public class ResultScreen : MonoBehaviour
+    public partial class ResultScreen : MonoBehaviour
     {
         // Palette — visual constants matching the in-game HUD (ScoreHudView).
         // No serialized fields: keeps the scene component (and its diff) clean.
@@ -111,8 +111,7 @@ namespace Wassup.UI
         // 일이 없어졌으므로 «어느 쪽으로 끝났나» 를 물을 자리가 없다. 라벨은 `결과` 고정이고
         // 색 분기도 사라졌다(패배색은 이제 쓰이지 않는다).
         // 줄 구성·문구 다듬기는 unit 4 몫 — 여기서는 승패 축만 걷어낸다.
-        public void Show(MatchTally tally)
-            => Render(tally.Total, tally.Stability, tally.StabilityMax, tally.WaveReached);
+        // (옛 씬의 `Show(MatchTally)` 입구는 8c 에서 `ResultScreen.OldBattle.cs` 로 떼었다 — unit 9 가 지운다.)
 
         // battle-core-rebuild unit 8a — 새 전투 코어의 성적(`MatchOutcome`)을 **직접** 받는다.
         // 5c 는 `MatchOutcome → MatchTally` 어댑터 한 줄로 이었고(`CoreMatchOutcomePresenter`),
