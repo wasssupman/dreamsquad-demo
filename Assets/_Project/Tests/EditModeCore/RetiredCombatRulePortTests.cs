@@ -897,10 +897,6 @@ namespace Wassup.Tests.EditMode.Core
 
         // 옛 ProjectileRetargetAndBounceTests::DirectionalBounce_OnPierceSpent_SwitchesToHoming — 방향탄이 관통을 다 쓰면 호밍으로 튕긴다
         [Test]
-        [Ignore("unit 9 — 옛 규칙과 다름: 옛 전투는 방향탄(PathHit)이 관통 예산을 다 쓴 틱에 튕김 홉이 남아 있으면 "
-                + "호밍·단일 착탄으로 바꿔 다음 적에게 튕겼다(Battle/Combat/Projectile/ProjectileHitSystem.cs:648-676). "
-                + "코어 SweepPath 는 관통 소진 = 소멸이고 튕김은 SingleSplash 착탄에만 있다"
-                + "(BattleCore/Phases/TickProjectilePhase.cs:973 · :880). 카드 튕김(②)이 머신거너 연발에 붙을 때의 규칙.")]
         public void 방향탄은_관통을_다_쓰면_호밍으로_바꿔_다음_적에게_튕긴다()
         {
             var m = Match(ProjectileBoard(MovementKind.DirectionalLinear, PayloadKind.PathHit, 8f, 0.6f, pierce: 1));

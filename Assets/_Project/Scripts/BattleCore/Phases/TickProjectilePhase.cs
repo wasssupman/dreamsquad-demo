@@ -936,6 +936,11 @@ namespace Wassup.BattleCore
             float tileSize = _map != null ? _map.TileSize : 1f;
             var units = ctx.World.Units;
             int hits = 0;
+            // 관통 소진 튕김의 기준점 — 이 틱에 맞힌 적 중 **스윕 진행 방향으로 가장 앞**
+            // (옛 전투는 앞에서부터 맞혔으므로 그 순서의 마지막 피해자와 같다).
+            Unit lastVictim = null;
+            float lastAlong = float.MinValue;
+            float2 sweepDir = p.Position.xz - p.PrevPos.xz;
 
             for (int i = 0; i < units.Count && p.PierceRemaining > 0; i++)
             {
@@ -947,6 +952,8 @@ namespace Wassup.BattleCore
 
                 Deal(ctx, p, u, p.Damage);
                 hits++;
+                float along = math.dot(u.Position.xz - p.PrevPos.xz, sweepDir);
+                if (lastVictim == null || along > lastAlong) { lastVictim = u; lastAlong = along; }
 
                 // 기록은 **창**이다. 슬롯을 제자리에 덮어쓴다 — 매 바퀴 append 하면 버퍼가 자란다.
                 var rec = new PathHitRecord { Victim = u.Id, NextHitAt = p.Elapsed + p.RehitCooldown };
@@ -970,7 +977,39 @@ namespace Wassup.BattleCore
             }
 
             if (hits > 0) ctx.Bus.Publish(CoreEvent.ProjectileHit(ctx.Tick, p, SimEntityId.None, hits));
+
+            // unit 9c — **더 뚫을 수 없게 된 틱**(관통 소진 또는 사거리 끝)에 튕김이 남아 있으면
+            // 마지막으로 맞힌 적에서 다음 적으로 **호밍·단일 착탄으로 바꿔** 다시 난다(옛
+            // `ProjectileHitSystem.cs:648-676`). 머신거너 탄은 관통 1 이라 실사용 형태는 「맞히고 튕김」이다.
+            // · 튕김은 **그 틱에 맞힌 적이 있을 때만** — 아무도 못 맞히고 사거리 끝에 닿으면 기준점이 없다.
+            // · 맞힌 기록(`HitRecords`)은 승계하지 않는다 — 전환 뒤 단일 착탄은 그것을 읽지 않는다.
+            // · 옛 코드가 전환 때 산출물 표를 떼어 낸 것은 「스윕엔 안 걸리던 상태이상이 홉에만 걸리는」
+            //   비대칭을 막으려던 것이다. 코어는 스윕 피격도 같은 `Deal` 로 산출물을 얹으므로 그
+            //   비대칭이 애초에 없다 — 떼어 내면 오히려 홉에서만 빠지는 반대 비대칭이 된다.
+            bool spent = p.PierceRemaining <= 0 || p.ImpactReached;
+            if (spent && lastVictim != null && p.BounceRemaining > 0
+                && TryBounceFrom(ctx, p, lastVictim, tileSize))
+            {
+                p.Movement = MovementKind.HomingToEntity;   // 방향 → 호밍
+                p.Payload = PayloadKind.SingleSplash;       // 스윕 → 단일 착탄
+                return;
+            }
             if (p.PierceRemaining <= 0) p.Expired = true;
+        }
+
+        // 방향탄 튕김 — **맞힌 적의 자리**에서 그 적을 빼고 찾는다(착탄 튕김은 탄의 자리·직격 대상 제외).
+        private bool TryBounceFrom(TickContext ctx, Projectile p, Unit from, float tileSize)
+        {
+            int n = CollectBounceCandidates(ctx, p, from.Id);
+            int pick = BounceRetarget.FindNext(from.Position, -1, _bounceCands, n,
+                                               p.TargetLayers, p.TargetMask,
+                                               p.BounceTileRange, tileSize);
+            if (pick < 0) return false;
+            p.Target = _bounceIds[pick];
+            p.Damage *= p.BounceDamageMul;
+            p.BounceRemaining--;
+            p.ImpactReached = false;
+            return true;
         }
 
         // 길막 설치물을 세운다. **피해는 0 이다** — 배럴은 폭탄이 아니라 물건이고,
