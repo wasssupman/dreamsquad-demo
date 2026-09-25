@@ -122,11 +122,11 @@
 
 - [x] 대조표 재측정을 이 문서에 반영 · 삭제 행 전부 옛 spec 인용. (52 대조 · 더한 행 1 = `DefenderRetireFlight` · 삭제 행 인용: bridge-fields 49 · `defender-clock-out/0` + tools 11 · 계약 9)
 - [x] `grep -rn "BattleBridge\." Assets/_Project/Scripts/Presentation/BlobShadow.cs Assets/_Project/Scripts/Presentation/PropBillboard.cs Assets/_Project/Editor/PropDataEditor.cs` = 0. (`6bcdee28a`)
-- [ ] 옛 씬 무회귀: 로비 → 옛 씬 1판에서 카메라 페이즈 레시피·BGM·결과 화면이 전과 같다(`GameManager` 구독 존치).
+- [~] 확인 불가(옛 씬 삭제, unit 9 `e548eda90`) — 대체 기준: 새 씬 플레이 4차 육안. 원 기준: 옛 씬 무회귀: 로비 → 옛 씬 1판에서 카메라 페이즈 레시피·BGM·결과 화면이 전과 같다(`GameManager` 구독 존치).
       **자동 증언까지(2026-09-25)**: `GameManager`·`CameraDirector`·`SoundManager` 구독 삭제 0 · 옛 PlayMode lane 부분집합 **40/40**(`TallyFlowTest`·`OutgameFlowSmokeTest`·`SceneTransitionSmokeTest`·`DioramaStagePlayTests`·`DefenderRetireTest`·`BonusWavePullTest`·`WavePullCapTest`·`GoalStabilityTest`). 옛 씬 1판 육안(카메라 레시피·BGM 귀)은 사용자 플레이 몫.
 - [x] PlayMode 코어: 당김 → receipt → 웨이브 도착 · 보너스 → 포탈 열림/닫힘 틱 · 보스 스폰 → 배너 1회 · 결과 뒤 HUD 비활성 · 스테이지 프랍 틸트 factor = `CharacterViewConfig` 값 · 브리핑 웨이브 수 = 코어 `WavePlan` 웨이브 수. 기존 57 + 신규 전부 초록. (**71/71** = 기존 57 + 플레이 3차 4 + 8a 10 · 프랍은 판 위가 아니라 프리팹 전수 — 「고친 것」 ⚠1)
 - [x] EditMode 코어+Assets 선행 2 외 빨강 0 · 헤드리스 3종(build 0 · test · Check 0 — **커밋마다**, 구현 7 의 순서로) · 골든 11종 무변(코어 변경 0 이 기대값). (EditMode **993/995** — `bomb_man`·`boomerang` · 클린 export 6 SHA 전부 build 0 · test 678~679 · Check 0 · 골든 무변 — 코어 변경은 읽기 창 2개뿐)
-- [ ] Play 육안(옛 씬과 나란히): 당김 알약 · 보너스 포탈 · 보스 배너 · 메뉴 브리핑 · 손패 배경 · BGM · 프랍 틸트. 콘솔 에러 0.
+- [~] 확인 불가(옛 씬 삭제, unit 9 `e548eda90`) — 대체 기준: 새 씬 플레이 4차 육안. 원 기준: Play 육안(옛 씬과 나란히): 당김 알약 · 보너스 포탈 · 보스 배너 · 메뉴 브리핑 · 손패 배경 · BGM · 프랍 틸트. 콘솔 에러 0.
       **에이전트 스모크(새 씬만)**: 보스 배너 · 당김 알약 · 메뉴 브리핑(12장) 캡처 · `BgmPlaying = true` · 콘솔 에러·경고 0. 보너스 포탈·손패 배경·옛 씬 나란히는 사용자 플레이 몫(프랍 틸트는 오늘 새 씬 판에 프랍이 없다).
 - [x] `core-reviewer` APPROVE(2026-09-25 · finding 0 — 코어 변경 = `WaveScheduler` 읽기 창 2 · 옛 씬 구독 삭제 0 · 씬 diff 추가만 +559 · canvas 5/7/9/950/960 일관). 리드 재검증(HEAD `c548e4bc2`): export build 0 · test 679 · Check 0 · 미정 0 · Unity EditMode 코어+Assets 993/995(선행 2) · PlayMode 코어 71/71 · 골든 무변.
 

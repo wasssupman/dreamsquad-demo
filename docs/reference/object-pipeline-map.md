@@ -83,7 +83,7 @@
 | 저작 SO | 스테이지 프리팹의 마커(`StructureMarker`·`GoalMarker`) + `Data/Structures/*` | 스테이지 프리팹이 곧 정본(bake 없음) |
 | 정의표 행 | `CombatDefinitionBuilder.FillStructures` → `StructureDef` · 마음 = `MatchDefinitionBuilder.ToHeartConfig` → `HeartDef` | |
 | 코어 스폰 · 사건 | `BattleWorld.SpawnStructure` → `UnitSpawned`(2) · 마음 `HeartChanged`(29)/`HeartCollapsed`(30) | |
-| 뷰 풀 | `CoreStructurePropLayer` · 마음 게이지 = `CoreScoreHud`/`HeartHudConfig` | ⚠ `HeartCollapsed` 의 붕괴 연출 구독자는 **없다**(8c 발견 · `bridge-methods` 「미실현」) |
+| 뷰 풀 | `CoreStructurePropLayer` · 마음 게이지 = `CoreScoreHud`/`HeartHudConfig` | 붕괴 연출 = `CoreVfxSpawner.OnHeartCollapsed`(골 칸마다 붕괴 원샷) + `GoalMarker.MarkCollapsed`(마커 주저앉음) — 8a2 행 3 · 슬로모는 5c 도메인 리스 |
 | 소멸 회수 | `UnitDestroyed`(3) | |
 | 씬 배선 | 스테이지 프리팹(`BattleDriver` 가 `MapStagePool` 에서 고른다) | |
 
@@ -124,8 +124,8 @@
 | 저작 SO | `EffectTileData` · 시즌 맵 테마(`effectTiles`·`effectTileCount`) | |
 | 정의표 행 | `BoardEffectDefinitionBuilder.FillEffectTiles` → `EffectTileDef` | 스테이지 `suppressEffectTiles` 존중 |
 | 코어 스폰 · 사건 | `PlacementService.ArmedEffectTiles`(판 시작에 뽑고 판 내내 불변) · 적용은 배치 활성화 엣지 · 퇴근 회수 | 판정은 앵커 칸 하나 |
-| 뷰 풀 | ⚠ **없다** — 규칙은 돌지만 판 위에 어느 칸인지 그리지 않는다(8c 발견 · `rule-holders` T15 「미실현」) | |
-| 씬 배선 | N/A — 뷰가 없다 | |
+| 뷰 풀 | `CoreMapOverlay.PaintEffectTilesOnce`(판마다 1회 · `PlacementService.ArmedEffectTiles` 순회) · 그림 `MatchViewAssets.EffectTile` · 정렬 `BoardSortOrder.EffectTileOrder` — 8a2 행 1 | 저작 그림이 없으면 안 그린다 |
+| 씬 배선 | `CoreMapOverlay` · `BattleDriver._seasonRegistry` → `SeasonRuntime.Bind`(8a2 행 1′ — 빠지면 효과 타일 0칸) | |
 
 이력: 옛 `TilemapMapView.SetEffectTile`(미러) ↔ `BattleBridge._effectTilesByCell`(소유).
 
@@ -178,7 +178,7 @@
 | 저작 SO | 보스·궁극기 능력 SO · 뷰 = `LeapVisualConfig` | |
 | 정의표 행 | `BindingDefinitionBuilder`(궁극기 fireCap 1) | |
 | 코어 사건 | `CombatPhase` 도약 단계 → `LeapAscend`(18)/`LeapDescend`(19) · 순간이동 `Blinked`(8) | 판정(착지 슬램 · 순간이동)은 코어가 이미 끝냈다 — 뷰는 비행만 |
-| 뷰 풀 | `CoreLeapPresenter`(`CoreLeapPresenter.TryGetFlightOverride` 로 유닛 뷰 위치를 덮어쓴다) | ⚠ 궁극기 **착지 예고 칸**은 그리지 않는다(8c 발견 · T16 「미실현」) |
+| 뷰 풀 | `CoreLeapPresenter`(`CoreLeapPresenter.TryGetFlightOverride` 로 유닛 뷰 위치를 덮어쓴다) | 궁극기 착지 예고 = `CoreMapOverlay.ShowLandingTelegraph` ← `CoreLeapPresenter`(이탈에 걸고 강하에 내린다 · 전용 채널) — 8a2 행 2 |
 | 뷰 순서 | `ViewOrder.Leap` — 유닛 동기보다 **먼저**(X3 · 1프레임 팝 방지) | |
 | 씬 배선 | `CoreLeapPresenter` · `LeapVisualConfig` | |
 
@@ -237,4 +237,4 @@
 
 - 이 표의 심볼이 코드에서 사라지면 같은 커밋에서 표를 고친다. unit 9 의 옛 전투 삭제 뒤에는 「모든 심볼이 남아 있다」를 grep 으로 다시 확인한다.
 - 새 사건 종류를 열면 `CoreEventKind` 번호와 트레이스 정거장(`CoreTrace`)을 같이 연다(추가 제약 「로깅은 첫 축」).
-- 「⚠ 없다」로 적힌 정거장(효과 타일 그림 · 착지 예고 · 붕괴 연출)은 8c 가 찾은 옛 기능의 공백이다. 처분이 정해지면 이 표를 고친다.
+- 8c 가 찾은 옛 기능의 공백 3 정거장(효과 타일 그림 · 착지 예고 · 붕괴 연출)은 **8a2 에서 셋 다 실현**됐다(행 1·2·3). 새 공백을 찾으면 「⚠ 없다」로 적고 처분이 정해지면 고친다.

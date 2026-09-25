@@ -1,4 +1,4 @@
-> 상태: 구현 완료 2026-09-25(`f7fb71693`~`41b57d06d`, 행 9 포함) · core-reviewer · 플레이 4차 대기
+> 상태: 구현 완료 2026-09-25(`f7fb71693`~`41b57d06d`, 행 9 포함) · core-reviewer APPROVE(2026-09-25) · 플레이 4차 대기
 
 # 8a2 — 뷰 이전 잔여: 장부가 「새 주인」이라 적었지만 실체가 없던 9행 (조각 E · 8c 뒤 · 9 앞)
 
@@ -56,6 +56,20 @@
 - **행 8** — 새 오버레이의 링 선 색(`_ringColor`, 시안)이 옛 `rangeColor`(라임)와 이미 다르다(5b). 「선과 채움은 같은 색」 불변식을 지키려고 채움 RGB 를 선 색에서 가져왔다. 링 색 자체는 이 unit 에서 안 바꿨다.
 - **행 3** — 마음 타워는 체력 저수지를 공유하므로(X29) 무너질 때 골 칸 전부에 연출이 난다. 옛 판은 이번 프레임에 무너진 칸에만 냈다(한 골 맵에선 같다).
 - **행 9(리드 추가)** — 월드 마음 틴트의 bpm 은 새 HUD 가 이미 쓰는 52·168(옛 씬과 같은 값, `CoreScoreHud` 직렬화)을 공유한다. 바 밝기의 깊이(`_beatDepth` 0.35 × 스트레스)는 5b 의 결정이라 그대로 두고, 마커 깊이만 옛 `heartBeatDepth` 0.5 다.
+
+## 파이프라인 커버리지
+
+판 위 오브젝트 3종의 정거장. 가장 가까운 아키타입 = `object-pipeline-map.md` 「효과 타일」·「도약」·「거점」 표(같은 열). 코어 변경은 행 2 의 사건 값 하나(`LeapAscend.AreaTiles`)뿐이다.
+
+| 정거장 | 효과 타일 칸(행 1) | 착지 예고 링(행 2) | 마음 붕괴 VFX(행 3) |
+|---|---|---|---|
+| 저작 SO | 테마 `effectTiles[].overlayTile` · `effectTileMaterial` | `LeapVisualConfig.landingTelegraphColor` | 슬롯 `_goalCollapsePrefab` · `_goalCollapseScale` |
+| 정의표 행 | `BoardEffectDefinitionBuilder.FillEffectTiles`(기존) — 그림은 같은 순회로 `MatchViewAssets.EffectTile` | N/A — 반경은 정의표가 아니라 사건 값(슬램 칸 수) | N/A — 골 칸은 기존 `Map.Goals` 를 읽는다 |
+| 코어 스폰 · 사건 | N/A — 사건 없음. 판 시작에 뽑힌 `PlacementService.ArmedEffectTiles`(판 내내 불변)를 읽는다 | `LeapAscend`(18, `AreaTiles` 값 스냅샷) 에 걸고 `LeapDescend`(19) 에 내린다 | `HeartCollapsed`(30) |
+| 뷰 풀 | `CoreMapOverlay.PaintEffectTilesOnce`(판마다 1회) | `CoreMapOverlay.ShowLandingTelegraph` ← `CoreLeapPresenter` | `CoreVfxSpawner.OnHeartCollapsed` + `GoalMarker.MarkCollapsed` |
+| 뷰 순서 | `BoardSortOrder.EffectTileOrder`(−15) | 오버레이 전용 채널(드래그·카드 채널에 양보 안 함) | N/A — 원샷(순서 경합 없음) |
+| 소멸 회수 | N/A — 판 내내 유지, 다음 판에 다시 칠한다 | 그 도약자의 강하 | N/A — 원샷 자체 소멸 · 마커는 판 끝까지 무너진 상태 |
+| 씬 배선 | `CoreMapOverlay` · `BattleDriver._seasonRegistry`(행 1′ `6a5f580bf`) | `CoreLeapPresenter` · `CoreMapOverlay` | `CoreVfxSpawner` 슬롯 |
 
 ## 완료 기준
 

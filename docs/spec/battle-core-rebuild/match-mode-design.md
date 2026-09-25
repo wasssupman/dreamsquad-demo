@@ -19,7 +19,7 @@
 | 목표 | `goalKind` enum · `goalParams` | 종류별 의미 아래 표 |
 | 시계 | `clockKind`(FixedLimit / CountUp) · `durationSec` · `submitUnlockSec` · `allowSubmit` | 타이머 소유자 2곳(`AttackDeck`·`WavePlanAsset`)과 코드 상수 60 이 여기로 수렴 |
 | 웨이브 원천 | `waveSourceKind`(GeneratedFromDeck / AuthoredPlan) · `deck`(null = 맵 풀 짝) · `plan` | 램프·당김 상한·케이던스는 덱 소유 그대로 |
-| 맵 | `mapPool`(null = 기본 풀 — 드라이버 `_mapPool`) | **선택 4갈래**(옛 `BattleBridge.cs:1263~1300` 그대로 — unit 8b `MatchDefinitionBuilder.TrySelectEncounter`): dev 강제 인덱스(`DevMapOverride`, dev 슬롯 포함) > 디버그 고정 맵 시드(`seed % Count`) > 서버 토너먼트 시드(`seed % Count` — 같은 토너먼트 = 같은 맵·덱) > 0번. 맵·덱·플랜은 **같은 인덱스로 잠긴다**(엔트리 한 몸). 엔트리 플랜은 모드 플랜에 지고 강제 플랜(테스트·온보딩)에도 진다 |
+| 맵 | `mapPool`(null = 기본 풀 — 드라이버 `_mapPool`) | **선택 4갈래**(옛 `BattleBridge.cs:1263~1300` 그대로 — unit 8b `MatchDefinitionBuilder.TrySelectEncounter`): dev 강제 인덱스(`DevMapOverride`, dev 슬롯 포함) > 디버그 고정 맵 시드(`seed % Count`) > 서버 토너먼트 시드(`seed % Count` — 같은 토너먼트 = 같은 맵·덱) > 0번. 맵·덱·플랜은 **같은 인덱스로 잠긴다**(엔트리 한 몸). 엔트리 플랜은 모드 플랜에 지고 강제 플랜(테스트)에도 진다 |
 | 기믹 | `gimmickEnabled` · `gimmickPool` | `BattleConfig` 2필드 이사 |
 | 배치 | `costConfig` · `placementPhaseEnabled` · `autoStartCountdownSec` · `squadSlots`(현행 7) · `boardCap`(선택) · `retireEnabled` | 「배치 수량」 축 |
 | 드림캐쳐 | `deckRuleConfig`(덱 10·Squad ≤2) · `awakeningConfig` · `publicActiveCount`(현행 2) | 「드림캐쳐 수량」 축 |
