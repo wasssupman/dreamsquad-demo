@@ -13,7 +13,7 @@
 | 패키지 | `Packages/manifest.json` 에서 `com.unity.entities`·`com.unity.entities.graphics` 제거 |
 | asmdef | `Wassup.Runtime` −`Unity.Entities`·`Unity.Entities.Graphics`·`Unity.Transforms`·`Unity.Burst` · `Wassup.Tests.EditMode`·`.Assets`·`.PlayMode` −`Unity.Entities`·`Unity.Transforms`(·`Unity.Burst`) · `Wassup.Skills`·`Wassup.UnitAi` −`Unity.Burst` |
 | 헤드리스 lane | `tools/battle-core-rebuild/headless/BattleCoreUnity.Check.csproj:56~57`(`Unity.Entities.dll`·`Unity.Transforms.dll`) — `:55 Unity.Burst.dll` 은 패키지가 남으니 둔다 |
-| 옛 씬 경로가 남은 곳 | `ResultScreen` 의 `MatchTally` 입력(8a 가 남긴 이중 입력) · `CameraDirector.cs:141~149`·`SoundManager.cs:133~151` 의 `GameManager` 구독(8a 가 옛 씬용으로 남겼다) |
+| 옛 씬 경로가 남은 곳 | `ResultScreen` 의 `MatchTally` 입력(8a 가 남긴 이중 입력) · `CameraDirector`·`SoundManager` 의 `GameManager` 구독(8a 가 옛 씬용으로 남겼다) — **8c 가 `*.OldBattle.cs` 부분 파일로 떼어 `retire-set.md` 에 올렸다: 파일 삭제만 하면 된다**(스트립의 덱 경로 `WavePatternStripView.OldBattle.cs` 도 같다) |
 | 동결 훅 | `.githooks/commit-msg` 삭제 · `git config --unset core.hooksPath` · CLAUDE.md 「동결 장치」 줄 |
 | 리뷰 도구 | `.claude/agents/ecs-reviewer.md` · `.claude/skills/ecs-reviewer/` · `.claude/skills/two-track-review/` · `.codex/skills/ecs-reviewer/` · `.codex/hooks/two-track-review-stop-gate.mjs` · `.codex/hooks/ecs-review-detector.mjs` · `.codex/hooks.json` · `.claude/hooks/ecs-review-detector.mjs` → 옛 분기를 빼고 `core-review-detector.mjs` 로(`.claude/settings.json` 경로 갱신) · `.claude/agents/core-reviewer.md:8` 「use ecs-reviewer」 안내 |
 | 네임스페이스 | `Wassup.Battle.Units`(`Faction.cs`·`FactionRelation.cs`) → `Wassup.Skills` · 8c 가 이사한 저작 타입의 `Wassup.Battle.*` → `Wassup.Data` |
