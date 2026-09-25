@@ -1,6 +1,6 @@
-> 상태: 구현 완료 2026-09-25(`f7fb71693`~`7d98d1b12`) · core-reviewer · 플레이 4차 대기
+> 상태: 구현 완료 2026-09-25(`f7fb71693`~`41b57d06d`, 행 9 포함) · core-reviewer · 플레이 4차 대기
 
-# 8a2 — 뷰 이전 잔여: 장부가 「새 주인」이라 적었지만 실체가 없던 7행 (조각 E · 8c 뒤 · 9 앞)
+# 8a2 — 뷰 이전 잔여: 장부가 「새 주인」이라 적었지만 실체가 없던 9행 (조각 E · 8c 뒤 · 9 앞)
 
 > 8c 의 `--owners` 대조(2026-09-25)가 찾아낸 것이다. `rule-holders`·`bridge-methods` 가 새 주인을 배정했는데 새 씬에는 호출처가 0 인 **옛 플레이어 가시 기능**. 8a 의 「미정 0 은 배정의 끝이지 실현의 끝이 아니다」 가 다시 확인된 사례라 8c 안에서 이식하지 않고 이 unit 으로 뗀다. **unit 9 가 옛 코드를 지우기 전에 끝나야 한다.** 리드 판단(2026-09-25): 1~6 은 「기획 그대로」 이식, 7 은 새 트레이스에 같은 사건이 있으면 흡수.
 
@@ -20,6 +20,7 @@
 | 6 | 소환사 유지 애니메이션 | `BattleBridge.cs SyncSummonerAnimationState` | AI 상태 읽기 창 → `SetAiState`(`CoreUnitView.cs:59`) — 지속 루프/상실 원샷 이름은 저작 SO |
 | 7 | 방어유닛 AI 전이 트레이스 | `BattleBridge.cs TraceDefenderAiTransition` | 새 트레이스(60종)에 AI 전이 사건이 **있으면** 장부만 정정(흡수). 없으면 코어 사건 하나(값 스냅샷: id·이전·이후·틱) + 트레이스 정거장 |
 | 8 | 배치 사거리 **칸 채움**(링과 함께 「어느 칸이 사거리 안인가」를 칠한다 · 링 있으면 투명) | rule-holders T3·T13 · `SetPlacementRange`·`RangeFillAlpha`·`IsPlacementRangeCell` | `CoreMapOverlay.PaintRange` 옆에 칸 채움 층 + 자리 고스트가 사거리 칸을 비켜 가는 read seam. ⚠ T13 비고 「되돌리면 채움이 두 겹」 — 링과 채움을 한 곳이 그린다. **리드 기본값 = 이식**(옛 플레이어 가시 · 은퇴 결정 없음) · 사용자가 은퇴를 택하면 이 행만 「삭제」로 닫는다 |
+| 9 | 월드 마음 스트레스 틴트·심박(마음 프랍이 스트레스만큼 붉어지고 박동에 맞춰 뛴다) | `BattleBridge.SyncGoalOverheadGauges:9659-9689` → `GoalMarker.SetStressTint` | `CoreScoreHud.PaintHeart`(바와 같은 위상) — **리드 추가(2026-09-25)**: 장부가 `HeartMeter` 로 해석돼 `--owners` 가 못 잡은 플레이어 가시 옛 기능 |
 
 ## 구현
 
@@ -46,20 +47,21 @@
 | 6 | `BattleBridge.SyncSummonerAnimationState:4108` | `CoreUnitViewPool.SyncViews` — 소환 정책 Spine 뷰에 매 프레임 `SetAiState`(읽기 창 `Unit.Ai.Defender`) | `SummonPatrolAbility.activeAnimation`·`lostAnimation` |
 | 7 | `BattleBridge.TraceDefenderAiTransition:4127` · 옛 채널 22 | 새 트레이스 60종에 같은 사건이 **없어** 흡수 불가 → `CoreEvent.DefenderAiChanged`(64 · id·이후 `Arg`·이전 `Amount`·유닛 줄) ← `CombatPhase`(변할 때만) · `CoreTraceChannel.DefenderAiChanged`(61) | 골든 하네스는 **구독하지 않는다**(`GimmickTriggered` 형 진단 채널) — 골든 무변 |
 | 8 | `TilemapMapView.SetPlacementRange:1226` · `RangeFillAlpha:1185` · `ApplyRingTint:1140` · `IsPlacementRangeCell:1537` | `CoreMapOverlay.PaintRangeFill`(칸 집합 = `AttackReach.InReach` · 표준 잡몹 몸 · 앵커 칸 제외) · `CoreMapOverlay.IsPlacementRangeCell` · 링 안 채움 한 겹 | `TileSetData.rangeFillAlphaUnderRing` · 채움 RGB = 링 선 `_ringColor` |
+| 9 | `BattleBridge.SyncGoalOverheadGauges:9659-9689`(단계·bpm·위상 누적·`BeatScale(beat, heartBeatDepth)` → `SetStressTint(stress01, beatScale)`) · 마커 사상 `:1161-1169` | `CoreScoreHud.PaintMarkers` — 심박 계산 주체 하나(바와 같은 `_phase`, 옛 `:9662`) · 마커 사상 `CoreGoalMarkers.Collect`(붕괴 연출과 공유) · 장부 `bridge-methods` 278 을 심볼로 | `HeartHudConfig.BeatDepth` 0.5(옛 `heartBeatDepth` · `BattleScene.unity:4734`) · 씬 `CoreScoreHud._heartHud` |
 
 ### 옛 규칙과 다른 점 · 알아둘 것
 
-- **행 5 — 라이브에선 틴트가 안 보인다(옛 게임과 같다).** 옛 규칙이 「통합 머리 위 모드면 흰색」이고 라이브 저작(`CharacterViewConfig.asset`)이 그 모드다. 완료 기준의 「적 체력에 따라 틴트」는 레거시 모드에서만 보인다. 옛 판단은 「모드 + 머리 위 레이어가 있다」였고 새 판단은 모드만 본다(레이어 누락 폴백 없음).
+- **행 5 — 라이브에선 틴트가 안 보인다(옛 게임과 같다).** 옛 규칙(`BattleBridge.cs:3863` `unifiedOverhead ? Color.white : EvaluateEnemyHealthTint(entity)`)이 「통합 머리 위 모드면 흰색」이고 라이브 저작(`CharacterViewConfig.asset`)이 그 모드다. 완료 기준의 「적 체력에 따라 틴트」는 레거시 모드에서만 보인다. 옛 판단은 「모드 + 머리 위 레이어가 있다」였고 새 판단은 모드만 본다(레이어 누락 폴백 없음).
 - **행 7** — 옛 트레이스는 첫 관측(초기 상태)도 한 줄 적었다. 새 사건은 기본값 `Ready` 에서 **바뀔 때만** 난다. 배치 중(`Deploying`) 유닛은 공격 루프를 건너뛰어 그 상태로 가는 전이가 없다(코어 기존 성질).
 - **행 8** — 새 오버레이의 링 선 색(`_ringColor`, 시안)이 옛 `rangeColor`(라임)와 이미 다르다(5b). 「선과 채움은 같은 색」 불변식을 지키려고 채움 RGB 를 선 색에서 가져왔다. 링 색 자체는 이 unit 에서 안 바꿨다.
 - **행 3** — 마음 타워는 체력 저수지를 공유하므로(X29) 무너질 때 골 칸 전부에 연출이 난다. 옛 판은 이번 프레임에 무너진 칸에만 냈다(한 골 맵에선 같다).
-- **범위 밖 발견(이관)**: 월드의 마음 스트레스 틴트·심박(`GoalMarker.SetStressTint` — 옛 `SyncGoalOverheadGauges:9687`)은 새 층 호출처가 0 이다. 장부는 `HeartMeter` 로 해석돼 `--owners` 가 못 잡는다 — 후속 후보.
+- **행 9(리드 추가)** — 월드 마음 틴트의 bpm 은 새 HUD 가 이미 쓰는 52·168(옛 씬과 같은 값, `CoreScoreHud` 직렬화)을 공유한다. 바 밝기의 깊이(`_beatDepth` 0.35 × 스트레스)는 5b 의 결정이라 그대로 두고, 마커 깊이만 옛 `heartBeatDepth` 0.5 다.
 
 ## 완료 기준
 
-- [x] `check_ledgers.py --owners` exit 0(8c 가 보류한 줄이 닫힌다). — bridge-methods 심볼 285 · 삭제 82 · rule-holders 심볼 119 · 삭제 14 · 미실현 0 · 기본·`--retire-assets` 도 exit 0 (2026-09-25 `7d98d1b12`)
-- [ ] 새 씬 Play: 효과 타일 칸이 보인다 · 궁극기 이탈 뒤 착지 칸 예고가 보인다 · 마음 붕괴 시 연출 + 슬로모 · 드래그 중 적이 흐려진다 · 적 체력에 따라 틴트 · 소환사 유지 루프. — **보류(플레이 4차)**: 7행 전부 PlayMode 로 사건/입력 → 뷰 호출을 증언했다. 육안 확인은 하지 않았다. ⚠ 틴트는 라이브 모드(통합 머리 위)에서 옛 판처럼 흰색이다 — 위 「옛 규칙과 다른 점」
-- [x] PlayMode 코어 +7(또는 +8) 초록 · EditMode 선행 2 외 빨강 0 · 골든 무변 · 헤드리스 3종 · Retire.Check 0. — PlayMode 코어 **92/92**(85 + 7 — 행 7 은 EditMode 코어 2건이 증언) · EditMode 코어+Assets **1011/1013**(선행 2 `boomerang`·`bomb_man` · 신규 6) · 골든 파일 diff 0 · 옛 부분집합 38/38 · CLI 63/63 · 헤드리스 export 0 · 687 · 0 · Retire.Check 0 (2026-09-25 `7d98d1b12`)
+- [x] `check_ledgers.py --owners` exit 0(8c 가 보류한 줄이 닫힌다). — bridge-methods 심볼 285 · 삭제 82 · rule-holders 심볼 119 · 삭제 14 · 미실현 0 · 기본·`--retire-assets` 도 exit 0 (2026-09-25 `41b57d06d`)
+- [ ] 새 씬 Play: 효과 타일 칸이 보인다 · 궁극기 이탈 뒤 착지 칸 예고가 보인다 · 마음 붕괴 시 연출 + 슬로모 · 드래그 중 적이 흐려진다 · 적 체력에 따라 틴트 · 소환사 유지 루프. — **보류(플레이 4차)**: 9행 중 8행을 PlayMode 로(행 7 은 EditMode) 사건/입력 → 뷰 호출을 증언했다. 육안 확인은 하지 않았다. ⚠ 틴트는 라이브 모드(통합 머리 위)에서 옛 판처럼 흰색이다 — 위 「옛 규칙과 다른 점」
+- [x] PlayMode 코어 +7(또는 +8) 초록 · EditMode 선행 2 외 빨강 0 · 골든 무변 · 헤드리스 3종 · Retire.Check 0. — PlayMode 코어 **93/93**(85 + 8 — 행 7 은 EditMode 코어 2건이 증언) · EditMode 코어+Assets **1011/1013**(선행 2 `boomerang`·`bomb_man` · 신규 6) · 골든 파일 diff 0 · 옛 부분집합 38/38 · CLI 63/63 · 헤드리스 export 0 · 687 · 0 · Retire.Check 0 (2026-09-25 `41b57d06d`)
 - [ ] `core-reviewer` APPROVE → 8c 의 머지 게이트(플레이 4차)에 합류.
 
 ### 검증 중 발견 — 옛 lane 잔류는 도메인 리로드까지 간다
