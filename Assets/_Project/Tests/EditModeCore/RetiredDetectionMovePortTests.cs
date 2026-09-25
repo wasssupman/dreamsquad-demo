@@ -94,9 +94,6 @@ namespace Wassup.Tests.EditMode.Core
 
         // 옛 DetectionSystemTests::클래스_마스크_밖은_발견하지_않는다 — 못 때리는(직업 필터 밖) 방어유닛은 감지 후보가 아니다
         [Test]
-        [Ignore("unit 9 — 옛 규칙과 다름: 옛 DetectionSystem 은 EnemyTargetFilter.classMask 로 감지 후보를 걸렀는데 " +
-                "코어 감지 후보 술어(ReachProbe.IsLegalDetectionTarget, Move/ReachProbe.cs:56-63)는 진영·층만 보고 " +
-                "직업 필터(AttackDef.HasClassFilter/ClassMask — 공격 쪽은 CombatPhase.cs:1634 ClassAllowed)를 안 본다")]
         public void 직업_필터_밖의_방어유닛은_발견하지_않는다()
         {
             var map = CoreMapFixtures.Open(12, 5, new int2(11, 2));

@@ -467,7 +467,7 @@ namespace Wassup.BattleCore
                 for (int i = 0; i < units.Count; i++)
                 {
                     var c = units[i];
-                    if (!ReachProbe.IsLegalDetectionTarget(self, c, def)) continue;
+                    if (!ReachProbe.IsLegalDetectionTarget(self, c, def, ctx.Def)) continue;
                     bool skipped = false;
                     for (int r = 0; r < rejectCount; r++)
                         if (_rejected[r] == c.Id) { skipped = true; break; }

@@ -52,14 +52,20 @@ namespace Wassup.BattleCore.Move
                                        self.HitRadius, g.HitRadius);
         }
 
-        /// <summary>감지 후보인가 — 진영·통행층 필터. 반경 판정은 호출부가 따로 묻는다(무제한은 건너뛴다).</summary>
-        public static bool IsLegalDetectionTarget(Unit self, Unit candidate, in EnemyDef def)
+        /// <summary>
+        /// 감지 후보인가 — 진영·통행층·**직업** 필터. 반경 판정은 호출부가 따로 묻는다(무제한은 건너뛴다).
+        /// ⚠ 직업 필터는 공격과 같은 술어다(unit 9c · 옛 `DetectionSystem.cs:313`) — 못 때리는 직업을
+        /// 감지하면 「발견했는데 때릴 수 없어 그 앞에서 얼어붙는」 적이 된다.
+        /// </summary>
+        public static bool IsLegalDetectionTarget(Unit self, Unit candidate, in EnemyDef def, MatchDefinition match)
         {
             if (candidate.Id == self.Id || !candidate.IsTargetable()) return false;
             if (((int)candidate.Faction & TargetDefaults.ResolveEnemy(def.TargetFactions)) == 0) return false;
             byte theirLayers = candidate.Move != null ? candidate.Move.TraversalLayers : (byte)0;
             // 공격과 같은 대상 층(위 `HasFireTarget` 주석). 옛 `DetectionSystem` 도 `atk.targetTraversalLayers`.
-            return LayerBits.CanTarget((byte)def.Attack.TargetLayers, theirLayers);
+            if (!LayerBits.CanTarget((byte)def.Attack.TargetLayers, theirLayers)) return false;
+            return ClassFilter.Allows(def.Attack.HasClassFilter, def.Attack.ClassMask,
+                                      ClassFilter.ClassOf(match, candidate));
         }
 
         /// <summary>동거리 동률은 **낮은 id** 가 이긴다 — 순회 순서에 기대지 않는 결정론.</summary>
