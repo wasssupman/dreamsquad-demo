@@ -98,6 +98,7 @@ unit 4 의 `HandDeck` 은 자원만 움직이고 효과 자리를 **진단 통�
 | `ResignationBarrage` | 7d 계획 → **7b**(리드 배정) | `ResignationThreshold` 소비자 · 7d 문서 행 이동 |
 | 빌더 | `CombatDefinitionBuilder.Fill(…, extraProjectiles, cards)` · `MatchDefinitionBuilder.Build(…, cards, dreamstones)` · `GimmickProjectilesOf` · `BindingDefinitionBuilder.BindPattern` internal · `BattleDriver._cards`·`_dreamstones` | 카드 탄·패턴·장판·운석 탄이 **표를 굳히기 전에** 편입돼야 한다 |
 | `MatchHandDeckTests` 고정구 | 규칙 없는 카드 → 무해한 규칙 한 줄 | 규칙 0 줄 카드는 이제 **거절**이다(옛 `attached == 0 → -1`) |
+| 낙하탄 뷰 높이(`CoreProjectileViewPool`) — **플레이 3차 「운석 비주얼이 보이지 않음」** | 낙하 시작 높이 = 코어 탄의 `ArcHeight`(= 탄 SO `arcHeight`, 운석 0) → **탄 SO `dropHeight`**(스폰 때 뷰 상태에 싣는다) | 옛 드레인은 `req.arcHeight` 가 비면 `projData.dropHeight` 로 보충했고 운석 캐스트도 dropHeight 를 실었다(`BattleBridge.cs:5805-5806` · `:5544`). 낙하 높이는 판정에 안 쓰이는 뷰 값이라 코어 무변 · 골든 무변. 증상 단언 `CorePlayThreeSymptomTests.운석을_시전하면_…` |
 
 ### 사용자 결정 (7b) — 배치 오라 수면 시작 시점 · **답 = 새 코어(활성화 시점) 2026-09-24**
 
