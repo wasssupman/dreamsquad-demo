@@ -34,13 +34,27 @@ namespace Wassup.BattleCoreUnity
         [Tooltip("기본 매치 모드 SO — 모드 선택 3단의 **셋째 칸**. 아무도 안 고르면 이것으로 짓는다.")]
         [SerializeField] private MatchModeData _mode;
 
+        [Tooltip("에디터 직접 진입 편성(로비를 거치지 않은 판). 로비 판은 저장 편성이 이긴다(unit 8b · `MatchEntry`).")]
         [SerializeField] private DefenderUnitData[] _defenders = Array.Empty<DefenderUnitData>();
+        [Tooltip("⑦ 드라이버 저작 덱 — 모드 덱·맵 풀 엔트리 덱이 없을 때만.")]
         [SerializeField] private AttackDeck _deck;
         [SerializeField] private WavePlanAsset _plan;
         [SerializeField] private BonusWaveData _bonus;
 
-        [Tooltip("맵 스테이지 프리팹. 인스턴스가 곧 비주얼이고 격자·거점의 정본이다.")]
+        [Tooltip("맵 풀이 비었을 때만 쓰는 스테이지 프리팹(에디터·테스트 고정구). 인스턴스가 곧 비주얼이고 격자·거점의 정본이다.")]
         [SerializeField] private Wassup.Core.MapStage _stagePrefab;
+
+        [Header("판 진입 (unit 8b — 로비 입력 → 정의표)")]
+        [Tooltip("기본 맵 풀(모드 `mapPool` 이 비었을 때). 맵·덱·플랜이 같은 인덱스로 잠긴다. 비우면 `_stagePrefab`.")]
+        [SerializeField] private MapStagePool _mapPool;
+        [Tooltip("디버그 고정 맵 시드(옛 브리지 `fixedMapSeed`). 0 = 끔 → 서버 토너먼트 시드 → 0번.")]
+        [SerializeField] private int _fixedMapSeed;
+        [SerializeField] private DefenderCatalog _defenderCatalog;
+        [SerializeField] private DreamstoneCatalog _stoneCatalog;
+        [Tooltip("첫 판 온보딩의 저작 웨이브(쉬운 웨이브 + 60초).")]
+        [SerializeField] private WavePlanAsset _onboardingPlan;
+        [Tooltip("온보딩 수치·첫 손패 저작.")]
+        [SerializeField] private FirstRunTutorialConfig _onboardingConfig;
 
         [Tooltip("보드 평면 선언(격자). 비어 있으면 뷰가 sim→view 변환을 못 한다.")]
         [SerializeField] private View.CoreBoardPlane _boardPlane;
@@ -81,8 +95,8 @@ namespace Wassup.BattleCoreUnity
         [Tooltip("판 진입 드림스톤(스탯 돌 = 배치 유닛 상속 · 코스트 돌 = 재생 배율). 비우면 없음.")]
         [SerializeField] private DreamstoneData[] _dreamstones = Array.Empty<DreamstoneData>();
 
-        [Tooltip("재현의 두 축 중 하나(나머지는 modeId). 같은 값이면 같은 판이다.")]
-        [SerializeField] private int _seed = 1;
+        [Tooltip("판 시드 고정 노브(G3 — 옛 `debugFixedMatchSeed`). 0 = 판마다 새 난수. 재현의 두 축 중 하나(나머지는 modeId).")]
+        [SerializeField] private int _seed;
 
         [SerializeField] private bool _beginOnStart = true;
 
@@ -102,6 +116,8 @@ namespace Wassup.BattleCoreUnity
         private readonly List<StructureEntry> _stageStructures = new List<StructureEntry>();
         private AttackUnitData[] _enemyAssets = Array.Empty<AttackUnitData>();
         private readonly MatchViewAssets _viewAssets = new MatchViewAssets();
+        private DefenderUnitData[] _activeDefenders = Array.Empty<DefenderUnitData>();
+        private MatchEntryPlan _entry;
 
         // ── 이벤트 방출 ───────────────────────────────────────────────────────
         // C# 이벤트(`+=`)를 쓰지 않는 이유: 그 호출 순서는 곧 **씬 컴포넌트의 나열 순서**이고,
@@ -154,7 +170,20 @@ namespace Wassup.BattleCoreUnity
         // 무엇을 그릴지 안다. 그래서 **인덱스**로 되찾는다 — 사건이 나르는 `DefIndex` 가
         // 이 목록의 줄 번호다. 목록을 만드는 쪽과 인덱스를 매기는 쪽이 같아야 하므로
         // 둘 다 `MatchDefinitionBuilder` 가 쓰는 것과 **같은 함수**에서 나온다.
-        public IReadOnlyList<DefenderUnitData> DefenderAssets => _defenders;
+        // unit 8b — 진입 해석을 거친 판은 그 편성(로비 판 = 저장 편성), 정의표를 직접 건 판(테스트)은 저작 편성.
+        public IReadOnlyList<DefenderUnitData> DefenderAssets => _entry != null ? _activeDefenders : _defenders;
+
+        /// <summary>unit 8b — 이 판이 어느 문으로 들어왔나(로비·온보딩·테스트·에디터). 판 전엔 null.</summary>
+        public MatchEntryPlan Entry => _entry;
+
+        /// <summary>
+        /// unit 8b — 이 판의 덱 스냅샷(`deckInfo`). 반입 때 유닛·돌, 덱 확정 뒤 카드까지(단조 증가 — G22).
+        /// 제출(`ReportResult`)·나가기(`AbandonMatch`)가 같은 문자열을 싣는다.
+        /// </summary>
+        public string DeckInfoJson { get; private set; } = "";
+
+        /// <summary>이 판을 짓는 데 쓴 맵 풀 인덱스(-1 = 풀 없이 `_stagePrefab`). 결정론 테스트의 창.</summary>
+        public int MapPoolIndex { get; private set; } = -1;
         public IReadOnlyList<AttackUnitData> EnemyAssets => _enemyAssets;
 
         /// <summary>
@@ -236,6 +265,9 @@ namespace Wassup.BattleCoreUnity
             //
             // unit 5c — 씬 경계를 넘어온 선택을 **여기서 한 번 소비한다.** 이 자리가 유일한
             // 소비처라 「어느 판이 그 선택을 먹었나」를 물을 일이 없다.
+            // unit 8b — G21: 토너먼트 참가는 **로비가 발행한 것만 채택**한다. 로비 게이트를 거치지 않은 진입(에디터·테스트)은
+            // 상태만 리셋되고 참가가 생기지 않는다(옛 `GameManager.OnEnable`). 반입 기록(G22)보다 **먼저**여야 한다.
+            Wassup.Core.Api.TournamentMatchReporter.BeginMatch();
             if (_beginOnStart && !Running) Begin(MatchEntryContext.Consume());
         }
 
@@ -258,9 +290,46 @@ namespace Wassup.BattleCoreUnity
                 Debug.LogError("[BattleDriver] 매치 모드 SO 가 비었다 — 판을 짓지 않는다.", this);
                 return;
             }
-            // 시드 0 은 「아무도 안 골랐다」다 — 저작 시드로 떨어진다(`ModeSelection.Seed` 주석).
-            int seed = selection.Seed != 0 ? selection.Seed : _seed;
-            if (!BuildStage()) return;
+            // unit 8b — **진입 해석**(G3·G5·G7·G11·G13). 순서는 옛 것 그대로: 시드 → (기믹 = 코어가 시드로) → 맵.
+            // 시드 0 은 「아무도 안 골랐다」다 — 고정 노브, 그것도 0 이면 새 난수(G3).
+            var entry = MatchEntry.Resolve(new MatchEntry.Sources
+            {
+                Profile = _profile,
+                DefenderCatalog = _defenderCatalog,
+                StoneCatalog = _stoneCatalog,
+                OnboardingPlan = _onboardingPlan,
+                OnboardingConfig = _onboardingConfig,
+                FixedSeed = _seed,
+            }, MatchEntry.ConsumeTestMode(), selection.Seed);
+            _entry = entry;
+            int seed = entry.Seed;
+            _activeDefenders = entry.Defenders ?? _defenders ?? Array.Empty<DefenderUnitData>();
+            var stones = entry.Stones ?? _dreamstones;
+
+            // G22 — 반입 편성·돌을 **배치 전에** 기록한다(앱이 죽어도 그 판이 편성을 갖는다). 참가가 없으면 저쪽이 no-op.
+            DeckInfoJson = MatchEntry.DeckInfoJson(entry, null);
+            Wassup.Core.Api.TournamentMatchReporter.PersistMatchDeck(DeckInfoJson);
+
+            // 맵 풀 4갈래(옛 `BuildMapForBattle` `:1263~1300`). 모드 `mapPool` 이 비면 기본 풀.
+            var pool = mode.mapPool != null ? mode.mapPool : _mapPool;
+            var stagePrefab = _stagePrefab;
+            var poolDeck = _deck;
+            WavePlanAsset encounterPlan = null;
+            MapPoolIndex = -1;
+            if (MatchDefinitionBuilder.TrySelectEncounter(pool, Wassup.Core.DevMapOverride.Index, _fixedMapSeed,
+                    Wassup.Core.Api.TournamentMatchReporter.HasTournamentSeed,
+                    Wassup.Core.Api.TournamentMatchReporter.TournamentSeed,
+                    out var encounter, out int poolIndex, out string poolSource))
+            {
+                stagePrefab = encounter.stage;
+                if (encounter.deck != null) poolDeck = encounter.deck;
+                encounterPlan = encounter.plan;   // 저작 플랜은 맵과 한 몸
+                MapPoolIndex = poolIndex;
+                Debug.Log($"[BattleDriver] map pool index={poolIndex}/{pool.Count}(+dev {pool.DevCount}) (source={poolSource}) entry={entry.Kind} seed={seed}", this);
+            }
+            else if (pool != null && pool.Count > 0)
+                Debug.LogError($"[BattleDriver] 맵 풀 엔트리 {poolIndex} 에 스테이지가 없다 — `_stagePrefab` 으로 짓는다.", this);
+            if (!BuildStage(stagePrefab)) return;
             _resolvedMode = mode;
 
             // unit 7c — 덱. 개발용 덮어쓰기가 비었으면 프로필 확정 덱 + 판 시드로 굴린 액티브(판 밖에서 한 번).
@@ -268,16 +337,23 @@ namespace Wassup.BattleCoreUnity
             // 짓다가 카드마다 에러를 내지 않고 한 번 말한다(테스트 모드 SO · 각성 없는 모드).
             // ⚠ 각성 가드가 **먼저**다 — 개발용 덮어쓰기(`_cards`)도 이 가드를 지난다. 덮어쓰기 분기를 앞에 두면 각성 없는
             // 모드(테스트 모드 SO)에서 카드마다 빌더 에러가 난다(dev 덱 `d06ae0bcd` 이 그 구멍을 열었다).
+            // ⚠ unit 8b — **로비 판은 개발용 덮어쓰기(`_cards`)가 프로필 덱에 양보한다.** 덮어쓰기는 에디터 메뉴 판 전용이다.
             IReadOnlyList<DreamcatcherCard> cards;
+            List<DreamcatcherCard> composed = null;
             if (mode.awakeningConfig == null)
             {
                 Debug.LogWarning($"[BattleDriver] 모드 '{mode.name}' 에 각성 저작(AwakeningConfig)이 없다 — 드림캐쳐 덱 없이 짓는다"
                                  + (_cards != null && _cards.Length > 0 ? "(개발용 덱 덮어쓰기도 버린다)." : "."), this);
                 cards = Array.Empty<DreamcatcherCard>();
             }
-            else if (_cards != null && _cards.Length > 0) cards = _cards;
-            else cards = Cards.CoreDeckComposition.Compose(_profile, _cardCatalog, _activePool, _activeCount, _activeCards,
-                                                           seed, msg => Debug.LogWarning(msg, this));
+            else if (!entry.FromLobby && _cards != null && _cards.Length > 0) cards = _cards;
+            else cards = composed = Cards.CoreDeckComposition.Compose(_profile, _cardCatalog, _activePool, _activeCount, _activeCards,
+                                                                      seed, msg => Debug.LogWarning(msg, this));
+
+            // G11 — 온보딩 첫 손패. 덱에 든 카드만 앞으로 끌어와 고정한다(뒤는 계속 섞인다).
+            int pinned = composed != null
+                ? Cards.CoreDeckComposition.PinFront(composed, entry.FirstHand, msg => Debug.LogWarning(msg, this))
+                : 0;
 
             // ⚠ **거점 목록을 반드시 넘긴다**(`55688ef5`). 격자 투영에는 셀과 진영밖에 없어
             // 스탯이 없다 — 안 넘기면 마음 타워·본능이 한 기도 안 서고 콘솔 에러 0 으로
@@ -286,13 +362,22 @@ namespace Wassup.BattleCoreUnity
             // 순수 함수라 아래 `Build` 안의 호출과 같은 배열이 나온다(그래서 둘이 안 갈린다).
             // ⚠ 모드가 고른 덱·플랜을 **빌더와 같은 함수로** 푼다 — 여기서 드라이버 저작을 그대로
             // 모으면 모드 덱을 쓰는 판에서 뷰의 적 줄 번호가 정의표와 갈린다.
+            var entryAuthoring = new EntryAuthoring
+            {
+                ForcedPlan = entry.ForcedPlan,
+                EncounterPlan = encounterPlan,
+                PinnedHandFront = pinned,
+                BonusPullSuppressed = entry.BonusPullSuppressed,
+            };
             _enemyAssets = MatchDefinitionBuilder.CollectEnemies(
-                               MatchDefinitionBuilder.ResolveDeck(mode, _deck),
-                               MatchDefinitionBuilder.ResolvePlan(mode, _plan), _bonus)
+                               MatchDefinitionBuilder.ResolveDeck(mode, poolDeck),
+                               MatchDefinitionBuilder.ResolveWavePlan(mode, _plan, in entryAuthoring), _bonus)
                            ?? Array.Empty<AttackUnitData>();
 
             var def = MatchDefinitionBuilder.Build(
-                mode, _defenders, _deck, _plan, _bonus, seed,
+                mode, _activeDefenders, poolDeck, _plan, _bonus, seed,
+                // 코스트 돌 배율(G10)은 `Build` 안에서 `CardDefinitionBuilder.CostRateOf(dreamstones)` 가 곱한다(7b) —
+                // 여기 1 은 호출자 배율(항등)이다. 이 자리에 `CostRateOf` 를 넣으면 **두 번 곱한다.**
                 costRateMultiplier: 1f, map: in _map, tileSize: _tileSize,
                 structures: _stageStructures, viewAssets: _viewAssets,
                 movement: _movementTuning, stackModifiers: _stackModifiers,
@@ -307,7 +392,15 @@ namespace Wassup.BattleCoreUnity
                         ? Wassup.Data.Season.SeasonRuntime.Active.mapTheme : null,
                     SuppressEffectTiles = _stageInstance != null && _stageInstance.suppressEffectTiles,
                 },
-                cards: cards, dreamstones: _dreamstones);
+                cards: cards, dreamstones: stones, entry: entryAuthoring);
+
+            // G22 — 덱 확정(카드)까지 **같은 통로로 갱신**한다(payload 단조 증가). 카드는 고른 덱만 — 굴린 액티브 제외.
+            var baseIds = new List<string>();
+            if (entry.FromLobby)
+                foreach (var c in Cards.CoreDeckComposition.ResolveAttachDeck(_profile, _cardCatalog))
+                    if (c != null) baseIds.Add(c.id);
+            DeckInfoJson = MatchEntry.DeckInfoJson(entry, baseIds);
+            Wassup.Core.Api.TournamentMatchReporter.PersistMatchDeck(DeckInfoJson);
 
             Begin(def);
         }
@@ -394,11 +487,11 @@ namespace Wassup.BattleCoreUnity
         //
         // 옛 브리지의 맵 빌드에서 **규칙에 필요한 것만** 옮겼다. 안 옮긴 것은 5a 의
         // 「이식 제외」 표에 있다(맵 풀 선택·타일맵 페인팅·테마·카메라 bounds push).
-        private bool BuildStage()
+        private bool BuildStage(Wassup.Core.MapStage stagePrefab)
         {
             TeardownStage();
 
-            if (_stagePrefab == null)
+            if (stagePrefab == null)
             {
                 Debug.LogError("[BattleDriver] 맵 스테이지 프리팹이 없다 — 판을 짓지 않는다.", this);
                 return false;
@@ -407,8 +500,8 @@ namespace Wassup.BattleCoreUnity
             // 루트는 원점·무회전·스케일 1 로 고정한다. 스캐너는 로컬(스케일 나눔)로 양자화하고
             // 격자는 월드(스케일 곱)로 정렬하므로, 루트가 기울거나 늘어나면 프랍과 셀이
             // **조용히** 어긋난다(옛 전투에서 실제로 잡힌 사고).
-            _stageInstance = Instantiate(_stagePrefab);
-            _stageInstance.name = _stagePrefab.name;
+            _stageInstance = Instantiate(stagePrefab);
+            _stageInstance.name = stagePrefab.name;
             _stageInstance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             _stageInstance.transform.localScale = Vector3.one;
 

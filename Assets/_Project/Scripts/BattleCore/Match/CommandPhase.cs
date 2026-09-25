@@ -117,6 +117,7 @@ namespace Wassup.BattleCore
                 case CommandKind.DebugSetStack: return DebugSetStack(cmd, tick);
                 case CommandKind.DebugSummonPatrol: return DebugSummonPatrol(cmd);
                 case CommandKind.DebugFireBinding: return DebugFireBinding(cmd);
+                case CommandKind.DamageMaxHealthRatio: return DamageMaxHealthRatio(cmd);
 
                 default: return Receipt.Reject(RejectReason.UnknownCommand);
             }
@@ -202,6 +203,18 @@ namespace Wassup.BattleCore
 
             var u = EnemySpawn.At(_ctx, _map, cmd.DefIndex, cmd.Lane, cmd.Cell, -1, tick);
             return u != null ? Receipt.Ok : Receipt.Reject(RejectReason.MissingMap);
+        }
+
+        // unit 8b — 옛 `Health.ComputeMaxHealthDamage`(최대 × clamp01(비율)) 그대로. 피해는 **인박스에만** 넣는다 —
+        // 소모·사망·사건은 다음 피해 단계의 몫이다(옛 버퍼 적재와 같은 모양). 0 이하면 거절(옛 `amount <= 0 → false`).
+        private Receipt DamageMaxHealthRatio(in Command cmd)
+        {
+            var u = _world.Find(cmd.Target);
+            if (u == null || u.Dead) return Receipt.Reject(RejectReason.NoSuchEntity);
+            float amount = math.max(0f, u.MaxHealth) * math.clamp(cmd.Magnitude, 0f, 1f);
+            if (amount <= 0f) return Receipt.Reject(RejectReason.Unclassified);
+            u.Inbox.Damage.Add(new DamageEntry { Amount = amount, Source = SimEntityId.None });
+            return Receipt.Ok;
         }
 
         private Receipt DebugDestroy(in Command cmd, int tick)

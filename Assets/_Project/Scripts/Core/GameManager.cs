@@ -154,26 +154,8 @@ namespace Wassup.Core
             }
         }
 
-        // 타겟 프레임 60 고정 — 앱 전역 관심사라 씬/인스턴스와 무관하게 앱 시작 시 1회만 세팅한다.
-        // GameManager 는 battle-scoped 라 Awake 로는 OutgameScene 콜드 스타트를 못 잡는다
-        // (로비가 첫 씬이면 세팅 코드가 안 걸려 플랫폼 기본값 30fps 로 떨어짐).
-        // BeforeSceneLoad 훅은 첫 씬 로드 전 1회 호출되고 인스턴스 존재 여부와 무관하다.
-        // vSyncCount=0 이어야 90/120Hz 패널에서 vSync 가 targetFrameRate 를 덮어쓰지 않고
-        // 60 캡이 확실히 적용된다(모바일 배터리 절감).
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void ApplyFrameRateCap()
-        {
-            QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = 60;
-        }
-
-        // gift-phase-removal unit 1 (리뷰 H2) — PrimeTween 동시 트윈 풀 예약. 원래 이 한 줄은
-        // GiftPhaseView.Awake 에 있었는데, 그 값이 선물 연출을 위해 잡혔을 뿐 효과는
-        // **프로세스 전역**이라(전투 데미지 넘버·VFX·HUD juice 가 같은 풀을 쓴다) 뷰와 함께
-        // 지우면 남은 소비처들이 기본값 200 을 넘길 때 런타임 리사이즈(1회 GC 할당 + 경고)를
-        // 맞는다. 전역 관심사이므로 프레임 캡과 같은 앱 시작 훅으로 옮겨 둔다.
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void ReserveTweenCapacity() => PrimeTween.PrimeTweenConfig.SetTweensCapacity(400);
+        // battle-core-rebuild unit 8b — 앱 시작 훅 둘(60프레임·수직동기 끔 · 트윈 풀 400)은 `AppBootstrap` 으로 **옮겼다**(G17).
+        // 두 곳에 두지 않는다 — 이 매니저는 옛 전투 씬에만 있어 새 씬·로비 콜드 스타트를 못 잡는다.
 
         private void Awake()
         {
