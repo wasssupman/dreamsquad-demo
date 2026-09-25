@@ -434,6 +434,7 @@ MonoBehaviour:
   _onboardingConfig: {fileID: 11400000, guid: 81065656c695c4f6d8efdf526857e58c, type: 2}
   _boardPlane: {fileID: 503}
   _tileSize: 1
+  _seasonRegistry: {fileID: 11400000, guid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8, type: 2}
   _movementTuning: {fileID: 11400000, guid: 07f01c7da34f433f8cda479fbb9f0e98, type: 2}
   _stackModifiers:
   - {fileID: 11400000, guid: 46689fa6e0794d61ae5e6b74604fe2d4, type: 2}
@@ -718,6 +719,7 @@ MonoBehaviour:
   _driver: {fileID: 302}
   _config: {fileID: 11400000, guid: 4ca5e29236954bb3accc90e87abb8f5d, type: 2}
   _units: {fileID: 522}
+  _overlay: {fileID: 1402320339}
 --- !u!1 &520
 GameObject:
   m_ObjectHideFlags: 0
@@ -1951,6 +1953,7 @@ MonoBehaviour:
   _driver: {fileID: 302}
   _tray: {fileID: 402}
   _overlay: {fileID: 1402320339}
+  _units: {fileID: 522}
   _boardCamera: {fileID: 102}
   _dragThresholdPx: 16
   _pointerOffsetPx: 64
@@ -2139,6 +2142,8 @@ MonoBehaviour:
   _shieldGrantedPrefab: {fileID: 8330006320348072208, guid: 6e4b6c99591848e4ca95111a6f384e71, type: 3}
   _shieldGrantedScale: 0.7
   _detectionMarkPrefab: {fileID: 1332620569595262163, guid: 6b8dc33d536f7441991c259536fcd4ef, type: 3}
+  _goalCollapsePrefab: {fileID: 6140286580942836002, guid: cf3240cbc85764f9b95608b9ba00e436, type: 3}
+  _goalCollapseScale: 1.2
   _detectionMarkLift: 0.9
   _unitAttackAoeSustainMul: 2
   _cardAbsorbPrefab: {fileID: 1190586612074608, guid: 37f1dda35c3982a428263da65fbd3888, type: 3}
