@@ -377,7 +377,7 @@
 | 275 | `SyncBlockingHazardOverheadGauges/1` | `CoreUnitOverheadUiLayer.SetBlocker` — 뷰 풀 |  |
 | 276 | `DrainHazardDestroyedEvents/0` | `CoreHazardViewPool.OnCoreEvent` — 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 277 | `DrainGoalCollapsedEvents/0` | `CoreVfxSpawner.OnHeartCollapsed` — `HeartCollapsed` 구독(트레이스는 코어 채널 29) (8a2) |  |
-| 278 | `SyncGoalOverheadGauges/1` | `CoreScoreHud.PaintHeart` — 마음 바(5b) + 골 마커 스트레스 틴트·심박 `GoalMarker.SetStressTint`(8a2 행 9 · 마커 사상 `CoreGoalMarkers`) · 체력 정본은 `HeartMeter` | 8c 는 `HeartMeter` 로 해석해 뷰 몫(월드 틴트)이 새는 것을 못 잡았다(8a2 행 9) |
+| 278 | `SyncGoalOverheadGauges/1` | `GoalMarker.SetStressTint` — 소비자(옛과 같다) · 구동 `CoreScoreHud.PaintMarkers`(마음 바와 같은 위상 · 마커 사상 `CoreGoalMarkers`) · 마음 바 = `CoreScoreHud.PaintHeart`(5b) · 체력 정본 `HeartMeter` (8a2 행 9) | 8c 는 `HeartMeter` 로 해석해 뷰 몫(월드 틴트)이 새는 것을 못 잡았다(8a2 행 9) |
 | 279 | `RecordBlockingHazard/4` | 삭제 (`UnitSpawned` 사건 — `UnitKind.BlockingHazard`) | 길막은 유닛이라 스폰 사건이 이미 있다 |
 | 280 | `RecordBlockingHazardDestroyed/2` | 삭제 (`UnitDestroyed` 사건 — `UnitKind.BlockingHazard`) | 같은 이유 — 문은 「부서짐」 하나 |
 | 281 | `WorldToLogCell/1` | 삭제 (배틀 JSON 로그 전용 — rules X28 제거 · README 조각 E 에이전트 결정 ⑷) |  |
