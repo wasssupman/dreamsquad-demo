@@ -2,15 +2,15 @@
 
 > 이 문서는 **다른 세션이 이어받기 위한 지도**다. 정본은 `README.md`(계약 13 · 작업 표 · 상태 라인) → 각 unit 파일 → 코드·커밋이고, 여기엔 「어디까지 왔나 · 무엇이 결정됐나 · 어디서 넘어졌나 · 어떻게 일하나」만 담는다. 이 세션의 리드는 Claude(Fable) 였고 구현·리뷰는 격리 에이전트가 했다.
 
-## 1. 지금 상태 (2026-09-24)
+## 1. 지금 상태 (2026-09-24 ~ 09-25)
 
 | 항목 | 값 |
 |---|---|
 | 브랜치 | `rebuild/battle-core` = 워크트리 `/Users/sy/dev/wassup-core`. main 워크트리 `/Users/sy/dev/wassup` 는 문서 정본. 조각 B 까지 **main 에 머지됨**(`d9fbe90c`), 이후 둘은 같은 지점을 따라간다(main 문서 커밋 → 브랜치 `--ff-only`) |
 | 푸시 | GitHub `f119c1b1`(main + 브랜치)까지 푸시됨(2026-09-24). 그 뒤 커밋은 미푸시. GitLab 미러는 SSH 불통으로 사용자가 직접. 푸시는 매번 명시 승인 |
 | 완료 | unit 0(환경) · 조각 A(1~4) · 조각 B(5a·5b·5c) · 조각 C(6a·6a2·6b·6b2·6c) · 드리프트 감사 수정 · **조각 D(7a·7b·7c·7d) + 7e 카드 효과 자동 검증(52장 ○·반증 2)** — 장부 미정 0 |
-| 진행 중 | **조각 E — 8a·8b·8c·8a2·8d·9·9c 완료(일곱 다 APPROVE, 2026-09-25)**. 9c = unit 9 이식이 드러낸 옛 규칙 차이 중 전투 규칙 5건 복원(튕김·감지 직업 필터·도발 리프레시·방벽 광역 면제·부가 피해자 풀 유닛만). 옛 전투 삭제(1,215 파일 −125,684줄) · Entities 패키지 제거 · CLAUDE.md 코어 절 승격. **대기 = 사용자**: ① 표현 차이 2건 결정(같은 입구 종별 예고선 · 예보 경로 해석 — 이식 테스트 `[Ignore]` 2) ② 플레이 4차(결정 ⑤) ③ main 머지 승인(→ `git config --unset core.hooksPath` · main 의 `.codex` dirty 3 정리) → 10(인계). 로비 「시작」이 이제 `BattleCoreScene` 을 연다(빌드 설정·CLI 씬 목록 교대). 플레이 3차 결함 3건 처리(운석 낙하 높이 · 퇴근 버튼 캔버스 · 진동갑주 = 규칙 무변). main 머지는 8c 에서(결정 ③). 다른 세션이 이어받으면 브랜치 HEAD 와 `git status` 로 산출물 유무를 먼저 확인 |
-| spec 있음·구현 전 | 8·9·10(README 행만 — 조각 E) |
+| 진행 중 | **조각 E — 8a·8b·8c·8a2·8d·9·9c 완료(일곱 다 APPROVE, 2026-09-25)**. 9c = unit 9 이식이 드러낸 옛 규칙 차이 중 전투 규칙 5건 복원(튕김·감지 직업 필터·도발 리프레시·방벽 광역 면제·부가 피해자 풀 유닛만). 옛 전투 삭제(1,215 파일 −125,684줄) · Entities 패키지 제거 · CLAUDE.md 코어 절 승격. **대기 = 사용자**: ⓪ 9c 행 5·6 재확인(부가 피해자 풀 유닛만 · 관통 피격 진행 방향 앞부터 — 원본 9c 에서 「사용자 결정 필요」였던 것을 리드가 옛 규칙 복원 방향으로 닫았다) ① 표현 차이 2건 결정(같은 입구 종별 예고선 · 예보 경로 해석 — 이식 테스트 `[Ignore]` 2) ② 플레이 4차(결정 ⑤) ③ main 머지 승인(→ `git config --unset core.hooksPath` · main 의 `.codex` dirty 3 정리) → 10(인계). 로비 「시작」이 이제 `BattleCoreScene` 을 연다(빌드 설정·CLI 씬 목록 교대). 플레이 3차 결함 3건 처리(운석 낙하 높이 · 퇴근 버튼 캔버스 · 진동갑주 = 규칙 무변). main 머지는 8c 에서(결정 ③). 다른 세션이 이어받으면 브랜치 HEAD 와 `git status` 로 산출물 유무를 먼저 확인 |
+| spec 있음·구현 전 | 10 만(README 행만 — 조각 E) |
 | 검증 기준선(HEAD `d3f8d026c`) | 헤드리스 export: build 0 · test 887/889(Ignore 2) · Unity 층 Check 0(**Entities 참조 없이**) · manifest entities 0 · 장부 3종 0(브리지 장부 동결 · 퇴역 목록 전부 삭제) · Unity EditMode 3 어셈블리 2505/2507(선행 2 = `bomb_man`·`boomerang`, 골든 11 Verify 일치) · PlayMode 코어 95/95 · 아웃게임 `PresetBarPopupLayerTest` 2/2(옛 씬 lane 은 은퇴 · `[Explicit]` 라이브 2 는 이름 지정 실행 외 금지) · `DreamSquadMobileBuildCliTests` 63/63 · `check_ledgers.py` exit 0, `bridge-methods` 미정 **0** |
 | 새 씬 진입 | 워크트리 에디터 메뉴 `Wassup/BattleCore/씬 열고 플레이 (기본 모드)` (빌드 설정 무변, 로비 진입 없음) |
 
