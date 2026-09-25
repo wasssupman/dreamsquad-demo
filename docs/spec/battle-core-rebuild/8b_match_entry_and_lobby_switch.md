@@ -49,14 +49,39 @@
 - **배틀 JSON 로그 파일**(`BattleLogger.cs:448`)은 새 씬에 두지 않는다(에이전트 판정). 그 파일의 유일한 소비 도구는 은퇴한 PRD 가설을 검증하는 스크립트(`tools/analyze_sessions.py:2`)다. 판별 로그는 코어 트레이스(`BattleCore/Harness/CoreTrace.cs`)가 맡는다. rules X28(「배틀 JSON 로그 미완」, `ledgers/rules.md:259`)은 이 판정으로 **제거**로 닫고 근거를 그 행에 적는다.
 - 로비 교대는 **마지막 커밋**이다. 위가 전부 초록일 때 상수 한 줄 + 빌드 설정 + 모바일 빌드 CLI·테스트의 씬 목록(결정 ②)을 바꾼다.
 
+## 고친 것 (2026-09-25 구현)
+
+| 무엇 | 옛 근거 | 새 자리 | 커밋 |
+|---|---|---|---|
+| 진입 해석 | `GameManager.Start`·`StartSquadMatch`·`StartTestModeMatch`(`:280~480`) | `MatchEntry.Resolve`(순수 static — 판정·상태 0, 테스트 문맥 1회 소비만). **「로비에서 왔나」 = `PlayerProfileSO.IsLoadedThisSession`**(옛 온보딩·기록 가드) — 에디터 직접 진입은 드라이버 저작 편성·개발용 덱 | `c899b6ab7` |
+| 맵 풀 4갈래 | `BattleBridge.cs:1263~1300` | `MatchDefinitionBuilder.TrySelectEncounter` — 정적 상태(`DevMapOverride`·토너먼트 시드)는 드라이버가 값으로 넘긴다. 드라이버 `_mapPool` = 옛 씬 풀(0번 = 오늘의 `MapStage_Duel` + `Deck_Duel` — 에디터 판 무변) · `_stagePrefab` 은 풀이 빌 때만 | `c899b6ab7` |
+| 웨이브 원천 7단 | `BattleBridge.cs:2114~2116` | `EntryAuthoring{ForcedPlan, EncounterPlan}` → `ResolveEntryPlan`/`ResolveWavePlan` | `c899b6ab7` |
+| ⚠ **저작 플랜의 판 길이** | `BattleBridge.cs:1651`(저작 플랜이면 `plan.timerDurationSec`, 0 = 끝없음) | `ApplyEntryPlanClock` — 모드 **밖**에서 온 플랜(①②④)만 제 시계로(온보딩 60초 · 테스트 플랜 0 → `CountUp`). 모드 플랜(③)은 모드 시계. unit 4 의 「판 길이 = 모드 단독」은 덱 타이머의 결정이었고 저작 플랜은 이식이 빠져 있었다 — 안 옮기면 온보딩이 180초 판이 되고 문구 「튜토리얼 1분」이 거짓이 된다 | `c899b6ab7` |
+| 온보딩 칸 둘 | G11·G12 | `MatchDefinition.PinnedHandFront`(→ `HandDeck.Begin` 의 `pinnedFront`) · `BonusPullSuppressed`(→ `WaveScheduler`, 켜기만 — 판 시작 전 직접 주입(X6) 을 끄지 않는다). 기본값이면 해시 입력 밖(골든 무변) | `c899b6ab7` |
+| 첫 유닛 체력 낮추기 | `BattleBridge.TryQueueDeployedDefenderMaxHealthDamage`(`:7559`) | 코어 커맨드 `DamageMaxHealthRatio`(26) — 출처 없는 최대 × clamp01(비율), 인박스에만(옛 버퍼 적재) | `c899b6ab7` |
+| 코스트 돌 배율 | `ResolveCostRateMultiplier:632` | **이미 7b 에 있었다** — `Build` 안에서 `costRateMultiplier × CostRateOf(dreamstones)`. 문서의 「`:290` 의 `1f` 를 교체」는 두 번 곱하게 된다 — 호출부 1 은 호출자 배율(항등)로 둔다. 남은 일은 프로필 돌을 넣는 것뿐이었다 | `c899b6ab7` |
+| 덱 스냅샷 | `PersistTournamentDeckSnapshot:585` · `DreamcatcherHandController.cs:548` · `BattleLogger.DeckInfoJson:421` | `BattleDriver.DeckInfoJson` — 반입(유닛·돌 원시 id) → 덱 확정(+카드 = **고른 덱만**, 굴린 액티브 제외) 두 번 `PersistMatchDeck` · 제출·나가기가 같은 문자열 | `c899b6ab7`·`f4cefe7d4` |
+| G21 참가 채택 | `GameManager.OnEnable` | `BattleDriver.Start` 첫 줄 `TournamentMatchReporter.BeginMatch` | `c899b6ab7` |
+| 앱 훅 · 화면 초기화 | `GameManager.cs:176~204·285~291` | `Core/AppBootstrap.cs`(이동 — `GameManager` 에 `RuntimeInitializeOnLoadMethod` 0) · `View/CoreScreenSetup.cs`. G20 은 드라이버 수명이 대신한다(파일 헤더) | `c899b6ab7` |
+| 온보딩 | `FirstRunTutorialController.cs`(908줄) | `Hud/CoreFirstRunGuide.cs` — 판별 = `Entry.Kind`, 홀드 = Battle 정지 리스(상한 자가 해제), 설명 = `CoreMapOverlay.ShowBriefing`, 신호 = 사건(`Placed`·`Retired`) + 읽기 창(`TryGetSlotRect`·`ActionRect`·`HitRect`·`TimerFocusRect`) | `847305ce9` |
+| 철수 버튼 글자 | `DcInspectController.cs:477 RetireLabel = "철수"` | 5b 가 「퇴근」(기능 이름)으로 바꿔 놓았다 — 옛 라이브 글자로 복구(온보딩 문구가 그 말을 가리킨다) | `847305ce9` |
+| 손패 뒤집기 경합 | — | 열기 뒤집기 중 닫히면 뒤집기를 끊는다(안 끊으면 칸 줄이 영영 접힌다 — 선택 직후 철수). 온보딩 자동 증언이 잡았다 | `847305ce9` |
+| 결과·나가기·기록 | `MenuPopup.cs:113~161` · `GameManager.RecordMatchPlayed` | `CoreMatchOutcomePresenter.RecordMatchPlayed`(래치 1 · 이번 세션 프로필만 저장) · `AbandonAndLeave` · `CoreMenuPopup` 「나가기」↔「제출」 | `f4cefe7d4` |
+| 로비 교대 | `SceneNames.cs:8` · 빌드 설정 · CLI `:33~37·:603~610` | 상수 · 빌드 설정 · CLI 목록·문구(결정 ②). CLI 테스트는 같은 상수를 참조해 **변경 0** | `d101b9dab` |
+| 옛 전투 PlayMode lane | 128곳이 `SceneNames.Battle` 로 옛 씬을 열었다 | `Tests/PlayMode/LegacyBattleScene.Load()`(경로로 연다 — 빌드 목록 밖) · unit 9 에서 파일째 삭제 | `d101b9dab` |
+| 진입 테스트 6 | `Tests/PlayMode/` 6 파일 | 삭제 → `PlayModeCore/CoreMatchEntryTests` 14(왕복·전환·프리셋·못 찾는 id·확정 덱·덱 없음·스탯 돌·코스트 돌·테스트 모드·래치·메뉴 나가기·온보딩 판·다음 판·**온보딩 완주**) | `d101b9dab` |
+
 ## 이식 제외
 
 | 안 옮긴 것 | 이유 | 등급 |
 |---|---|---|
 | 편성 없음 → 뽑기 폴백(G6·G8) | 계약 9 | 제거(선행) |
-| 조준 모드 배타(G16) | 스킬 탭 조준은 7b·7c 의 카드 입력이 대신한다 | 확인 — 새 입력에 같은 배타가 있는지 테스트로 못박는다 |
+| 조준 모드 배타(G16) | 스킬 탭 조준은 7b·7c 의 카드 입력이 대신한다 | 확인 — 새 입력에 같은 배타가 있는지 테스트로 못박는다. ⚠ **8b 에서 못박지 않았다**(배치 무장·드래그가 선택을 닫는 것 `SelectionInput.Update` 까지만 코드로 확인) — core-reviewer·플레이 4차 몫 |
 | 판 안 재시작(`OnRestartRequested` dormant) | 사용자 결정 2026-09-23 「판 안 재시작 없음」 | 제거(결정) |
-| 배틀 JSON 로그 파일 | 위 판정 | 제거(에이전트 판정) |
+| 배틀 JSON 로그 파일 | 위 판정 | 제거(에이전트 판정) — rules X28 **제거**로 닫음 |
+| 에디터 직접 진입의 프로필 편성 | 옛 편성 반입은 세션 가드 없이 SO 메모리 사본을 읽었다(에디터에서 옛 씬을 열어도 개발자 편성). 새 씬 직접 진입은 드라이버 저작 편성·개발용 덱 — 8b 표 G5 행 | 차이(의도) |
+| 온보딩 B1 의 「가능 칸」을 말파이트의 **층**으로 칠하기 | 새 가이드는 칸의 상태(`CellStateAt` — 층 무관)만 안다. 말파이트는 지상 유닛이라 오늘 판에서 그림은 같다 | 차이(경미) |
+| 테스트 모드 판의 끝없는 시계 | 옛 테스트 플랜(`timerDurationSec 0`)은 끝없는 판이었다 — 그대로 옮겼다(`CountUp`). 테스트 모드 SO 가 강제되면 그 모드의 시계가 아니라 플랜 시계다 | 이식(옛 규칙) |
 
 ## 파이프라인 커버리지
 
@@ -65,13 +90,18 @@ N/A — 판 오브젝트의 생성→렌더 경로는 바뀌지 않는다(입력
 ## 완료 기준
 
 - [ ] 로비 START → `BattleCoreScene` → 3분 → 결과 화면에 **실제 랭킹**(「참가자 찾는 중」 5칸이 아님) → 로비.
-- [ ] 제출 payload 의 `deckInfo` **세 필드 내용** = 그 판의 편성 유닛 id · 장착 돌 id · 확정 카드 덱 id(반입 시점 기록 → 덱 확정 뒤 갱신, 단조 증가).
-- [ ] 나가기 → 0점 제출 1회(덱 포함) · `matchesPlayed` +1 · 로비. 결과 경로와 겹쳐도 +1(래치).
-- [ ] 같은 토너먼트 시드 두 판 = 같은 맵·같은 덱(옛 `tournament-seed-map-select` 결정론). dev 강제 인덱스가 이긴다.
-- [ ] 테스트 모드 패널·에디터 「Test this plan」 → 저작 플랜 판(1회 소비 — 다음 판은 일반 판).
-- [ ] 온보딩(결정 ①): 새 계정 → 온보딩 판(저작 웨이브·첫 손패·보너스 억제·가이드 순서) → **완주 → `firstRunTutorialDone` 저장 → 다음 판 참가 신청 발행**(결과 화면 랭킹이 뜬다).
-- [ ] `grep -rn "RuntimeInitializeOnLoadMethod" Assets/_Project/Scripts/Core/GameManager.cs` = 0 · `AppBootstrap` 에 둘 존재(두 곳에서 설정하지 않는다). 옛 씬을 한 번도 안 연 로비 콜드 스타트에서 `targetFrameRate == 60` — **unit 9 삭제 뒤 한 번 더** 잰다(지금은 옛 훅이 씬과 무관하게 돌아 판별력이 없다).
-- [ ] `SceneNames.Battle` 목적지 = 새 씬 · 빌드 설정 = `OutgameScene` + `BattleCoreScene` · CLI `ExpectedScenes` 와 그 테스트가 같은 목록(결정 ②).
-- [ ] 재작성한 진입 테스트 6 + 신규 진입 테스트 초록 · EditMode 선행 2 외 빨강 0(`DreamSquadMobileBuildCliTests` 포함) · 헤드리스 3종.
+      **Play 스모크(2026-09-25, 에디터 · 게스트)**: `OutgameScene` Play → `OutgameMenuController.OnStartGame` → `BattleCoreScene`(entry=Squad · 편성 7 · 풀 0번 `MapStage_Duel` · 카드 12 · 덱 스냅샷 세 필드 채움) → 배치 3기 → 60초 해금 뒤 메뉴 「제출」 → 결과 화면(10기 · 결과 1회 · 제출 게이트 통과 · 기록 1) → 「로비로」 → `OutgameScene`(드라이버 0 · `targetFrameRate` 60 · vSync 0). 스크린샷 6장. ⚠ **실제 랭킹은 미확인** — 이 머신 세션은 게스트라 참가 신청이 없고(`ReportResult` 가 게스트에서 생략) 「참가자 찾는 중」 5칸이 정상이다. 로그인 계정 + 서버로 확인할 몫이다(사용자 플레이 4차).
+- [x] 제출 payload 의 `deckInfo` **세 필드 내용** = 그 판의 편성 유닛 id · 장착 돌 id · 확정 카드 덱 id(반입 시점 기록 → 덱 확정 뒤 갱신, 단조 증가).
+      `CoreMatchEntryTests`(못 찾는 유닛 id 도 id 로 · 돌 4 · 코스트 돌 + 못 찾는 돌 · 카드 10 = 고른 덱) + Play 스모크의 실문자열.
+- [x] 나가기 → 0점 제출 1회(덱 포함) · `matchesPlayed` +1 · 로비. 결과 경로와 겹쳐도 +1(래치). `CoreMatchEntryTests` 래치·메뉴 나가기(로비 도착 · 씬 전환 앞 기록). 0점 제출의 서버 왕복은 게스트라 미확인.
+- [x] 같은 토너먼트 시드 두 판 = 같은 맵·같은 덱(옛 `tournament-seed-map-select` 결정론). dev 강제 인덱스가 이긴다. `MatchEntryBuildTests`(라이브 풀 · 시드 6개 · 네 갈래 서열 · dev 슬롯). ⚠ 이 머신은 `dev_forceMapIndex = 0` 이 PlayerPrefs 에 박혀 있어 모든 판이 source=dev 로 뜬다(0번이라 판은 같다).
+- [x] 테스트 모드 패널·에디터 「Test this plan」 → 저작 플랜 판(1회 소비 — 다음 판은 일반 판). `CoreMatchEntryTests`(문맥 → `TestMode` · 원천 = 그 플랜 · `CountUp` · 다음 판 일반). 에디터 런처는 새 씬 경로로 바꿨고 버튼 육안은 미실행.
+- [x] 온보딩(결정 ①): 새 계정 → 온보딩 판(저작 웨이브·첫 손패·보너스 억제·가이드 순서) → **완주 → `firstRunTutorialDone` 저장 → 다음 판 참가 신청 발행**(결과 화면 랭킹이 뜬다).
+      `CoreMatchEntryTests.온보딩을_완주하면_…` — 새 계정(`ProfileStore.CreateDefault`) → 온보딩 판(60초 · 억제 · 첫 손패 고정) → 사람 박자로 B1→B2b→B3a(접근 대기)→B3b(철수)→B3c→B4(재선택·부착)→B5 → **완료 기록** → `ShouldRun` 거짓 → 다음 판 `Squad`. 「참가 신청 발행」 자체는 로비 코드(`OutgameMenuController.cs:280~292`, 무변)의 몫이라 술어로만 확인했다. 실제 손가락 육안은 사용자 플레이 4차.
+- [x] `grep -rn "RuntimeInitializeOnLoadMethod" Assets/_Project/Scripts/Core/GameManager.cs` = 0 · `AppBootstrap` 에 둘 존재(두 곳에서 설정하지 않는다). 옛 씬을 한 번도 안 연 로비 콜드 스타트에서 `targetFrameRate == 60` — **unit 9 삭제 뒤 한 번 더** 잰다(지금은 옛 훅이 씬과 무관하게 돌아 판별력이 없다). grep 0 · `AppBootstrap` 2 · Play 스모크 로비 복귀 뒤 60/0.
+- [x] `SceneNames.Battle` 목적지 = 새 씬 · 빌드 설정 = `OutgameScene` + `BattleCoreScene` · CLI `ExpectedScenes` 와 그 테스트가 같은 목록(결정 ②). `DreamSquadMobileBuildCliTests` 63/63.
+- [x] 재작성한 진입 테스트 6 + 신규 진입 테스트 초록 · EditMode 선행 2 외 빨강 0(`DreamSquadMobileBuildCliTests` 포함) · 헤드리스 3종.
+      헤드리스(커밋 4개 각각 클린 export): build 0 · test 685 · Check 0. Unity EditMode 코어+Assets 1005/1007(선행 2 `bomb_man`·`boomerang` · 골든 무변) · PlayMode 코어 **85/85**(71 + 신규 14) · 옛 PlayMode 부분집합 38/38(8a 의 40 중 재작성 2 를 뺀 6 파일 — ⚠ 첫 실행은 코어 lane 직후라 `BonusWavePullTest` 3 빨강, 단독 13/13 · 재실행 38/38 로 재현 안 됨) · `check_ledgers.py` exit 0.
 - [ ] **Android QA 빌드**(`DreamSquadMobileBuildCli.BuildAndroidQa`) 성공 + 실기기 1판(로비 → 판 → 결과 → 로비). ⚠ Entities 가 아직 있어 기본 월드가 옛 시스템을 만든다 — 이 빌드의 성능 수치는 unit 9 뒤 빌드와 바로 비교하지 않는다.
+      **미시도**: 저장소 CLI 는 keystore 비밀번호를 **숨김 입력**으로 받고(에이전트가 가진 값이 아니다) · 작업 트리 clean 을 요구하며(무관한 dirty 파일이 있다) · 같은 프로젝트를 연 에디터와 배치 Unity 가 공존할 수 없다. SDK/OpenJDK/NDK 는 Hub 에 있다. 사용자가 실행할 몫.
 - [ ] `core-reviewer` APPROVE → **사용자 플레이 4차**(조각 D 의 3차 뒤 · 질문 = 「로비에서 들어간 판이 옛 판과 같은 판인가」).
