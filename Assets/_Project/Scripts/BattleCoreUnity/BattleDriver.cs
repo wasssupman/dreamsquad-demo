@@ -157,6 +157,12 @@ namespace Wassup.BattleCoreUnity
         public IReadOnlyList<DefenderUnitData> DefenderAssets => _defenders;
         public IReadOnlyList<AttackUnitData> EnemyAssets => _enemyAssets;
 
+        /// <summary>
+        /// 보너스 웨이브 저작(unit 8a). 포탈 뷰가 **뷰 타이밍**(`portalAppearDelaySec`·`portalLingerSec`)을
+        /// 읽는 창이다 — 그 둘은 화면의 사정이라 정의표(`configHash`)에 싣지 않는다.
+        /// </summary>
+        public BonusWaveData BonusAuthoring => _bonus;
+
         /// <summary>탄·거점의 줄 번호 → 저작 에셋. **번호를 매긴 빌더가 직접 채운다**.</summary>
         public MatchViewAssets ViewAssets => _viewAssets;
 

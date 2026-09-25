@@ -97,6 +97,24 @@ namespace Wassup.BattleCore
 
         public bool BonusOffered => _bonusOfferLatched;
 
+        // ── 읽기 창(unit 8a — 당김 알약·메뉴 브리핑) ─────────────────────────
+        //
+        // 규칙이 아니라 **이미 가진 값을 보여 주는 창**이다. 판정은 여전히 `TryPull` 이 한다 —
+        // 알약은 이 값으로 얼굴만 고르고, 누르면 커맨드를 보낸다.
+
+        /// <summary>
+        /// 이 판이 저작 플랜(타임라인이 정본)인가. 옛 도크는 저작 플랜 판에서 당김 알약을
+        /// **아예 띄우지 않았다**(`NextWaveAvailable` = 생성 웨이브 판만).
+        /// </summary>
+        public bool AuthoredPlan => _authored;
+
+        /// <summary>
+        /// 그 판의 웨이브 하나(0부터). 메뉴 브리핑이 **이 판이 실제로 쓰는 플랜**을 그리는 입력이다 —
+        /// 브리핑이 생성기를 다시 부르면 예고와 실전이 갈릴 수 있다. 복사본이라 고쳐도 판은 안 바뀐다
+        /// (`Groups` 배열은 공유이므로 읽기만 한다).
+        /// </summary>
+        public PlannedWave WaveAt(int index) => _plan.Waves[index];
+
         // ── 예고(unit 5b) ────────────────────────────────────────────────────
         //
         // 옛 브리지는 웨이브를 큐에 올릴 때 예보 배열을 **한 번 구워** 들고 있었다. 여기서는
