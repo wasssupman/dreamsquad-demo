@@ -349,6 +349,42 @@ namespace Wassup.Tests.PlayMode.Core
             AssertNoErrors();
         }
 
+        // ── 행 9 — 월드 마음 스트레스 틴트·심박 ──────────────────────────────────
+        [UnityTest]
+        public IEnumerator 행9_마음이_깎이면_골_마커에_그_스트레스와_박동을_민다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return Boot(d => driver = d);
+            var hud = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Hud.CoreScoreHud>();
+            Assert.IsNotNull(hud, "씬에 CoreScoreHud 가 없다");
+            var markers = new System.Collections.Generic.List<Wassup.Core.GoalMarker>();
+            CoreGoalMarkers.Collect(driver, markers);
+            Assert.Greater(markers.Count, 0, "스테이지에 골 칸 위 GoalMarker 가 없다");
+            var world = driver.Match.World;
+
+            for (int i = world.Units.Count - 1; i >= 0; i--)
+                if (world.Units[i].Faction == Wassup.Battle.Units.Faction.DefenderInstinct)
+                    driver.Apply(Command.DebugDestroy(world.Units[i].Id));
+            yield return Ticks(driver, 1);
+            Unit tower = null;
+            for (int i = 0; i < world.Units.Count; i++)
+                if (world.Units[i].Faction == Wassup.Battle.Units.Faction.DefenderCore) tower = world.Units[i];
+            Assert.IsNotNull(tower, "마음 타워가 없다");
+
+            var heart = driver.Match.Heart;
+            tower.Inbox.Damage.Add(new DamageEntry { Amount = heart.MaxHealth * 0.6f, Source = SimEntityId.None });
+            yield return Ticks(driver, 1);
+            Assert.IsFalse(heart.Collapsed);
+
+            Assert.AreEqual(markers.Count, hud.TintedMarkerCount, "골 마커 전부에 스트레스 틴트를 민다(옛 SetStressTint)");
+            Assert.AreEqual(heart.Stress / Wassup.BattleCore.StressMath.Max, hud.LastMarkerStress01, 1e-4f, "마커의 스트레스 = 마음의 스트레스");
+            var cfg = UnityEditorLoad<Wassup.Data.BattleView.HeartHudConfig>("Assets/_Project/Data/BattleView/HeartHudConfig.asset");
+            Assert.GreaterOrEqual(hud.LastMarkerBeatScale, 1f - cfg.BeatDepth - 1e-4f, "박동 배율은 저작 깊이 안");
+            Assert.LessOrEqual(hud.LastMarkerBeatScale, 1f + 1e-4f);
+            AssertNoErrors();
+        }
+
         private static T UnityEditorLoad<T>(string path) where T : Object
         {
 #if UNITY_EDITOR

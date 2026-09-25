@@ -614,6 +614,7 @@ MonoBehaviour:
   _punchDepth: 0.22
   _punchFullRise: 12
   _punchDecayPerSec: 2.2
+  _heartHud: {fileID: 11400000, guid: 1df5bd25f175423fa01bc16f433452e3, type: 2}
 --- !u!1 &500
 GameObject:
   m_ObjectHideFlags: 0

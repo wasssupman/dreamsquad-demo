@@ -383,22 +383,16 @@ namespace Wassup.BattleCoreUnity.View
         /// <summary>이번 판에 무너뜨린 골 마커 수(테스트).</summary>
         public int CollapsedMarkerCount { get; private set; }
 
-        // 골 마커 ↔ 칸: 스테이지 로컬 → 칸(옛 `BattleBridge.cs:1164-1169` 의 `_goalMarkersByCell` 과 같은 사상).
+        // 골 마커 ↔ 칸 사상은 `CoreGoalMarkers` 하나(심박 틴트 `CoreScoreHud` 와 공유).
+        private readonly List<Wassup.Core.GoalMarker> _markers = new List<Wassup.Core.GoalMarker>(2);
+
         private void MarkGoalMarkersCollapsed(Unity.Mathematics.int2[] goals)
         {
-            var stage = _driver.StageRoot;
-            if (stage == null) return;
-            foreach (var marker in stage.GetComponentsInChildren<Wassup.Core.GoalMarker>(false))
+            CoreGoalMarkers.Collect(_driver, _markers);
+            for (int i = 0; i < _markers.Count; i++)
             {
-                var local = stage.transform.InverseTransformPoint(marker.transform.position);
-                var cell = Wassup.Data.MapStageMath.LocalToCell(local, stage.gridOriginLocal, _driver.TileSize);
-                for (int i = 0; i < goals.Length; i++)
-                {
-                    if (goals[i].x != cell.x || goals[i].y != cell.y) continue;
-                    marker.MarkCollapsed();
-                    CollapsedMarkerCount++;
-                    break;
-                }
+                _markers[i].MarkCollapsed();
+                CollapsedMarkerCount++;
             }
         }
 
