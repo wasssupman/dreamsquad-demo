@@ -244,6 +244,16 @@ namespace Wassup.BattleCore
         /// 트레이스·도구(「왜 안 터졌나」)가 듣는다 — 뷰는 결과 사건(`PickupSpawned` 등)을 이미 받는다.
         /// </summary>
         GimmickTriggered = 63,
+
+        // ── unit 8a2 (뷰 이전 잔여 — 진단 채널) ─────────────────────────────────
+        /// <summary>
+        /// 방어유닛의 **행동 상태가 바뀌었다**(변할 때만 1건 — 옛 `BattleBridge.TraceDefenderAiTransition` 의 후계).
+        /// `A` = 그 유닛, `Arg` = 바뀐 뒤(`Wassup.UnitAi.DefenderAiState`), `Amount` = 바뀌기 전(같은 enum 의 int 값),
+        /// `DefIndex` = 유닛 줄. **관측이지 판정이 아니다** — 결정은 `DefenderAi.Resolve` 가 했고 저장은 `Unit.Ai` 다.
+        /// 뷰는 이 사건을 안 듣는다(소환사 유지 루프는 매 프레임 읽기 창 — 원샷 도중 재시도가 필요하다).
+        /// 트레이스 채널은 있지만 **골든 하네스는 구독하지 않는다**(`GimmickTriggered` 와 같은 형 — 트레이스·도구가 듣는다).
+        /// </summary>
+        DefenderAiChanged = 64,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -853,6 +863,13 @@ namespace Wassup.BattleCore
                                                  float amount, Site at, Faction faction)
             => new CoreEvent(CoreEventKind.GimmickTriggered, tick, owner, made, Site.Nowhere, at, faction,
                              (int)kind, amount);
+
+        /// <summary>unit 8a2 — 방어유닛 행동 상태 전이(값 스냅샷: id · 이전 · 이후 · 틱). `DefenderAiChanged` 헤더 참조.</summary>
+        public static CoreEvent DefenderAiChanged(int tick, Unit u, Wassup.UnitAi.DefenderAiState before,
+                                                  Wassup.UnitAi.DefenderAiState after)
+            => new CoreEvent(CoreEventKind.DefenderAiChanged, tick, u.Id, SimEntityId.None,
+                             new Site(u.Position, u.HitRadius), Site.Nowhere, u.Faction,
+                             (int)after, (int)before, u.DefIndex);
 
         public static CoreEvent CardCast(int tick, int entryId, int cardIndex, float3 cellA, float3 cellB, int handle)
             => new CoreEvent(CoreEventKind.CardCast, tick, SimEntityId.Match, SimEntityId.None,

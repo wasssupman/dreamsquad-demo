@@ -176,6 +176,7 @@ namespace Wassup.BattleCore
                 bool summonAlive = atk.Policy == AttackPolicy.Summon && HasLiveSummon(ctx, u.Id);
                 if (isDefenderAi)
                 {
+                    var aiBefore = u.Ai.Defender;
                     u.Ai.Defender = DefenderAi.Resolve(new DefenderAiInput
                     {
                         deploying = u.Deploying,
@@ -184,6 +185,9 @@ namespace Wassup.BattleCore
                         policy = ToUnitAiPolicy(atk.Policy),
                         summonAlive = summonAlive,
                     });
+                    // unit 8a2 — 전이 관측(옛 `TraceDefenderAiTransition` — 「변할 때만 한 줄」). 판정이 아니다.
+                    if (u.Ai.Defender != aiBefore)
+                        ctx.Bus.Publish(CoreEvent.DefenderAiChanged(ctx.Tick, u, aiBefore, u.Ai.Defender));
                 }
 
                 bool canStart = isDefenderAi

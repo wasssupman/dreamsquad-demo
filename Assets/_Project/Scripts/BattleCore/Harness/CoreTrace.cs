@@ -95,6 +95,9 @@ namespace Wassup.BattleCore
         CardCast = 59,
         // unit 7d — 시즌 기믹. `a` = 주인, `b` = 만든 개체, `i` = `GimmickKind`, `f` = 종류별 값.
         GimmickTriggered = 60,
+        // unit 8a2 — 방어유닛 행동 상태 전이(옛 채널 22 `DefenderAiState` 의 후계). `a` = 유닛, `i` = 이후, `f` = 이전.
+        // ⚠ 골든 하네스는 구독하지 않는다(`GimmickTriggered` 와 같은 형) — 진단 채널이라 코퍼스를 부풀리지 않는다.
+        DefenderAiChanged = 61,
         // ⚠ `SkillVisual` 은 채널이 없다 — 뷰 전용 연출 신호라 규칙을 증언하지 않는다(위 `TryChannel` 주석).
         // ⚠ `ScoreChanged` 는 **채널이 없다.** 처치 사건과 1:1 이라 새 정보가 0 이고
         // (`UnitSlain` + 진영으로 정확히 재구성된다) 총점은 아래 `finalScore` 가 증언한다.
@@ -230,6 +233,7 @@ namespace Wassup.BattleCore
                 case CoreEventKind.CardDetached: channel = CoreTraceChannel.CardDetached; return true;
                 case CoreEventKind.CardCast: channel = CoreTraceChannel.CardCast; return true;
                 case CoreEventKind.GimmickTriggered: channel = CoreTraceChannel.GimmickTriggered; return true;
+                case CoreEventKind.DefenderAiChanged: channel = CoreTraceChannel.DefenderAiChanged; return true;
                 default: channel = default; return false;
             }
         }
