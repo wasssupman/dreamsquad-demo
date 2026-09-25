@@ -3,7 +3,7 @@
 > 생성 2026-09-25(8c). **unit 9 는 아래 `retire` 블록의 목록만 지운다** — 더 지우지도, 덜 지우지도 않는다. 목록은 손으로 고른 것이 아니라 **검사의 결과**다:
 > 퇴역 후보를 지운 export 사본이 컴파일되고(코드 도달성) · 남는 뿌리에서 퇴역 스크립트에 닿지 않고(자산 도달성) · 남는 코드가 옛 경로를 문자열로 들지 않을 때(`--retire-assets`)만 이 목록이 성립한다. 목록을 고치면 아래 세 명령을 다시 돌린다.
 
-총계: 퇴역 600 파일 · C# 581 파일 · 114738 줄
+총계: 퇴역 607 파일 · C# 588 파일 · 115677 줄
 
 ## 검증 명령
 
@@ -79,6 +79,17 @@ Assets/_Project/Scripts/UI/ScoreHudView.cs
 #     새 씬은 `CoreMenuPopup` + `CoreMatchOutcomePresenter` 가 메뉴를 이었다(8a). 토글은 옮기지 않는다.
 Assets/_Project/Scripts/Presentation/IngameCharacterTest.cs
 Assets/_Project/Scripts/UI/MenuPopup.cs
+
+# 3c. 옛 뷰 중 `Unity.Entities` 를 쓰는 잎 7(unit 9 재측정 2026-09-25 — 8c 의 Retire.Check 가 Entities dll 을 참조해 못 잡았다).
+#     남는 코드의 사용처는 서로끼리뿐 · 자산 참조는 옛 `BattleScene.unity` 뿐 · 새 층은 `Core*` 후계를 쓴다.
+#     증거: 가지치기 export 를 Entities·Transforms·Serialization dll 없이 빌드 → 오류 56 이 이 7 파일에만 · 지우면 0.
+Assets/_Project/Scripts/Presentation/BeamPresenter.cs
+Assets/_Project/Scripts/Presentation/DcAuraVisualPool.cs
+Assets/_Project/Scripts/Presentation/EnemyHitBarSpawner.cs
+Assets/_Project/Scripts/Presentation/EnemyHitBarView.cs
+Assets/_Project/Scripts/Presentation/StatusFxSpawner.cs
+Assets/_Project/Scripts/Presentation/StatusFxView.cs
+Assets/_Project/Scripts/Presentation/UnitView.cs
 
 # 4. 옛 씬 전용 입력(8c 가 떼어 둔 `*.OldBattle.cs` 부분 파일)과 잔여 이중화(옛 웨이브 생성기 · 보너스 스케줄 · 옛 판 설정 SO + 자산)
 Assets/_Project/Data/Config/BattleConfig.asset

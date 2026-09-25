@@ -12,6 +12,11 @@
 - `짝` 인데 **⚠ 부분 공백:** 이 붙은 줄은 파일의 주장 대부분은 코어가 증언하지만 일부 하위 규칙의 코어 테스트를 못 찾은 것이다(맨 아래 「부분 공백」 목록에 모았다).
 - 「옛 기계 전용」에는 **제거 확정 기능**(README 계약 9 · rules.md `제거` 행 · 재배치 은퇴 README 고지 ⑴ · 튜토리얼 결정 ④)도 넣었다 — 새 코어에 대응 규칙이 없기 때문이다. 근거를 괄호에 적었다.
 
+## 이식 결과 (2026-09-25 · `7482f7ba6`)
+
+「규칙 누락 의심」 34 중 **33 을 코어 테스트로 옮겼다**(31 `TilemapMapViewTests` 는 대상 `TilemapMapView` 가 퇴역이라 제외). 새 파일: EditModeCore `Retired{CombatRule,TargetLock,EffectRule,DetectionMove,WaveRule,WaveForecast}PortTests` · EditModeAssets `Retired{WaveAuthoring,DeckFilter}PortTests` · EditMode `BoardSpaceAuthorityTests`·`CoreProjectileVariationTests` · PlayModeCore `Retired{Beam,SpriteBackend}PortTest`. 각 테스트 위 주석이 옛 `파일::테스트` 를 가리킨다.
+**옛 규칙과 코어가 다른 4건**은 코어를 고치지 않고 `[Ignore("unit 9 — 옛 규칙과 다름: …")]` 로 남겼다 — 방향탄 관통 소진 뒤 호밍 튕김 · 감지 후보의 직업 필터 · 같은 입구 다른 종의 예고 병합 · 예보 경로 해석(사용자 결정 대기). 「부분 공백」(아래)은 README 후속 후보로 넘긴다.
+
 ## 총계
 
 | 분류 | 5 (EditMode 160) | 6 (Assets 6) | 7 (PlayMode 84) | 합 |

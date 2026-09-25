@@ -14,6 +14,7 @@
     거짓 초록이 난다. 그 어셈블리들은 전부 여기서 소스로 다시 컴파일된다.
     ⚠ 한 어셈블리로 합친다 — asmdef 경계(Runtime · Editor · 테스트 5)는 재현하지 않는다. 이 lane 이 묻는 것은
     「퇴역 타입을 부르나」 하나이고 경계 위반은 Unity 에디터가 잡는다.
+    ⚠ Entities 계열 dll(Entities*·Transforms*·Serialization*·Hybrid)도 뺀다 — 참조하면 「남는 코드가 Entities 를 부르나」를 못 본다(unit 9 에서 잎 7 을 이렇게 놓쳤다).
     ⚠ 가지치기 안 한 트리에서는 돌지 않는다(`Scripts/Bridge` 가 있으면 즉시 실패) — 실수로 워크트리에 대고 돌려
     「초록」을 얻는 일을 막는다. 기준선(가지치기 전 트리도 이 한 어셈블리로 초록인가)을 잴 때만 `-p:AllowUnpruned=true`.
   -->
@@ -52,7 +53,7 @@
     <Reference Include="$(UnityContents)/Resources/Scripting/Managed/UnityEditor.Graphs.dll" Private="false" />
     <!-- 패키지·벤더 어셈블리 전부 — 단 옛 소스로 구운 우리 어셈블리는 뺀다(머리말). Skills·UnitAi·SheetSync·DepthParallax 는 퇴역과 무관해 dll 로 받는다. -->
     <Reference Include="$(UnityScriptAssemblies)/*.dll"
-               Exclude="$(UnityScriptAssemblies)/Wassup.Runtime.dll;$(UnityScriptAssemblies)/Wassup.BattleCore.dll;$(UnityScriptAssemblies)/Wassup.Tests.*.dll;$(UnityScriptAssemblies)/Wassup.Editor.*.dll;$(UnityScriptAssemblies)/Assembly-CSharp-Editor.dll;$(UnityScriptAssemblies)/*CodeGen*.dll;$(UnityScriptAssemblies)/Wassup.DepthParallax.Tests.dll" Private="false" />
+               Exclude="$(UnityScriptAssemblies)/Wassup.Runtime.dll;$(UnityScriptAssemblies)/Wassup.BattleCore.dll;$(UnityScriptAssemblies)/Wassup.Tests.*.dll;$(UnityScriptAssemblies)/Wassup.Editor.*.dll;$(UnityScriptAssemblies)/Assembly-CSharp-Editor.dll;$(UnityScriptAssemblies)/*CodeGen*.dll;$(UnityScriptAssemblies)/Wassup.DepthParallax.Tests.dll;$(UnityScriptAssemblies)/Unity.Entities*.dll;$(UnityScriptAssemblies)/Unity.Transforms*.dll;$(UnityScriptAssemblies)/Unity.Serialization*.dll;$(UnityScriptAssemblies)/Unity.Mathematics.Extensions.Hybrid.dll;$(UnityScriptAssemblies)/Unity.PlasticSCM.Editor.Entities.dll" Private="false" />
     <!-- 모바일 빌드 CLI 가 플랫폼 확장을 부른다(Unity 생성 csproj 와 같은 집합). -->
     <Reference Include="$(UnityContents)/../../PlaybackEngines/AndroidPlayer/*.dll;$(UnityContents)/../../PlaybackEngines/iOSSupport/*.dll;$(UnityContents)/PlaybackEngines/MacStandaloneSupport/UnityEditor.OSXStandalone.Extensions.dll" Private="false" />
     <Reference Include="$(UnityPackageCache)/com.unity.ext.nunit@*/net40/unity-custom/nunit.framework.dll" Private="false" />
