@@ -1,11 +1,12 @@
 using UnityEngine;
 using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
 using Wassup.Core;
+using Wassup.Presentation;
 
-namespace Wassup.Presentation
+namespace Wassup.BattleCoreUnity.View
 {
-    // battle-core-rebuild unit 5b — 새 전투 코어의 판을 **카메라 소유자에게 먹여 주는** 한 줄.
+    // battle-core-rebuild unit 5b → 8a — 새 전투 코어의 판을 **카메라와 BGM 에 먹여 주는** 한 줄.
+    // (옛 이름 `CoreCameraFeed` — 8a 에서 `BattleCoreUnity/` 로 옮기며 BGM 을 더해 개명. `.meta` GUID 보존.)
     //
     // `CameraDirector` 는 포즈의 유일한 런타임 쓰기 주체이고, 입력은 **미는 것뿐**이라는 계약을
     // 갖는다(「Director 가 맵이나 브리지에서 당겨오지 않는다 — 그 유혹이 경계 우회의 입구다」).
@@ -19,20 +20,27 @@ namespace Wassup.Presentation
     //   ② **스테이지 포스트 볼륨** — 스테이지 프리팹 안에 있어 씬에서 미리 배선할 수 없다.
     //   ③ **페이즈** — 배치/전투 레시피를 고르는 축. 이 씬에는 `GameManager` 가 없다
     //      (매니저를 두지 않는 것이 새 코어의 절대 제약 1).
+    //   ④ unit 8a — **같은 페이즈를 BGM 에도** 민다(`SoundManager.SetPhase`). 옛 씬은
+    //      `GameManager.PhaseChanged` 구독으로 전투 중에만 BGM 을 틀었는데(`SoundManager.cs` 구독),
+    //      새 씬에는 그 매니저가 없어 BGM 이 한 번도 안 울렸다(5c 「아직 안 보이는 것」).
+    //      카메라와 BGM 이 **같은 한 값**을 받으므로 둘이 다른 국면을 믿는 일이 없다.
     //
-    // ⚠ 이 파일이 `Scripts/Presentation/` 에 있는 이유: Unity 층 컴파일 검사 lane
-    // (`BattleCoreUnity.Check.csproj`)이 **`BattleCoreUnity/**` 만** 컴파일하고 나머지는 옛
-    // `Wassup.Runtime.dll` 로 받는다. `CameraDirector.SetPhase` 는 그 dll 에 아직 없으므로,
-    // 호출부가 `BattleCoreUnity/` 안에 있으면 그 lane 이 거짓 빨강이 된다. 에디터에서는
-    // 둘 다 같은 어셈블리(`Wassup.Runtime`)라 차이가 없다.
+    // 5b 에서 이 파일이 `Scripts/Presentation/` 에 있던 이유(검사 lane 이 옛 dll 에
+    // `SetPhase` 가 없던 시절)는 그 dll 이 갱신되며 사라졌다 — 8a 가 제자리로 옮겼다.
     //
     // 규칙은 하나도 없다 — 읽고 민다. 판정이 여기 들어오면 그것이 새 브리지의 첫 줄이다.
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-95)]   // Director(-90) 보다 **먼저** 민다(그 프레임에 반영되게)
-    public sealed class CoreCameraFeed : MonoBehaviour
+    public sealed class CorePhaseFeed : MonoBehaviour
     {
         [SerializeField] private BattleDriver _driver;
         [SerializeField] private CameraDirector _director;
+
+        [Tooltip("BGM 소유자. 비우면 전역 인스턴스(의도된 매니저 예외 · 제약 5)를 쓴다.")]
+        [SerializeField] private SoundManager _sound;
+
+        /// <summary>마지막으로 민 페이즈. 테스트가 「결과 = Result · 전투 = Battle」을 증언하는 창이다.</summary>
+        public GamePhase LastPhase => _lastPhase;
 
         private bool _pushed;
         private GamePhase _lastPhase = GamePhase.None;
@@ -47,9 +55,7 @@ namespace Wassup.Presentation
         {
             if (_driver == null || !_driver.Running) return;
             var director = EnsureDirector();
-            if (director == null) return;
-
-            if (!_pushed) PushBoard(director);
+            if (director != null && !_pushed) PushBoard(director);
             PushPhase(director);
         }
 
@@ -77,7 +83,7 @@ namespace Wassup.Presentation
                 ? _driver.StageRoot.GetComponentInChildren<UnityEngine.Rendering.Volume>(true)
                 : null;
             if (volume == null && _driver.StageRoot != null)
-                Debug.LogWarning($"[CoreCameraFeed] 스테이지 '{_driver.StageRoot.name}' 에 Volume 이 없다 — "
+                Debug.LogWarning($"[CorePhaseFeed] 스테이지 '{_driver.StageRoot.name}' 에 Volume 이 없다 — "
                     + "스트레스 비네트가 그려지지 않는다.", this);
             director.SetPostVolume(volume);
 
@@ -99,7 +105,9 @@ namespace Wassup.Presentation
                       : GamePhase.Battle;
             if (phase == _lastPhase) return;
             _lastPhase = phase;
-            director.SetPhase(phase);
+            if (director != null) director.SetPhase(phase);
+            var sound = _sound != null ? _sound : SoundManager.Instance;
+            if (sound != null) sound.SetPhase(phase);
         }
 
         private CameraDirector EnsureDirector()
