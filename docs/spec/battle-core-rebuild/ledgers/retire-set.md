@@ -3,7 +3,7 @@
 > 생성 2026-09-25(8c). **unit 9 는 아래 `retire` 블록의 목록만 지운다** — 더 지우지도, 덜 지우지도 않는다. 목록은 손으로 고른 것이 아니라 **검사의 결과**다:
 > 퇴역 후보를 지운 export 사본이 컴파일되고(코드 도달성) · 남는 뿌리에서 퇴역 스크립트에 닿지 않고(자산 도달성) · 남는 코드가 옛 경로를 문자열로 들지 않을 때(`--retire-assets`)만 이 목록이 성립한다. 목록을 고치면 아래 세 명령을 다시 돌린다.
 
-총계: 퇴역 598 파일 · C# 579 파일 · 114282 줄
+총계: 퇴역 607 파일 · C# 588 파일 · 115677 줄
 
 ## 검증 명령
 
@@ -75,6 +75,22 @@ Assets/_Project/Scripts/UI/Outgame/SquadPrepView.cs
 Assets/_Project/Scripts/UI/PlacementPhaseView.cs
 Assets/_Project/Scripts/UI/ScoreHudView.cs
 
+# 3b. 옛 씬 dev 실험대 2(8c 「보류」 → 리드 결정 (a) 은퇴 2026-09-25) — 그림자 하이브리드 실험대와 그 토글을 든 옛 메뉴.
+#     새 씬은 `CoreMenuPopup` + `CoreMatchOutcomePresenter` 가 메뉴를 이었다(8a). 토글은 옮기지 않는다.
+Assets/_Project/Scripts/Presentation/IngameCharacterTest.cs
+Assets/_Project/Scripts/UI/MenuPopup.cs
+
+# 3c. 옛 뷰 중 `Unity.Entities` 를 쓰는 잎 7(unit 9 재측정 2026-09-25 — 8c 의 Retire.Check 가 Entities dll 을 참조해 못 잡았다).
+#     남는 코드의 사용처는 서로끼리뿐 · 자산 참조는 옛 `BattleScene.unity` 뿐 · 새 층은 `Core*` 후계를 쓴다.
+#     증거: 가지치기 export 를 Entities·Transforms·Serialization dll 없이 빌드 → 오류 56 이 이 7 파일에만 · 지우면 0.
+Assets/_Project/Scripts/Presentation/BeamPresenter.cs
+Assets/_Project/Scripts/Presentation/DcAuraVisualPool.cs
+Assets/_Project/Scripts/Presentation/EnemyHitBarSpawner.cs
+Assets/_Project/Scripts/Presentation/EnemyHitBarView.cs
+Assets/_Project/Scripts/Presentation/StatusFxSpawner.cs
+Assets/_Project/Scripts/Presentation/StatusFxView.cs
+Assets/_Project/Scripts/Presentation/UnitView.cs
+
 # 4. 옛 씬 전용 입력(8c 가 떼어 둔 `*.OldBattle.cs` 부분 파일)과 잔여 이중화(옛 웨이브 생성기 · 보너스 스케줄 · 옛 판 설정 SO + 자산)
 Assets/_Project/Data/Config/BattleConfig.asset
 Assets/_Project/Scripts/Audio/SoundManager.OldBattle.cs
@@ -119,7 +135,7 @@ Assets/_Project/Tests/EditMode/BattleBridgeDraftMapTests.cs
 Assets/_Project/Tests/EditMode/BattleScaledRateManagerTests.cs
 Assets/_Project/Tests/EditMode/Bezier3Tests.cs
 Assets/_Project/Tests/EditMode/BlinkMathTests.cs
-Assets/_Project/Tests/EditMode/BoardSpaceTests.cs
+# (이식으로 대체 — `7482f7ba6` 에서 `EditModeCore` 로 옮기며 이미 삭제됨) Assets/_Project/Tests/EditMode/BoardSpaceTests.cs
 Assets/_Project/Tests/EditMode/BonusWaveScheduleTests.cs
 Assets/_Project/Tests/EditMode/BoomerangBakeAndDrainTests.cs
 Assets/_Project/Tests/EditMode/BoomerangTests.cs
@@ -361,19 +377,9 @@ Assets/_Project/Tests/Golden/
 ProjectSettings/EntitiesClientSettings.asset
 ```
 
-## 보류 — 사용자 결정 대기
+## 보류 — 해소(2026-09-25)
 
-옛 spec 에서 은퇴 결정을 찾지 못했다(8c 구현 6). 답이 오기 전에는 unit 9 가 지우지 않는다.
-
-| 항목 | 하는 일 | 찾은 것 | 선택지 |
-|---|---|---|---|
-| `Scripts/Presentation/IngameCharacterTest.cs` | 그림자 하이브리드 실험대 — 옛 씬 루트 `CharacterTest` 오브젝트에 붙어 진짜 그림자·블롭 그림자를 실시간 토글한다. 블롭 값은 `BattleBridge` static 미러에서 읽는다 | `camera-direction/15_handoff_summary.md` 「`cf8cec74` 디버그용 `CharacterTest` 오브젝트 끔」 · `distance-based-range/20_shadow_body_parity.md:47` 「겹쳐 렌더되는 것은 이 실험대가 이미 증명해 둔 상태」 — **끔·목적 달성 기록이지 은퇴 결정은 아니다** | (a) 옛 씬과 함께 은퇴 → `retire` 블록으로 옮긴다 · (b) 새 씬으로 옮긴다(블롭 값을 `BlobShadowConfig` 에서 읽게) |
-| `Scripts/UI/MenuPopup.cs` 의 dev 토글 「캐릭터/포스트」(`:172~178`) | 메뉴 우하단에서 옛 씬 루트 `CharacterTest`·`Post` 를 켜고 끈다. 파일 나머지(재개·나가기)는 옛 메뉴이고 새 씬은 `CoreMenuPopup` + `CoreMatchOutcomePresenter` 가 이었다(8a) | 없음 | (a) 토글째 은퇴 → `MenuPopup.cs` 를 `retire` 로 · (b) 토글만 `CoreMenuPopup` 으로 옮기고 `MenuPopup.cs` 를 `retire` 로 |
-
-```hold
-Assets/_Project/Scripts/Presentation/IngameCharacterTest.cs
-Assets/_Project/Scripts/UI/MenuPopup.cs
-```
+8c 가 보류로 둔 2 파일(`IngameCharacterTest.cs` · `MenuPopup.cs` 의 dev 토글 「캐릭터/포스트」)은 **리드 결정 (a) 옛 씬과 함께 은퇴**로 닫혔다 → 위 `retire` 블록 3b. 근거: 둘 다 옛 씬 루트 `CharacterTest`·`Post` 오브젝트에만 닿는 dev 도구이고, 옛 spec 의 기록은 「끔·목적 달성」(`camera-direction/15_handoff_summary.md` · `distance-based-range/20_shadow_body_parity.md:47`)이다. `hold` 블록은 비었다.
 
 ## 자산 도달성의 뿌리
 
@@ -391,5 +397,5 @@ Assets/_Project/Scenes/FluidScratch.unity
 
 - **옛 씬 전용 입력은 부분 파일로 떼었다**(4번 묶음) — `CameraDirector`·`SoundManager` 의 `GameManager.PhaseChanged` 구독, `ResultScreen.Show(MatchTally)`, `WavePatternStripView.RebuildFromDeck`. 본 파일은 남고 `*.OldBattle.cs` 만 지운다. `partial void` 선언은 구현이 사라지면 호출째 빠진다. unit 9 의 「이중 입력을 걷는다」(구현 8)는 이 파일들을 지우는 것으로 끝난다.
 - **옛 웨이브 생성기는 퇴역한다**(unit 9 「잔여 이중화」). 마지막 소비처였던 스트립의 덱 경로를 부분 파일로 떼자 남는 코드의 소비처가 0 이 됐다. `GeneratedWavePlan` 은 스트립 입력이라 남는다. 같은 커밋에서 `enemy-wave-integration` 스킬을 코어 `WaveGenerator` 로 옮기는 것은 unit 9 구현 7 몫이다.
-- **테스트 짝**(unit 9 구현 2)은 이 목록에 아직 적지 않았다 — 파일마다 「같은 규칙을 증언하는 코어 테스트」를 적는 일은 삭제 커밋의 것이다. 짝 확인이 특히 필요한 것: `EditModeAssets` 의 `WaveConceptAuthoringTests`·`WaveKillBudgetPinTests`(저작 덱을 옛 생성기로 굴린다) · `EditMode/SkillLoadoutControllerTests`(그중 `FilterHiddenSkills` 단언은 본문이 `CoreDeckComposition` 으로 이사했다).
+- **테스트 짝**(unit 9 구현 2)은 [`retire-test-pairs.md`](retire-test-pairs.md) 에 파일마다 적었다(250 파일 — 짝 196 · 옛 기계 전용 18 · A/B 비교 2 · **규칙 누락 의심 34**). 누락 의심 34 는 옛 테스트 삭제 커밋 **앞에** 코어 테스트로 옮긴다.
 - 이사해서 **남는** 것(목록에 없다): `Scripts/Data/Authoring/**`(8c 구현 3·4) · 볼륨 프로필 4(`Art/Theme/<맵>/`).

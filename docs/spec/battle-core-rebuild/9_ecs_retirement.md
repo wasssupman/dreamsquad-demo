@@ -82,14 +82,29 @@
 
 N/A — 새 정거장이 없다. 지우는 정거장은 8c 가 맵에서 이미 이력으로 내렸다. 확인할 것은 하나다: 맵의 모든 심볼이 삭제 뒤에도 존재한다(grep).
 
+## 고친 것 (구현 2026-09-25 — spec 과 다른 점)
+
+- **퇴역 목록 밖의 Entities 의존 잎 7 을 3c 로 더했다**(`Presentation/` 의 `BeamPresenter`·`DcAuraVisualPool`·`EnemyHitBarSpawner`·`EnemyHitBarView`·`StatusFxSpawner`·`StatusFxView`·`UnitView` · 939줄 · 리드 기본값 승인). 8c 의 `Retire.Check` 가 `Library/ScriptAssemblies/*.dll`(Entities 포함)을 참조해 「남는 코드가 Entities 를 부르나」를 못 봤다 — Exclude 에 Entities·Transforms·Serialization·Hybrid dll 을 더했다. 증거: 가지치기 export 를 Entities dll 없이 빌드하면 오류 56 이 이 7 파일에만 · 지우면 0 · 사용처는 서로끼리 · 자산 참조는 옛 씬뿐.
+- **구현 2(짝 없는 테스트 먼저 옮기기)는 「규칙 누락 의심」 34 중 33 을 옮겼다**(31 `TilemapMapViewTests` 는 대상 자체가 퇴역) — `7482f7ba6`, 짝 지도 `ledgers/retire-test-pairs.md`. **옛 규칙과 코어가 다른 4건**은 코어를 고치지 않고 `[Ignore("unit 9 — 옛 규칙과 다름: …")]` 로 남겼다: ⑴ 방향탄이 관통을 다 쓰면 호밍으로 바꿔 다음 적에게 튕긴다(옛 `ProjectileHitSystem.cs:648~676` · 코어는 관통 소진 = 소멸) ⑵ 감지 후보의 직업 필터(옛 `EnemyTargetFilter.classMask` · 코어 `ReachProbe.IsLegalDetectionTarget` 는 진영·층만) ⑶ 같은 입구 다른 종의 예고선 병합(옛 = 종마다 한 줄 · 코어 `WaveScheduler.CollectForecast` = 입구×경로로 접는다) ⑷ 예보 경로 해석(옛 = 스폰과 같은 해석 · 코어 = 컨셉 슬롯 경로만). 「부분 공백」 51 은 README 후속 후보.
+- **남는 테스트가 옛 소스를 런타임에 읽고 있었다**(`Tests/EditMode/ReachEntryPointGuardTests.cs` 의 그물 10 — `Path.Combine(…, "Battle")` 라 `--retire-assets` 의 문자열 검사도 못 잡았다). 대상과 함께 은퇴시키고 `Wassup.Skills` 쪽 그물 4 는 남겼다. 코어의 원점 항은 행동 테스트가 증언한다.
+- **네임스페이스 이사의 목적지를 `Wassup.Data` → `Wassup.Data.Authoring` 으로 바꿨다**(구현 5). `Wassup.Data` 로 합치면 `DotElement`·`StatKind`·`StackKind`·`CombineOp` 가 코어 `Wassup.BattleCore.Effects` 의 같은 이름과 부딪혀 두 using 을 다 가진 파일이 CS0104 로 깨진다(실측 `CoreStatusFxSpawner`). 하위 네임스페이스는 이름 해석을 옛 것과 똑같이 둔다. 「자산에 이 네임스페이스 문자열 0」은 틀렸다 — 해저드 자산·프리팹 5개의 `m_EditorClassIdentifier` 가 옛 이름을 든다(에디터 정보용 · 바인딩은 GUID · 영향 0).
+- **`check_ledgers.py` 를 삭제 뒤 상태에 맞췄다** — 브리지가 없으면 두 장부를 이력으로 동결(「미정 0」만 본다) · 퇴역 목록이 다 지워지면 총계 대조 생략.
+- **패키지 제거 중 Unity 가 `ProjectSettings/EntitiesClientSettings.asset` 을 한 번 다시 만들었다**(첫 refresh 에서 Entities 가 아직 로드된 채) — 재삭제. 첫 refresh 뒤에는 옛 Entities 어셈블리가 도메인에 남아 있었고, 두 번째 refresh 에서 사라졌다.
+- **인스펙터 문구 5곳**(Tooltip·Header)이 `BattleBridge` 를 주인으로 적고 있어 새 주인으로 고쳤다(완료 기준 첫 줄).
+- 동결 훅 `.githooks/commit-msg` 는 마지막 커밋에서 파일만 지웠다. `core.hooksPath` unset 은 main 머지 뒤(리드 몫).
+
 ## 완료 기준
 
-- [ ] 비주석 grep 0: `Unity\.Entities|EntityManager|SystemAPI|\bISystem\b` · `BattleBridge` · `Wassup\.Battle(\.|;)`(`Assets/_Project --include=*.cs`, `//`·`///` 줄 제외 — 코어·Skills 주석의 「옛 `Wassup.Battle.Effects.*` 의 미러」 설명은 정당한 이력이다, 예: `HazardDef.cs:16·27`·`SkillCcKind.cs:5`).
-- [ ] `manifest.json` 에 `entities` 0 · lock 재생성 뒤 `com.unity.serialization`·`scriptablebuildpipeline` 이 전이로 사라진다(남으면 누가 끄는지 적는다).
-- [ ] Unity 콘솔 컴파일 에러 0 · asmdef 전부 초록 · EditMode(`.EditMode`·`.Assets`·`.Core`) 선행 2 외 빨강 0 · PlayMode.Core·PlayMode(아웃게임) 초록 · 테스트 **총계가 줄어든 만큼이 삭제 목록 합과 같다**(안 돈 테스트 판별).
-- [ ] 골든 11종 무변(Unity) · 헤드리스 3종(build 0 · test · Check 0 — Entities dll 참조 없이).
-- [ ] 로비 콜드 스타트 `targetFrameRate == 60`(옛 훅이 사라진 뒤라 이번엔 판별력이 있다 — 8b 완료 기준의 두 번째 측정).
-- [ ] **Android QA 빌드 2회째**(Entities 없이) 성공 · APK 크기 전후 기록 · 실기기 1판.
-- [ ] `.githooks/commit-msg` 없음 · `git config --get core.hooksPath` 빈 값(main 머지 뒤) · 리뷰 감지기는 `Scripts/BattleCore/` 에서만 울린다.
-- [ ] 문서 18편 + 스킬 5 + CLAUDE.md 편집 목록 전 행 처리 · `grep -rn "\[옛 전투" CLAUDE.md` = 0.
-- [ ] `core-reviewer` APPROVE(삭제 diff 는 `retire-set.md` 대조로).
+- [x] 비주석 grep 0: `Unity\.Entities|EntityManager|SystemAPI|\bISystem\b` · `BattleBridge` · `Wassup\.Battle(\.|;)`(`Assets/_Project --include=*.cs`, `//`·`///` 줄 제외 — 코어·Skills 주석의 「옛 `Wassup.Battle.Effects.*` 의 미러」 설명은 정당한 이력이다, 예: `HazardDef.cs:16·27`·`SkillCcKind.cs:5`). — **○** `Wassup\.Battle(\.|;)` 0 · `BattleBridge` 0 · Entities 계열 1 = `CoreArchitectureTests.cs:89` 의 부재 단언 문자열(`StringAssert.DoesNotContain("Unity.Entities", …)`) — 그물 자체다.
+- [x] `manifest.json` 에 `entities` 0 · lock 재생성 뒤 `com.unity.serialization`·`scriptablebuildpipeline` 이 전이로 사라진다(남으면 누가 끄는지 적는다). — **○** manifest 0 · lock 에서 entities·entities.graphics·serialization·scriptablebuildpipeline·profiling.core 소멸. burst·collections 는 남는다(구현 4).
+- [ ] Unity 콘솔 컴파일 에러 0 · asmdef 전부 초록 · EditMode(`.EditMode`·`.Assets`·`.Core`) 선행 2 외 빨강 0 · PlayMode.Core·PlayMode(아웃게임) 초록 · 테스트 **총계가 줄어든 만큼이 삭제 목록 합과 같다**(안 돈 테스트 판별). — **△(아웃게임 PlayMode 의 `[Explicit]` 라이브 서버 2 만 환경 빨강)** 콘솔 에러 0 · EditMode 2706→**1320**(−1376 삭제 파일 + −10 그물) · .Assets 360→**287**(−73 = 삭제 6 파일 · `ValueSource` 2×3 포함) · 선행 2 외 빨강 0 · .Core **891** 무변(건너뜀 4 = 규칙 차이) · PlayMode.Core **95/95** · PlayMode(아웃게임) 2/4 — `PresetBarPopupLayerTest` 2 초록, `[Explicit]` 라이브 서버 2 빨강(`AuthE2ETest` 닉네임 중복 · `DeckInfoPresetApplyLiveE2ETest` 로그인 필요 — 환경 · 삭제와 무관).
+- [x] 골든 11종 무변(Unity) · 헤드리스 3종(build 0 · test · Check 0 — Entities dll 참조 없이). — **○** `Golden/Verify` 11건 일치(삭제 뒤 · 네임스페이스 뒤 두 번) · 헤드리스 export build 0 · test **876/880**(680 + 이식 200 · 건너뜀 4) · Check 0 · `Retire.Check` 0(Entities dll 제외).
+- [x] 로비 콜드 스타트 `targetFrameRate == 60`(옛 훅이 사라진 뒤라 이번엔 판별력이 있다 — 8b 완료 기준의 두 번째 측정). — **○** OutgameScene Play 5.7초 시점 `targetFrameRate=60` · `vSyncCount=0`(옛 `GameManager` 훅은 삭제됨).
+- [ ] **Android QA 빌드 2회째**(Entities 없이) 성공 · APK 크기 전후 기록 · 실기기 1판. — **보류** 미시도(사용자 몫).
+- [ ] `.githooks/commit-msg` 없음 · `git config --get core.hooksPath` 빈 값(main 머지 뒤) · 리뷰 감지기는 `Scripts/BattleCore/` 에서만 울린다. — **△** 훅 파일 삭제 · 감지기 = 코어 경로만(임시 저장소로 확인 — 옛 `Scripts/Battle/` 변경에는 안 울린다) · hooksPath unset 은 머지 뒤(리드).
+- [x] 문서 18편 + 스킬 5 + CLAUDE.md 편집 목록 전 행 처리 · `grep -rn "\[옛 전투" CLAUDE.md` = 0. — **○** `66e122ec6`·`45d43c8a0`·`10ea8cffe`(스킬 5번째 = 생성기 삭제 커밋) · 루트 README 도 · grep 0.
+- [x] `core-reviewer` **APPROVE**(2026-09-25 — CRITICAL·HIGH·MEDIUM 0 · LOW 2 = 장부의 `BoardSpaceTests` 표기(이식 대체 주석으로 정정) · `[Explicit]` 어셈블리 실행 제한 미기록(`test-procedure.md` 에 기록)). 삭제 = 퇴역 목록 1:1 · 코어 diff 는 네임스페이스 치환만 · [Ignore] 4건은 옛 규칙과 코어의 차이가 맞다(독립 판정).
+
+구현 2026-09-25 — `66e122ec6`~`9a8756016` + 훅 삭제(마지막 커밋). 옛 규칙 변경 0(규칙이 다른 4건은 `[Ignore]` 로 기록만).
+
+리드 재검증 2026-09-25 — HEAD `2c298b3b1`(= `d2f70a7a8` + Check csproj 의 Entities·Transforms dll 참조 제거 — `60c09db21` 에서 빠진 spec 변경 대상 :56~57): 클린 export build 0 · test 876/880(Ignore 4) · Check 0(Entities 참조 없이) · manifest entities 0 · 장부 3종 exit 0 · 옛 폴더 4 부재 · asmdef 에 Entities/Burst/Transforms 0 · 골든 파일 diff 0. Unity: 도메인 Entities 어셈블리 0 · 로비 콜드 스타트 fps 60 · EditMode 3 어셈블리 2496/2498(선행 2) · PlayMode 코어 95/95 · 아웃게임 `PresetBarPopupLayerTest` 2/2 · 골든 Verify 11 일치. 남은 것 = 옛 규칙 차이 4건 사용자 결정 · 플레이 4차 · main 머지(→ `core.hooksPath` unset) · Android QA 빌드.
