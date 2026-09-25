@@ -37,7 +37,7 @@ spec 은 「코어로 가는 값은 `MatchDefinitionBuilder` 입력 → 정의�
 
 | # | 필드 | 파일 | 씬에 있음 | 새 주인 | 비고 |
 |---|---|---|---|---|---|
-| 1 | `bonusPortalPrefab` | BattleBridge.BonusWave.cs | ○ | 씬 배선 참조 | 보너스 포탈 **프리팹**이다 — 값이 아니라 그릴 물건이라 정의표에 실을 것이 없다. 새 주인은 unit 6 의 보너스 뷰 |
+| 1 | `bonusPortalPrefab` | BattleBridge.BonusWave.cs | ○ | 씬 배선 참조 | 보너스 포탈 **프리팹**이다 — 값이 아니라 그릴 물건이라 정의표에 실을 것이 없다. 새 주인 = `CoreBonusPortalPresenter._portalPrefab`(**8a** 실현 — 초판 「unit 6 의 보너스 뷰」는 배정만 되고 코드에 없었다) |
 | 2 | `bossLeapTotalSeconds` | BattleBridge.BossLeap.cs | ○ | 뷰 설정 SO | `LeapVisualConfig.bossTotalSeconds` |
 | 3 | `bossLeapRecoilSeconds` | BattleBridge.BossLeap.cs | ○ | 뷰 설정 SO | `LeapVisualConfig.bossRecoilSeconds` |
 | 4 | `bossLeapRecoilDip` | BattleBridge.BossLeap.cs | ○ | 뷰 설정 SO | `LeapVisualConfig.bossRecoilDip` |
@@ -67,9 +67,9 @@ spec 은 「코어로 가는 값은 `MatchDefinitionBuilder` 입력 → 정의�
 | 28 | `draftController` | BattleBridge.cs | ○ | 씬 배선 참조 | 드래프트 **컨트롤러**다 — 판 밖 흐름이라 정의표에 실을 값이 없다. 새 주인은 5c 의 모드 진입 |
 | 29 | `skillRuntime` | BattleBridge.cs | ○ | 씬 배선 참조 | 스킬 런타임 **컴포넌트**. 발동은 unit 7 의 것이고 여기엔 값이 없다 |
 | 30 | `_placementPhaseView` | BattleBridge.cs | ○ | 씬 배선 참조 | 배치 페이즈 **뷰**. 값이 아니라 창을 그리는 물건 — 5b |
-| 31 | `_gimmickPhaseView` | BattleBridge.cs | ○ | 씬 배선 참조 | 기믹 페이즈 **뷰**. 위와 같다 — 5b |
+| 31 | `_gimmickPhaseView` | BattleBridge.cs | ○ | 씬 배선 참조 | 기믹 페이즈 **뷰**. 새 주인 = `CoreGimmickReveal`(**8a** 실현 — 초판 「5b」는 배정만 됐다). 구동 = 코어 `GimmickAssigned` 사건 |
 | 32 | `spineUnitPool` | BattleBridge.cs | ○ | 씬 배선 참조 | 유닛 뷰 **풀 컴포넌트**. 새 주인 = `CoreUnitViewPool`(이 unit 에서 씬에 선다) |
-| 33 | `retireFlight` | BattleBridge.cs | ○ | 씬 배선 참조 | 퇴근 비행 **연출 컴포넌트**. 값이 아니라 코루틴을 도는 물건 — 5c |
+| 33 | `retireFlight` | BattleBridge.cs | ○ | 씬 배선 참조 | 퇴근 비행 **연출 컴포넌트**. 값이 아니라 코루틴을 도는 물건. 새 주인 = `CoreRetireFlightPresenter`(**8a** 실현 — 대조표 재측정이 찾았다. 초판 「5c」는 배정만 됐다). 구동 = 코어 `Retired` 사건 → `CoreUnitViewPool.TryDetach` |
 | 34 | `enemyViewPool` | BattleBridge.cs | ○ | 삭제 | 쿼드 폴백 풀이 **둘**이던 시절의 반쪽. 백엔드 선택이 `CoreUnitViewPool.TrySpawn` 한 곳으로 합쳐져 자리가 없다(씬 값도 이미 비어 있다) |
 | 35 | `defenderFallbackViewPool` | BattleBridge.cs | ○ | 삭제 | 위와 같은 반쪽. 씬 값이 비어 있고 새 층에는 자리가 없다 |
 | 36 | `enemyDragDimAlpha` | BattleBridge.cs | ○ | 뷰 설정 SO | `CharacterViewConfig.enemyDragDimAlpha` |
@@ -91,7 +91,7 @@ spec 은 「코어로 가는 값은 `MatchDefinitionBuilder` 입력 → 정의�
 | 52 | `unitOverheadUiLayer` | BattleBridge.cs | ○ | 씬 배선 참조 | 오버헤드 **레이어 컴포넌트**. 새 주인 = `CoreUnitOverheadUiLayer` |
 | 53 | `beamPresenter` | BattleBridge.cs | ○ | 씬 배선 참조 | 빔 **프리젠터 컴포넌트**. 사건이 unit 6 에서 열린다(씬 값도 비어 있다) |
 | 54 | `scoreHud` | BattleBridge.cs | ○ | 씬 배선 참조 | 점수 **HUD 컴포넌트**. 5b |
-| 55 | `_bossWarning` | BattleBridge.cs | ○ | 씬 배선 참조 | 보스 경보 **뷰 컴포넌트**. 값이 아니라 띄울 UI — 구동 신호는 **보스 스폰 순간**(`BattleBridge.cs:10116~10121`, `tier == Boss`)이다 — 2026-09-25 정정(초판 「`WaveStarted`」는 오기). 5b 가 잇지 않았다 → 8a |
+| 55 | `_bossWarning` | BattleBridge.cs | ○ | 씬 배선 참조 | 보스 경보 **뷰 컴포넌트**. 값이 아니라 띄울 UI — 구동 신호는 **보스 스폰 순간**(`BattleBridge.cs:10116~10121`, `tier == Boss`)이다 — 2026-09-25 정정(초판 「`WaveStarted`」는 오기). 새 주인 = `CoreBossWarning`(**8a** 실현 — `UnitSpawned` 의 `DefIndex` → `tier == Boss`) |
 | 56 | `_projectileViewPool` | BattleBridge.cs | ○ | 씬 배선 참조 | 투사체 뷰 **풀 컴포넌트**. 새 주인 = `CoreProjectileViewPool` |
 | 57 | `placementInput` | BattleBridge.cs | ○ | 씬 배선 참조 | 배치 입력 **컴포넌트**. 커맨드로 바뀐다 — 5b |
 | 58 | `tilemapMapView` | BattleBridge.cs | ○ | 씬 배선 참조 | 맵 뷰 **컴포넌트**. 5a 는 그중 **평면 선언만** 갖는다(`CoreBoardPlane`), 오버레이·범위 타일은 5b |
