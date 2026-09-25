@@ -94,6 +94,7 @@ N/A — 새 정거장이 없다. 지우는 정거장은 8c 가 맵에서 이미 
 - **인스펙터 문구 5곳**(Tooltip·Header)이 `BattleBridge` 를 주인으로 적고 있어 새 주인으로 고쳤다(완료 기준 첫 줄).
 - **이식 제외 표가 `DefenderRetireFlight` 를 「남긴다」에 적고 있었다**(unit 9 감사 2026-09-25) — 실제로는 장부 묶음 3 으로 퇴역했고 후계는 `CoreRetireFlightPresenter` 다. 표를 정정했다.
 - 동결 훅 `.githooks/commit-msg` 는 마지막 커밋에서 파일만 지웠다. `core.hooksPath` unset 은 main 머지 뒤(리드 몫).
+- **9d — 삭제 뒤 잔여 정리**(설계 리뷰 2026-09-25 · `0666ce139` 삭제 · `bdc798ffd` 주석). 참조 0 인 파일 16(+`.meta` · 빈 `Core/Trace`) 을 지웠다 — `LegacyTraceRecorder` · `BattleMapBuilder`(+테스트) · Draft 5종(+테스트) · `DamageNumberSpawner` · `DcIconStripView` · `DcActionFlipbookView` · `DeployCutscenePlayer` · `ScoreBurstPool` · `BeamPulse` · `SimHarnessClock`(켜는 곳이 테스트뿐 — `LoginAutoImport` 가드·`TimeManager` 분기·가드 테스트 동반). 빈 partial 훅(`SoundManager`·`CameraDirector`)과 조각 하나뿐인 partial 키워드 6 도 걷었다. 테스트는 보존했다 — 데미지 숫자 배치 테스트는 바이트 동일한 코어 사본을 겨누고, 맵 연결성 첫 케이스는 손 픽스처를 쓴다. `PaletteSanityProbe` 는 씬에 떨궈 쓰는 수동 진단 도구라 남겼다. 현재형 거짓 주석 58 파일을 현재 주인 또는 「옛 … — 이력」 으로 고쳤다(코어 무접촉).
 
 ## 완료 기준
 
