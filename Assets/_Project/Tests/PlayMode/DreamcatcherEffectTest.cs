@@ -36,7 +36,7 @@ namespace Wassup.Tests.PlayMode
         {
             // BattleScene/DraftView pre-existing missing-script + draft warnings.
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             // let GameManager.Start + PrepareDraftMap build the playfield.
             for (int i = 0; i < 6; i++) yield return null;
 
@@ -111,7 +111,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator RevokeNeutralizesReductionShapedBuff()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -143,7 +143,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator CrackedGrail_RevokeNeutralizesBothAdditiveEffects()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();

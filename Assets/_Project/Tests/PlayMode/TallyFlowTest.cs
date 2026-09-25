@@ -60,7 +60,7 @@ namespace Wassup.Tests.PlayMode
 
         private IEnumerator Setup()
         {
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             _bridge = Object.FindObjectOfType<BattleBridge>();

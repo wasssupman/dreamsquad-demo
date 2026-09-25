@@ -31,7 +31,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator AttachRequirement_GatesByClassAndUnitId()
         {
             LogAssert.ignoreFailingMessages = true; // 제한 거절 경고를 의도적으로 발생시킨다
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -138,7 +138,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator RejectedAttach_DoesNotSpendAwakening_AndKeepsCardInHand()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();

@@ -33,7 +33,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator BeamUnit_Attacking_StretchesBeamBodyBetweenMuzzleAndTarget()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -102,7 +102,7 @@ namespace Wassup.Tests.PlayMode
             // 세션이 첫 프레임에 죽었다. 배치 빔은 한 번만 열리므로 그대로 전멸했고, 0.2초마다
             // 다시 열리는 **공격 빔 하나만** 남아 "빔이 1개만 나온다"로 보였다.
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -167,7 +167,7 @@ namespace Wassup.Tests.PlayMode
             // ActivateDeployedDefender → TriggerDeploymentOnPlaceSkill → ApplyOnPlaceEffect.
             // 즉시 배치(PlaceDefenderAs)만 검증하면 이 경로의 차이를 놓친다.
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -216,7 +216,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator OnPlaceBarrage_SuppressesBasicAttackForItsDuration()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;

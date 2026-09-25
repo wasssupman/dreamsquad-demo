@@ -48,7 +48,7 @@ namespace Wassup.Tests.PlayMode
             // 에러 로그를 뱉는데, 기본 설정이면 그것만으로 실패 처리된다.
             LogAssert.ignoreFailingMessages = true;
 
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             _em = World.DefaultGameObjectInjectionWorld.EntityManager;

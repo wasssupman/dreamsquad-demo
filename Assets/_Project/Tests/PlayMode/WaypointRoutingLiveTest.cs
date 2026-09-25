@@ -55,7 +55,7 @@ namespace Wassup.Tests.PlayMode
             // 테스트가 Outgame의 fluid RT를 렌더 타깃으로 둔 프레임에서 씬을 즉시 교체하면
             // Unity가 활성 RT 해제 오류를 낸다. 일반 전환 루프를 우회하는 하네스이므로 명시 해제한다.
             RenderTexture.active = null;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -231,7 +231,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator DefenderCatalog_BakesPathOnlyAndCombinedTargetMasks()
         {
             RenderTexture.active = null;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -298,7 +298,7 @@ namespace Wassup.Tests.PlayMode
         {
             DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(mapName);
             RenderTexture.active = null;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -356,7 +356,7 @@ namespace Wassup.Tests.PlayMode
         {
             DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(mapName);
             RenderTexture.active = null;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -398,7 +398,7 @@ namespace Wassup.Tests.PlayMode
         {
             DevMapOverride.Index = BattleBridgeTestAccess.MapSlot("Tutorial");
             RenderTexture.active = null;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();

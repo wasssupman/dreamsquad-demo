@@ -42,7 +42,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator TopPlaceableRow_IsReachable_AndCommitFollowsPlacementPointer()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();

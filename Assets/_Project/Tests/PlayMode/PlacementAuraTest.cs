@@ -36,7 +36,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Aura_GrantsToNewPlacementsOnly_AndRevokesOnHostRevoke()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -91,7 +91,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Aura_RespectsAxis()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();            var cat = FindCatalog();
@@ -131,7 +131,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Aura_RevokedWhenHostDies_ViaController()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();            var cat = FindCatalog();

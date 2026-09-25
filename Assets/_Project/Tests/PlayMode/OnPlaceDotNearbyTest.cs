@@ -30,7 +30,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator DotNearby_DealsPerTickDamage_InRangeOnly()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;

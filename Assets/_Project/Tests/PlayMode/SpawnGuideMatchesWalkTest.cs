@@ -85,7 +85,7 @@ namespace Wassup.Tests.PlayMode
         {
             LogAssert.ignoreFailingMessages = true;
             DevMapOverride.Index = BattleBridgeTestAccess.MapSlot("Duel");
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -174,7 +174,7 @@ namespace Wassup.Tests.PlayMode
             LogAssert.ignoreFailingMessages = true;
             DevMapOverride.Index = BattleBridgeTestAccess.MapSlot("Coil");
             RenderTexture.active = null;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();

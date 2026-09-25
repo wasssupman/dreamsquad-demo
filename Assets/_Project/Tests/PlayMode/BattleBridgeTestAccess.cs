@@ -52,7 +52,7 @@ namespace Wassup.Tests.PlayMode
         // BattleScene 로드 + 브리지 Awake/Start 와 ECS 월드 준비까지 프레임을 흘린다.
         public static IEnumerator LoadBattleScene()
         {
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
         }
 

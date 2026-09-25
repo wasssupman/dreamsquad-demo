@@ -37,7 +37,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Limit1_BlocksSecondPlacement_AndFreesOnDeath()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -90,7 +90,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Limit100_BehavesAsUnlimited()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -113,7 +113,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator TutorialLowHealthCue_QueuesDamageThroughBridge()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();

@@ -41,7 +41,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Retire_FreesTile_FiresRetiredNotDied_AndCellIsReusable()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -89,7 +89,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Retire_RejectedWhilePendingDeployment()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -126,7 +126,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Retire_StartsRetireCooldown_ForThatUnitType()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -170,7 +170,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Death_StartsLongerCooldown_ThanRetire()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -216,7 +216,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Retire_DetachesView_AndFlightDisposesIt()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -273,7 +273,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator RetireFlight_IsCancelled_OnMatchTeardown_NoOrphans()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -326,7 +326,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Retire_RecoversCards_ButGrantsNoAwakening()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -419,7 +419,7 @@ namespace Wassup.Tests.PlayMode
         private IEnumerator SetupHandoverBoard()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             _bridge = Object.FindObjectOfType<BattleBridge>();
@@ -541,7 +541,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Retire_WithOnRetireCard_DropsMeteorOnVacatedCell()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -576,7 +576,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Death_WithOnRetireCard_DropsNoMeteor()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -602,7 +602,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Retire_WithOnDeathCard_DoesNotExplode()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();

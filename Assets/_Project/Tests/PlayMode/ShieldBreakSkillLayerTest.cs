@@ -30,7 +30,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator ShieldBreakBlast_RunsThroughTheSkillLayer_AndHitsNearby()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
@@ -100,7 +100,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator ShieldBreakSleep_RunsThroughTheSkillLayer_AndSleepsNearby()
         {
             LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return LegacyBattleScene.Load();
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
