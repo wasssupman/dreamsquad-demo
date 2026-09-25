@@ -89,6 +89,8 @@
 
 규칙 아님(배선만): **3 메서드** (`RequestPlacement` · `LogSquadCarryIn` · `LogSkillLoadout`)
 
+**8b 실현(2026-09-25 — 「배정」 칸의 새 주인이 코드에 선 자리).** G3 판 시드 = `MatchEntry.Resolve`(선택 시드 > 고정 노브 `BattleDriver._seed` > `MatchSeed.GenerateRandom`) · G4 기믹 = 코어 `GimmickHost.Begin(시드)`(변경 없음) · G5·G7·G13 = `MatchEntry.Resolve`(테스트 모드 > 저장 편성, 못 찾는 id 는 그 슬롯만 · 테스트 문맥 1회 소비 `ConsumeTestMode`) · G6·G8 = 삭제(편성 0 → 드라이버 저작 + 경고) · G9·G10 = `CardDefinitionBuilder`(스탯 돌 → 판 호스트 규칙 줄 · 코스트 돌 → `CostRateOf`, 입력은 `MatchEntry.ResolveStones`) · G11 = `MatchEntry`(플랜 · 첫 손패) → `EntryAuthoring` → `MatchDefinition.PinnedHandFront` · 저작 플랜 시계 `ApplyEntryPlanClock` · G12 = `MatchDefinition.BonusPullSuppressed` → `WaveScheduler` · G14 = `CoreDeckComposition.RollActives`(7c) · G15 = `CoreMatchOutcomePresenter.RecordMatchPlayed`(결과·나가기 래치 1) · G16 = 입력(7b·7c 카드 입력 — 8b 이식 제외 표) · G17 = `Core/AppBootstrap.cs`(앱 시작 훅 2) + `View/CoreScreenSetup.cs`(세로 1080 캡) · G18 = `CoreScreenSetup`(DPI 임계) · G19 = 씬 수명(드라이버) · G20 = 드라이버 비활성 = 틱 0 · 로그 세션 없음(X28 제거) · G21 = `BattleDriver.Start` → `TournamentMatchReporter.BeginMatch` · G22·G23 = `BattleDriver.DeckInfoJson`(반입 · 덱 확정 두 시점 `PersistMatchDeck`) · G24 = `CoreBriefingPlan`(8a).
+
 ---
 
 ## `Core/Dreamcatcher/DreamcatcherHandController.cs` — 각성과 손패
