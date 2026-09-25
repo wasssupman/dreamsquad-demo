@@ -9273,7 +9273,7 @@ namespace Wassup.Bridge
             // 폴백을 돌린다 — 그래서 폭탄 배럴이 서는데 돌덩이가 쏟아졌다.
             // (기존 방벽도 SO 에 스폰 VFX 를 저작해 두고 같은 이유로 폴백을 쓰고 있었다.)
             presenter.SetSpawnVfxPrefab(so.spawnVfxPrefab);
-            presenter.Bind(entity);
+            presenter.Bind();
             _blockingHazardVisualMap[entity] = visual;
             return entity;
         }

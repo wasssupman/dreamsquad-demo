@@ -18,18 +18,6 @@ namespace Wassup.Battle.Effects
         OnPlace = 3,  // 배치 스킬 (BattleBridge)
     }
 
-    // 지속 피해의 **원소**. 오라가 읽는 축이고, 슬롯을 가르는 축이 아니다.
-    // None = 원소 없음 = 오라 없음(버스터즈 배치 도트 등).
-    // 새 항목은 반드시 **끝에** 추가할 것.
-    public enum DotElement : byte
-    {
-        None = 0,
-        Bleed = 1,
-        Fire = 2,
-        Ice = 3,
-        Poison = 4,
-    }
-
     // 지속 피해 슬롯. CcEffect(행동 제약)와 **별개 버퍼**다 — 지속 피해는 crowd control 이 아니고,
     // 중첩 정책도 정반대다: Stun/Sleep 은 "가장 긴 것 하나"가 정답이지만 지속 피해는 출처별로
     // 공존해야 한다. 한 버퍼를 쓰던 시절엔 화염 장판이 출혈의 scalar 를 덮어써 장판 밖에서도

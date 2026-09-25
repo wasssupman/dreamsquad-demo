@@ -1,22 +1,22 @@
-using Unity.Entities;
 using UnityEngine;
 
 namespace Wassup.Battle.Effects
 {
+    // battle-core-rebuild unit 8c — 길막 프리팹 2(`BlockingHazard_BombBarrel`·`_Placeholder`)에 붙어 있고 새 씬도 그
+    // 프리팹을 `Instantiate` 해서 이 파일이 옛 폴더와 함께 지워지면 Missing Script 가 된다. 그래서 집을 옮기고
+    // ECS 의존(`Entity` 보관)을 걷었다 — 보관한 `Entity` 를 읽는 곳이 0 이었다. 새 층은 이 컴포넌트를 부르지
+    // 않는다(`CoreHazardViewPool` 이 스폰·파괴 VFX 를 직접 낸다). 옛 브리지만 `Bind`·`OnDestroyed` 를 부른다.
     public class BlockingHazardPresenter : MonoBehaviour
     {
         [SerializeField] private GameObject spawnVfxPrefab;
-
-        public Entity Entity { get; private set; }
 
         public void SetSpawnVfxPrefab(GameObject prefab)
         {
             spawnVfxPrefab = prefab;
         }
 
-        public void Bind(Entity entity)
+        public void Bind()
         {
-            Entity = entity;
             SpawnVfx();
         }
 
