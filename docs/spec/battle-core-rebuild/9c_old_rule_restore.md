@@ -1,14 +1,14 @@
-# 9c — 옛 규칙 복원 6건
+# 9c — 옛 규칙 복원 6건 + 표현 2건(결정 ⑧)
 
-상태: **구현 2026-09-25** — `27297a0cb` · `125d002b0` · `356596355` · `ea73d1ddd` · 행 5 `0cbb0cd31`(리드 추가 2026-09-25 → **사용자 결정 ⑦-2 로 철회** `fb0c9952c`) · 행 6 `484e950b4`(unit 9 감사 A 2026-09-25). core-reviewer **APPROVE**(2026-09-25 — 행 1~4 MEDIUM 1 = 행 5 로 해소 · LOW 1 `ClassFilter` Role 미설정 함정(옛과 같은 함정, 후속 후보) · 행 5 부록 finding 0). 플레이 4차 대기.
+상태: **구현 2026-09-25** — `27297a0cb` · `125d002b0` · `356596355` · `ea73d1ddd` · 행 5 `0cbb0cd31`(리드 추가 2026-09-25 → **사용자 결정 ⑦-2 로 철회** `fb0c9952c`) · 행 6 `484e950b4`(unit 9 감사 A 2026-09-25) · 행 7 `e26b8c1ad` · 행 8 `8e4b19c82`(사용자 결정 ⑧ 2026-09-25). core-reviewer **APPROVE**(2026-09-25 — 행 1~4 MEDIUM 1 = 행 5 로 해소 · LOW 1 `ClassFilter` Role 미설정 함정(옛과 같은 함정, 후속 후보) · 행 5 부록 finding 0). 플레이 4차 대기.
 
 ## 목적
 
-unit 9 의 옛 테스트 이식이 드러낸 「옛 규칙 vs 코어」 차이 6건 중 **전투 규칙 4건**을 옛 규칙으로 되돌린다. 행 5·6 은 원본 9c 에서 **「보고만 하고 고치지 않은 차이 2 — 사용자 결정 필요」**였던 것을 리드가 닫았다 — 리드 판단은 옛 규칙 복원 방향이었고, **사용자 재확인(결정 ⑦, 2026-09-25)**: 행 5 는 **철회**(⑦-2 부가 피해는 거점도 친다 — 되돌림 `fb0c9952c`) · 행 6 은 **확정**(⑦-3). 행 5 는 9c 구현 중, 행 6 은 unit 9 감사(2026-09-25)에서 복원했다. 표현 2건(같은 입구 종별 예고선 · 예보 경로 해석)은 이 unit 밖이다 — 사용자 결정 대기, `RetiredWaveForecastPortTests` 의 `[Ignore]` 2 유지.
+unit 9 의 옛 테스트 이식이 드러낸 「옛 규칙 vs 코어」 차이 6건 중 **전투 규칙 4건**을 옛 규칙으로 되돌린다. 행 5·6 은 원본 9c 에서 **「보고만 하고 고치지 않은 차이 2 — 사용자 결정 필요」**였던 것을 리드가 닫았다 — 리드 판단은 옛 규칙 복원 방향이었고, **사용자 재확인(결정 ⑦, 2026-09-25)**: 행 5 는 **철회**(⑦-2 부가 피해는 거점도 친다 — 되돌림 `fb0c9952c`) · 행 6 은 **확정**(⑦-3). 행 5 는 9c 구현 중, 행 6 은 unit 9 감사(2026-09-25)에서 복원했다. 표현 2건(같은 입구 종별 예고선 · 예보 경로 해석)은 **사용자 결정 ⑧**(2026-09-25 「추천대로」)로 닫았다 — 행 7(예보 경로 = 옛 방식 복원) · 행 8(예고선 병합 = 새 방식 유지). `RetiredWaveForecastPortTests` 의 `[Ignore]` 는 0.
 
 ## 변경 대상
 
-`Scripts/BattleCore/Phases/TickProjectilePhase.cs` · `Phases/AiMovePhase.cs` · `Phases/CombatPhase.cs` · `Move/ReachProbe.cs` · 신설 `Combat/ClassFilter.cs` · 테스트 `EditModeCore/RetiredCombatRulePortTests.cs` · `RetiredDetectionMovePortTests.cs` · `DetectionRulesTests.cs` · `ProjectileBehaviorTests.cs`.
+`Scripts/BattleCore/Phases/TickProjectilePhase.cs` · `Phases/AiMovePhase.cs` · `Phases/CombatPhase.cs` · `Move/ReachProbe.cs` · 신설 `Combat/ClassFilter.cs` · 테스트 `EditModeCore/RetiredCombatRulePortTests.cs` · `RetiredDetectionMovePortTests.cs` · `DetectionRulesTests.cs` · `ProjectileBehaviorTests.cs`. 행 7·8: `World/EnemySpawn.cs` · `Owners/WaveScheduler.cs` · 테스트 `RetiredWaveForecastPortTests.cs` · `CoreMatchFixtures.cs`.
 
 ## 구현 (옛 줄은 `7f9b496e1` 기준)
 
@@ -20,8 +20,10 @@ unit 9 의 옛 테스트 이식이 드러낸 「옛 규칙 vs 코어」 차이 6
 | 4 | 길막(방벽)은 **어느 쪽 광역에도** 안 맞는다 — 칸 광역·스플래시·경로 스윕·튕김/재조준. 방벽을 **겨눈 직격**은 맞는다 | 칸 광역 풀 `ProjectileHitSystem.cs` `AnyDefender/AnyEnemy` · 스플래시·튕김·스윕 `:330`·`:384`·`:504`·`:651`(`OpponentUnitsOf`) · 재조준 `ProjectileMoveSystem.cs:78`(적 유닛 풀) · 옛 테스트 `GoalProjectileTests::TileAoe_BlockingHazard_IsVictimOfNeitherPool` | `TickProjectilePhase.cs:1070` `IsAreaLegal` → `:908`(칸 광역). 스플래시·스윕·튕김/재조준 후보도 같은 `IsAreaLegal`(행 5 철회 뒤 — 결정 ⑦-2) | 신설 `ProjectileBehaviorTests` 3 — `적의_칸_광역은_길막을_치지_않고_옆의_방어유닛은_친다` · `방어유닛의_칸_광역도_길막을_치지_않는다` · `적_탄의_스플래시는_길막을_치지_않지만_길막을_겨눈_직격은_맞는다` |
 | 5 | ~~스플래시·경로 스윕·튕김·재조준은 유닛만 고른다~~ — **사용자 결정 ⑦-2 로 철회**(2026-09-25) — 부가 피해는 거점(마음·본능)도 친다(새 코어 동작 유지). 방벽 면제(행 4)는 그대로 | 옛 `ProjectileHitSystem.cs:330`·`:384`·`:504`·`:651`(`OpponentUnitsOf`) · `ProjectileMoveSystem.cs:78` — **옮기지 않는다**(이식 제외 ④) | `0cbb0cd31` 을 손으로 되돌림 — 스플래시·스윕·튕김/재조준 후보가 `IsAreaLegal`(방벽만 제외)로 복귀, `IsUnitPoolLegal` 삭제 | `ProjectileBehaviorTests` 5 를 결정 문장으로 뒤집음 — `적_탄의_스플래시는_마음도_친다` · `방어유닛_탄의_재조준은_거점을_고를_수_있다` · `방어유닛_탄의_튕김은_거점을_고를_수_있다` · `방어유닛의_경로_스윕은_적_거점도_친다` · `방어유닛의_칸_광역은_적_거점도_친다`(무변) |
 | 6 | 관통탄이 한 틱에 여럿을 가로지르면 **진행 방향 앞(가까운 쪽)부터** 관통을 쓴다 — 관통 1 탄은 가로지른 적 중 가장 가까운 적에서 멈춘다. 같은 거리는 `SimEntityId` 오름차순(결정론) | `ProjectileHitSystem.cs:536-545`(`sweptDist` 최소부터 소비 · 「a 1-pierce shot must stop at the nearest enemy it crossed」) | `TickProjectilePhase.cs:938` `SweepPath` — 후보 수집 → `:965` 진행 방향 투영 거리 안정 정렬 → `:981` 앞에서부터 소비. 튕김 기준(`lastVictim` = 최전방)은 무변 | 신설 `ProjectileBehaviorTests::관통_1_탄은_한_틱에_가로지른_적_중_가까운_쪽에서_멈춘다`(먼 적이 작은 id) |
+| 7 | 예고선은 적이 **실제로 갈 길**을 그린다 — 경로 해석은 스폰과 같다: 적 저작 경로(비행) > 웨이브 컨셉 > 레인 기본 > 최단. 결정 ⑧-2 **옛 방식 복원** | `Data/WavePatternGenerator.cs:607` `BuildSpawnGuideForecasts` → `:639` `WaypointRouting.ResolvePathIndex` | 스폰 해석을 `World/EnemySpawn.cs:88` `PathFor` 하나로 뺐다 — 스폰 `:67` · 예보 `Owners/WaveScheduler.cs:168`(`CollectForecast`) 가 호출만. 뷰 `CoreSpawnAlertPresenter` 는 예보 값의 경로를 그대로 그린다(무변) | `RetiredWaveForecastPortTests::예보의_경로는_스폰과_같은_해석을_따른다`(`[Ignore]` 해제) · 신설 `예보_경로는_적_저작_레인_기본_최단_순으로_이긴다`(3단 + 나온 적의 실제 경로 = 예고 경로) |
+| 8 | 같은 입구·같은 경로는 종이 달라도 예고선 **한 줄**, 경로가 다르면 따로. 결정 ⑧-1 **새 방식 유지**(옛은 종마다 한 줄 — 같은 길을 겹쳐 그렸다. 옛 문장은 이력) | `Data/WavePatternGenerator.cs:607`(스웜 × 실제 입구마다 한 줄) — **옮기지 않는다**(이식 제외 ⑤) | 병합 키 = (입구 × 해석된 경로) `WaveScheduler.cs:168-178` — 행 7 뒤 「경로가 다르면 따로」가 참이 됐다 | `RetiredWaveForecastPortTests::같은_입구_같은_경로면_종이_달라도_한_줄이고_경로가_다르면_따로다`(옛 `[Ignore]` 테스트를 새 문장으로 뒤집음) |
 
-이식 제외: ① 1번의 옛 「전환 때 산출물 표 떼기」 — 옛 스윕은 피해만 냈기에 홉에만 상태이상이 걸리는 비대칭을 막으려던 것이다. 코어는 스윕 피격도 같은 `Deal` 로 산출물을 얹어 그 비대칭이 없다. ② 4번 방어유닛 쪽은 원래 방벽을 안 쳤다(`DefenderMask = AnyEnemy`) — 무변. ③ 5번 옛 재조준 풀은 주인과 무관하게 **적 유닛**이었다(적이 쏜 재조준 탄이 자기편을 고를 수 있는 모양). 옮긴 것은 「유닛만」이라는 의도이고, 진영은 공격 마스크와의 교집합이 정한다 — 방어유닛 탄은 옛과 같고, 적 탄은 자기편을 고르지 않는다. 힐러처럼 아군 유닛을 겨누는 저작도 교집합이라 그대로 따라간다. **(③ 은 행 5 철회로 무효)** ④ 5번 옛 부가 피해자 풀(`OpponentUnitsOf` · 유닛만 — 거점 제외)은 **사용자 결정 ⑦-2 로 옮기지 않는다** — 스플래시·스윕·튕김·재조준은 공격 마스크에서 방벽만 뺀 풀이라 마음·본능을 친다(새 코어 동작).
+이식 제외: ① 1번의 옛 「전환 때 산출물 표 떼기」 — 옛 스윕은 피해만 냈기에 홉에만 상태이상이 걸리는 비대칭을 막으려던 것이다. 코어는 스윕 피격도 같은 `Deal` 로 산출물을 얹어 그 비대칭이 없다. ② 4번 방어유닛 쪽은 원래 방벽을 안 쳤다(`DefenderMask = AnyEnemy`) — 무변. ③ 5번 옛 재조준 풀은 주인과 무관하게 **적 유닛**이었다(적이 쏜 재조준 탄이 자기편을 고를 수 있는 모양). 옮긴 것은 「유닛만」이라는 의도이고, 진영은 공격 마스크와의 교집합이 정한다 — 방어유닛 탄은 옛과 같고, 적 탄은 자기편을 고르지 않는다. 힐러처럼 아군 유닛을 겨누는 저작도 교집합이라 그대로 따라간다. **(③ 은 행 5 철회로 무효)** ④ 5번 옛 부가 피해자 풀(`OpponentUnitsOf` · 유닛만 — 거점 제외)은 **사용자 결정 ⑦-2 로 옮기지 않는다** — 스플래시·스윕·튕김·재조준은 공격 마스크에서 방벽만 뺀 풀이라 마음·본능을 친다(새 코어 동작). ⑤ 8번 옛 「종마다 한 줄」 예고선은 **사용자 결정 ⑧-1 로 옮기지 않는다**.
 
 **행 6 복원**(unit 9 감사 2026-09-25 — 앞선 「유지한 차이 1」 판단을 뒤집음): 9c 리드 판단은 스윕 피격을 `SimEntityId` 순으로 **유지**했다(동률 결정론 의도). 그러나 **동률 결정론과 기하 순서 규칙은 다른 문제**다 — `SimEntityId` 는 같은 거리의 순서만 정하면 되고, 누가 앞에 있는지는 기하가 정한다. 수정 전 코어는 관통 1 탄이 가까운 적을 지나 먼 적(작은 id)을 맞혔다(테스트 빨강 = 먼 적만 피해). 1번의 튕김 기준점(맞힌 적 중 최전방)은 원래 옛 정의였다.
 
@@ -32,7 +34,8 @@ unit 9 의 옛 테스트 이식이 드러낸 「옛 규칙 vs 코어」 차이 6
 - [x] 행 5(`0cbb0cd31`): 헤드리스 클린 export build 0 · test **887/889**(건너뜀 2 = 표현 2건) · Check 0 · `check_ledgers.py` 0 · EditMode 3 어셈블리 **2507** 중 실패 2(선행 bomb_man·boomerang 문안) · PlayMode.Core **95/95** · 골든 Verify **11 일치** — 재굽기 없음.
 - [x] 행 6(`484e950b4`): 빨강(먼 적만 피해 · 가까운 적 100/100) → 초록 · 헤드리스 클린 export build 0 · test **891/893**(9 감사 B 3 포함 · 건너뜀 2 = 표현 2건) · Check 0 · Retire.Check 0. [ ] Unity EditMode·PlayMode 코어 · 골든 Verify(Unity 게이트 뒤).
 - [x] 행 5 철회(`fb0c9952c` · 결정 ⑦-2): 테스트 뒤집기 빨강 4 → 초록 · 헤드리스 클린 export build 0 · test **891/893** · Check 0 · EditMode.Core **902/904**(건너뜀 2 = 표현 2건) · PlayMode.Core **97/97** · 골든 Verify **11 일치** — 재굽기 없음.
-- [x] core-reviewer APPROVE(행 1~5) · [ ] 행 6 리뷰 · [ ] 사용자 플레이 4차 · [x] 사용자 재확인(결정 ⑦ — 행 5 철회 · 행 6 확정).
+- [x] 행 7·8(`e26b8c1ad`·`8e4b19c82` · 결정 ⑧): 빨강(옛 코어에서 3건 — 레인 기본 `2` 기대 · `-1` 실제 등) → 초록 · 픽스처 적 `WaypointPathIndex` 를 라이브 기본 -1 로 정정(struct 기본 0 이 「경로 0 저작」으로 읽혀 해석을 가렸다) · 헤드리스 **894/894**(건너뜀 **0**) · EditMode 3 어셈블리 **2510/2512**(선행 2) · PlayMode.Core **97/97** · 골든 Verify **11 일치** — 예고는 코퍼스 트레이스에 없어 재굽기 없음.
+- [x] core-reviewer APPROVE(행 1~5) · [ ] 행 6 리뷰 · [ ] 사용자 플레이 4차 · [x] 사용자 재확인(결정 ⑦ — 행 5 철회 · 행 6 확정) · [x] 표현 2건(결정 ⑧ — 행 7·8) · [ ] 행 7·8 리뷰.
 
 리드 재검증 2026-09-25 — HEAD `d3f8d026c` 클린 export: build 0 · test 887/889(Ignore 2 = 표현 2건) · Check 0 · 장부 기본 통과 · 골든 파일 diff 0. Unity: EditMode 3 어셈블리 2505/2507(선행 2) · PlayMode 코어 95/95 · 골든 Verify 11 일치(행 1~4 뒤 · 행 5 뒤 각 1회 — 코퍼스가 다섯 경로를 구조적으로 안 탄다: bounce·classFilter·taunt·blocker·splash 저작 0). 리드 판단: 스윕 피격 순서 `SimEntityId` 순 유지(동률 결정론 선례) — **unit 9 감사에서 뒤집힘 → 행 6 복원.**
 

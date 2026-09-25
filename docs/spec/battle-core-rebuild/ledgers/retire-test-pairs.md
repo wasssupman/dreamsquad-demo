@@ -15,7 +15,7 @@
 ## 이식 결과 (2026-09-25 · `7482f7ba6`)
 
 「규칙 누락 의심」 34 중 **33 을 코어 테스트로 옮겼다**(31 `TilemapMapViewTests` 는 대상 `TilemapMapView` 가 퇴역이라 제외). 새 파일: EditModeCore `Retired{CombatRule,TargetLock,EffectRule,DetectionMove,WaveRule,WaveForecast}PortTests` · EditModeAssets `Retired{WaveAuthoring,DeckFilter}PortTests` · EditMode `BoardSpaceAuthorityTests`·`CoreProjectileVariationTests` · PlayModeCore `Retired{Beam,SpriteBackend}PortTest`. 각 테스트 위 주석이 옛 `파일::테스트` 를 가리킨다.
-**옛 규칙과 코어가 다른 4건**은 코어를 고치지 않고 `[Ignore("unit 9 — 옛 규칙과 다름: …")]` 로 남겼다 — 방향탄 관통 소진 뒤 호밍 튕김 · 감지 후보의 직업 필터 · 같은 입구 다른 종의 예고 병합 · 예보 경로 해석(사용자 결정 대기). **9c 실현**: 앞 둘은 옛 규칙으로 복원하고 `[Ignore]` 해제(`27297a0cb`·`125d002b0`) — 뒤 둘(표현)은 대기. 「부분 공백」(아래)은 README 후속 후보로 넘긴다.
+**옛 규칙과 코어가 다른 4건**은 코어를 고치지 않고 `[Ignore("unit 9 — 옛 규칙과 다름: …")]` 로 남겼다 — 방향탄 관통 소진 뒤 호밍 튕김 · 감지 후보의 직업 필터 · 같은 입구 다른 종의 예고 병합 · 예보 경로 해석(사용자 결정 대기). **9c 실현**: 앞 둘은 옛 규칙으로 복원하고 `[Ignore]` 해제(`27297a0cb`·`125d002b0`) — 뒤 둘(표현)은 **사용자 결정 ⑧** 로 닫았다: 예보 경로 = 옛 방식 복원(9c 행 7 `e26b8c1ad` · `[Ignore]` 해제) · 예고선 병합 = 새 방식 유지(9c 행 8 `8e4b19c82` · 테스트를 새 문장으로 뒤집음). `[Ignore]` 0. 「부분 공백」(아래)은 README 후속 후보로 넘긴다.
 
 ## 총계
 
@@ -164,7 +164,7 @@
 | SkillRoutingCoverageTests | 라우팅 전수 — 스킬 payload 는 라우팅이 있고 아니면 이름 붙은 비스킬 | 짝 | SkillRoutingTests::스킬인_payload_는_어느_트리거든_라우팅이_있다_아니면_부착_전용이다 · 스킬이_아닌_payload_는_라우팅이_없다 · OnPlace_x_충전이_라우팅을_찾는다 |
 | SkyFallTests | 하늘낙하 진행·도착 · 예고 0 즉시 · 대기 창/낙하 창 | 짝 | ProjectileMathTests::예고_0_은_첫_틱에_도착이다 · 하늘낙하는_칸과_적이_다른_바인딩이다 · PlayCore:CorePlayThreeSymptomTests::운석을_시전하면_하늘에서_떨어지는_운석이_화면에_보이고_착탄_연출이_터진다. ⚠ 부분 공백: 낙하 비율(FallProgress) 경계 |
 | SpatialPlacementCheckTests | 공간 배치 술어 — 경계 밖·비배치·점유·마스크 | 짝 | MatchPlacementTests::칸의_상태는_지형과_유닛_점유를_가른다 · 배치_층과_유닛_층의_교집합이_0이면_못_놓는다 · PlacementSlotBlockTests::드롭_거절과_칸_도색은_같은_답이다 |
-| SpawnAlertForecastTests | 스폰 예고 창 — 모든 웨이브(1·당김 포함)가 창을 얻는다 · 입구별 시각 = 실스폰 · 마지막 스폰 뒤 사라짐 | 짝 없음 — 규칙 누락 의심 | 없음. `WaveScheduler.CollectForecast`(`WaveScheduler.cs:156`) 를 부르는 테스트 0 |
+| SpawnAlertForecastTests | 스폰 예고 창 — 모든 웨이브(1·당김 포함)가 창을 얻는다 · 입구별 시각 = 실스폰 · 마지막 스폰 뒤 사라짐 | 짝 | RetiredWaveForecastPortTests(26 예고 창 — unit 9 이식) · 종별 병합은 **결정 ⑧-1 새 방식 유지**(9c 행 8): `같은_입구_같은_경로면_종이_달라도_한_줄이고_경로가_다르면_따로다` |
 | SpawnBlockingHazardTests | 길막 설치 — 격자 밖·골·기존 막힘·방어유닛 자리 거절 | 짝 | BlockingHazardTests::골_칸과_이미_막힌_칸에는_못_세운다. ⚠ 부분 공백: 방어유닛 점유 칸 거절 |
 | SpawnSpreadTests | 스폰 측면 분산 — 대칭·상단 압축·레인 라운드로빈·셀 안 | 짝 | MovePureMathTests::오프셋은_반_칸을_절대_못_넘는다 · 같은_순번이면_같은_레인이다 · 레인이_하나면_중앙이다 · 음수_순번도_안전하다 · 오프셋은_진행방향_수직이다 · MovementTuningTests |
 | StackingModifierMergeTests | 누적 상한 — 같은 키 누적 · 상한 정지 · 상한에서도 지속 갱신 · 회수는 한 번에 | 짝 | ModifierSetTests::상한은_배율_빼기_1에_최대_중첩을_곱한_값이다 · 상한은_크기만_막고_남은_시간은_안_막는다 · 회수는_항등값_재발행이_아니라_슬롯_삭제다 |
@@ -190,7 +190,7 @@
 | WavePatternGeneratorBossTests | N번째 웨이브 보스+호위 · 보스 풀 회전 · 잡몹 누출 없음 · 결정론 | 짝 | WaveGeneratorTests::보스_웨이브는_선봉이_보스고_표식이_붙는다 · 보스는_잡몹_풀에서_방어적으로_제외된다 · 보스가_1종이면_선택_rng_를_소비하지_않는다 · MatchWaveTests::보스_웨이브는_생성기가_판별하고_경보는_스폰에서_한_번_난다 · Assets:LiveDeckBossAuthoringTests::MapDecks_SpreadTheThreeBossesEvenly |
 | WavePatternGeneratorTests | 같은 시드 같은 요약·펼침 · 범위 안 · 라운드로빈 · 플랜 에셋 타임라인 | 짝 | WaveGeneratorTests::같은_시드는_같은_플랜을_낸다 · 웨이브_수와_수량은_저작_범위_안이다 · 라운드로빈_펼침은_소진된_그룹을_건너뛴다 · 저작_플랜은_타임라인이고_리드인이_0이다 · 레거시_2종_경로의_rng_소비_순서가_그대로다 |
 | WavePerTypeCapTests | 종류별 상한 — 미저작 무변 · 잘린 몫은 상한 없는 쪽으로 · 총량 보존 | 짝 | WaveGeneratorTests::동시_등장_상한은_rng_를_소비하지_않는다 · AssertMatchesOracle(`ClampGroupCounts` 사용). ⚠ 부분 공백: 나머지 이전·총량 보존 |
-| WaveSpawnForecastTests | 입구별 첫 스폰 시각 예보 · 레인 회전 규약 · 보스 선봉 · 경로 해석 | 짝 없음 — 규칙 누락 의심 | 없음 — SpawnAlertForecastTests 와 같은 구멍(`WaveScheduler.CollectForecast`) |
+| WaveSpawnForecastTests | 입구별 첫 스폰 시각 예보 · 레인 회전 규약 · 보스 선봉 · 경로 해석 | 짝 | RetiredWaveForecastPortTests(27 입구별 예보 — unit 9 이식) · 경로 해석은 **9c 실현 / 결정 ⑧-2 옛 방식 복원**(9c 행 7): `예보의_경로는_스폰과_같은_해석을_따른다` · `예보_경로는_적_저작_레인_기본_최단_순으로_이긴다` |
 | WaypointFlowFieldSlotTests | 경유점 슬롯 설치 · 장애물 재빌드는 슬롯 목적지 · 예고선은 경유점 순서 | 짝 | MapRuntimeTests::경유점과_거점이_슬롯이_된다 · 장애물이_바뀐_틱에만_다시_굽는다 · PlayCore:CoreViewYardstickTests::예고선의_경로는_이동과_같은_함수에서_나온다 |
 | WaypointProgressTests | 경유점 진행 — 인접 통과 · 도달 불가 건너뜀 · 경로 선택 서열 | 짝 | MovePureMathTests::인접_칸이면_지났다 · 아직_멀면_안_넘어간다 · 도달_불가면_건너뛴다 · 마지막을_지나면_끝난다 · 경로_선택은_좁은_쪽이_이긴다 |
 | WhirlpotEngageRepro | 광역 근접 적이 인접 방어유닛에서 교전 · 시전자·동료 제외 · 반경 전원 | 짝 | SecondaryTargetingTests::적의_부가_타격은_가까운_순이다 · Assets:WhirlpotAuthoringTests::Whirl_IsTheBaseAttack_MeleeAoe_WithNoSeparateSingleHit |
