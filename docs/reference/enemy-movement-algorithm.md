@@ -10,33 +10,34 @@
 
 ---
 
-## 2. 프레임 단위 시스템 순서
+## 2. 틱 단위 단계 순서
 
 플로우 필드는 **적마다 계산하지 않는다.** 맵당 1벌을 굽고 모든 적이 공유한다.
 
+전투 코어는 고정 틱(1/60)마다 `TickPipeline`(`Scripts/BattleCore/Match/TickPipeline.cs`)에 나열된 단계를 차례로 돈다. 이동에 관여하는 것은 앞의 셋이다(순서의 정본 = `BattleMatch` 생성자의 단계 목록과 각 단계 파일의 헤더 주석).
+
 ```mermaid
 flowchart LR
-  A["ObstacleLifetimeSystem<br/>장애물 셀 재수집"] --> B["FlowFieldRebuildSystem<br/>변경 시에만 필드 재빌드"]
-  B --> C["CcApplySystem<br/>HazardLifetimeSystem"]
-  C --> D["AggroStateSystem<br/>EnemyAiStateSystem<br/>= 이번 프레임의 상태"]
-  D --> E["PatrolFieldSystem<br/>DefenderFieldSystem<br/>= 대체 방향 소스"]
-  E --> F["<b>MovementSystem</b><br/>위치 결정"]
-  F --> G["<b>AgentSeparationSystem</b><br/>겹침 해소"]
-  G --> H["AttackSystem 등"]
+  A["<b>FieldPrepPhase</b><br/>① 장애물 재수집 → 바뀐 틱에만 흐름장 재빌드<br/>② 어그로 상태 ③ 공용 사냥판 ④ 순찰 스텝<br/>⑤ 존 장판 ⑥ 아군 버프 장 ⑦ 지속 피해 틱<br/>= 이동이 읽을 장"] --> B["<b>AiMovePhase</b><br/>① 상태 판정 ② 어그로·도발 부여 ③ 거점 목적지<br/>④ 감지 ⑤ <b>이동</b>(위치 결정) ⑥ <b>분리</b>(겹침 해소)"]
+  B --> C["TickProjectilePhase<br/>CombatPhase<br/>= 발사·공격·피해"]
 ```
 
-**분리(Separation)가 이동 뒤에 도는 것이 계약이다.** 한 루프에 섞으면 밀어냄이 다음 적의 이동 입력이 되어 순회 순서에 결과가 의존한다.
+파일: `Scripts/BattleCore/Phases/FieldPrepPhase.cs` · `Scripts/BattleCore/Phases/AiMovePhase.cs`.
+
+**분리(Separation)가 이동 뒤에 도는 것이 계약이다.** 한 루프에 섞으면 밀어냄이 다음 적의 이동 입력이 되어 순회 순서에 결과가 의존한다. 코어에서는 `AiMovePhase` 안에서 이동(`StepMovement`)이 전원 끝난 뒤 별도 패스(`StepSeparation`)로 돈다.
 
 ---
 
-## 3. `MovementSystem` — 적 1기의 의사결정
+## 3. `AiMovePhase` 의 이동 — 적 1기의 의사결정
+
+> 코어의 이동 스텝(`AiMovePhase.StepMovement`). 스텝 소스 우선순위의 정본은 `AiMovePhase` 헤더 주석이다 — 아래 도식과 어긋나면 그 헤더가 이긴다.
 
 ```mermaid
 flowchart TD
   S(["적 1기 · 이번 프레임"]) --> HG["holdingGround = 1<br/><i>(기본값 = 정지)</i>"]
   HG --> ST{"AiState?"}
 
-  ST -->|Standoff| STOP1(["정지 — 사거리 도달<br/>공격은 AttackSystem 몫"])
+  ST -->|Standoff| STOP1(["정지 — 사거리 도달<br/>공격은 CombatPhase 몫"])
 
   ST -->|Chasing| CL{"CC 잠금?"}
   CL -->|예| STOP2(["정지"])
@@ -83,7 +84,7 @@ flowchart TD
 
 ### 경로 선택 축 — 스폰 시점에 한 번 정해진다 (`waypoint-routing` unit 8·9)
 
-`MovementSystem` 은 `WaypointFollow.pathIndex` 를 **읽기만** 한다. 어느 경로를 탈지는 그보다 앞서 스폰 시점에 한 번 정해지고, 매 프레임 다시 고르지 않는다.
+이동 단계는 적의 경로 인덱스(`MoveState.PathIndex`)를 **읽기만** 한다. 어느 경로를 탈지는 그보다 앞서 스폰 시점에 한 번 정해지고, 매 프레임 다시 고르지 않는다.
 
 경로 선택 축은 둘이다 — **좁은 쪽(개체)이 이긴다**:
 
@@ -93,7 +94,7 @@ flowchart TD
 둘 다 없으면 -1                                            → 골 직행 (현행, 무회귀)
 ```
 
-결정 지점: `BattleBridge.SpawnUnit`(레인 스폰 래퍼가 `RouteForSpawn` 을 조회) → `CreateEnemyEntity`(plain `int laneDefaultPathIndex` 하나만 받는다 — 분열 호출처는 레인이 없어 기본값 -1) → `WaypointRouting.ResolvePathIndex`(순수 함수, 우선순위 소유) → 유효 인덱스면 `WaypointFollow` 부착.
+결정 지점: 적 스폰(`Scripts/BattleCore/World/EnemySpawn.cs` — 레인이 있으면 `MapSnapshot.RouteForSpawn(lane)` 을 조회, 레인이 없는 분열 자식은 -1) → `WaypointRouting.ResolvePathIndex`(`Scripts/BattleCore/Move/WaypointProgress.cs`, 순수 함수, 우선순위 소유) → `MoveState.PathIndex` 에 기록. (코어판 `ResolvePathIndex` 는 적 정의와 레인 기본 사이에 **웨이브 컨셉** 인자를 하나 더 받는다 — 순서는 같은 「좁은 쪽이 이긴다」이고 정본은 그 함수의 헤더다.)
 
 **우선순위를 호출부에서 삼항으로 풀지 않는 이유**: 그러면 "좁은 쪽이 이긴다"는 계약이 코드에만 남고 EditMode 로 고정할 지점이 없어진다. `ResolvePathIndex` 하나가 그 계약의 source of truth 다.
 
@@ -103,7 +104,7 @@ flowchart TD
 
 ### 도달 판정 — 셀 일치에서 체비셰프 1 이내로
 
-`WaypointProgress.Step` 의 도달 판정은 원래 정확한 셀 일치(`currentCell == waypointCell`)였다. 판당 2기인 Skimmer 에서는 문제없었지만(라이브 계측 5,295프레임, 순서 위반 0), 스웜(20기)에서는 어긋났다 — `AgentSeparationSystem` 의 축분리 스윕이 서로를 밀어내 여러 개체가 **한 칸에 동시에 수렴하지 못한다.** 밀려서 목표 칸을 스치고 지나간 개체는 `advanced` 가 서지 않아 다음 프레임에 그 칸으로 되돌아온다 — 화면에서는 버그로 읽힌다.
+`WaypointProgress.Step` 의 도달 판정은 원래 정확한 셀 일치(`currentCell == waypointCell`)였다. 판당 2기인 Skimmer 에서는 문제없었지만(라이브 계측 5,295프레임, 순서 위반 0), 스웜(20기)에서는 어긋났다 — 분리 패스(`AiMovePhase.StepSeparation`)와 축분리 스윕이 서로를 밀어내 여러 개체가 **한 칸에 동시에 수렴하지 못한다.** 밀려서 목표 칸을 스치고 지나간 개체는 `advanced` 가 서지 않아 다음 프레임에 그 칸으로 되돌아온다 — 화면에서는 버그로 읽힌다.
 
 지금은 체비셰프 거리 **1 이내**(자기 칸 + 8이웃)면 도달로 인정한다.
 
@@ -143,11 +144,11 @@ flowchart TD
 
 ---
 
-## 4. `AgentSeparationSystem` — 겹침 해소
+## 4. 분리 패스(`AiMovePhase.StepSeparation`) — 겹침 해소
 
 ```mermaid
 flowchart TD
-  A(["MovementSystem 이 위치를 정한 뒤"]) --> B["스냅샷<br/><i>도약 비행 중·유출·사망 제외</i>"]
+  A(["이동 스텝이 전원의 위치를 정한 뒤"]) --> B["스냅샷<br/><i>도약 비행 중·유출·사망 제외</i>"]
   B --> C["<b>1단계</b> 모든 쌍의 밀어냄을 누적<br/><i>이 동안 어떤 위치도 안 바뀐다</i>"]
   C --> D["작용-반작용 — 쌍을 한 번만 본다"]
   D --> E{"holdingGround?<br/><i>(시뮬이 멈춘 유닛)</i>"}
@@ -157,7 +158,7 @@ flowchart TD
   G --> H["AgentCollision 재통과<br/><i>밀어낸 결과가 벽을 뚫지 않게</i>"]
 ```
 
-**누적 먼저, 적용 나중**이 순서 의존을 없앤다(야코비 반복 1회). 다만 float 덧셈에 결합법칙이 없어 **누적 순서에 마지막 비트(1 ULP)가 의존**한다 — 전체 리플레이는 안전하고 스냅샷 부분 재시뮬은 위험하다. 해소(stable id 정렬)는 `battle-sim-extraction` 소관.
+**누적 먼저, 적용 나중**이 순서 의존을 없앤다(야코비 반복 1회). 다만 float 덧셈에 결합법칙이 없어 **누적 순서에 마지막 비트(1 ULP)가 의존**한다 — 전체 리플레이는 안전하고 스냅샷 부분 재시뮬은 위험하다. 코어에서는 누적 순회가 `BattleWorld.Units` 순서 = `SimEntityId` 오름차순으로 고정돼 있어(결정론 계약) 같은 입력이면 같은 비트가 나온다.
 
 ---
 
@@ -169,7 +170,7 @@ flowchart TD
 |---|---|---|
 | **다중 소스 다익스트라 → 플로우 필드**<br/>(Dijkstra map / vector flow field) | `FlowFieldBuilder` | 골이 여러 개면 전부 dist 0 소스로 동시 확산 → 각 셀이 **최근접 골**을 향한다. 적별 A\* 대신 **맵당 1벌**을 모두가 공유 — 계보는 Continuum Crowds(2006) → SupCom2 류 flow field pathfinding |
 | **옥타일 거리 (8-이웃 가중)** | 비용 `{직교 10, 대각 14}` | 14/10 ≈ √2. 정수라 결정론이 보장된다. 단순 BFS 로 8-이웃을 돌리면 체비셰프가 되어 **대각이 공짜**가 되는 왜곡을 피한다 |
-| **라벨 정정법 (재삽입 허용 큐)** | 우선순위 큐 대신 `NativeQueue` | 간선 가중치가 2종뿐이고 맵이 180셀 규모라 재삽입 비용이 무시된다. **처리 순서와 무관하게 같은 결과** → 결정론 유지. (Dial's bucket queue 로도 되지만 필요 없다) |
+| **라벨 정정법 (재삽입 허용 큐)** | 우선순위 큐 대신 재사용 링 버퍼 `CellQueue`(`FlowFieldBuilder.cs`) | 간선 가중치가 2종뿐이고 맵이 180셀 규모라 재삽입 비용이 무시된다. **처리 순서와 무관하게 같은 결과** → 결정론 유지. (Dial's bucket queue 로도 되지만 필요 없다) |
 | **코너컷 방지** | `DiagonalAllowed` | 대각 이웃은 인접 직교 이웃 **둘 다** walkable 일 때만. 확산과 flow 채우기 **양쪽**에 적용 — 한쪽만 하면 벽 모서리를 관통한다 |
 | **거리장 경사 하강** | `FlowRecovery` | 넉백으로 zero-flow 셀에 밀려났을 때의 복구. 4-이웃 최소 dist |
 
@@ -208,7 +209,7 @@ flowchart TD
 
 - **조준은 국소 판정이다.** 조준 기준이 "레이가 **처음** 막히는 셀"이라, 관찰자가 움직이면 어느 셀이 먼저 걸리는지가 바뀌어 다른 코너가 정당하게 뽑힌다. 기둥이 흩어진 구역에서 조준 진동이 남아 있다(13.4타일 주행에 총회전 1161° 실측). 이 성격 때문에 감사는 이 컨트롤러를 **Bug 계열(TangentBug)에 가깝다**고 분류했다 — 완전한 전역 최적 경로 추종이 아니다. 해소는 조준 기준을 **전역 비용 최소**로 바꾸는 별도 작업.
 - **"첫 후보 무조건 채택"은 예외 규칙이다.** 교착 방지를 위해 가시성 검사를 건너뛴다. 평활화의 불변식이 아니라 **구멍을 막은 자국**이다.
-- **결정론은 "같은 틱 열이면 같은 결과"까지다.** 필드 생성은 순서 무관이지만, 분리 누적은 float 결합법칙이 없어 청크 순서에 1 ULP 의존한다.
+- **결정론은 "같은 틱 열이면 같은 결과"까지다.** 필드 생성은 순서 무관이지만, 분리 누적은 float 결합법칙이 없어 순회 순서에 1 ULP 의존한다 — 코어는 그 순서를 `SimEntityId` 오름차순으로 고정한다. (정밀도가 다른 런타임끼리는 갈린다 — 골든은 Unity 에서만 굽는다.)
 
 ---
 
@@ -216,7 +217,7 @@ flowchart TD
 
 | 무엇 | 어디 |
 |---|---|
-| 유닛 반지름 | `BattleBridge.agentRadiusTiles` (현재 0.25 — [unit 12](../spec/continuous-agent-movement/12_corridor_clearance.md)) |
+| 유닛 반지름 | `Data/Config/MovementTuningConfig.asset` 의 `AgentRadiusTiles` → 코어 `MovementTuningDef.AgentRadiusTiles` ([unit 12](../spec/continuous-agent-movement/12_corridor_clearance.md) — 군집 통과로 검산한 값) |
 | 평활화 전방 탐색 K | `PathSmoothing.DefaultLookahead` (24) |
 | 대각/직교 비용 | `FlowFieldBuilder.CostOrtho` / `CostDiag` (10 / 14) |
 | 분리 강도·상한 | `Separation.DefaultStrength` (0.5, **프레임당**) · 상한 = 반지름 |

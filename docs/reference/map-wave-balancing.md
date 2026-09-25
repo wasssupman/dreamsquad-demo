@@ -17,10 +17,10 @@
 | **마음이 얼마나 버티나** (판 길이) | 맵별 `Deck_{맵}.asset` | `goalStabilityMax` — 아래 §마음 · 스트레스 |
 | **처치로 얼마나 되돌리나** (교환비) | 같은 파일 | `killHealPerAwakening` — 아래 §마음 · 스트레스 |
 | **특정 몬스터를 초반 웨이브에서 제외** | `Enemy_*.asset` (AttackUnitData) | `minWaveNumber` (기본 1=제한없음, Runner=2) |
-| **맵 랜덤 on/off** | `BattleBridge.fixedMapSeed` (BattleScene) | `0`=시드 배정(아래 우선순위), 비0=한 맵 고정 |
+| **맵 랜덤 on/off** | `BattleDriver._fixedMapSeed` (`BattleCoreScene` 의 드라이버 인스펙터) | `0`=시드 배정(아래 우선순위), 비0=한 맵 고정 |
 | **개발 중 특정 맵으로 진입** | 로비 맵 스테퍼(◀ ▶ OFF, dev/에디터 전용) | `DevMapOverride`(PlayerPrefs), OFF=시드 배정 복귀 |
 
-맵 인덱스 우선순위: **로비 스테퍼(dev override) > `fixedMapSeed`(비0) > 토너먼트 시드(같은 토너먼트 = 같은 맵) > 시드 부재 시 0번 폴백**.
+맵 인덱스 우선순위: **로비 스테퍼(dev override) > `fixedMapSeed`(비0) > 토너먼트 시드(같은 토너먼트 = 같은 맵) > 시드 부재 시 0번 폴백**. 판정 위치 = `MatchDefinitionBuilder.TrySelectEncounter`(`Scripts/BattleCoreUnity/MatchDefinitionBuilder.cs`).
 
 ---
 
@@ -42,7 +42,7 @@
 
 (4번째 열 = 그 맵의 보스. 판당 보스가 1기라 덱마다 **1종을 저작**한다 — 시드 뽑기로는 어차피 맵마다 고정되고 «어느 맵이 어느 보스를 받나»만 시드에 맡겨진다. `wave-concept-blocks` unit 3.)
 
-- 덱 asset 위치는 `Assets/_Project/Scripts/Data/Decks/`. 무한 모드 전용 `Deck_Endless`(waveSeed 20260827, 보스 로테이션 3종 유지)는 풀 밖 — `BattleBridge.endlessEncounter` 슬롯이 들고 있다.
+- 덱 asset 위치는 `Assets/_Project/Scripts/Data/Decks/`. 무한 모드 전용 `Deck_Endless` 는 (이력 — 옛 ECS 전투의 브리지 `endlessEncounter` 슬롯이 들던 덱. 지금 저장소에 그 자산은 없다 — 모드는 `Data/Modes/MatchMode_*.asset` 이 고른다).
 - 맵과 덱은 **같은 인덱스로 함께 선택**된다(`MapPoolSelect.SelectIndex(seed, count)`), 그래서 "맵마다 고정된 적 패턴".
 - 맵 추가 = 풀 `entries` 에 (새 MapStage 프리팹, 덱) 한 쌍 추가 — 라이브 엔트리는 덱 필수(`StagePoolBuildabilityTests` 가 막는다). **코드 변경 불필요**(GUID 참조).
 - `WaveA.asset`/`WaveB.asset` 은 레거시 원본(테스트 참조) — 풀은 안 씀, 삭제 금지.
@@ -51,7 +51,7 @@
 
 ## 웨이브 난이도 knob (AttackDeck)
 
-`WavePatternGenerator.Generate(deck, seed)` 가 이 값들로 웨이브를 짠다:
+전투 코어의 `WaveGenerator.Generate`(`Scripts/BattleCore/Wave/WaveGenerator.cs` — 판 시작 때 `WaveScheduler` 가 부른다)가 이 값들로 웨이브를 짠다. 덱 SO 는 `MatchDefinitionBuilder` 가 plain 정의표로 옮겨 싣는다:
 
 | 원하는 것 | 필드 | 현재 기본 |
 |---|---|---|
@@ -181,14 +181,14 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 
 **같은 맵 = 매번 같은 웨이브** 는 `waveSeed` 로 보장된다:
 
-- `BattleBridge`: `waveSeed = deck.waveSeed != 0 ? deck.waveSeed : DeriveWaveSeed(matchSeed)`.
+- `WaveScheduler`(`Scripts/BattleCore/Owners/WaveScheduler.cs`): `waveSeed = deck.WaveSeed != 0 ? deck.WaveSeed : MatchSeed.DeriveWaveSeed(matchSeed)`.
 - 덱 `waveSeed` **비0 고정** → `matchSeed`(매판 랜덤) **무시** → 시드 고정 → 웨이브(수·종류·순서·수량) **매판 동일**.
 - **`waveSeed` 를 0 으로 만들면 매판 달라진다 — 절대 금지.** (실증: 각 덱 3회 생성 시 유닛·수량까지 완전 일치.)
 - 매판 랜덤인 건 "**어느 맵이 나오냐**"(`fixedMapSeed=0`)뿐. 특정 맵이 나오면 그 맵 웨이브는 항상 같음.
 - 새 맵/덱 추가 시에도 **덱 waveSeed 를 비0 유니크 값**으로.
-- **편성이 바뀌는 조정을 했으면 `waveGeneratorVersion` 을 +1 한다** (전 컨셉 덱 동일 값, 현재 7). 수량 knob·게이트·풀·컨셉 어느 쪽이든 결과 편성이 달라지면 대상이다. `waveSeed` 는 그대로 — 시드는 「같은 맵 같은 웨이브」의 키고, 버전은 「baseline 이 언제 바뀌었나」의 표식이다. pin 테스트(`GeneratorVersion_IsBumped_SoTheNewBaselineIsVisible`)가 숫자를 하드코딩하므로 **같은 커밋에서** 갱신한다.
+- **편성이 바뀌는 조정을 했으면 `waveGeneratorVersion` 을 +1 한다** (전 컨셉 덱 동일 값, 현재 7). 수량 knob·게이트·풀·컨셉 어느 쪽이든 결과 편성이 달라지면 대상이다. `waveSeed` 는 그대로 — 시드는 「같은 맵 같은 웨이브」의 키고, 버전은 「baseline 이 언제 바뀌었나」의 표식이다. 숫자를 하드코딩하던 pin 테스트(`GeneratorVersion_IsBumped_SoTheNewBaselineIsVisible`)는 옛 생성기를 굴리는 `WaveConceptAuthoringTests` 와 함께 (이력 — 옛 ECS 전투, unit 9 에서 제거). 지금은 `generatorVersion` 이 판 정의표 `configHash` 에 들어가므로(`WaveDefs.cs`) 올리면 골든이 「조건이 바뀌었다」로 말한다 — 골든 재베이크를 **같은 커밋에서** 한다.
 
-⚠ **여기서 값만 바꾸면 안 되는 변경**: 적 SO 신설, `minWaveNumber`/`maxPerWave`/`enemyClass`/`traversalLayers` 변경, `WavePatternGenerator`·컨셉 슬롯/필터·`WavePlanAsset` 로직 변경 — 이 경우 **`.claude/skills/enemy-wave-integration` 스킬이 필수**다(풀 삽입 위치·게이트 정합·튜토리얼 로스터 계약·가드 테스트까지 그쪽이 강제). 이 문서는 «어느 값이 어디 있나»의 정본이고, «바꿀 때 뭘 같이 해야 하나»의 정본은 그 스킬이다.
+⚠ **여기서 값만 바꾸면 안 되는 변경**: 적 SO 신설, `minWaveNumber`/`maxPerWave`/`enemyClass`/`traversalLayers` 변경, `WaveGenerator`(코어)·컨셉 슬롯/필터·`WavePlanAsset` 로직 변경 — 이 경우 **`.claude/skills/enemy-wave-integration` 스킬이 필수**다(풀 삽입 위치·게이트 정합·튜토리얼 로스터 계약·가드 테스트까지 그쪽이 강제). 이 문서는 «어느 값이 어디 있나»의 정본이고, «바꿀 때 뭘 같이 해야 하나»의 정본은 그 스킬이다.
 
 ---
 
@@ -215,9 +215,9 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 
 ## 검증
 
-- **회귀 가드**: `Tests/EditMode/MultiGoalPoolSeparationTests` — 풀 맵 골 ≤2·각 스폰 도달·복도 non-goal 병합 금지. `MapConnectivityTests`·`FlowFieldSingletonTests`.
-- **런타임 검증**: `MapConnectivity.AllSpawnsReachGoal`(각 스폰 아무 골이든 도달) — adapter/브리지 가드.
-- **덱 결정론 확인**: execute_code 로 `WavePatternGenerator.Generate(deck, deck.waveSeed)` 를 N회 생성해 signature(유닛 id+count) 비교.
+- **회귀 가드**: `Tests/EditMode/MapConnectivityTests` · 흐름장은 코어 `Tests/EditModeCore/FlowFieldBuilderTests`. (`MultiGoalPoolSeparationTests` 는 이미 없고, `FlowFieldSingletonTests` 는 이력 — 옛 ECS 전투, unit 9 에서 제거.)
+- **런타임 검증**: `MapConnectivity.AllSpawnsReachGoal`(각 스폰 아무 골이든 도달) — 판 시작 때 `BattleDriver` 가 거는 가드.
+- **덱 결정론 확인**: 코어 `WaveGenerator.Generate` 를 같은 덱·같은 시드로 N회 생성해 signature(유닛 id+count) 비교(EditMode.Core `WaveGeneratorTests` 가 그 형태다) — 판 전체는 골든(`Tests/GoldenCore/`)이 증언한다.
 - **시트 검증**: 값을 curl 로 읽어 SO 대조(읽기 전용). 상세 `docs/reference/lessons/` + 메모리.
 
 ---

@@ -2,7 +2,7 @@
 
 > `DreamcatcherCard` SO 하나가 **3가지 카드 타입(Squad / Unit / Active)** 을 담는 union 구조다.
 > `type` 에 따라 서로 다른 효과 필드가 활성화된다. 이 문서는 **정의 계층(순수 데이터)** 의 스키마만 다룬다.
-> 해석·실행(bake → unmanaged slot → 시뮬)은 `BattleBridge` / Combat·AttackSystem 소관이며 여기에 포함하지 않는다.
+> 해석·실행(SO → plain 정의표 → 전투 코어)은 Unity 층 `CardDefinitionBuilder`(`Scripts/BattleCoreUnity/`)와 코어 트리거 레이어(`Scripts/BattleCore/Trigger/` — `CardBindings`·`CardSkills`·`TriggerDispatcher`) 소관이며 여기에 포함하지 않는다.
 >
 > 앵커 파일:
 > - `Assets/_Project/Scripts/Data/Dreamcatcher/DreamcatcherCard.cs`
@@ -69,7 +69,7 @@ CardBuffKind { AttackDamage, AttackSpeed, EffectiveHealth, MoveSpeed, CostRate }
 | `AttackSpeed` | AttackSpeedMul | |
 | `EffectiveHealth` | **DmgTakenMul** | 받는 피해 감소 프록시 — max-HP 미변경 |
 | `MoveSpeed` | MoveSpeedMul | |
-| `CostRate` | (StatModifier 없음) | GameManager → `CostRuntime.SetRegenRateMultiplier` 가 직접 소비 |
+| `CostRate` | (StatModifier 없음) | 드림스톤 합산 `CardDefinitionBuilder.CostRateOf` → `MatchDefinition.CostRateMultiplier` → 코스트 담당자 `CostLedger` 의 재생 배율로 직접 소비 |
 
 + `placementWarmupSec` : 배치 시 N초 idle 후 행동. 공속 버프와 조합 시 "N초 대기 후 강화"로 읽힘. 기본 0 = warmup 없음.
 
@@ -148,8 +148,8 @@ SkillData (ScriptableObject) {
 
 ## 4. 정의 ↔ 실행 계층 경계
 
-- 이 SO/enum 들은 **순수 데이터 + 에셋 참조**다. `Unity.Entities` · `Wassup.Battle` 를 **절대 참조하지 않는다**.
-- 해석(unmanaged slot bake) + 실행은 전부 `BattleBridge`(bake: `MapDcEffect`, `RegisterPlacementAura` 등) 와 Combat / AttackSystem 에 있다.
+- 이 SO/enum 들은 **순수 데이터 + 에셋 참조**다. 전투 코어(`Wassup.BattleCore`)를 **참조하지 않는다** — 코어도 이 SO 를 모른다.
+- 해석(SO → plain `CardDef`·규칙 줄 굽기)은 `CardDefinitionBuilder`(판 밖에서 한 번 — 저작 검증 포함), 실행은 코어 트리거 레이어(`CardBindings.Plan`·`FireOnAttach`, 숙주 종속 판정은 `Applicability`)에 있다. (옛 `BattleBridge`·`AttackSystem` 경로는 이력 — 옛 ECS 전투, unit 9 에서 제거.)
 - 따라서 아키텍처를 바꿔도 **translator 만 다시 쓰면** 되고, 이 정의들은 건드리지 않는다.
 - `mechanics[]` · `attackMods[]` 는 **bake-time read only** — managed array 이므로 per-frame 순회 금지.
 

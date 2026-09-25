@@ -1,7 +1,7 @@
 # 드림캐쳐 메커닉 이식 가이드 — 아키텍처 비의존 설계 + 적용 시행착오
 
 > unit-trigger / attack-mod-bounce / content-1 / card-taxonomy / squad-warmup (전부 완료 2026-07-09) 산출물.
-> **목적**: 드림캐쳐 메커닉을 "아키텍처에 의존하지 않는 정의"로 설계하고, 그 정의를 특정 아키텍처(여기선 하이브리드 ECS)에 **해석해 앉힐 때** 무엇을 새로 써야 하고 어떤 함정을 밟는지 남긴 지도. 코드 모듈 이식이 아니라 **설계 방법 + 실제 시행착오**의 이식이 목적이다.
+> **목적**: 드림캐쳐 메커닉을 "아키텍처에 의존하지 않는 정의"로 설계하고, 그 정의를 특정 아키텍처(작성 당시 하이브리드 ECS — 지금은 순수 C# 전투 코어)에 **해석해 앉힐 때** 무엇을 새로 써야 하고 어떤 함정을 밟는지 남긴 지도. 코드 모듈 이식이 아니라 **설계 방법 + 실제 시행착오**의 이식이 목적이다.
 > 카드 어휘 카탈로그가 아니다 — 조합 가능한 트리거/페이로드 목록은 각 spec README 가 source of truth. 여기선 **왜 이 구조인지**와 **적용의 지뢰**만 담는다.
 
 ---
@@ -11,7 +11,9 @@
 메커닉을 **정의 계층**(아키텍처 무지)과 **해석 계층**(아키텍처 전담)으로 쪼갠다. 아키텍처를 교체하면 **해석 계층(번역자)만** 다시 쓴다.
 
 - **정의 계층** = "무엇이 언제 무엇을 한다"만 순수 데이터로 선언. Entities/MonoBehaviour/특정 시스템 타입을 **참조하지 않는다**. enum·struct·SO 필드 + 인자 없는 순수함수.
-- **해석 계층** = 그 선언을 읽어 실제 아키텍처의 상태(ECS 컴포넌트/버퍼, 시스템 arm)로 굽고 실행. 이 계층만 `EntityManager`·`ISystem`·`BattleBridge` 를 안다.
+- **해석 계층** = 그 선언을 읽어 실제 아키텍처의 상태로 굽고 실행. 지금은 Unity 층 `CardDefinitionBuilder`(SO → plain 정의표)와 코어 트리거 레이어(`Scripts/BattleCore/Trigger/`)가 이 계층이다. (작성 당시에는 ECS 컴포넌트/버퍼·시스템 arm·브리지였다 — 이력, 옛 ECS 전투는 unit 9 에서 제거.)
+
+> **이 명제는 실제로 검증됐다.** `battle-core-rebuild` 가 아키텍처를 ECS → 전투 코어로 바꿀 때 정의 계층(아래 §3 의 `Data/` 파일)은 그대로 두고 해석 계층만 다시 썼다.
 
 **왜 성립하나**: 게임 메커닉의 본질은 *이산 사건(trigger) → 산출(payload)* 의 조합이다. 이 조합은 좌표계나 실행 모델과 무관하게 선언될 수 있다. 아키텍처가 하는 일은 "언제 사건이 났는지 감지"와 "산출을 실제로 실행"뿐 — 둘 다 해석 계층의 국소적 훅.
 
@@ -38,10 +40,10 @@
 |---|---|
 | `Assets/_Project/Scripts/Data/Dreamcatcher/DcMechanic.cs` | 정의 계층 enum/struct (`DcTriggerKind`/`DcPayloadKind`/`DcAttackModKind`, `DcMechanic`/`DcPayloadSpec`/`DcAttackModSpec`). **ECS 무참조.** |
 | `Assets/_Project/Scripts/Data/Dreamcatcher/DreamcatcherCard.cs` | 카드 SO. `mechanics[]`(트리거형) + `attackMods[]`(개조형) + `CardType`(덱 캡 키) + `placementWarmupSec`. |
-| `Assets/_Project/Scripts/Battle/Combat/DcTrigger.cs` | `DcTrigger.Tick(ref counter, period)` — 인자 없는 순수함수. EditMode 단독 테스트. |
-| `Assets/_Project/Scripts/Battle/Combat/Projectile/BounceRetarget.cs` | `BounceRetarget.FindNext(...)` — Chebyshev 타일반경 최근접 재타겟 순수 기하. 아키텍처 중립. |
+| `Assets/_Project/Scripts/Data/Authoring/DcTrigger.cs` | `DcTrigger.Tick(ref counter, period)` — 인자 없는 순수함수. EditMode 단독 테스트. 코어는 같은 의미의 `TriggerCounters.Tick`(`Scripts/BattleCore/Trigger/TriggerEvent.cs`)을 쓴다. |
+| `Assets/_Project/Scripts/BattleCore/Combat/Projectile/BounceRetarget.cs` | `BounceRetarget.FindNext(...)` — 최근접 재타겟 순수 기하. 아키텍처 중립(옛 `Scripts/Battle/Combat/Projectile/` 사본은 이력 — unit 9 에서 제거). |
 | `Assets/_Project/Scripts/Data/Dreamcatcher/DeckRuleConfig.cs` + `DeckRules.cs` | 덱 제약(크기/타입별 캡) config SO + 검증 로직. 수치는 SO, 상수는 fallback. |
-| `Assets/_Project/Tests/EditMode/{DcTrigger,BounceRetarget,DeckRules}Tests.cs` | 순수함수 회귀 고정. |
+| `Assets/_Project/Tests/EditMode/{DcTrigger,DeckRules}Tests.cs` | 순수함수 회귀 고정. (`BounceRetargetTests` 는 옛 사본 대상이라 이력 — unit 9 에서 제거. 코어 쪽 트리거 회귀는 `Tests/EditModeCore/TriggerDispatchTests.cs` 등.) |
 
 순수함수·정의 계층은 그대로 옮기고, 아래 4·5 만 새 아키텍처에서 다시 쓴다.
 
@@ -49,7 +51,11 @@
 
 ## 4. 해석 계층 접점 (아키텍처마다 새로 쓰는 것)
 
-새 아키텍처에서 작성할 것은 **베이크 + arm + 소유권 배선**뿐. 이 프로젝트(하이브리드 ECS)의 레퍼런스:
+새 아키텍처에서 작성할 것은 **베이크 + arm + 소유권 배선**뿐.
+
+**지금(전투 코어)의 자리**: 베이크 = `CardDefinitionBuilder`(판 밖 1회 — 저작 검증 포함) · 부착 판정/즉발 = `CardBindings.Plan`·`FireOnAttach`(숙주 종속 판정은 `Applicability` 한 곳) · 트리거 감지 = 각 틱 단계가 사실을 올리는 `TriggerDispatcher`(seam 순서표 `SeamTickOrder`) · 실행 = `CardSkills`·`IntentApplier`. `Scripts/BattleCore/Trigger/`(`SeamTickOrder` 만 `Phases/`) 와 `Scripts/BattleCoreUnity/CardDefinitionBuilder.cs`.
+
+아래는 **(이력 — 옛 ECS 전투, unit 9 에서 제거)** 하이브리드 ECS 시절의 레퍼런스다. 심볼은 더 이상 없지만, 무엇을 새로 써야 했는지의 지도로 남긴다:
 
 - **베이크 진입점** = `BattleBridge.ApplyDreamcatcherCardToUnit` / `ApplyDreamcatcherCard`. 카드를 읽어 슬롯/컴포넌트로 굽는다(MonoBehaviour↔ECS 유일 창구). 부착 가드(비-defender·근접 유닛 거절), instanceId 발급, 미래 배치 유닛 상속 레지스트리(`_activeDcEffects`/`_activeWarmups`)가 여기.
 - **트리거 감지 arm** = 사건이 나는 시스템에 `DcTrigger.Tick` 훅. AttackN→AttackSystem RESOLVE, OnDamagedN→DamageApplicationSystem, OnDeath→UnitLifecycleSystem, 즉발→베이크 시점.
@@ -60,6 +66,8 @@
 ---
 
 ## 5. 함정 목록 (심각도 순 — 전부 실제로 겪음)
+
+> (이력 — 옛 ECS 전투, unit 9 에서 제거) 아래 심볼(`DcTriggerSlot`·`NextAttackDoubleFire`·`UnitLifecycleSystem`·`ProjectileSpawnRequest`·`DeadTag`·`AttackSystem` 등)은 옛 해석 계층의 것이다. **교훈 문장은 그대로 유효하다** — 특히 3(사망 페이로드는 파괴 전에 값으로 싣는다)은 전투 코어의 「이벤트 = 값 스냅샷」 계약으로 이어졌다.
 
 정의 계층은 깨끗했다. 시행착오는 전부 **해석 계층에서 아키텍처의 제약(맥락 경계·엔티티 수명·컴포넌트 유일성)과 부딪힐 때** 나왔다.
 

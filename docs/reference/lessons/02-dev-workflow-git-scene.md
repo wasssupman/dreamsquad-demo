@@ -53,13 +53,13 @@ iPhone batching 기본값, URP obsolete 필드 제거가 tracked diff로 남았�
 
 ## SaveScene 은 미저장 WIP 를 통째로 베이크한다
 
-씬 컴포넌트(예: `BattleBridge`)의 serialized 필드를 바꾸고 `EditorSceneManager.SaveScene` 하면, **그 시점 에디터에 떠 있던 사용자 미저장 변경(Volume·카메라·GO 토글·신규 필드 기본값)이 전부 디스크에 박힌다**. `git diff` 가 내 1줄 + 대량 WIP 로 부풀어 오름.
+씬 컴포넌트(당시 예: `BattleBridge` — 이력, 옛 ECS 전투는 unit 9 에서 제거. 지금이면 `BattleDriver`)의 serialized 필드를 바꾸고 `EditorSceneManager.SaveScene` 하면, **그 시점 에디터에 떠 있던 사용자 미저장 변경(Volume·카메라·GO 토글·신규 필드 기본값)이 전부 디스크에 박힌다**. `git diff` 가 내 1줄 + 대량 WIP 로 부풀어 오름.
 
 - **처방**: 가능하면 저장 없이 in-memory 검증(→ `01-unity-mcp-operation.md`). 꼭 영속해야 하면 **내 delta 만 격리**: 씬 스냅샷(`cp`) → `git checkout HEAD -- Scene.unity` → 내 변경만 재적용 → `git add`+commit → 스냅샷 복원. 커밋 후 사용자에게 씬 WIP 잔존을 고지.
 
 ## dirty 씬 checkout 은 사용자 카메라를 날릴 수 있다
 
-`git checkout HEAD -- BattleScene.unity` 로 Play 오염을 되돌릴 때, working tree 의 **사용자 미커밋 카메라/씬 설정까지 커밋값으로 되돌아가 날아간다**(실제 사고 2026-07-04).
+`git checkout HEAD -- <씬>.unity`(당시 `BattleScene.unity` — 이력, unit 9 에서 제거)로 Play 오염을 되돌릴 때, working tree 의 **사용자 미커밋 카메라/씬 설정까지 커밋값으로 되돌아가 날아간다**(실제 사고 2026-07-04).
 
 - **처방**: dirty 씬을 checkout/revert 하기 전에 **무엇이 날아가는지 diff 로 확인**(특히 Main Camera transform/FOV·라이팅). Play 오염(runtime 이동)과 사용자 authored 설정을 구분. **되돌리기 전 백업 필수.**
 

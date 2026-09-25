@@ -9,20 +9,20 @@
 
 | 스크립트 | 역할 | 핵심 필드 |
 |---|---|---|
-| `MapStage` (루트, 필수) | 스테이지 선언 | `playAreaCells`(논리 격자 크기) · `gridOriginLocal`(셀 (0,0) 최소 모서리의 로컬 위치, Y=유닛 발바닥 평면) · `previewTileSize`(기즈모 전용 — 런타임 정본 `BattleBridge.tileSize`(1)와 같아야) · `suppressEffectTiles`(본편 false) |
+| `MapStage` (루트, 필수) | 스테이지 선언 | `playAreaCells`(논리 격자 크기) · `gridOriginLocal`(셀 (0,0) 최소 모서리의 로컬 위치, Y=유닛 발바닥 평면) · `previewTileSize`(기즈모 전용 — 런타임 정본 `BattleDriver._tileSize`(1, `BattleCoreScene` 의 드라이버)와 같아야) · `suppressEffectTiles`(본편 false) |
 | `SpawnMarker` (≥2) | 적 스폰 | `laneIndex`(0부터 연속·중복 금지 — 웨이브 결정론 키) · `routeIndex`(-1=골 직행 기본) · `visualRoot`(튜토리얼 포커스 앵커). **프랍은 저작하지 않는다** — 런타임에 공용 `MarkerPropStyle.spawnProp`(수직 빨간 포탈)이 붙는다. 맵 전용 연출만 `visualRoot` 를 직접 채운다(그쪽이 이김) |
 | `GoalMarker` (≥1) | 골(방어 마음) | 셀만 준다 — 골 HP 는 `AttackDeck.goalStabilityMax` 단독 소유. `visualRoot` = 균열/붕괴/스트레스 틴트 대상(틴트는 머티리얼 저작 색에 **곱**). **프랍은 저작하지 않는다** — 공용 `MarkerPropStyle.goalProp`(수직 노란 포탈) |
 | `PropFootprint` | 통행+배치 차단 | `size`(사각형만, 최소 1×1) · `anchorOffset`. **명시 선언이 정본(D6)** — 시각≠논리 저작 가능(가지가 3칸 드리워도 밑동 1칸만 차단) |
 | `PlacementBlockZone` | 배치만 금지(통행 불변) | `size` — 앵커 셀부터 +x/+z. 옛 placeMask 브러시 후계, «전선» 저작 수단 |
 | `RouteMarker` (선택) | 웨이포인트 경로 | `routeIndex`/`order` — 같은 route 를 order 오름차순으로 연결. `AttackUnitData.waypointPathIndex`/스폰 `routeIndex` 가 이 번호를 가리킴 |
 | `BonusSpawnMarker` (선택) | 보너스 웨이브 포탈 칸 | 필드 없음 — 맵에 **0개 또는 정확히 2개**. 통행 가능하고 골에 닿는 서로 다른 칸. 없으면 그 맵엔 보너스 당기기 버튼이 뜨지 않는다(bonus-wave-pull 계약 8). 포탈 비주얼은 저작하지 않는다(런타임이 웨이브 수명으로 띄움) |
-| `StructureMarker` (선택) | 거점 — **본능만** | `side`(Defender/Enemy) · `data`(`StructureData`, kind=Instinct). 3×3 footprint 는 **점유**(배치 배제·OccupiedCells)일 뿐 통행은 막지 않는다 — `PropFootprint` 를 겹치지 말 것. 프랍·체력·공격은 SO 소유, 브리지가 빌드 시 세운다(비주얼 자식 불필요). 마음(Core)은 계약 11 로 빌더가 거부 |
+| `StructureMarker` (선택) | 거점 — **본능만** | `side`(Defender/Enemy) · `data`(`StructureData`, kind=Instinct). 3×3 footprint 는 **점유**(배치 배제·OccupiedCells)일 뿐 통행은 막지 않는다 — `PropFootprint` 를 겹치지 말 것. 프랍·체력·공격은 SO 소유, 판 조립 때 `BattleDriver` 가 스캔한 목록을 `MatchDefinitionBuilder`(→ `CombatDefinitionBuilder.FillStructures`)가 정의표에 실어 코어가 세운다(비주얼 자식 불필요). 마음(Core)은 계약 11 로 빌더가 거부 |
 
 모든 마커는 **스테이지 프리팹 계층 안**에 있어야 스캔된다 (인스펙터가 밖이면 경고).
 
 ## 스폰/골 프랍 — 맵에 상관없이 공유
 
-스폰/골 마커의 포탈 프랍은 스테이지 프리팹이 아니라 **`Assets/_Project/Data/Maps/MarkerPropStyle.asset`** 하나에서 온다. BattleScene 의 `_MarkerProps`(`MarkerPropInstaller`)가 스테이지가 켜질 때(`MapStage.Enabled`) `visualRoot` 가 빈 마커 밑에 프랍을 identity(수직)로 얹는다.
+스폰/골 마커의 포탈 프랍은 스테이지 프리팹이 아니라 **`Assets/_Project/Data/Maps/MarkerPropStyle.asset`** 하나에서 온다. 전투 씬 `BattleCoreScene` 의 `MarkerProps` 오브젝트(`MarkerPropInstaller`)가 스테이지가 켜질 때(`MapStage.Enabled`) `visualRoot` 가 빈 마커 밑에 프랍을 identity(수직)로 얹는다.
 
 - 포탈의 색/모양을 바꾸려면 → `SpawnPortal_Red` / `GoalPortal_Yellow` 프리팹 또는 스타일 에셋의 슬롯을 바꾼다. 네 맵이 함께 바뀐다.
 - 포탈이 바라보는 방향 → 스타일 에셋의 `propEulerAngles`(Y 만, 현재 −90 = 정면이 카메라 쪽). X/Z 를 넣으면 «수직 포탈» 계약이 깨져 Assets lane 이 빨개진다.
@@ -36,7 +36,7 @@
 - footprint 점유 = 앵커 셀 + `anchorOffset` 부터 `size` 만큼. playArea 밖으로 걸친 부분은 무시(안쪽 셀만 차단).
 - 열린 셀 = Walk + placeMask 7(Ground|Path|Air). 차단 셀 = Deco + 0. BlockZone 은 placeMask 만 0.
 - 높이는 논리에 없다(D4) — 격자는 로컬 XZ 평면 하나.
-- **좌표 관례 (2026-08-25)**: 프리팹 루트 = 원점·무회전·스케일 1(브리지가 런타임에 강제) **+ `gridOriginLocal.xz = 0`** — 격자는 항상 [0,w]×[0,h] 에 앉고 **아트를 격자에 맞춘다**(격자를 아트에 맞추지 않는다). "playArea 제안" 버튼은 크기만 제안하고 아트·마커를 함께 옮겨 이 관례를 유지한다. 결과: 전투 카메라 포즈가 `(playAreaCells, 화면비)` 만의 함수가 된다 — 격자 밖 남는 영역은 아트로 채운다.
+- **좌표 관례 (2026-08-25)**: 프리팹 루트 = 원점·무회전·스케일 1(`BattleDriver` 가 런타임에 강제) **+ `gridOriginLocal.xz = 0`** — 격자는 항상 [0,w]×[0,h] 에 앉고 **아트를 격자에 맞춘다**(격자를 아트에 맞추지 않는다). "playArea 제안" 버튼은 크기만 제안하고 아트·마커를 함께 옮겨 이 관례를 유지한다. 결과: 전투 카메라 포즈가 `(playAreaCells, 화면비)` 만의 함수가 된다 — 격자 밖 남는 영역은 아트로 채운다.
 
 ## 형식 제약 (위반 = 배틀 진입 하드 실패, 오류 전수 목록 출력)
 
@@ -58,20 +58,20 @@
 5. `SpawnMarker` 2개(laneIndex 0/1) + `GoalMarker` 1개 — 초록/골 셀이 열린 셀 위인지 확인.
 6. (선택) `RouteMarker` 로 경유점 — R0.0, R0.1 … 순번 라벨 확인. (선택) `BonusSpawnMarker` 2개로 보너스 포탈 — 핑크 `B` 셀 확인.
 7. 프리팹으로 저장 → 루트 인스펙터 **"Dev 엔트리로 등록 (MapStagePool)"**. dev 슬롯은 시드 선택에 안 잡히고 스테퍼(D 라벨)로만 진입.
-8. 적 패턴은 풀 엔트리의 deck/plan 짝이 결정한다. "Dev 엔트리로 등록" 버튼은 **라이브 0번 엔트리의 덱**을 자동으로 물려주고, deck 을 비우면 BattleScene 의 BattleBridge `deck` 필드(현재 `Deck_Duel`)로 폴백한다 — 폴백은 기본 덱일 뿐이니 맵 전용 패턴이 필요하면 명시적으로 짝 지을 것.
+8. 적 패턴은 풀 엔트리의 deck/plan 짝이 결정한다. "Dev 엔트리로 등록" 버튼은 **라이브 0번 엔트리의 덱**을 자동으로 물려주고, deck 을 비우면 `BattleCoreScene` 의 `BattleDriver._deck` 필드(현재 `Deck_Duel`)로 폴백한다 — 폴백은 기본 덱일 뿐이니 맵 전용 패턴이 필요하면 명시적으로 짝 지을 것.
 
 ## 검증 3단
 
 1. **기즈모** — 씬 뷰에서 셀 색(빨강=차단, 주황=배치금지, 초록=스폰, 보라=루트, 핑크=보너스 포탈, 파랑/빨강 3×3 `I`=방어/적 본능)이 의도와 맞는지.
 2. **Assets lane** (5초) — `StagePoolBuildabilityTests` 가 풀의 전 스테이지를 스캔→조립→연결성까지 검사. 등록 직후 이것부터.
 3. **스테퍼 Play** — 로비 dev 스테퍼로 진입해 이동·배치·전투 육안 확인.
-4. **테스트 씬 카메라** — 스테이지를 놓은 씬에서 `Window/Wassup/Map Stage/Frame Scene Camera As Battle`: 루트를 원점으로 정규화(브리지 계약과 동일)하고 런타임 산식(`CameraFramingMath.SolveStatePose` + Battle 레시피)으로 카메라 포즈를 푼다. 포즈는 **격자와 화면비의 함수**라 저장값은 스냅샷이다 — 격자·레시피·화면비가 바뀌면 버튼을 다시 누른다. fov 는 런타임과 같이 `fovMin/fovMax` 로 클램프한 값을 쓴다(현재 Battle 레시피 25 → 화면엔 31 — main 의 화각 수정이 되돌려진 상태, 디렉터와 동일하게 미러). **스테이지를 고친 뒤엔 반드시 다시 누른다** — 안 그러면 씬 카메라는 고치기 전 격자를 본다. DoF·포스트·디렉터 동역학은 씬이 재현하지 못하므로 최종 확인은 스테퍼 Play.
+4. **테스트 씬 카메라** — 스테이지를 놓은 씬에서 `Window/Wassup/Map Stage/Frame Scene Camera As Battle`: 루트를 원점으로 정규화(`BattleDriver` 가 판 조립 때 하는 것과 동일)하고 런타임 산식(`CameraFramingMath.SolveStatePose` + Battle 레시피)으로 카메라 포즈를 푼다. 포즈는 **격자와 화면비의 함수**라 저장값은 스냅샷이다 — 격자·레시피·화면비가 바뀌면 버튼을 다시 누른다. fov 는 런타임과 같이 `fovMin/fovMax` 로 클램프한 값을 쓴다(현재 Battle 레시피 25 → 화면엔 31 — main 의 화각 수정이 되돌려진 상태, 디렉터와 동일하게 미러). **스테이지를 고친 뒤엔 반드시 다시 누른다** — 안 그러면 씬 카메라는 고치기 전 격자를 본다. DoF·포스트·디렉터 동역학은 씬이 재현하지 못하므로 최종 확인은 스테퍼 Play.
 
 ## 증상 → 원인
 
 | 증상 | 원인 |
 |---|---|
-| 스폰/골 포탈이 **모든 맵**에서 안 보인다 | BattleScene `_MarkerProps.style` 미배선 또는 `MarkerPropStyle.asset` 슬롯 비어 있음 — 콘솔 `[MarkerPropInstaller] style 미배선` 경고. 러너 `marker_prop_style` 로 슬롯 재채움 |
+| 스폰/골 포탈이 **모든 맵**에서 안 보인다 | `BattleCoreScene` 의 `MarkerProps`(`MarkerPropInstaller.style`) 미배선 또는 `MarkerPropStyle.asset` 슬롯 비어 있음 — 콘솔 `[MarkerPropInstaller] style 미배선` 경고. 러너 `marker_prop_style` 로 슬롯 재채움 |
 | 배틀 진입 즉시 실패 + 형식 오류 로그 | 위 제약 1~5 위반 — 로그가 전수 목록을 준다 |
 | "스테이지 연결성 실패" 로그 | 차단 프랍이 스폰→골 길을 완전히 막음 |
 | 기즈모 격자와 실제 판정이 어긋남 | `previewTileSize` ≠ 1, 또는 `gridOriginLocal` 이 바닥과 안 맞음 |

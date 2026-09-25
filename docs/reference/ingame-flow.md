@@ -5,9 +5,9 @@
 > `map-wave-balancing.md` 가 소유한다.
 >
 > **legacy 로 제외한 것** (이 문서에 다시 넣지 말 것): 드래프트 픽 · 기믹 리빌 페이즈 ·
-> 사전 배치 30초 + START 버튼 · 스킬바 · 승/패 판정 · 점수 3축 · 튜토리얼 판(전투 첫 판 안내 · 로비
+> 사전 배치 30초 + START 버튼 · 스킬바 · 승/패 판정(라이브 모드 기준 — 아래 4절 1축) · 점수 3축 · 튜토리얼 판(전투 첫 판 안내 · 로비
 > 로드아웃 안내 — 사용자 결정 ④ 2026-09-25 로 기능째 제거).
-> 앞의 셋은 코드가 살아 있지만 **꺼져 있거나 도달 불가**다 — 아래 「지금 꺼져 있는 것」 참조.
+> 기믹 리빌·사전 배치는 코드가 살아 있지만 **꺼져 있다**. 드래프트 픽은 코드째 없다(이력 — 옛 ECS 전투, unit 9 에서 제거) — 아래 「지금 꺼져 있는 것」 참조.
 
 ---
 
@@ -15,6 +15,10 @@
 
 전원이 **같은 시드의 3분**을 완주하고, 그 안에서 **몇 마리를 처리했는지**로만 겨루는
 비동기 스코어어택 디펜스.
+
+> 이 문서의 규칙은 현행 라이브 매치 모드 `KillScoreTimed`(`Data/Modes/MatchMode_KillScore3Min.asset`) 기준이다.
+> 모드는 닫힌 목표 종류(`KillScoreTimed` · `WaveClear` · `TimeAttack`) 중 하나를 고르고, 종료의 «의미»(점수·승패 표기)는
+> 목표가 정한다 — 설계 `docs/spec/battle-core-rebuild/match-mode-design.md`.
 
 ---
 
@@ -37,9 +41,9 @@ flowchart TD
 **판이 끝나는 통로는 둘이다.** `complete`(3분 만료) · `stress_full`(스트레스 100 = 마음 파괴).
 `submitted`(유저 제출)는 **허용되지만 공식 게임 절차로 세지 않는다**(사용자 결정 2026-08-22) —
 언제든 빠져나갈 수 있는 탈출구이지 판의 결말이 아니라서 위 도표에 점선으로 뒀다.
-따라서 `BattleBridge.EndMatch` 호출부는 정확히 **3곳**이다.
+따라서 판을 끝내는 통로(`MatchClock.EndMatch` 의 사유)는 정확히 **3개**다(`Scripts/BattleCore/Owners/MatchClock.cs`).
 
-**넷째 호출부를 만들지 말 것.** 어느 쪽 통로든 결말은 같다 — 승패 표기 없이 그때까지의
+**넷째 통로를 만들지 말 것.** 어느 쪽 통로든 결말은 같다 — 승패 표기 없이 그때까지의
 처치 수를 제출한다. 「이러이러하면 판을 끝낸다」를 하나 더 붙이는 순간 그게 곧 패배 조건의
 부활이다(`score-formula.md` 와 같은 계약). 설계 이력은 `../spec/heart-stress-axis/`.
 
@@ -62,8 +66,11 @@ flowchart TD
 
 ## 4. 설계 지향 7축
 
-1. **판에서 지지 않는다 — 판정 권한은 유저에게.** 감점도 없다. 놓친 적이 점수도 각성치도
+1. **모드별 — 라이브 모드(`KillScoreTimed`)에서는 판에서 지지 않는다, 판정 권한은 유저에게.** 감점도 없다. 놓친 적이 점수도 각성치도
    안 주는 것, 그게 페널티의 전부다. UI 어휘는 「포기」류 금지, 「제출」 고정.
+   「지지 않는다」는 **`KillScoreTimed` 의 성질이지 전역 규칙이 아니다** — `WaveClear`·`TimeAttack` 에서 마음이 부서지면
+   «패배»다(종료 통로는 여전히 `stress_full` 하나, 라벨은 목표가 붙인다). 「제출」 어휘는 `allowSubmit` 모드만
+   (`match-mode-design.md` 사용자 판정 2).
 2. **개인 유불리를 계속 깎아낸다.** 맵·웨이브 편성·공용 액티브 2장이 시드로 전원 동일.
    개인 선택 공간은 전부 판 밖(스쿼드 7 + 스톤 4 + 덱 10). 당김 상한도 **적 덱** 소유라
    전원 같은 값을 받는다 — 로드아웃으로 옮기면 「내 덱이 남보다 많이 당긴다」가 된다.
@@ -160,15 +167,16 @@ flowchart TD
 
 | 값 | 위치 |
 |---|---|
-| 제한시간 · 당김 상한 · 마음 최대치 | `Scripts/Data/Decks/Deck_*.asset` (`timerDurationSec` · `maxPullsPerClear` · `goalStabilityMax`) |
-| 코스트 시작/상한/리젠 | `Data/Config/DefaultCostConfig.asset` |
-| 자동 시작 카운트다운 · 인트로 페이즈 토글 2종 | `Data/Config/BattleConfig.asset` |
+| 제한시간 | `Data/Modes/MatchMode_KillScore3Min.asset` (`durationSec` — 판 길이는 모드 단독) |
+| 당김 상한 · 마음 최대치 | `Scripts/Data/Decks/Deck_*.asset` (`maxPullsPerClear` · `goalStabilityMax`) |
+| 코스트 시작/상한/리젠 | `Data/Config/DefaultCostConfig.asset` (모드의 `costConfig` 가 고른다) |
+| 자동 시작 카운트다운 · 인트로 페이즈 토글 2종 | `Data/Modes/MatchMode_KillScore3Min.asset` (`autoStartCountdownSec` · `placementPhaseEnabled` · `gimmickEnabled`) |
 | 각성 게이지/비용/손패 크기/부착 상한/슬로모 | `Data/Dreamcatcher/AwakeningConfig.asset` |
 | 덱 크기 · Squad 상한 | `Data/Dreamcatcher/DeckRuleConfig_Default.asset` |
 | 디폴트 덱 구성 | `Data/Dreamcatcher/DreamcatcherDeck_Default.asset` |
 | 적별 각성 보상 · 안정도 피해 | `Data/Enemies/*.asset` (`awakeningReward` · `stabilityDamage`) |
 | 아군 사망 각성 보상 | `Data/Defenders/*.asset` (`awakeningReward`) |
-| 제출 개방 시점(P1) | `BattleBridge.SubmitUnlockSec` — **코드 상수**. 튜닝 확정되면 저작으로 내릴 것 |
+| 제출 개방 시점(P1) | `Data/Modes/MatchMode_KillScore3Min.asset` (`submitUnlockSec` · 제출 허용 `allowSubmit`) — 코드 상수에서 저작으로 내려왔다 |
 
 유닛 스탯과 드림캐쳐 카드는 **시트가 정본**이다. SO 만 고치면 로비 진입 임포트가 되돌린다.
 
@@ -178,10 +186,10 @@ flowchart TD
 
 | 항목 | 상태 | 되켜는 법 |
 |---|---|---|
-| 기믹 리빌 페이즈 | `gimmickEnabled: 0` | `BattleConfig` 값 하나 |
-| 사전 배치 30초 + START | `placementPhaseEnabled: 0` → 3초 자동 시작 | `BattleConfig` 값 하나 |
-| 각성 항아리 탭 | `JarTapEnabled = false` | `AwakeningGaugeView` 스위치 |
-| 드래프트 픽 | 로비 `LoadoutGate` 가 START 를 막아 **도달 불가**. 남은 진입은 테스트 모드·BattleScene 직접 Play | — (legacy) |
+| 기믹 리빌 페이즈 | `gimmickEnabled: 0` | 매치 모드 자산 값 하나 |
+| 사전 배치 30초 + START | `placementPhaseEnabled: 0` → 3초 자동 시작 | 매치 모드 자산 값 하나 |
+| 각성 항아리 탭 | 새 독(`CoreAwakeningGaugeView`)에는 탭 진입구가 없다 — 손패는 유닛 선택으로만 열린다 | 코드 작업(옛 스위치 `AwakeningGaugeView.JarTapEnabled` 는 이력 — 옛 ECS 전투, unit 9 에서 제거) |
+| 드래프트 픽 | (이력 — 옛 ECS 전투, unit 9 에서 제거. 옛 전투 씬 직접 Play 로만 닿던 진입이었다) | — |
 
 **배치 페이즈는 「진입」 자체를 건너뛰지 않는다.** 트레이 슬롯 구성 · 코스트 리셋 · 쿨타임
 리셋 · 드림캐쳐 큐 구성이 전부 그 신호에 달려 있어서, 통째로 건너뛰면 전투 내내 트레이가

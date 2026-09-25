@@ -8,47 +8,51 @@
 `run_tests` 의 `test_names`/`group_names` 필터는 이 셋업에서 0-match 다.
 **동작하는 유일한 입도는 `assembly_names`** — 그래서 어셈블리가 곧 실행 단위다.
 
-| 어셈블리 | 무엇 | 규모 |
-|---|---|---|
-| `Wassup.Tests.EditMode` | 고속 코어. 순수 계산 + 합성 픽스처 ECS/UI. **실제 프로젝트 에셋을 로드하지 않는다** | ~2,230개 · **~26초** |
-| `Wassup.Tests.EditMode.Assets` | 실에셋(SO·맵·덱·카탈로그·프리팹) 저작 검증 | ~160개 · **~5초** |
-| `Wassup.Tests.EditMode.Core` | **새 전투 코어**(`Wassup.BattleCore`)의 규칙. 엔진을 안 쓰고 씬도 안 연다 | ~370개 · **~10초** |
-| `Wassup.Tests.PlayMode` | 씬 부팅 E2E·스모크 (67파일 중 59개가 씬 로드) — **옛 전투**. unit 9 에서 은퇴 | ~144개 · **~8분** |
-| `Wassup.Tests.PlayMode.Core` | 새 씬(`BattleCoreScene`) 부팅 스모크 · 뷰 방출 순서 · 틱 발행률 · 배치 사슬 · 씬 배선 · 뷰가 자를 새로 만들지 않았나 | ~16개 · **~1분** |
+| 어셈블리 | 무엇 |
+|---|---|
+| `Wassup.Tests.EditMode` | 전투 밖 순수 계산(맵 빌드·카메라 수학·프로필·UI 레이아웃 등) + 합성 픽스처 UI. **실제 프로젝트 에셋을 로드하지 않는다.** 옛 ECS 전투 테스트가 `battle-core-rebuild` unit 9 에서 대량 삭제돼(목록 = `docs/spec/battle-core-rebuild/ledgers/retire-set.md` 5번 묶음) 전보다 훨씬 작다 |
+| `Wassup.Tests.EditMode.Assets` | 실에셋(SO·맵·덱·카탈로그·프리팹) 저작 검증 |
+| `Wassup.Tests.EditMode.Core` | **전투 코어**(`Wassup.BattleCore`)의 규칙. 엔진을 안 쓰고 씬도 안 연다 |
+| `Wassup.Tests.PlayMode.Core` | 전투 씬(`BattleCoreScene`) 부팅 스모크 · 뷰 방출 순서 · 틱 발행률 · 배치 사슬 · 씬 배선 · 뷰가 자를 새로 만들지 않았나 |
+| `Wassup.Tests.PlayMode` | **아웃게임 PlayMode · 씬 부팅 없음.** 남은 것은 `AuthE2ETest`·`DeckInfoPresetApplyLiveE2ETest`(둘 다 `[Explicit]` — 라이브 서버가 필요해 명시 실행할 때만 돈다)·`PresetBarPopupLayerTest`. 옛 전투 씬을 부팅하던 테스트는 unit 9 에서 은퇴했다(`retire-set.md` 7번 묶음) |
 
-`Wassup.DepthParallax.Tests`(6개)는 모듈 로컬이라 전체 실행 때만 따라온다.
+`Wassup.DepthParallax.Tests` 는 모듈 로컬이라 전체 실행 때만 따라온다.
 
-**lane 판별 한 줄**: 바꾼 파일이 `Scripts/BattleCore/` 면 `EditMode.Core`,
-`Scripts/BattleCoreUnity/` 면 거기에 `PlayMode.Core` 를 더한다. `Scripts/Battle/`·`Bridge/` 는
-동결이라 평소에는 안 바뀌고, 바뀌었다면 옛 두 lane 이다.
+**헤드리스 lane**(`tools/battle-core-rebuild/headless/`)은 위 어셈블리와 **별개**다 — 코어를 .NET 으로
+컴파일해 Unity 없이 돌리는 빠른 확인이다. `dotnet build …/BattleCore.csproj` · `dotnet test …/BattleCore.Tests.csproj` ·
+`dotnet build …/BattleCoreUnity.Check.csproj`(Unity 층 컴파일 확인). 골든은 제외한다(계약 5: 골든의 정본 런타임은 Unity
+— Mono 와 .NET 의 float 결과가 갈린다).
 
-⚠ `PlayMode.Core` 는 **빌드 설정을 건드리지 않는다** — `BattleCoreScene` 은 아직 빌드에
-실리는 씬이 아니라 `EditorSceneManager.LoadSceneAsyncInPlayMode` 로 연다(unit 9 에서 교대).
-헤드리스 lane(`tools/battle-core-rebuild/headless/`)은 이 다섯과 **별개**다 — 코어를 .NET 로
-컴파일해 돌리는 빠른 확인이고, 골든은 제외한다(계약 5: 골든의 정본 런타임은 Unity).
+**lane 판별 한 줄**: 바꾼 파일이 `Scripts/BattleCore/` 면 `EditMode.Core`(+ 헤드리스),
+`Scripts/BattleCoreUnity/` 면 거기에 `PlayMode.Core` 를 더한다. 아웃게임(로비·프로필·토너먼트 UI)이면 `EditMode`,
+에셋·시트면 `EditMode.Assets`.
+
+`PlayMode.Core` 는 씬을 `EditorSceneManager.LoadSceneAsyncInPlayMode` 로 연다(`Tests/PlayModeCore/CoreSceneFixture.cs`).
+빌드 설정 목록을 바꾸지 않는다.
 
 ## 언제 무엇을 돌리나
 
 | 상황 | 실행 | 시간 |
 |---|---|---|
-| 코드 변경 루프 중 | `assembly_names=["Wassup.Tests.EditMode"]` | ~26초 |
-| **새 전투 코어 변경 후** | `assembly_names=["Wassup.Tests.EditMode.Core"]` | ~10초 |
-| **새 Unity 층(드라이버·뷰 풀) 변경 후** | 위 + `mode="PlayMode" assembly_names=["Wassup.Tests.PlayMode.Core"]` | +~1분 |
-| **시트 임포트·에셋·맵·콘텐츠 편집 후** | 위 + `["Wassup.Tests.EditMode.Assets"]` | +~5초 |
+| 아웃게임 코드 변경 루프 중 | `assembly_names=["Wassup.Tests.EditMode"]` | 초 단위 |
+| **전투 코어 변경 후** | `assembly_names=["Wassup.Tests.EditMode.Core"]` (Unity 없이 먼저 보려면 헤드리스) | 초 단위 |
+| **전투 Unity 층(드라이버·뷰 풀·입력) 변경 후** | 위 + `mode="PlayMode" assembly_names=["Wassup.Tests.PlayMode.Core"]` | 분 단위 |
+| **시트 임포트·에셋·맵·콘텐츠 편집 후** | 위 + `["Wassup.Tests.EditMode.Assets"]` | 초 단위 |
 | 작업 단위 완료·커밋 전 | `assembly_names` 생략 = EditMode 전체 + 관련 PlayMode 파일 | 분 단위 |
-| spec 종료·머지 전 | `mode="PlayMode"` 전체 | ~8분 |
+| spec 종료·머지 전 | `mode="PlayMode"` 전체(`PlayMode.Core` + 아웃게임 `PlayMode`) | 분 단위 |
 
 - **카드(시트·SO) 편집 후** Assets lane 의 `CardEffectWitnessTests`(카드 한 장 = 케이스 하나 · 붙이고/시전하고 강제 발동해 효과 종류가 걸리나)와 `CardBakeSnapshotTests`(굳힌 굽기 텍스트와 같나)를 본다. 스냅샷이 빨갛고 **의도한 변경이면** 메뉴 `Wassup/BattleCore/Debug/카드 스냅샷 갱신` → `Tests/EditModeAssets/Fixtures/card_bake_snapshot.txt` diff 를 같은 커밋에 싣는다(테스트는 파일을 쓰지 않는다).
 - `include_failed_tests=true` 로 돌리고 `failures_so_far` 를 읽는다. `failures_capped=false` 면
   거기 없는 테스트는 전부 통과다.
-- **PlayMode 판정은 에디터 실행으로 한다.** 배치(`-batchmode -nographics`)는 `EntitiesAssetGC`
-  NRE 가 그때 돌던 테스트에 임의 귀속돼 실패가 부풀어 보인다. 배치는 EditMode 전용.
+- **PlayMode 판정은 에디터 실행으로 한다.** (이력 — 옛 ECS 전투, unit 9 에서 제거: 배치 `-batchmode -nographics`
+  에서는 Entities 의 `EntitiesAssetGC` NRE 가 그때 돌던 테스트에 임의 귀속돼 실패가 부풀어 보였다. Entities 패키지가
+  빠진 뒤 배치 PlayMode 가 믿을 만한지는 다시 확인하지 않았다 — 확인 전까지는 에디터 실행이 기준이다.)
 - 신규 `.cs` 를 만들었으면 실행 전 `refresh_unity(scope=all)` — `scope=scripts` 로는 .meta 가
   안 생겨 어셈블리에서 통째로 빠진다.
 
 ## 빨강을 만났을 때
 
-**EditMode 두 lane 은 기지 실패가 없다(2026-08-16 기준). 빨강 = 회귀다.**
+**EditMode lane 의 빨강은 회귀로 취급한다.** 알려진 선행 실패가 있으면 그 작업 단위의 완료 기준에 개수와 함께 적혀 있다(예: `battle-core-rebuild` unit 9 완료 기준의 「선행 2」) — 거기 없는 빨강은 회귀다.
 
 PlayMode 에는 분류된 사전 실패가 남아 있다 — 목록과 각각의 원인·다음 행동은
 [`docs/spec/README.md`](../spec/README.md) 의 «PlayMode 사전 실패» 절이 정본이다.
@@ -61,7 +65,8 @@ PlayMode 에는 분류된 사전 실패가 남아 있다 — 목록과 각각의
 에셋을 읽는가?** 읽으면 `Tests/EditModeAssets/`, 아니면 `Tests/EditMode/`.
 
 한 파일에 둘이 섞이면 파일을 나눈다(코어 lane 의 "에셋 편집에 면역"이 깨지므로).
-선례: `EnemyTierBakeTests`(bake 로직) ↔ `EnemyCatalogAuthoringTests`(카탈로그 검증).
+선례: `EnemyCatalogAuthoringTests`(카탈로그 검증) — 짝이던 bake 로직 쪽 `EnemyTierBakeTests` 는
+(이력 — 옛 ECS 전투, unit 9 에서 제거). 전투 규칙 테스트는 이 판별과 무관하게 `Tests/EditModeCore/` 에 둔다.
 
 ## 수치를 단언할 때
 
@@ -78,8 +83,9 @@ atk→`outputs[].magnitude` · attackCooldown · cost · DC 의 percent·magnitu
 - 예외: 시트가 **안** 덮는 저작 계약(패턴 각도·발수, 애니 이름, 프리팹 배선, 아트 임포트
   설정, 등급 공식 유도값)의 리터럴은 유지한다. 그건 밸런스가 아니라 계약이다.
 
-모범 사례: `EditModeAssets/WaveKillBudgetPinTests.cs` — 리터럴 pin 이 밸런싱 머지에서
-깨진 사고와 상대 단언으로의 전환 근거가 헤더 주석에 남아 있다.
+모범 사례였던 `EditModeAssets/WaveKillBudgetPinTests.cs`(리터럴 pin 이 밸런싱 머지에서 깨진 사고와
+상대 단언으로의 전환 근거가 헤더 주석에 있었다)는 옛 웨이브 생성기를 굴리는 테스트라
+(이력 — 옛 ECS 전투, unit 9 에서 제거). 교훈은 위 목록 그대로 유효하다.
 
 ## 새 테스트를 넣었으면 **총계를 확인한다**
 
