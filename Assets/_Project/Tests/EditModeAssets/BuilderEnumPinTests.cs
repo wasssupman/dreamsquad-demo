@@ -57,24 +57,24 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 스탯_종류()
         {
-            PinNamesAndValues<Wassup.Battle.Effects.StatKind, Wassup.BattleCore.Effects.StatKind>();
-            PinMapping<Wassup.Battle.Effects.StatKind, Wassup.BattleCore.Effects.StatKind>(
+            PinNamesAndValues<Wassup.Data.Authoring.StatKind, Wassup.BattleCore.Effects.StatKind>();
+            PinMapping<Wassup.Data.Authoring.StatKind, Wassup.BattleCore.Effects.StatKind>(
                 CombatDefinitionBuilder.ToCoreStat);
         }
 
         [Test]
         public void 결합_연산자()
         {
-            PinNamesAndValues<Wassup.Battle.Effects.CombineOp, Wassup.BattleCore.Effects.CombineOp>();
-            PinMapping<Wassup.Battle.Effects.CombineOp, Wassup.BattleCore.Effects.CombineOp>(
+            PinNamesAndValues<Wassup.Data.Authoring.CombineOp, Wassup.BattleCore.Effects.CombineOp>();
+            PinMapping<Wassup.Data.Authoring.CombineOp, Wassup.BattleCore.Effects.CombineOp>(
                 CombatDefinitionBuilder.ToCoreOp);
         }
 
         [Test]
         public void 스택_종류()
         {
-            PinNamesAndValues<Wassup.Battle.Effects.StackKind, Wassup.BattleCore.Effects.StackKind>();
-            PinMapping<Wassup.Battle.Effects.StackKind, Wassup.BattleCore.Effects.StackKind>(
+            PinNamesAndValues<Wassup.Data.Authoring.StackKind, Wassup.BattleCore.Effects.StackKind>();
+            PinMapping<Wassup.Data.Authoring.StackKind, Wassup.BattleCore.Effects.StackKind>(
                 CombatDefinitionBuilder.ToCoreStackKind);
         }
 
@@ -169,7 +169,7 @@ namespace Wassup.Tests.EditMode
             var so = UnityEngine.ScriptableObject.CreateInstance<StackModifierSO>();
             try
             {
-                foreach (Wassup.Battle.Effects.StackKind k in Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)))
+                foreach (Wassup.Data.Authoring.StackKind k in Enum.GetValues(typeof(Wassup.Data.Authoring.StackKind)))
                 {
                     so.kind = k;
                     var rows = MatchDefinitionBuilder.ToStackRuleDefs(new[] { so });

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 
 namespace Wassup.Data
 {
@@ -146,7 +146,7 @@ namespace Wassup.Data
                 // 아니면 연결성 BFS 가 도달 못 해 런타임 hard-fail. 파생 셀이 격자 밖이면 파생
                 // 자체가 불가능하다 — 타일과 무관한 기하 규칙이라 tiles 없이도 검사한다.
                 // 리뷰 F8 — y±1 을 여기 다시 적지 않는다: 오프셋이 바뀔 때 검증만 낡는 것을 막는다.
-                if (faction == Wassup.Battle.Units.Faction.EnemyCore)
+                if (faction == Wassup.Skills.Faction.EnemyCore)
                 {
                     bool tilesUsable = tiles != null && tiles.Count == width * height
                         && s.cell.x >= 0 && s.cell.x < width
@@ -172,7 +172,7 @@ namespace Wassup.Data
                 // «방어/중립 본능 + 방어유닛 마스크» 조합이 저작으로 가능해진다. 여기서 잡는다.
                 if (s.data.kind == StructureKind.Instinct && s.side != StructureSide.Enemy
                     && s.data.attackDamage > 0f
-                    && ((int)s.data.targetFactions & (int)Wassup.Battle.Units.Faction.DefenderUnit) != 0)
+                    && ((int)s.data.targetFactions & (int)Wassup.Skills.Faction.DefenderUnit) != 0)
                     errors.Add($"거점 {s.cell}: {s.side} 본능이 방어유닛을 노린다(SO targetFactions) — 아군 사격. 편에 맞는 마스크의 SO 를 물려라");
 
                 // footprint 겹침 — 3×3 본능끼리, 또는 본능이 다른 거점을 덮는 경우.

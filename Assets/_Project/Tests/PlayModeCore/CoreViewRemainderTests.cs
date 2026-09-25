@@ -319,13 +319,13 @@ namespace Wassup.Tests.PlayMode.Core
 
             // 방패(살아 있는 방어 본능)를 먼저 걷는다 — 방패 중엔 마음 피해가 버려진다(HeartMeter 백스톱).
             for (int i = world.Units.Count - 1; i >= 0; i--)
-                if (world.Units[i].Faction == Wassup.Battle.Units.Faction.DefenderInstinct)
+                if (world.Units[i].Faction == Wassup.Skills.Faction.DefenderInstinct)
                     driver.Apply(Command.DebugDestroy(world.Units[i].Id));
             yield return Ticks(driver, 1);
 
             Unit tower = null;
             for (int i = 0; i < world.Units.Count; i++)
-                if (world.Units[i].Faction == Wassup.Battle.Units.Faction.DefenderCore) tower = world.Units[i];
+                if (world.Units[i].Faction == Wassup.Skills.Faction.DefenderCore) tower = world.Units[i];
             Assert.IsNotNull(tower, "마음 타워가 없다(덱이 마음을 저작하지 않았다)");
             int spawnedBefore = vfx.SpawnedCount;
 
@@ -364,12 +364,12 @@ namespace Wassup.Tests.PlayMode.Core
             var world = driver.Match.World;
 
             for (int i = world.Units.Count - 1; i >= 0; i--)
-                if (world.Units[i].Faction == Wassup.Battle.Units.Faction.DefenderInstinct)
+                if (world.Units[i].Faction == Wassup.Skills.Faction.DefenderInstinct)
                     driver.Apply(Command.DebugDestroy(world.Units[i].Id));
             yield return Ticks(driver, 1);
             Unit tower = null;
             for (int i = 0; i < world.Units.Count; i++)
-                if (world.Units[i].Faction == Wassup.Battle.Units.Faction.DefenderCore) tower = world.Units[i];
+                if (world.Units[i].Faction == Wassup.Skills.Faction.DefenderCore) tower = world.Units[i];
             Assert.IsNotNull(tower, "마음 타워가 없다");
 
             var heart = driver.Match.Heart;

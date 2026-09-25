@@ -231,7 +231,7 @@ namespace Wassup.BattleCoreUnity.View
             _quadById[e.A.Value] = quad;
         }
 
-        private ISpineUnitVisualData ResolveVisual(UnitKind kind, Wassup.Battle.Units.Faction faction, int defIndex)
+        private ISpineUnitVisualData ResolveVisual(UnitKind kind, Wassup.Skills.Faction faction, int defIndex)
         {
             if (_driver == null || defIndex < 0) return null;
             // ⚠ 종류에 따라 **가리키는 표가 다르다**. 적이면 적 표, 그 외(방어유닛·순찰)는 유닛 표다.

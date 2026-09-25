@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using Wassup.Battle.Combat;
-using Wassup.Battle.Effects;
+using Wassup.Data.Authoring;
 using Wassup.Core;
 using Wassup.Data;
 

@@ -45,7 +45,7 @@ namespace Wassup.BattleCoreUnity.View
                 // 방어 마음은 골(`Goals`)이 정본이라 거점 프랍을 세우지 않는다 — 세우면 골이
                 // 두 벌이 된다. 코어의 `FieldPrepPhase` 가 같은 필터를 쓴다.
                 var faction = StructurePlacements.DeriveFaction(s.side, s.data.kind);
-                if (faction == Wassup.Battle.Units.Faction.DefenderCore) continue;
+                if (faction == Wassup.Skills.Faction.DefenderCore) continue;
 
                 var simCenter = CellCenter(s.cell, tileToWorld);
                 var prop = Instantiate(s.data.viewPrefab,

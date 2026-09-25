@@ -1,5 +1,5 @@
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore.Effects;
 
 namespace Wassup.BattleCore

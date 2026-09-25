@@ -75,8 +75,8 @@ namespace Wassup.BattleCoreUnity
         [SerializeField] private HazardSO[] _hazards = Array.Empty<HazardSO>();
 
         [Tooltip("탄이 참조하지 않는 길막 SO(디버그·unit 7 생산자 전용). 탄이 참조하는 것은 탄 표에서 자동으로 모인다.")]
-        [SerializeField] private Wassup.Battle.Effects.BlockingHazardSO[] _extraBlockers
-            = Array.Empty<Wassup.Battle.Effects.BlockingHazardSO>();
+        [SerializeField] private Wassup.Data.Authoring.BlockingHazardSO[] _extraBlockers
+            = Array.Empty<Wassup.Data.Authoring.BlockingHazardSO>();
 
         [Tooltip("개발용 덱 덮어쓰기(구성 순서 그대로). **비우면** 프로필 확정 덱 + 판마다 굴린 액티브로 짓는다(unit 7c) — "
                  + "채우면 이 목록이 곧 덱이다(테스트·개발 판).")]

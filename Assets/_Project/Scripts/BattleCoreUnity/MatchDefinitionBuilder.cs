@@ -388,7 +388,7 @@ namespace Wassup.BattleCoreUnity
                 // `targetFactions: 98`(적 전부)을 들고 있어 raw 로 실으면 **적을 회복시킨다**
                 // (2026-09-24 드리프트 감사 H4). 거점까지 넓히지 않는다 — 마음이 회복을 받는다.
                 TargetFactions = d.targetAllies
-                    ? (int)Wassup.Battle.Units.Faction.DefenderUnit
+                    ? (int)Wassup.Skills.Faction.DefenderUnit
                     : (int)d.targetFactions,
                 MoveSpeed = d.moveSpeed,
 

@@ -371,7 +371,7 @@ namespace Wassup.Tests.PlayMode.Core
         {
             var units = driver.Match.World.Units;
             for (int i = 0; i < units.Count; i++)
-                if (units[i].Faction == Wassup.Battle.Units.Faction.EnemyUnit && !units[i].Dead) return true;
+                if (units[i].Faction == Wassup.Skills.Faction.EnemyUnit && !units[i].Dead) return true;
             return false;
         }
 
@@ -382,7 +382,7 @@ namespace Wassup.Tests.PlayMode.Core
             for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
-                if (u.Faction != Wassup.Battle.Units.Faction.EnemyUnit || u.Dead) continue;
+                if (u.Faction != Wassup.Skills.Faction.EnemyUnit || u.Dead) continue;
                 u.Inbox.Damage.Add(new DamageEntry { Amount = 99999f, Source = SimEntityId.Match });
             }
         }

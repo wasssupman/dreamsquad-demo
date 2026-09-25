@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Battle.Effects;
+using Wassup.Data.Authoring;
 using Wassup.BattleCore;
 using Wassup.Data;
 

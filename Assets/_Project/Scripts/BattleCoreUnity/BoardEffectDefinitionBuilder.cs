@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Wassup.BattleCore;
-using Wassup.Battle.Effects;
+using Wassup.Data.Authoring;
 using Wassup.Data;
 using CoreDotElement = Wassup.BattleCore.Effects.DotElement;
-using CoreFaction = Wassup.Battle.Units.Faction;
+using CoreFaction = Wassup.Skills.Faction;
 
 namespace Wassup.BattleCoreUnity
 {

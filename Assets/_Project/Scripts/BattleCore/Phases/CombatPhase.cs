@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Combat.Emission;
 using Wassup.BattleCore.Combat.Projectile;

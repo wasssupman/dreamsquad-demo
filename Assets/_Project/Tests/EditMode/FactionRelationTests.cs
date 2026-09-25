@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 
 namespace Wassup.Tests.EditMode
 {

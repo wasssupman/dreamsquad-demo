@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Combat.Emission;

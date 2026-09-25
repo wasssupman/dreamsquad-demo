@@ -42,7 +42,7 @@ namespace Wassup.Tests.PlayMode.Core
                 var u = def.Units[i];
                 if (u.AttackRange <= 0f) continue;
                 // 힐러(아군 마스크)는 적을 안 겨눈다 — 전방위 대조군으로 쓸 수 없다.
-                if ((TargetDefaults.ResolveDefender(u.TargetFactions) & (int)Wassup.Battle.Units.Faction.EnemyUnit) == 0)
+                if ((TargetDefaults.ResolveDefender(u.TargetFactions) & (int)Wassup.Skills.Faction.EnemyUnit) == 0)
                     continue;
                 if (u.Attack.ShapeKind == AttackShapeBaked.SectorKind && shaped < 0) shaped = i;
                 else if (u.Attack.ShapeKind == AttackShapeBaked.OmniKind && omni < 0) omni = i;
@@ -232,7 +232,7 @@ namespace Wassup.Tests.PlayMode.Core
             {
                 var u = def.Units[i];
                 if (u.AttackRange <= 0f || u.Attack.ShapeKind != AttackShapeBaked.SectorKind) continue;
-                if ((TargetDefaults.ResolveDefender(u.TargetFactions) & (int)Wassup.Battle.Units.Faction.EnemyUnit) == 0)
+                if ((TargetDefaults.ResolveDefender(u.TargetFactions) & (int)Wassup.Skills.Faction.EnemyUnit) == 0)
                     continue;
                 shaped = i;
             }

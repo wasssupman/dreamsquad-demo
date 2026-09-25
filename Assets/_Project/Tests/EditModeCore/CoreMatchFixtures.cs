@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Map;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore.Wave;
 
 namespace Wassup.Tests.EditMode.Core

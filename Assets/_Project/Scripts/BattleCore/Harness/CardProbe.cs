@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
 using Wassup.BattleCore.Map;
 using Wassup.BattleCore.Trigger;
 using Wassup.Skills;

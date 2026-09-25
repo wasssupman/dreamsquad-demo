@@ -1,4 +1,4 @@
-namespace Wassup.Battle.Effects
+namespace Wassup.Data.Authoring
 {
     public enum HazardShape : byte
     {

@@ -1,4 +1,4 @@
-namespace Wassup.Battle.Effects
+namespace Wassup.Data.Authoring
 {
     [System.Serializable]
     public struct HazardEffect

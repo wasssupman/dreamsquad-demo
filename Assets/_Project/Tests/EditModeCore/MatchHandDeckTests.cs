@@ -258,7 +258,7 @@ namespace Wassup.Tests.EditMode.Core
 
             // 적 하나를 잡는다 — 각성 보상 2.
             foreach (var u in match.World.Units)
-                if (u.Faction == Wassup.Battle.Units.Faction.EnemyUnit && !u.Dead)
+                if (u.Faction == Wassup.Skills.Faction.EnemyUnit && !u.Dead)
                 {
                     u.Inbox.Damage.Add(new DamageEntry { Amount = 99999f, Source = SimEntityId.Match });
                     break;

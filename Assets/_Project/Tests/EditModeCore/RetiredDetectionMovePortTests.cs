@@ -83,7 +83,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var map = CoreMapFixtures.Open(12, 5, new int2(11, 2));
             var def = Def(map, -1f);
-            def.Enemies[0].TargetFactions = (int)Wassup.Battle.Units.Faction.DefenderCore;   // 유닛을 안 노린다
+            def.Enemies[0].TargetFactions = (int)Wassup.Skills.Faction.DefenderCore;   // 유닛을 안 노린다
             var m = Begin(def);
             Defender(m, new int2(6, 2));
             var e = Enemy(m, new int2(2, 2));

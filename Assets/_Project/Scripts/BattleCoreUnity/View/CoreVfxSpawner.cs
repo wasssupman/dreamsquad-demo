@@ -164,7 +164,7 @@ namespace Wassup.BattleCoreUnity.View
         // ── 공격 ─────────────────────────────────────────────────────────────
         private void OnAttackResolved(CoreEvent e)
         {
-            bool defender = ((int)e.Faction & Wassup.Battle.Units.Factions.AnyDefender) != 0;
+            bool defender = ((int)e.Faction & Wassup.Skills.Factions.AnyDefender) != 0;
             if (!defender)
             {
                 // 적의 «유닛별 공격 광역»(회오리). 「회오리를 갖는가」는 **프리팹 유무**가 정한다.

@@ -81,7 +81,7 @@ namespace Wassup.BattleCoreUnity.View
 
                 case CoreEventKind.AttackResolved:
                 {
-                    if (((int)e.Faction & Wassup.Battle.Units.Factions.AnyDefender) == 0) return;
+                    if (((int)e.Faction & Wassup.Skills.Factions.AnyDefender) == 0) return;
                     var data = DefenderData(e.DefIndex);
                     if (data == null || data.beamVfxPrefab == null || e.Amount <= 0f || e.B.IsNone) return;
                     Open(e.A.Value, data.beamVfxPrefab, e.A, e.B, e.Amount * _ttlMargin);

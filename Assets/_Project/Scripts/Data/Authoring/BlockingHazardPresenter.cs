@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Battle.Effects
+namespace Wassup.Data.Authoring
 {
     // battle-core-rebuild unit 8c — 길막 프리팹 2(`BlockingHazard_BombBarrel`·`_Placeholder`)에 붙어 있고 새 씬도 그
     // 프리팹을 `Instantiate` 해서 이 파일이 옛 폴더와 함께 지워지면 Missing Script 가 된다. 그래서 집을 옮기고

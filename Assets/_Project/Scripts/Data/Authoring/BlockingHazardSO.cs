@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Battle.Effects
+namespace Wassup.Data.Authoring
 {
     [CreateAssetMenu(menuName = "Wassup/Hazards/Blocking Hazard SO", fileName = "Hazard_Blocking_New")]
     public class BlockingHazardSO : ScriptableObject

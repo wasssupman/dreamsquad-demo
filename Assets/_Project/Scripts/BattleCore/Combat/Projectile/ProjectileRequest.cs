@@ -18,7 +18,7 @@ namespace Wassup.BattleCore.Combat.Projectile
         public PayloadKind Payload;
 
         public SimEntityId Owner;
-        public Wassup.Battle.Units.Faction OwnerFaction;
+        public Wassup.Skills.Faction OwnerFaction;
         public int TargetMask;
         public byte TargetLayers;
 

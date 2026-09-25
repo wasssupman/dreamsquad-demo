@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Wassup.Battle.Effects;
+using Wassup.Data.Authoring;
 using Wassup.Data;
 
 namespace Wassup.BattleCoreUnity

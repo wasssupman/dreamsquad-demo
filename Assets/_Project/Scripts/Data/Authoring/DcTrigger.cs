@@ -1,4 +1,4 @@
-namespace Wassup.Battle.Combat
+namespace Wassup.Data.Authoring
 {
     // dreamcatcher-unit-trigger Unit 2 — pure counting contract for triggered
     // card slots. Kept as a static pure function so the N-th-resolve semantics

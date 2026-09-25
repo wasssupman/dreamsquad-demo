@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Map;

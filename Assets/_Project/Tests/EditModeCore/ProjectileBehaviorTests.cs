@@ -1,6 +1,6 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat.Projectile;
 using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;

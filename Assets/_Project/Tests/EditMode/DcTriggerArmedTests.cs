@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Wassup.Battle.Combat;
+using Wassup.Data.Authoring;
 using Wassup.Data;
 
 namespace Wassup.Tests.EditMode

@@ -45,7 +45,7 @@ namespace Wassup.BattleCoreUnity.View
         {
             if (e.Kind != CoreEventKind.DamageApplied) return;
             // 적만 — 방어유닛 체력은 오버헤드 바가 든다.
-            if (e.Faction != Wassup.Battle.Units.Faction.EnemyUnit) return;
+            if (e.Faction != Wassup.Skills.Faction.EnemyUnit) return;
 
             // ⚠ `SiteTarget.OriginBody` 자리에 **그 틱 최종 체력 비율**이 실려 온다(C7).
             // 몸 반경이 아니다 — 그 자리의 뜻을 사건 종류가 정한다.

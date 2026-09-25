@@ -32,15 +32,15 @@ namespace Wassup.Tests.EditMode
 
         [Test]
         public void 장판_모양()
-            => Pin<Wassup.Battle.Effects.HazardShape, HazardShapeKind>(BoardEffectDefinitionBuilder.ToCoreShape);
+            => Pin<Wassup.Data.Authoring.HazardShape, HazardShapeKind>(BoardEffectDefinitionBuilder.ToCoreShape);
 
         [Test]
         public void 장판_효과_토큰()
-            => Pin<Wassup.Battle.Effects.CcKind, HazardEffectKind>(BoardEffectDefinitionBuilder.ToCoreEffectKind);
+            => Pin<Wassup.Data.Authoring.CcKind, HazardEffectKind>(BoardEffectDefinitionBuilder.ToCoreEffectKind);
 
         [Test]
         public void 지속_피해_원소()
-            => Pin<Wassup.Battle.Effects.DotElement, Wassup.BattleCore.Effects.DotElement>(
+            => Pin<Wassup.Data.Authoring.DotElement, Wassup.BattleCore.Effects.DotElement>(
                 BoardEffectDefinitionBuilder.ToCoreDotElement);
 
         private static MapThemeData LiveTheme()
@@ -84,14 +84,14 @@ namespace Wassup.Tests.EditMode
             var rows = BoardEffectDefinitionBuilder.ToHazardDefs(list.ToArray());
             foreach (var r in rows)
                 foreach (var e in r.Effects)
-                    Assert.AreEqual((int)Wassup.Battle.Units.Faction.EnemyUnit, e.TargetFactions, r.Id);
+                    Assert.AreEqual((int)Wassup.Skills.Faction.EnemyUnit, e.TargetFactions, r.Id);
         }
 
         [Test]
         public void 길막_폭발_저작은_탄_미배선이면_거절된다()
         {
             // F12 — 옛 전투는 경고만 내고 0번 탄 비주얼을 한 프레임 빌렸다.
-            var so = UnityEngine.ScriptableObject.CreateInstance<Wassup.Battle.Effects.BlockingHazardSO>();
+            var so = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.Authoring.BlockingHazardSO>();
             try
             {
                 so.maxHp = 50f;
