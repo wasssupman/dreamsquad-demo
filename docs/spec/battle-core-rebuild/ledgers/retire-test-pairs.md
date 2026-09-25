@@ -346,15 +346,87 @@
 33. PlayMode/BeamPresentationTest — `CoreBeamPresenter` 빔 · 일제 조사 중 평타 억제
 34. PlayMode/SpriteUnitBackendPlayTest — `CoreSpriteUnitView` e2e · fake-null 가드
 
-## 부분 공백 — `짝` 이지만 하위 규칙 테스트를 못 찾은 것 (필수 규칙만 추림)
+## 부분 공백 — `짝` 이지만 하위 규칙 테스트를 못 찾은 것 (unit 9b 입력)
 
-- **rules C5** 바늘 캐리어 피해 flat(PokeNeedle 5타) — 코어 테스트 0 (AttackSystemUnifiedLoopTests)
-- **rules E22** 같은 유닛 2기 쿨 `max(remaining,new)` — 코어 테스트 0 (PlacementCooldownRuntimeTests)
-- **rules E18** 받을 곳 없으면 골 도달 표식 안 찍음 (UnitLifecycleSystemTests)
-- **rules E19** 적도 실드 그릇 (EnemyShieldTest)
-- 히트 어그로 선점 · 도발 재부여 긴 쪽 (AggroStateSystemTests)
-- 착탄 넉백 · 스플래시 직격 제외 · 길 전용 탄 공중 무피해 (ProjectileSystemTests)
-- 비행진 상태의 넉백 (MovementImpulseAcrossStatesTests)
-- 순찰병은 골 칸을 무시 (PatrolSystemIntegrationTests) · OnFiringCell 3종 (PatrolAreaMathTests)
-- 층 제한 배치 폭발 변형(브루저) (OnPlaceMeleeBurstTest) · 배치 기절 반경·만료 (OnPlaceStunNearbyTest · KnockupOnHitTest)
-- 적 시전자 사망 뒤 진영 (DeadCasterFactionTests)
+> unit 9b 입력 — 규칙 문장을 코어 하네스(`BattleMatch`·정의표·`EffectWitness`/`CardProbe`)로 다시 쓴다. 옛 ECS 배선을 옮기지 않는다.
+> **76 행**(51 파일 — 한 파일에 공백이 여럿이면 하위 규칙마다 한 행으로 풀어 51 을 넘는다: 5 묶음 30 파일 → 51 행 · 6 묶음 2 → 3 · 7 묶음 19 → 22) · **규칙 누락 1** · **규칙 다름 의심 1** · **해소 4**(지도 뒤 이식 3 · 기존 테스트 재확인 1) · 이식 대상 아님 3. 나머지 67 행은 규칙이 코어에 있고 테스트만 없다.
+> 조사 2026-09-25 · 워크트리 `wassup-core`. 위치 경로 접두 생략 = `Scripts/BattleCore/`, `Unity:` = `Scripts/BattleCoreUnity/`, `Data:` = `Scripts/Data/`. 옛 테스트 본문은 `git show 7482f7ba6:Assets/_Project/Tests/<lane>/<파일>.cs`.
+
+| # | 옛 테스트(파일::테스트명) | 증언하는 규칙(한 줄, 게임 언어) | 코어의 규칙 위치(파일:줄) | 비고 |
+|---:|---|---|---|---|
+| 1 | AggroStateSystemTests::Preemption_SameTick_FirstGuardianWins · Preemption_AcrossTicks_KeepsFirstGuardian | 한 가디언에게 이미 물린 적은 다른 가디언이 때려도 넘어가지 않는다(먼저 문 쪽 유지) | Phases/AiMovePhase.cs:200 | |
+| 2 | AggroStateSystemTests::Taunt_Refresh_KeepsTheLongerRemainder | 같은 적에게 도발을 다시 걸면 남은 시간은 긴 쪽이 남는다 | Phases/AiMovePhase.cs:235 | **규칙 누락** — 매 부여마다 `Remaining = req.Seconds` 로 덮어써 짧은 도발이 긴 잔여를 깎는다(`max` 없음) |
+| 3 | AggroStateSystemTests::AirEnemy_ChaseFieldUsesAirLayer_AcrossGroundWalls | 끌려가는 비행 적은 지상 벽을 넘어 공중 길로 간다 | Phases/AiMovePhase.cs:941 (`BuildChase` 가 자기 통행 층 nav 로 굽는다) | |
+| 4 | AggroStateSystemTests::ChaseField_UnreachableEnemy_Refused | 가디언까지 갈 길이 없는 적에게는 어그로가 붙지 않는다(도발도) | Phases/AiMovePhase.cs:224 · :950 | |
+| 5 | AttackReachTests::DerivedBody_IsHalfWidth_ColumnsOnly | 방어유닛 몸 반경 = 가로 칸 수 / 2(세로는 무관) | Data:DefenderUnitData.cs:80 → Unity:MatchDefinitionBuilder.cs:379 | 코어 밖 저작 파생 — 코어는 정의표 값을 받기만 한다 |
+| 6 | AttackReachTests::StructureBody_IsHalfFootprint_AndDiameterMatchesFootprint | 거점 몸 = 점유 칸 수 / 2(마음 0.5 · 본능 1.5) | Map/MapSnapshot.cs:250 · World/BattleWorld.cs:384 | |
+| 7 | AttackShapeSelectionTests::Guardian_AggroPath_UsesTheSameShapeRule | 가디언이 어그로로 대상을 고를 때도 부가 타격은 주 대상 방향 도형 안에서만 | Combat/AggroTargeting.cs:84 | |
+| 8 | AttackSystemUnifiedLoopTests::Melee_PokeNeedle_Fires_Needle_Carrier_On_Fifth_Attack · BombThrower_PokeNeedle_FiresOnFifthBombWithSelfChosenTarget · BombThrower_PokeNeedle_DoesNotCountWhenBombCannotLaunch | 비수 카드: 5번째 공격마다 비수 1발 · 못 쏜 공격은 안 센다 · 비수 피해는 공격력 버프와 무관한 고정값(C5) | Trigger/TriggerDispatcher.cs:307 (N회 카운터) · Trigger/IntentApplier.cs:256 (flat) | `CardProbe` 로 쓸 대상 |
+| 9 | AttackSystemUnifiedLoopTests::U3c_ProjectileDefender_DefersKnockbackToImpact | 탄을 쏘는 유닛의 넉백은 쏠 때가 아니라 탄이 맞을 때 일어난다 | Phases/CombatPhase.cs:889 → Phases/TickProjectilePhase.cs:856 | |
+| 10 | AttackSystemUnifiedLoopTests::CastEvent_PokeNeedle_FiresOnFifthCastWithNearestTarget · CastEvent_DropsStaleCasterWithoutThrowing | 캐스터의 장판 시전이 공격 1회로 센다 | — | 이식 대상 아님 — README 계약 9 제거 확정(캐스터 4기 + 캐스트 기계) |
+| 11 | Bezier3Tests::ControlPoints_AlternateSides_ByShotIndex · ControlPoints_SwingWidensWithIndex | 휘는 탄은 발 번호대로 좌우를 번갈아 돌고, 뒤 번호일수록 크게 벌어진다 | Combat/Projectile/Trajectories.cs:158 · :159 | |
+| 12 | BlinkMathTests::Landing_DesiredBlocked_PicksFirstRowMajorRingNeighbor · Landing_OutOfBoundsDesired_StillFindsInGridCell | 도약 착지 칸이 막혔으면 가까운 고리부터 행 우선으로 갈 수 있는 칸에 내린다 | Trigger/CoreSkillContext.cs:295 (`LandingMath.TryLandingCell`) | |
+| 13 | BlinkMathTests::Landing_AllBlockedWithinCap_ReturnsFalse_Terminates · Landing_RingZeroCap_OnlyChecksDesired | 상한 고리 안에 내릴 칸이 없으면 도약을 건너뛴다 | Trigger/CoreSkillContext.cs:302 | |
+| 14 | BlinkMathTests::OffsetDest_NormalCase_LandsOneTileBeyondLeader · OffsetDest_DegenerateDirection_FallsBackToConstantAxis_NoNaN | 리더 한 칸 너머 목적지 · 방향이 없어도 NaN 없음 | — | 이식 대상 아님 — 도약 목적지가 「위협 리더 너머」에서 「상대 밀집 칸」으로 바뀌어 오프셋 계산이 없다(Trigger/IntentApplier.cs:89 주석) |
+| 15 | BonusWaveScheduleTests::포탈은_순번대로_번갈아_배분된다 · 포탈별_총수는_전체를_나눠_가진다 · 링_인덱스는_포탈_안에서_0부터_증가한다 | 보너스 적은 포탈에 순번대로 번갈아 나오고, 안 나눠떨어지면 앞 포탈이 하나 더 | Wave/BonusWaveSchedule.cs:32 · :39 · :47 | |
+| 16 | BonusWaveScheduleTests::스폰_시각은_첫스폰_기준_등차다 · 같은_입력은_두_번_불러도_같은_결과다 | 스폰 시각 = 첫 스폰 + 전체 순번 × 간격(같은 입력 = 같은 결과) | Wave/BonusWaveSchedule.cs:38 | |
+| 17 | BonusWaveScheduleTests::잘못된_입력은_빈_배열이다 | 포탈·적 수가 0 이하면 아무도 안 나온다(던지지 않는다) | Wave/BonusWaveSchedule.cs:27 | |
+| 18 | BoomerangBakeAndDrainTests::Bake_DirectionBinding_RejectsZeroFlightDistance · Bake_DirectionBinding_RejectsSilentlyUselessAuthoring | 방향으로 쏘는 탄 카드의 비행거리·굵기·속도가 0 이면 굽기에서 거절 | Unity:CardDefinitionBuilder.cs:315 | Unity 층 굽기 — EditModeAssets 몫 |
+| 19 | BoomerangBakeAndDrainTests::Bake_CellBindingProjectile_IsRejected_NotSilentlyDroppedAtOrigin | 칸에 떨어지는 탄은 대상 조준 카드에 못 싣는다(보드 원점 낙하 방지) | Unity:CardDefinitionBuilder.cs:313 | Unity 층 굽기 |
+| 20 | DeadCasterFactionTests::LifecycleSeam_DeadEnemyCaster_TargetsDefenders | 죽은 적이 남긴 스킬은 방어유닛을 친다(시전자 진영 스냅샷) | Trigger/TriggerDispatcher.cs:497 → Trigger/IntentApplier.cs:233 | 방어유닛 쪽만 증언됨 |
+| 21 | DefenderDensityTests::TiesResolveToLowestRowMajorKey | 밀집도가 같으면 행 우선 칸 키가 작은 칸 | Trigger/CoreSkillContext.cs:279 | |
+| 22 | DefenderDensityTests::ResultIsIndependentOfInputOrder | 입력 순서가 바뀌어도 같은 칸 | Trigger/CoreSkillContext.cs:278 (칸 키 비교 — 순회 순서 불의존) | |
+| 23 | EnemyAiStateSystemTests::Focus_LockOutOfRange_OtherNear_ReleasesAndEngages | 문 대상이 사거리를 벗어나고 다른 방어유닛이 가까우면 놓고 교전한다 | Phases/CombatPhase.cs:597 · Phases/AiMovePhase.cs:174 | **해소** — RetiredTargetLockPortTests::집중_적은_문_대상이_이탈해도_대체가_있으면_교전_상태다 · 집중_적은_문_대상이_이탈하면_사거리_안의_다른_방어유닛을_때린다 |
+| 24 | EnemyTierBakeTests::EliteWithMechanic_GetsSlot_ButNoBossAttachments | 엘리트는 규칙 슬롯은 받되 보스 면역(군중 제어·어그로)은 안 받는다 | Unity:CombatDefinitionBuilder.cs:290 → Phases/AiMovePhase.cs:196 | |
+| 25 | FlowFieldSingletonTests::IsGoalCell_GoalsSet_TrueForEachGoal_FalseOtherwise · IsGoalCell_DuplicateGoals_Harmless | 골이 여럿이면 어느 골 칸에 닿아도 도착이다 | Map/MapSnapshot.cs:128 | 미생성·빈 골 폴백 2종은 옛 싱글턴 기계 — 이식 제외 |
+| 26 | GoalProjectileTests::TileAoe_DefenderFaction_IncludesGoal · TileAoe_EnemyFaction_IgnoresGoal · TileAoe_EnemyFaction_IncludesEnemyStructures · TileAoe_DefenderFaction_ExcludesEnemyStructures | 광역 탄은 쏜 쪽의 상대 진영만(거점 포함) 맞힌다 — 적 광역은 우리 마음을, 우리 운석은 적 마음·본능을 | Combat/TargetDefaults.cs:19 · :21 → Phases/TickProjectilePhase.cs:1016 | |
+| 27 | GoalProjectileTests::TileAoe_BlockingHazard_IsVictimOfNeitherPool | 길막(방벽)은 어느 쪽 광역에도 안 맞는다 | Combat/TargetDefaults.cs:19 | **규칙 다름 의심** — 적 기본 마스크에 방벽 비트가 있고 적 탄이 그 마스크를 들고 간다(Phases/CombatPhase.cs:878) → 적 광역이 방벽을 친다. 우리 쪽(`AnyEnemy`)은 안 친다. 사용자 확인 필요 |
+| 28 | HealAppliedEventTests::RegenOnly_DoesNot_Enqueue_HealApplied | 초당 재생은 회복 연출 사건을 안 낸다 | Phases/CombatPhase.cs:1286 | |
+| 29 | HealAppliedEventTests::MultiPulse_IncomingHeal_Sums_Into_Single_Event | 한 틱에 회복이 여러 번 들어와도 사건은 합산 1건 | Phases/CombatPhase.cs:1257 | |
+| 30 | ModifierMathTests::Override_WinsOverAddAndMul_ButStillClamped | 강제 고정 버프는 가산·곱셈을 무시하되 스탯 경계로 잘린다 | Effects/ModifierMath.cs:45 | 부분 — ModifierSetTests::회수는_항등값_재발행이_아니라_슬롯_삭제다 가 단독 Override 만(동거·클램프 0) |
+| 31 | MovementImpulseAcrossStatesTests::Standoff_StillTakesKnockback · ChasingLocked_StillTakesKnockback · Chasing_StillTakesKnockback · EngagingHalt_StillTakesKnockback · EngagingHalt_Authored_StillTakesKnockback · PatrolIdle_StillTakesKnockback | 대치·추격·교전 정지·순찰 대기 중인 적도 넉백에 밀린다 | Phases/AiMovePhase.cs:544 (외력 합성 1곳) → :549 이하 상태 분기 | |
+| 32 | PathHitRehitCooldownTests::Boomerang_Knockback_PushesOutboundThenPullsBack | 부메랑은 가는 길에 밀고 오는 길에 당긴다 | Phases/TickProjectilePhase.cs:965 | |
+| 33 | PatrolAreaMathTests::OnFiringCell_ButPhysicallyTooFar_KeepsClosing · OnFiringCell_AndPhysicallyClose_Stops · OnFiringCell_TargetBodyClosesTheGap_Stops · OnFiringCell_TooFarDiagonally_ClosesOnDominantAxis | 순찰병은 사격 칸에 서도 몸 거리가 멀면 계속 다가간다(C10) | Move/PatrolAreaMath.cs:78 | **해소** — RetiredDetectionMovePortTests::순찰병은_사격_칸이어도_몸_거리가_멀면_계속_다가간다 외 3 |
+| 34 | PatrolAreaMathTests::Wall_Split_Box_Falls_Back_To_Anchor_Instead_Of_Sticking | 벽이 가른 구역에서 갈 수 없는 적이면 붙지 않고 집으로 간다 | Move/PatrolAreaMath.cs:71 | |
+| 35 | PatrolAreaMathTests::Unreachable_Nearest_Enemy_Does_Not_Hide_A_Reachable_One | 가장 가까운 적이 못 가는 곳에 있어도 갈 수 있는 다른 적은 쫓는다 | Move/PatrolAreaMath.cs:93 | |
+| 36 | PatrolSystemIntegrationTests::Patrol_On_Goal_Cell_Does_Not_Get_PastGoalTag | 순찰병은 골 칸에 서도 골 도착으로 치지 않는다 | Phases/AiMovePhase.cs:592 | |
+| 37 | PlacementCooldownRuntimeTests(rules E22 — 옛 파일에 전용 단언 없음 · 가까운 것 StartCooldown_Restarts_To_Full_On_Replace) | 같은 유닛 2기를 놓았을 때 재배치 대기는 긴 쪽이 남는다 | Owners/PlacementService.cs:610 | |
+| 38 | ProjectileEmitterIntegrationTests::DeadHost_DoesNotStartNewBurst | 죽은 유닛은 새 연발을 시작하지 않는다 | Phases/CombatPhase.cs:161 (→ `FirePatterns` :917) | |
+| 39 | ProjectileSystemTests::Hit_EmitsOwnerKnockback_OppositeVictimTravel | 탄에 맞은 적은 자기가 가던 방향의 반대로 밀린다 | Phases/TickProjectilePhase.cs:1055 | |
+| 40 | ProjectileSystemTests::Hit_Splash_Damages_Neighbors_Excluding_Direct_Target_And_Non_AttackUnit | 스플래시는 직격 대상을 한 번 더 때리지 않는다 | Phases/TickProjectilePhase.cs:867 | |
+| 41 | ProjectileSystemTests::PathOnly_Projectile_DirectAndSplash_DoNotDamageAir · PathOnly_TileAoe_DoesNotDamageAirInImpactRange | 길 전용 탄은 직격·스플래시·칸 광역 어느 것으로도 공중 적을 못 맞힌다 | Phases/TickProjectilePhase.cs:1018 | 부분 — RetiredCombatRulePortTests::길_전용_방향탄은_공중_적을_지나쳐_길_적만_맞힌다 · 길_전용_탄의_재조준은_더_가까운_공중_적을_무시한다(방향탄·재조준만) |
+| 42 | RangePredicateInvariantsTests::Range_IsMonotone_LongerNeverLosesTargets · IsSymmetric_AcrossTheGrid · SelfIsAlwaysInReach · FartherAlongAnAxis_NeverComesBackIntoReach | 사거리가 길면 잃는 대상이 없고, 판정은 양방향 같으며, 멀어지면 다시 들어오지 않는다 | Combat/AttackReach.cs:45 | 스윕 단언 |
+| 43 | SkyFallTests::FallProgress_PortionOne_IsIdentity · FallProgress_WaitWindow_IsZero · FallProgress_FallWindow_Ramps · FallProgress_AtImpact_IsOne · FallProgress_ZeroPortion_GuardsDivide · FallProgress_MinAuthoredPortion_ReachesOneAtImpact | 운석은 대기 창 동안 하늘에 머물다 낙하 창에 떨어져 착탄 순간 땅에 닿는다 | Combat/Projectile/Trajectories.cs:49 | 뷰 전용 재매핑(착탄 시각은 불변) |
+| 44 | SpawnBlockingHazardTests::Spawn_Rejects_DefenderFootprint_Overlap | 방어유닛이 선 칸에는 길막을 못 세운다 | World/BlockerSpawn.cs:103 | |
+| 45 | UnitLifecycleSystemTests::Does_Not_Enqueue_When_Singleton_Absent(rules E18) | 받아 줄 곳이 없으면 골 도착 표식을 찍지 않는다(유령 적 방지) | Phases/AiMovePhase.cs:598 → Owners/HeartMeter.cs:210 | 구조로 성립 — 받는 쪽(`HeartMeter`)이 `BattleMatch` 조립에 항상 있다. 단언할 「받는 자 없음」 상태가 코어에 없다 |
+| 46 | WaveCountRampTests::NoJitter_IsMonotonicNonDecreasing_AndSaturatesAtCap(단조) · ReachableBand_ActuallyGrows | 웨이브가 지날수록 적 수는 줄지 않는다 | Wave/WaveGenerator.cs:400 | |
+| 47 | WaveCountRampTests::NoJitter_IsMonotonicNonDecreasing_AndSaturatesAtCap(포화) · TwoPhase_Climax_GrowsExponentiallyFromBreakUnits_AndSaturates | 적 수는 상한에서 멈춘다 | Wave/WaveGenerator.cs:415 | |
+| 48 | WaveCountRampTests::StaysWithinBounds_ForAnyJitter · JitterShiftsAroundCenter · JitterSurvivesAtCap | 흔들림은 중심 ±폭이고 상한 근처에서도 살아 있으며 범위를 넘지 않는다 | Wave/WaveGenerator.cs:416 | 부분 — WaveGeneratorTests::웨이브_수와_수량은_저작_범위_안이다(한 시드) |
+| 49 | WaveEligibilityGateTests::AllGatedPoolFailsOpenInsteadOfEmptyWave | 풀의 적이 전부 등장 게이트에 걸리면 빈 웨이브 대신 게이트를 연다 | Wave/WaveGenerator.cs:486 | |
+| 50 | WavePerTypeCapTests::CapOnA_TrimsAndGivesRemainderToUncappedB · CapOnB_TrimsAndGivesRemainderToUncappedA · RemainderFillsPartialRoomOnTheOtherCappedSide | 상한에 잘린 몫은 여유 있는 쪽으로 넘어간다 | Wave/WaveGenerator.cs:431 | |
+| 51 | WavePerTypeCapTests::BothCapped_TotalShrinks_RatherThanOverflowing · CountsBelowCap_AreNotInflatedToTheCap | 둘 다 상한이면 총량이 줄고, 상한 아래는 부풀리지 않는다 | Wave/WaveGenerator.cs:429 | |
+| 52 | AuthoredTargetMaskTests::Resolve_Unauthored_FallsBackToDefaultMask · Resolve_Authored_IsRespectedVerbatim · DefenderResolve_Unauthored_FallsBackToEnemyUnit · DefenderResolve_Authored_IsRespectedVerbatim | 대상 진영 미저작 = 상대 진영 전부, 저작하면 그대로 | Combat/TargetDefaults.cs:25 · :28 | 순수 단언 |
+| 53 | WaveSpawnLeadInTests::Generate_ClampsNegativeLeadInToZero | 음수 리드인은 0 으로 접힌다 | Wave/WaveGenerator.cs:249 | |
+| 54 | WaveSpawnLeadInTests::EveryShippedDeck_CarriesALeadIn | 라이브 덱은 전부 리드인을 저작한다 | Unity:MatchDefinitionBuilder.cs:549 (물질화만) | 저작 단언 — EditModeAssets 몫 |
+| 55 | ActiveAllyZoneTest::Zone_StacksOnTopOfPlacementAura_AndOverlapDoesNotStack(합산) | 아군 버프 장판은 배치 오라와 다른 칸이라 둘이 더해진다 | Phases/FieldPrepPhase.cs:327 (`SlotKind.AllyField`) | 겹침 비중첩은 FieldCarrierTests 가 증언 |
+| 56 | ActiveAllyZoneTest::Zone_EmptyTileCastSucceeds_AndBuffsLateArrival · EnemyField_EmptyTileCast_StillSucceeds | 빈 칸에 시전해도 성공하고 나중에 들어온 아군도 버프를 받는다 | Trigger/IntentApplier.cs:345 → Phases/FieldPrepPhase.cs:327 (매 틱 재발행) | |
+| 57 | ActiveMeteorTest::Meteor_MissingProjectile_DropsResolution_ButCastStillSucceeds | 운석 탄이 미배선이면 피해 없이 시전만 성공한다(경고) | Trigger/IntentApplier.cs:237 | |
+| 58 | DioramaStagePlayTests::Duel_AllyInstinct_DamagesEnemyWalkingToGoal_WithoutAnyDefender | 방어유닛이 없어도 아군 본능은 골로 걸어가는 적을 때린다 | Phases/CombatPhase.cs:1675 (거점 공격 상태) · :161 (공격 루프) | |
+| 59 | DreamcatcherGateE2ETest::ExecutionStrike_DoublesDamage_OnlyBelowQuarterHp | 처형타는 대상 체력이 25% 이하일 때만 피해가 약 2배 | Combat/AttackMod.cs:120 (게이트) · :112 (배율) → Phases/CombatPhase.cs:647 | 부분 — AttackModTests::강공은_N번째_공격만_배율이_붙는다(배율)와 TriggerDispatchTests::공격_N회는_대표_대상이_있는_RESOLVE_만_세고_게이트_실패는_카운트를_안_올린다(게이트)가 따로; 「게이트 아래에서만 배율」 결합 0 |
+| 60 | DreamcatcherSleepDamageTest::DamageVsSleeping_StacksMultiplicatively_WithShatterHymn | 수면 배율과 파쇄의 찬가 배율은 곱으로 겹친다 | Phases/CombatPhase.cs:821 | |
+| 61 | EffectTileBuffApplyTest::BuffTiles_ApplyAuthoredStatsToOccupant | 버프 타일 3종은 저작한 스탯·연산 그대로 점유 유닛에 든다 | Unity:BoardEffectDefinitionBuilder.cs:255 | Unity 층 매핑 — 라이브 에셋 대조는 EditModeAssets 몫 |
+| 62 | EnemyShieldTest::EnemySpawn_HasShieldBufferPair_AndAbsorbsBeforeHealth(rules E19) | 적도 스폰부터 실드 그릇을 가져 가호를 받을 수 있다 | World/Unit.cs:138 (모든 유닛의 고정 부분) | 구조로 성립 — 판 단언 0 |
+| 63 | EnemyShieldTest::EnemySpawn_HasShieldBufferPair_AndAbsorbsBeforeHealth(게이지) | 적 머리 위에도 실드 게이지가 그려진다 | Unity:View/CoreUnitOverheadUiLayer.cs:160 | |
+| 64 | HitscanDefenderTest::ProjectilelessRangedDefender_DealsDirectDamage_AtRange | 탄이 없는 원거리 방어유닛은 사거리에서 바로 피해를 준다 | Phases/CombatPhase.cs:684 (탄 분기 :650 밖 = 즉시 해결) | 적 쪽만 증언됨 |
+| 65 | KnockupOnHitTest::StunNearby_OnPlace_StunsEnemiesInRange_AndSkipsThoseOutside | 배치 기절은 반경 안 적만 | Trigger/CoreSkillContext.cs:185 | |
+| 66 | OnPlaceBoostNearbyTest::Boost_RaisesEffectiveDamage_InRangeAndSelf_ButNotOutside | 가디언 배치 버프가 실제로 내는 피해를 올린다 | Phases/CombatPhase.cs:821 · Effects/EffectApply.cs:28 | **해소** — RetiredEffectRulePortTests::공격력_배율이_실제_피해에_곱해진다 · 카드로_건_공격력_버프가_창_동안_실제_피해를_늘린다 |
+| 67 | OnPlaceDotNearbyTest::DotNearby_DealsPerTickDamage_InRangeOnly | 틱 간격이 있는 지속 피해의 값은 틱당 피해다 | Effects/DotSet.cs:127 | **해소(기존)** — DotSetTests::새로_걸린_지속_피해는_진입_즉시_1회_준다(주기 1 · 값 7 → 틱당 7) |
+| 68 | OnPlaceMeleeBurstTest::MeleeBurst_DealsMagnitudeOnce_InRangeAndReachableLayerOnly | 브루저 배치 폭발은 닿을 수 있는 층의 적만 한 번 때린다 | Trigger/CoreSkillContext.cs:181 (`MatchTraversalLayers`) | 코어 증인은 층을 안 가리는 짱쎈뿐 |
+| 69 | OnPlaceReduceSkillCooldownTest::ReduceCooldown_ShortensRunningCooldowns_AndFloorsAtReady | 레인저 배치 단축이 남은 쿨보다 크면 준비 상태(0)에서 멈춘다 | Owners/HandDeck.cs:409 | |
+| 70 | OnPlaceStunNearbyTest::Stun_FreezesEnemiesInRange_ButNotOutside · Stun_WearsOff_AndTheEnemyMovesAgain · Stun_AlsoDealsDamage_InRangeOnly | 말파이트 배치: 반경 안 적은 멈추고, 풀리면 다시 걷고, 피해도 반경 안만 | Trigger/CoreSkillContext.cs:185 (반경) · Effects/CcState.cs:116 (만료) | |
+| 71 | PatrolDefenderPlayTest::RetiredSummoner_AlsoRemovesPatrol | 소환사를 퇴근시켜도 순찰병이 사라진다 | Phases/FieldPrepPhase.cs:556 | |
+| 72 | ProjectileVisualSmokeTest::HitPlayback_ReturnsToPool | 착탄 연출이 끝나면 풀로 돌아간다 | Unity:View/CoreProjectileViewPool.cs:645 | |
+| 73 | ProjectileVisualSmokeTest::LaunchAnchor_IsKeptForSpawnAndFirstSync_ThenFollowsSimPath | 탄은 무기 끝에서 나와 첫 동기화 뒤부터 경로를 따른다 | Unity:View/CoreProjectileViewPool.cs:304 · :339 | |
+| 74 | RangePredicateMirrorTest::StoppedEnemy_AlwaysEventuallyFires | 멈춰 선 적은 결국 쏜다(멈춤과 발사를 같은 자가 판정) | Phases/AiMovePhase.cs:174 (← Move/ReachProbe.cs:19) | 위치 스윕 카나리아 |
+| 75 | UnitOverheadUiLifecycleTest::Reconcile_SharesSprites_FadesOnlyBar_AndClearsDespawnedViews(소멸 정리) | 사라진 유닛의 머리 위 바는 거둔다 | Unity:View/CoreUnitOverheadUiLayer.cs:237 | |
+| 76 | WhirlpotLiveRepro::Whirlpot_Attack_SpawnsWhirlVfx(폭) | 회오리 연출 폭 = 사거리 × 칸당 배율 | Unity:View/CoreVfxSpawner.cs:240 | 이식 대상 아님 — 옛 파일이 폭 단언을 스스로 삭제(2026-08-17 · 기계로 못 잰다 → 육안). 저작 배율 > 0 은 Assets:WhirlpotAuthoringTests::AttackVfxPrefab_IsWiredOnWhirlpot_AndOnNoOtherEnemy |
