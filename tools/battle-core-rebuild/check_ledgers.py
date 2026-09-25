@@ -11,6 +11,7 @@
   ledgers/bridge-methods.md  ↔  Assets/_Project/Scripts/Bridge/BattleBridge*.cs 의 메서드 선언
   ledgers/bridge-fields.md   ↔  같은 파일들의 [SerializeField] 선언 + BattleScene.unity 의 브리지 블록 키
 누락(코드에 있는데 장부에 없음)·유령(장부에 있는데 코드에 없음) 둘 다 실패.
+브리지가 지워진 뒤(unit 9)에는 두 장부가 이력으로 동결되고, 기본 대조는 「미정 0」만 본다.
 """
 import re, sys, os, glob, collections
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -135,6 +136,14 @@ def generate():
 
 def check():
     ok = True
+    if not glob.glob(BRIDGE_GLOB):
+        # unit 9 — 브리지는 옛 전투와 함께 지워졌다. 두 장부는 이력(동결 행)이고 대조할 코드가 없다.
+        # 「새 주인」 칸이 코드로 실현됐는지는 `--owners` 가 계속 묻는다.
+        nm, nf = len(ledger_keys(METHODS_MD)), len(ledger_keys(FIELDS_MD))
+        pend = sum(1 for r in ledger_keys(METHODS_MD).values() if r[2] == '미정')
+        print(f'[bridge-methods] 브리지 퇴역(unit 9) — 장부 {nm}행 동결 · 미정 {pend}')
+        print(f'[bridge-fields] 브리지 퇴역(unit 9) — 장부 {nf}행 동결')
+        return 0 if pend == 0 else 1
     ms = {k for _, k in code_methods()}; lm = set(ledger_keys(METHODS_MD).keys())
     miss, ghost = ms - lm, lm - ms
     if miss or ghost:
@@ -317,6 +326,10 @@ def retire_assets():
     else: print('[retire-assets] OK — 남는 코드의 옛 씬·옛 폴더 경로 문자열 0')
     # 머리말 수치가 목록과 맞나(목록을 고치고 수치를 안 고치는 드리프트)
     c = retire_counts(); head = open(RETIRE_MD, encoding='utf-8').read()
+    if c['retire_files'] == 0 and c['hold_files'] == 0:
+        # unit 9 — 목록이 전부 지워졌다. 총계 줄은 삭제 전 측정(이력)이라 대조하지 않는다.
+        print('[retire-assets] OK — 퇴역 목록 전부 삭제됨(남은 항목 0) · 총계 줄은 삭제 전 측정 이력')
+        return 0 if ok else 1
     m = re.search(r'총계: 퇴역 (\d+) 파일 · C# (\d+) 파일 · (\d+) 줄', head)
     want = (c['retire_files'], c['retire_cs'], c['retire_lines'])
     if not m or tuple(int(x) for x in m.groups()) != want:
