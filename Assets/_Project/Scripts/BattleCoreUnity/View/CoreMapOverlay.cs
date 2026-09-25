@@ -899,7 +899,7 @@ namespace Wassup.BattleCoreUnity.View
         //
         // 옛 `TilemapMapView.SetPlacementRange`(`:1226-1277`) + `RangeFillAlpha`(`:1185`) + `ApplyRingTint`(`:1140-1175`)의 후계.
         // **링과 채움을 한 곳이 그린다**(T13 — 옛 뷰가 칸 채움과 링 셰이더 내부 채움을 따로 칠하다 「채움이 두 겹」이 됐다).
-        //   · 칸 집합 = 판정과 **같은 본체**(`AttackReach.InReach`) · 대상 = 표준 잡몹 몸(`SkillMath.StandardBodyRadiusTiles` — T3:
+        //   · 칸 집합 = 판정과 **같은 본체**(`AttackReach.InReach`) · 대상 = 표준 잡몹 몸(`CoreDrawRadius.StandardTargetBodyTiles` — T3:
         //     칸은 크기를 표현 못 해 링보다 최대 0.25칸 바깥까지 들어가는 것을 **감수한다**) · 원점 = 발밑 · 앵커 칸 자신은 빼다
         //     (옛 `includeCenter = false`). 앵커·유닛이 바뀔 때만 다시 센다(옛: 셀 변경 시에만 페인트).
         //   · 칸의 채움 알파 = **링이 있으면 0**(옛 `RangeFillAlpha` — 칸 계단이 원을 사각형처럼 보이게 한다). 배치 사거리에는 링이
@@ -918,7 +918,7 @@ namespace Wassup.BattleCoreUnity.View
                 var size = _driver.GridSize;
                 float offX = math.abs((footprintWidth - 1) * 0.5f);
                 int scan = (int)math.ceil(unit.AttackRange + unit.BodyRadiusTiles
-                                          + Wassup.Skills.SkillMath.StandardBodyRadiusTiles + offX) + 1;
+                                          + CoreDrawRadius.StandardTargetBodyTiles + offX) + 1;
                 for (int dx = -scan; dx <= scan; dx++)
                 for (int dz = -scan; dz <= scan; dz++)
                 {
@@ -926,7 +926,7 @@ namespace Wassup.BattleCoreUnity.View
                     var cell = new int2(_dragAnchor.x + dx, _dragAnchor.y + dz);
                     if (cell.x < 0 || cell.y < 0 || cell.x >= size.x || cell.y >= size.y) continue;
                     if (!AttackReach.InReach(foot, CellCenterSim(cell), unit.AttackRange, ts,
-                                             unit.BodyRadiusTiles, Wassup.Skills.SkillMath.StandardBodyRadiusTiles)) continue;
+                                             unit.BodyRadiusTiles, CoreDrawRadius.StandardTargetBodyTiles)) continue;
                     _rangeCells.Add(cell);
                 }
             }

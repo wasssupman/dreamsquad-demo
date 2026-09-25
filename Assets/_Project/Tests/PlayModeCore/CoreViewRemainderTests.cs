@@ -102,7 +102,7 @@ namespace Wassup.Tests.PlayMode.Core
                 Cell = cell, Position = map.CenterOf(cell),
                 Duration = 0.5f, Amount = 0f, TileRange = slamTiles, DataIndex = -1,
             });
-            yield return Ticks(driver, 0);
+            yield return Ticks(driver, 1);   // 의도가 낸 사건은 틱의 방출(Flush)에서 배달된다
 
             Assert.IsTrue(overlay.TryGetLandingTelegraph(out var leaper, out var center, out float radius),
                 "이탈 사건 → 착지 예고 링");

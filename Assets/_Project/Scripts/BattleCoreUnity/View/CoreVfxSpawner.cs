@@ -655,5 +655,12 @@ namespace Wassup.BattleCoreUnity.View
 
         public static float AreaTiles(float rangeTiles, float originBody)
             => rangeTiles + OriginTermTiles(originBody);
+
+        /// <summary>
+        /// unit 8a2 — 배치 사거리 **칸 채움**이 가정하는 대상 몸(표준 잡몹 — rule-holders T3). 칸은 크기를 표현 못 해
+        /// 표준을 가정하는 것을 감수한다. 오버레이가 판정 본체(`SkillMath`)를 직접 부르지 않도록 여기서 한 번 이름을 붙인다
+        /// (`CoreViewYardstickTests` — 오버레이의 자는 `AttackReach.InReach` 하나).
+        /// </summary>
+        public const float StandardTargetBodyTiles = Wassup.Skills.SkillMath.StandardBodyRadiusTiles;
     }
 }
