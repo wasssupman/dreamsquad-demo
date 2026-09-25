@@ -138,31 +138,32 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(0, Forecast(m).Count, "마지막 스폰이 지나면 예고가 사라진다");
         }
 
-        // 옛 SpawnAlertForecastTests::WaveOne_GuideForecastPreservesSwarmAndActualLane — 같은 입구의 서로 다른 스웜은 병합하지 않는다
-        // 옛 WaveSpawnForecastTests::DifferentSwarmsOnSameLane_RemainSeparateGuides — 같은 규칙
+        // 옛 SpawnAlertForecastTests::WaveOne_GuideForecastPreservesSwarmAndActualLane — 옛: 같은 입구의 서로 다른 스웜은 병합하지 않는다
+        // 옛 WaveSpawnForecastTests::DifferentSwarmsOnSameLane_RemainSeparateGuides — 같은 옛 규칙
+        // 사용자 결정 ⑧-1(2026-09-25) — **새 방식 유지**: 예고선은 (입구 × 실제 경로)로 한 줄이다.
+        // 옛 문장(종마다 한 줄 — 같은 길을 겹쳐 그렸다)은 이력이다.
         [Test]
-        [Ignore("unit 9 — 옛 규칙과 다름: 옛 예보는 (스웜 × 실제 입구)마다 한 줄이라 같은 입구의 두 종이 따로 남았다 "
-              + "(Scripts/Data/WavePatternGenerator.cs `BuildSpawnGuideForecasts`). 코어는 (입구 × 컨셉 경로)로 병합하고 "
-              + "먼저 나올 적 하나만 싣는다(Scripts/BattleCore/Owners/WaveScheduler.cs:156-178 `CollectForecast`) — "
-              + "두 종의 통행 층·저작 경로가 달라도 예고선이 하나로 접힌다.")]
-        public void 같은_입구의_서로_다른_종은_예고가_병합되지_않는다()
+        public void 같은_입구_같은_경로면_종이_달라도_한_줄이고_경로가_다르면_따로다()
         {
-            var m = CoreMatchFixtures.BeginBattle(ThreeLaneDef(d =>
+            // ① 두 종 모두 저작 경로 없음 → 같은 입구의 두 종이 같은 길(최단)을 간다 → 한 줄.
+            var same = CoreMatchFixtures.BeginBattle(ThreeLaneDef());
+            float t0 = QueueWaveOne(same);
+            var expanded = new List<PlannedSpawn>();
+            WaveGenerator.Expand(same.Waves.WaveAt(0), t0 + LeadIn, 3, Spacing, expanded);
+            var pairs = new HashSet<(int, int)>();
+            var lanes = new HashSet<int>();
+            foreach (var s in expanded) { pairs.Add((s.LaneIndex, s.EnemyIndex)); lanes.Add(s.LaneIndex); }
+            Assert.Less(lanes.Count, pairs.Count, "전제: 한 입구에 두 종이 서는 편성이어야 이 규칙을 물을 수 있다");
+            Assert.AreEqual(lanes.Count, Forecast(same).Count, "같은 입구·같은 경로는 종이 달라도 한 줄");
+
+            // ② 두 종의 저작 경로가 다르다 → 같은 입구라도 길이 갈린다 → 따로.
+            var split = CoreMatchFixtures.BeginBattle(ThreeLaneDef(d =>
             {
                 d.Enemies[0].WaypointPathIndex = 0;
                 d.Enemies[1].WaypointPathIndex = 1;
             }));
-            float t0 = QueueWaveOne(m);
-            var f = Forecast(m);
-
-            // 기대 = 펼침의 distinct (입구 × 종). 4기 A·B 인터리브가 입구 0,1,2,0 을 돌아 한 입구에 두 종이 선다.
-            var expanded = new List<PlannedSpawn>();
-            WaveGenerator.Expand(m.Waves.WaveAt(0), t0 + LeadIn, 3, Spacing, expanded);
-            var pairs = new HashSet<(int, int)>();
-            foreach (var s in expanded) pairs.Add((s.LaneIndex, s.EnemyIndex));
-            Assert.Less(new HashSet<int>(System.Linq.Enumerable.Select(pairs, p => p.Item1)).Count, pairs.Count,
-                "전제: 한 입구에 두 종이 서는 편성이어야 이 규칙을 물을 수 있다");
-            Assert.AreEqual(pairs.Count, f.Count, "같은 입구의 서로 다른 스웜을 병합하지 않는다");
+            QueueWaveOne(split);
+            Assert.AreEqual(pairs.Count, Forecast(split).Count, "경로가 다르면 같은 입구라도 따로 그린다");
         }
 
         // ════════════════════════════════════════════════════════════════════
