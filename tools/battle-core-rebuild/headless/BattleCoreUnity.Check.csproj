@@ -53,8 +53,6 @@
     <Reference Include="$(UnityScriptAssemblies)/Unity.Mathematics.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.Collections.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.Burst.dll" Private="false" />
-    <Reference Include="$(UnityScriptAssemblies)/Unity.Entities.dll" Private="false" />
-    <Reference Include="$(UnityScriptAssemblies)/Unity.Transforms.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.TextMeshPro.dll" Private="false" />
     <!-- unit 5a — 오버헤드 바가 uGUI(Canvas·CanvasScaler)를 쓴다. 패키지 어셈블리라 UnityEngine 모듈 폴더에 없다. -->
     <Reference Include="$(UnityScriptAssemblies)/UnityEngine.UI.dll" Private="false" />
