@@ -8,9 +8,10 @@
 
 | 파일 | 주제 |
 |---|---|
-| `01-unity-mcp-operation.md` | Unity Editor 를 MCP 로 구동할 때의 함정 (포커스·reimport·execute_code·run_tests·Play 검증·스크린샷/Screen 컨텍스트) |
-| `02-dev-workflow-git-scene.md` | 테스트 배치·격리 리그·git 샌드박스·병행 세션 커밋·씬 저장/checkout 위생·시트↔SO 드리프트·**서버 응답 실물 확인(swagger 타입 불신)**·**GitLab 미러(SSH 필수·조각 푸시·보호 브랜치)** |
+| `01-unity-mcp-operation.md` | Unity Editor 를 MCP 로 구동할 때의 함정 (포커스·reimport·execute_code·run_tests·Play 검증·스크린샷/Screen 컨텍스트·**워크트리별 인스턴스·Reload 모달·`[Explicit]` 누출**) |
+| `02-dev-workflow-git-scene.md` | 테스트 배치·격리 리그·git 샌드박스·병행 세션 커밋·씬 저장/checkout 위생·시트↔SO 드리프트·**서버 응답 실물 확인(swagger 타입 불신)**·**GitLab 미러(SSH 필수·조각 푸시·보호 브랜치)**·**공유 인덱스는 `git commit -- <경로>`**·**스모크가 실제 프로필에 기록** |
 | `03-rendering-assets.md` | Spine 4.2 고정·타일맵 렌더·프랍 authoring·투사체 VFX·카메라 페이즈·머리 위 뱃지 좌표계·UGUI/TMP 초기화·**런타임 중첩 캔버스(rect·sorting·알파)**·터치 입력 가드 |
-| `04-sim-design.md` | 전투 시뮬 설계 원칙 (구조적 결정론·시간 제어·런타임별 float 차이 · 이력: **Bursted ISystem 에서 순수 함수 부르기** — 옛 ECS 전투, unit 9 에서 제거) |
+| `04-sim-design.md` | 전투 시뮬 설계 원칙 (구조적 결정론·시간 제어·런타임별 float 차이·**정의표 빌더 매핑 누락은 조용히 죽는다**·**동률 결정론 ≠ 기하 순서 규칙** · 이력: **Bursted ISystem 에서 순수 함수 부르기** — 옛 ECS 전투, unit 9 에서 제거) |
+| `05-agent-operations.md` | 리드 + 여러 에이전트 운용 (통과 주장 export 재검증·top-down 계획 리뷰·리뷰어 오판·옛 규칙 조용한 변경·테스트 이식 = 규칙 감사·장부 심볼 기계 검사·삭제 증명과 그물·에디터 사용권·spec 양쪽 갱신) |
 
 각 항목은 **증상 → 원인 → 처방** 구조. 커밋 해시·파일:라인은 당시 근거이며 코드가 진실원이다(이동/변경됐을 수 있으니 확인).

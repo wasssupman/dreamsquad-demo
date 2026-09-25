@@ -50,6 +50,7 @@ iPhone batching 기본값, URP obsolete 필드 제거가 tracked diff로 남았�
 - **명시 경로 스테이징만** 사용, 커밋 직전 `git diff --cached --stat` 로 파일 목록 검수.
 - 같은 파일에 두 세션 변경이 섞이면 hunk 분리: 작은 diff 는 `git apply --cached`, 큰 재구성은 `git hash-object -w` + `git update-index --cacheinfo`(워크트리 무접촉).
 - 히스토리 수정은 임시 worktree 에서 cherry-pick 재구성 → 트리 동등성 검증 → 본 워크트리는 `git reset --soft` 로 ref 만 이동(dirty 파일 무접촉).
+- **`git add <p> && git commit` 도 남의 스테이징을 삼킨다**(battle-core-rebuild `acc3c572a` — 다른 에이전트가 스테이징해 둔 모드 배선 4파일이 리뷰 docs 커밋에 편승). plain `commit` 은 인덱스 전체를 커밋한다. 커밋은 **`git commit -m … -- <경로>`** 로만 한다(새 파일은 `git add -- <그 파일>` 뒤 같은 형). 한 파일에 두 세션 헝크가 섞이면 `git add -p` 로 자기 헝크만.
 
 ## SaveScene 은 미저장 WIP 를 통째로 베이크한다
 
@@ -124,3 +125,9 @@ iPhone batching 기본값, URP obsolete 필드 제거가 tracked diff로 남았�
 ## `Assets/Screenshots/` 는 비추적 스크래치 — 통삭제 금지
 
 `Assets/Screenshots/` 는 dev 스크래치 폴더. git 은 폴더 `.meta` 만 추적하고 내부 PNG 는 **의도적 비추적**(MCP screenshot 결과물도 여기). `rm -rf` 같은 통삭제 금지 — **내가 만든 파일명만** 지운다(비추적은 git 복구 불가, `rm` 은 휴지통 안 거침).
+
+## e2e 스모크는 게스트여도 이 머신의 실제 프로필에 기록한다
+
+battle-core-rebuild 8b(2026-09-25): 에이전트의 로비 → 판 → 제출 스모크가 개발자 프로필에 판 1회를 기록했다(`matchesPlayed` 증가). 프로필은 판 결과·덱 스냅샷·첫 판 여부를 가르므로, 스모크 한 번이 다음 판의 분기(첫 판 우회 등)를 바꾼다.
+
+- **처방**: 스모크 전 프로필 파일을 백업하고 끝나면 복원한다. 스모크 보고에는 「프로필에 기록됨」 여부를 적는다.

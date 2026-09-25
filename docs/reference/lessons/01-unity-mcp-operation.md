@@ -32,6 +32,7 @@ MCP `execute_code` 로 Play 를 구동해도, **에디터 창이 포커스를 �
 MCP 로 `play/stop` + `execute_code` 로 객체 생성/파괴·static 수정을 여러 번 반복한 직후 EditMode 전체 스위트를 돌리면 `Destroy` 를 쓰는 테스트(당시 `BattleBridgeDraftMapTests`/`DraftControllerMapRebuildTests` — 이력, 옛 ECS 전투와 함께 unit 9 에서 제거)가 `Destroy may not be called from edit mode!` 로그 누출로 **거짓 실패**할 수 있다(격리 실행에서도 재현).
 
 - **처방**: 회귀로 단정하기 전에 `EditorUtility.RequestScriptReload()` → `refresh_unity(wait_for_ready)` → 재실행. **도메인 리로드 후 깨끗한 상태의 결과만 신뢰.**
+- **lane 순서도 잔류를 만든다**(battle-core-rebuild 8a2·8d, 2026-09-25): 코어 PlayMode lane 직후 다른 lane 의 테스트 3건이 빨갰고 **단독 재실행으로도 안 풀렸다** — 도메인 리로드까지 남는다. `RequestScriptReload()` 한 번 뒤 단독 실행이 초록이면 잔류다. 순서가 문제인 lane 은 리로드 직후·다른 lane 앞에 돌린다.
 
 ## `refresh_unity mode=force` 는 브리지를 끊는다
 
@@ -171,3 +172,22 @@ Play 중 스크립트를 고치면 도메인 리로드가 일어나는데, 리�
 - **보내기 전에 읽기 전용으로 대조하라.** push 는 9탭 전량 업서트라 SO↔시트 드리프트가 있으면
   **남이 시트에서 조정한 값이 되돌아간다.** 탭별 키가 다르다(`Defenders/Enemies`=`id`,
   `DcCardEffects/DcMechanics`=`cardId`+`slot`) — 키를 잘못 잡으면 멀쩡한 탭이 200칸 바뀌는 것처럼 보인다.
+
+## 워크트리마다 에디터 인스턴스가 따로 있고, 세션은 도메인 리로드마다 바뀐다
+
+git 워크트리를 따로 열면 MCP 에 인스턴스가 둘 뜬다(`wassup@…` · `wassup-core@…`). 지정 없이 부르면 **다른 워크트리의 에디터**를 조작한다. 도메인 리로드 뒤에는 세션이 바뀌어 지정이 풀린다.
+
+- **처방**: 호출 전 `mcpforunity://instances` 로 확인하고 `set_active_instance` 를 **리로드마다** 다시 건다. `instance_count:0` 이면 사용자가 에디터에서 Start Session 을 눌러야 한다 — 끊긴 사실을 **즉시** 알린다(battle-core-rebuild 에서 수십 분 늦게 알려 Unity lane 을 몰아 돌렸다).
+- 비포커스 에디터는 ~9fps 로 스로틀된다. 0.5초 미만 연출은 캡처로 확인할 수 없다.
+
+## 열린 씬의 YAML 을 밖에서 고치면 Reload 모달이 MCP 를 멈춘다
+
+에디터가 연 씬 파일을 외부에서 쓰면 「Reload?」 모달이 뜨고 MCP 호출이 전부 대기한다. 사용자가 눌러야 풀린다. 손으로 쓴 씬 YAML 에서는 클래스 ID 도 틀리기 쉽다 — `Grid` 는 **156049354** 다(156 은 `TerrainData`).
+
+- **처방**: 열린 씬은 MCP(`manage_gameobject`·`manage_components`)로 고친다. YAML 직접 배선은 **안 열린 씬**에만 쓴다.
+
+## NUnit `[Explicit]` 은 Unity 러너의 어셈블리 실행에서 걸러지지 않는다
+
+`run_tests(assembly_names=[…])` 로 어셈블리를 통째로 돌리면 `[Explicit]` 테스트도 딸려 돈다. battle-core-rebuild unit 9(2026-09-25)에서 라이브 서버 e2e(`AuthE2ETest`)가 실서버에 **가입을 시도**했다.
+
+- **처방**: 외부 부작용이 있는 테스트는 `[Explicit]` 에 기대지 말고 별도 어셈블리로 떼거나 환경 변수 가드를 건다. 그 전까지는 해당 어셈블리를 이름 지정 실행 외에 돌리지 않는다.

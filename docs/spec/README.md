@@ -117,6 +117,55 @@ code + git history        구현 상세
 
 ## Follow-up Backlog
 
+### 전투 코어 전환 — 남은 것 (`battle-core-rebuild` — **spec 완료 2026-09-25**, 머지 `fecb0fef3`)
+
+인계: `docs/spec/battle-core-rebuild/11_handoff_summary.md`. 분류는 사용자 방향(그 README 결정 ⑩ — 서버 권위 실시간 서버 예정 · 커맨드 = 서버 로직 키워드 · UI/에셋은 데모 · CI 시기상조)을 따른다. 상세는 옮기지 않았다 — 출처를 연다. 약칭: `BCR` = `docs/spec/battle-core-rebuild/`.
+
+**(가) 서버 권위 spec 을 열 때 자연 해소** — 따로 고치지 말고 그 spec 의 입력으로.
+- **토너먼트 맵 결정권** [M] · 클라 우선순위 사슬(dev > 씬 > 서버)이 맵을 고른다. 서버가 매치 설정을 주면 사슬이 뒤집힌다. (`BCR/8b` 맵 풀 4갈래)
+- **서버 API 확장**(modeId · sortDirection · leaderboardId) [M] · v1 은 `KillScoreTimed` 단일 제출. (`BCR/README` 후속 후보 · 계약 13)
+- **라이브 판 커맨드 기록 · 리플레이 · 결정론 등급 상향** [M] · 커맨드가 서버 로직 키워드라 기록 형식이 곧 서버 계약. 스폰 측면 오프셋 순번 파생(X25)이 전제. (`BCR/README` 후속 후보 · `ledgers/rules.md` X25)
+- **프로필 저장 원자성 · 스키마 버전** [S~M] · 서버가 정본이 되면 로컬 저장의 역할이 바뀐다. (2026-09-25 설계 리뷰 — 결정 ⑩)
+- **운영 관측 · 서버 우회** [S] · 계정 첫 판 참가 생략(`IsFirstMatch`)은 서버 `complete` 500 우회다(결정 ⑦-1 존치). 서버가 고쳐지면 별도 결정. (`BCR/8d` · `tutorial-offline-match`)
+
+**(나) 코드 레벨 정식 설계 후속 후보** — 결정 ⑩ 의 선순위(코드를 정식 설계에 맞춘다).
+- **조용한 기본값 폴백 → loud 거절 + enum 전수 테스트** [M] · 목표 종류 · 공격 정책 · 스탯 변환 · 해저드 모양. 빌더 매핑 누락이 조용히 죽은 전례(인계 함정 8). (`ledgers/rules.md` M2·E7)
+- **겸용 파라미터 가방 분리** [M] · `SkillIntent` 보조 스칼라 · 25인자 생성자. (2026-09-25 설계 리뷰)
+- **거대 단계 파일 분할** [S~M] · `CombatPhase` 1,763줄 · `TickProjectilePhase` 1,185줄. 틱 순서는 무변. (설계 리뷰 · `ledgers/rules.md` C24)
+- **어셈블리 분할**(Outgame / BattleView / Data) [M] · 지금은 `BattleCoreUnity`·UI·Outgame·Data 가 전부 `Wassup.Runtime` 한 asmdef 다. (설계 리뷰)
+- **뷰 무음 구독 28 · `Find` 폴백 14 전수 검사** [S] · 배선 누락이 경고 없이 돈다(인계 함정 15 · 8a2 `SeasonRuntime.Bind` 누락 전례). (설계 리뷰)
+- **9b 규칙 증언 이식 잔여** [M] · 51 파일 76행. 규칙 공백을 더 낼 수 있다(인계 함정 28). (`BCR/ledgers/retire-test-pairs.md` 「부분 공백」)
+- **디버그 커맨드 15종 게이트** [S] · 릴리스 빌드에서의 차단 여부를 전수로 정한다. (설계 리뷰)
+- **하네스 런타임 어셈블리 분리** [S] · `CardProbe` · 골든 코퍼스가 런타임에 실린다. (`BCR/7e` · 설계 리뷰)
+- **`ClassFilter` Role 미설정 저작 검증** [S] · 감지·공격 직업 필터가 유닛 Role 을 읽는다. 미설정 저작을 빌더가 거절하게. (`BCR/9c` 행 2 · `Combat/ClassFilter.cs`)
+- **`BlockingHazardPresenter` 의 `Shader.Find`** [S] · 추가 제약 위반(모바일 stripping). `RuntimeMaterialFactory` 경유로. (`BCR/8c` 리뷰 L1)
+- **`IntentApplier` 포탈 판정의 몸 반영 여부** [S] · 입구 = 반경 0 칸으로 정본화됐다(`95f91b8c6`). 대상 몸이 붙는지 제약 13 으로 재확인. (`BCR/9c` 감사 후속)
+- **효과 census 미배정** [S] · `regenPerSec` 음수 고정 처리(생산자 0) · 결합식 바닥/천장 4개 SO 저작화. (`BCR/README` 후속 후보)
+- **틱 30Hz 실측 · 트리거 연쇄 깊이 근거** [S] · (`BCR/README` 후속 후보)
+- **`[Explicit]` 라이브 서버 테스트 격리** [S] · Unity 러너 어셈블리 실행에도 돌아 실서버 가입을 시도한다(`AuthE2ETest`). (`BCR/README` 후속 후보 · 인계 함정 26)
+- **헤드리스 lane 경로를 워크트리에서 떼기** [S] · csproj 4 의 `UnityScriptAssemblies` 기본값이 `wassup-core` 를 든다. 워크트리 정리 **전**에 main 으로. (`BCR/10` 구현 5)
+
+**(다) 데모 UI/에셋이라 보류** — UI·에셋이 정본이 되는 시점에.
+- **UI 캔버스 정렬 상수 표** [S] · 캔버스 정렬값을 한 표로(플레이 3차 퇴근 버튼이 손패 캔버스에 덮인 회귀 전례). (설계 리뷰)
+- **릴리스 빌드 경로 · 환경 전환** [M] · (설계 리뷰)
+- **예고선 광휘·스트릭 레이어 · 쿨타임 액체 셰이더 · 숫자 틱 팝** [S] · (`BCR/5b` 이식 제외 「보류 · 룩」)
+- **공격음 START · `WaveClear`/`TimeAttack` 결과 단위 표기** [S] · (`BCR/5c` · `BCR/8a` 이식 제외)
+- **상태 FX 우선순위 표**(한 몸에 표식 여럿) [S] · (`BCR/6c` 이식 제외)
+- **희귀도 축**(E21 — 소비처 0) [S] · (`ledgers/rules.md` E21)
+
+**(라) 시기상조**
+- **CI** · 사용자 결정 ⑩. ⚠ 미푸시 이력(main 이 origin 보다 254 커밋 앞)은 CI 와 별개다 — 푸시는 사용자 승인.
+
+**(마) 사용자 몫**
+- **선행 빨강 2** · `bomb_man`·`boomerang` 문안 단언. 시트에서 고친다. (메모리 `project_editmode_desc_text_preexisting_fail`)
+- **Android QA 빌드** · keystore 숨김 입력 · clean 트리 · 에디터 종료가 필요하다. (`BCR/8b` · `BCR/9`)
+- **실제 랭킹 확인** · 로그인 계정 판(게스트 스모크만 했다). (`BCR/8b`)
+- **실서버 쓰레기 계정 정리** · `[Explicit]` 라이브 테스트가 가입을 시도했다. (인계 함정 26)
+- **규칙 재결정 — 분류표 보류 30행** · E7 E13 E21 E24 E25 E26 E28 · M2 M6 M17 M23 M24 M25 M26 M28 · C19 C20 C21 C22 C23 C24 · S23 S26 · X1 X8 X19 X25 X26 X27 X29. 질문은 20개로 묶여 있다. (`BCR/ledgers/rules.md` 「보류 항목의 재결정 질문 목록」)
+- **규칙 재결정 — 기본값 박제 5** · 보스 도약 착지 선정의 사각 자(조각 D ②) · 자는 유닛의 주기 스킬(조각 D ③) · 저작 `CcOnHit` 이 탄을 타나(`BCR/6a2`) · 실드 부여 한 틱 지연 · 폭탄맨·회복 산출물의 공격자 배율(`BCR/6a`).
+- **방향 지정 배치(facing) 미이식** · 커맨드 자리는 있고 조준 입력이 없다. 저작된 방향 유닛이 오면 입력 한 줄. (`BCR/5b` 이식 제외 · `DragPlacementInput.cs` 주석)
+- **마음 N개 공유 체력** [M] · `HeartMeter` 가 체력을 들어 이사 비용 0. (`heart-stress-axis/12` · rules X29·E13)
+
 ### 전투 판정 산식 통일 — 남은 결함 (2026-09-06, `distance-based-range` unit 23 에서 전수 감사)
 
 `CLAUDE.md` **절대 제약 13** 은 「전투에서 «닿나»를 묻는 전부」에 적용된다. 23a/23b 가 도달 질의와
