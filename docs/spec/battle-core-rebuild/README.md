@@ -15,6 +15,8 @@
 
 ### 사용자 결정 — 조각 E
 
+- **④ 튜토리얼 전량 제거(2026-09-25 사용자 결정 「튜토리얼 모두 제거하자」 → 범위 질문에 「둘 다」)**: 전투 첫 판 온보딩(새 씬 `CoreFirstRunGuide` · 옛 `FirstRunTutorialController` · 온보딩 플랜/설정 · 코어 온보딩 칸 2 · 로비의 완료 플래그 게이트)과 로비 온보딩(로드아웃 4스텝 차단 오버레이) 전부. **결정 ①(온보딩 이전)은 이 결정으로 대체된다.** 새 계정은 첫 판부터 토너먼트 참가 신청이 나간다. 구현 = unit **8d**(9 앞).
+
 **확정 3건(2026-09-25 사용자 답 「권장대로 진행」 — ③ 도 기본값 (a) 8c 머지 때·게이트 = 플레이 4차)**: ① 첫 판 온보딩 = **(a) 새 씬으로 옮긴다** — 완주 → `firstRunTutorialDone` 저장 → 다음 판 참가 신청 발행까지가 8b 완료 기준. ② 모바일 빌드 CLI·테스트의 기대 씬 목록 = **(a) `OutgameScene` + `BattleCoreScene` 으로 수정 허용** — `DreamSquadMobileBuildCli.cs` 의 `ExpectedScenes`·거부 문구와 `DreamSquadMobileBuildCliTests.cs` 의 같은 목록만 바꾸고 그 파일의 다른 부분(서명·방향·출력 검증 등)은 무변. **미결 1건**: ③(아래 — 답 전까지 기본값 (a)).
 
 아래는 질문 당시의 문면(선택지·결과)이다.
@@ -116,6 +118,7 @@
 | | `8b_match_entry_and_lobby_switch.md` | 전환 2/3 — 판 진입·퇴장 + 로비 교대 | 편성·돌·코스트 배율·시드·**맵 풀 4갈래**·테스트 모드·토너먼트 참가 채택·덱 스냅샷·`matchesPlayed`·나가기(0점 제출)·앱 전역 훅(60fps·트윈 풀 — `GameManager` 안의 `[RuntimeInitializeOnLoadMethod]`)·해상도 캡·DPI 임계 → 새 자리(rule-holders G3~G24) · **첫 판 온보딩(사용자 결정 ①)** · 마지막 커밋 = `SceneNames.Battle` + 빌드 설정 + 모바일 빌드 CLI 씬 목록(**사용자 결정 ②**) · 덱 스냅샷은 `TournamentDeckInfo.Serialize` 직접 · Android QA 빌드 1회차 → 사용자 플레이 4차 |
 | | `8c_bridge_retirement_closure.md` | 전환 3/3 — 지울 수 있다는 증명 | **퇴역 집합 = export 에서 지우고 컴파일한다**(`Retire.Check.csproj`) + 자산 GUID 폐포(뿌리 = 빌드 씬·Resources) · 새 주인 실재 검사(`--owners` — 칸 문법 = 첫 백틱 심볼 + 별칭표) · 옛 폴더 안 저작 타입·ECS 컴포넌트 이사(`BlockingHazardSO`·길막 프리팹 2 의 `BlockingHazardPresenter` · `FilterHiddenSkills` 등 — `.meta` 동반, GUID 보존) · **`Scenes/BattleScene/` 의 볼륨 프로필 4개**(스테이지 프리팹 5개가 부른다) 이사 · 도구 장부 누락 1(`ReachDebugGizmos` 은퇴) · `object-pipeline-map.md` 전면 재작성 · `Faction` 네임스페이스 결정 → 사용자 플레이 4차 통과 뒤 main 머지(조각 E 경계 1 · **결정 ③**) |
 | | `8a2_view_transfer_remainder.md` | 전환 잔여(8c 뒤 · 9 앞) — 장부가 「새 주인」이라 적었지만 실체가 없던 뷰 8행 | 8c `--owners` 발견: 효과 타일 칸 표시(T15) · 궁극기 착지 예고 칸(T16·T17) · 마음 붕괴 연출+슬로모(`HeartCollapsed` 30 · 틱 발행률) · 드래그 중 적 흐림 · 적 체력 틴트 · 소환사 유지 애니메이션 · AI 전이 트레이스(있으면 흡수) · 사거리 칸 채움(T3·T13 — 리드 기본값 이식, 사용자 은퇴 선택 가능). 끝나면 `--owners` exit 0 |
+| | `8d_tutorial_removal.md` | 튜토리얼 전량 제거(결정 ④ · 8a2 뒤 · 9 앞) | 새 씬 온보딩 `CoreFirstRunGuide` · 코어 온보딩 칸 2 + 커맨드 26 · 프로필 플래그·로비 참가 게이트 · 로비 로드아웃 온보딩 4 파일 + 씬 오브젝트 · 설정/플랜/덱 자산 · 테스트 5 파일. 옛 씬에 묶인 것은 퇴역 집합으로(unit 9). 새 계정 첫 판부터 참가 신청 |
 | | `9_ecs_retirement.md` | ECS 은퇴 | `[old-battle]` 태그로 삭제(`Battle/`·`Bridge/`·`Editor/Battle/`·퇴역 집합·`BattleScene`·옛 골든·`EntitiesClientSettings`) · 패키지 −Entities·Entities Graphics(**Burst·Collections 는 남는다** — URP 의존) · asmdef diff · 테스트 삭제마다 코어 짝 · 옛 PlayMode lane 은 아웃게임 lane 으로 존치(Entities 참조만 제거) · 리뷰 도구·동결 훅 은퇴 · 네임스페이스 `Wassup.Battle.*` 0 · 덱 타이머 폴백 = 이미 해소·필드 존치(`configHash`) · 옛 웨이브 생성기 + `enemy-wave-integration` 스킬 같은 커밋 · 문서 18편·스킬 5 · **CLAUDE.md 편집 목록**(옛 절 삭제 · 코어 절 승격 · 번호 보존) · Android QA 빌드 2회차 |
 | | `10_handoff.md` | 인계 | `11_handoff_summary.md` · 후속 후보·보류 잔여·이식 제외 보류 → `docs/spec/README.md` Follow-up Backlog · 메모리 · main 머지(조각 E 경계 2) |
 
