@@ -1,5 +1,7 @@
 # 스탯 모디파이어 시스템 스펙
 
+> **은퇴 (2026-09-25, battle-core-rebuild unit 9)** — 고정소수점 scale 1000 미채택 — `docs/spec/battle-core-rebuild/README.md` 후속 후보. 전투 코어는 현행 float `(1+Σadd)×Πmul`(`Scripts/BattleCore/Effects/ModifierMath.cs`)을 쓴다. 이 문서는 역사서로 둔다.
+
 > MonoBehaviour 기반 · ECS 비의존 · 기준 문서: 기획 PART B
 > 자매 문서: [유닛 정적 스탯 구조](./1-static-stat-structure.md)
 

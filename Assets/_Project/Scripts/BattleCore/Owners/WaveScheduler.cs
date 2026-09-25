@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore.Map;
 using Wassup.BattleCore.Wave;
 
@@ -97,19 +97,37 @@ namespace Wassup.BattleCore
 
         public bool BonusOffered => _bonusOfferLatched;
 
+        // ── 읽기 창(unit 8a — 당김 알약·메뉴 브리핑) ─────────────────────────
+        //
+        // 규칙이 아니라 **이미 가진 값을 보여 주는 창**이다. 판정은 여전히 `TryPull` 이 한다 —
+        // 알약은 이 값으로 얼굴만 고르고, 누르면 커맨드를 보낸다.
+
+        /// <summary>
+        /// 이 판이 저작 플랜(타임라인이 정본)인가. 옛 도크는 저작 플랜 판에서 당김 알약을
+        /// **아예 띄우지 않았다**(`NextWaveAvailable` = 생성 웨이브 판만).
+        /// </summary>
+        public bool AuthoredPlan => _authored;
+
+        /// <summary>
+        /// 그 판의 웨이브 하나(0부터). 메뉴 브리핑이 **이 판이 실제로 쓰는 플랜**을 그리는 입력이다 —
+        /// 브리핑이 생성기를 다시 부르면 예고와 실전이 갈릴 수 있다. 복사본이라 고쳐도 판은 안 바뀐다
+        /// (`Groups` 배열은 공유이므로 읽기만 한다).
+        /// </summary>
+        public PlannedWave WaveAt(int index) => _plan.Waves[index];
+
         // ── 예고(unit 5b) ────────────────────────────────────────────────────
         //
         // 옛 브리지는 웨이브를 큐에 올릴 때 예보 배열을 **한 번 구워** 들고 있었다. 여기서는
         // 대기열이 이미 정본이라 굽지 않고 **읽는다** — 구워 두면 당김·보너스가 대기열을
         // 바꿨을 때 예보만 옛 값으로 남는다.
 
-        /// <summary>아직 안 나온 스폰의 (레인 × 경로)별 **첫 시각**. 예고선 한 줄의 입력이다.</summary>
+        /// <summary>아직 안 나온 스폰의 (레인 × 실제 경로)별 **첫 시각**. 예고선 한 줄의 입력이다.</summary>
         public readonly struct SpawnForecast
         {
             /// <summary>스폰 레인 번호. 입구 칸이 여기서 나온다.</summary>
             public readonly int Lane;
 
-            /// <summary>저작 경로 번호. 웨이포인트 목록이 여기서 나온다.</summary>
+            /// <summary>그 적이 실제로 따를 경로 번호(`EnemySpawn.PathFor`). 웨이포인트 목록이 여기서 나온다.</summary>
             public readonly int PathIndex;
 
             /// <summary>그 줄의 적(통행 층을 읽는다). 한 레인에 여러 종이면 **먼저 나올 쪽**.</summary>
@@ -144,27 +162,25 @@ namespace Wassup.BattleCore
                 var s = _pending[i];
                 if (s.Bonus) continue;
 
+                // 경로 = 그 적이 **실제로 갈 길**(스폰과 같은 해석 — 사용자 결정 ⑧-2). 대기열의
+                // `PathIndex` 는 컨셉 슬롯일 뿐이라 그대로 실으면 저작 경로가 있는 적(비행)의
+                // 예고선이 거짓이 된다. 병합 키도 해석된 경로다 — 같은 입구·같은 길은 한 줄(⑧-1).
+                int path = EnemySpawn.PathFor(_def, _map.Snapshot, s.EnemyIndex, s.Lane, s.PathIndex);
+
                 int at = -1;
                 for (int k = 0; k < into.Count; k++)
-                    if (into[k].Lane == s.Lane && into[k].PathIndex == s.PathIndex) { at = k; break; }
+                    if (into[k].Lane == s.Lane && into[k].PathIndex == path) { at = k; break; }
 
                 if (at < 0)
                 {
-                    into.Add(new SpawnForecast(s.Lane, s.PathIndex, s.EnemyIndex, s.AtSec));
+                    into.Add(new SpawnForecast(s.Lane, path, s.EnemyIndex, s.AtSec));
                     continue;
                 }
                 if (s.AtSec >= into[at].FirstSpawnSec) continue;
-                into[at] = new SpawnForecast(s.Lane, s.PathIndex, s.EnemyIndex, s.AtSec);
+                into[at] = new SpawnForecast(s.Lane, path, s.EnemyIndex, s.AtSec);
             }
             return into.Count;
         }
-
-        /// <summary>
-        /// 보너스 당김 억제. **판 경계 리셋에서 지우지 않는다**(X6) — 판 시작 **전** 외부
-        /// 주입이라, 리셋에 넣으면 켜 둔 억제가 판 시작에 지워진다. 다른 모든 보너스 상태와
-        /// 규칙이 다르고, 그 차이가 이 프로퍼티가 `Begin` 에 없는 이유다.
-        /// </summary>
-        public bool BonusPullSuppressed { get; set; }
 
         /// <summary>
         /// **마지막 웨이브가 나갔고 필드가 비었다.** `WaveClear`·`TimeAttack` 이 읽는 한 줄이고
@@ -247,7 +263,6 @@ namespace Wassup.BattleCore
             _bonusConsumed = 0;
             _bonusOfferLatched = false;
             _bonusInFlight = false;
-            // ⚠ `BonusPullSuppressed` 는 **여기서 지우지 않는다**(X6).
         }
 
         /// <summary>
@@ -417,7 +432,6 @@ namespace Wassup.BattleCore
         private void EvaluateBonusOffer()
         {
             if (_bonusOfferLatched || _bonusInFlight) return;
-            if (BonusPullSuppressed) return;
             ref var bonus = ref _def.Bonus;
             if (!bonus.Enabled) return;
             if (_map.Snapshot.BonusSpawns.Length == 0) return;

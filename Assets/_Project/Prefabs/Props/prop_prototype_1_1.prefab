@@ -141,3 +141,4 @@ MonoBehaviour:
   spriteRenderer: {fileID: 8109394097844207432}
   skeletonAnimation: {fileID: 0}
   billboardMode: 0
+  viewConfig: {fileID: 11400000, guid: 27f8a8d23e5446c693a430cb57a8791a, type: 2}

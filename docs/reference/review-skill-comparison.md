@@ -1,7 +1,9 @@
 # 리뷰 스킬 / 에이전트 비교
 
 > 생성일: 2026-05-06  
-> 대상: ecs-reviewer, OMC critic/harsh-critic/code-reviewer/quality-reviewer, Codex adversarial-review/stop-review-gate, superpowers code-reviewer
+> 대상: core-reviewer(구 ecs-reviewer), OMC critic/harsh-critic/code-reviewer/quality-reviewer, Codex adversarial-review/stop-review-gate, superpowers code-reviewer
+>
+> ⚠ **도메인 리뷰어 교대(battle-core-rebuild unit 9)**: 옛 ECS 전투가 제거되면서 `ecs-reviewer`(에이전트·스킬)와 그것을 code-reviewer 와 병렬로 돌리던 `two-track-review` 스킬은 은퇴했다. 전투 도메인 리뷰어는 `core-reviewer`(`.claude/agents/core-reviewer.md`) 하나가 남는다. 아래 ecs-reviewer 서술은 이력이다.
 
 ---
 
@@ -9,7 +11,8 @@
 
 | 도구 | 출처 | 리뷰 대상 | 핵심 질문 |
 |---|---|---|---|
-| **ecs-reviewer** | 로컬 프로젝트 스킬 | ECS 코드 (Unity 전용) | "ECS 패턴이 올바른가?" |
+| **core-reviewer** | 로컬 프로젝트 에이전트 | 전투 코어(`Scripts/BattleCore/`) + 그 Unity 층(드라이버·뷰 풀·입력→커맨드) | "매니저가 되살아나지 않았나 · 코어가 엔진을 모르나 · 옛 기계를 재현하지 않았나?" |
+| ~~ecs-reviewer~~ | (이력 — 옛 ECS 전투, unit 9 에서 은퇴) | ECS 코드 | "ECS 패턴이 올바른가?" |
 | **critic** | OMC agent | 플랜/스펙 | "이 계획으로 구현 가능한가?" |
 | **code-reviewer** | OMC agent | 일반 코드 | "안전하게 출시 가능한가?" |
 | **quality-reviewer** | OMC agent | 일반 코드 | "로직이 실제로 동작하는가?" |
@@ -22,7 +25,12 @@
 
 ## 2. 도구별 핵심 특징
 
-### ecs-reviewer — 유일한 도메인 전문가
+### core-reviewer — 유일한 도메인 전문가 (현행)
+- 전투 코어 절대 제약(CLAUDE.md 「전투 코어 — 절대 제약」)과 `docs/spec/battle-core-rebuild/README.md` 계약을 hard constraint 로 본다.
+- 우선순위(에이전트 정의 그대로): ① 코어 안에 매니저·브리지·컨트롤러가 다시 생기나 ② 엔진 타입이 코어로 새나 ③ 옛 ECS 의 «기계»를 «규칙» 대신 재현하나 ④ 커맨드/이벤트 혼동 ⑤ 파괴 사건 없는 파괴 경로 ⑥ 결정론 파손. 스타일은 마지막.
+- 쓰기 도구가 없다(읽기 전용 리뷰어).
+
+### ecs-reviewer — (이력 — 옛 ECS 전투, unit 9 에서 은퇴)
 - 다른 모든 도구는 언어/프레임워크 무관. ecs-reviewer만 Unity Entities 6.4 기준.
 - 리뷰 시작 전 패키지 버전 확인 강제 (Entities 6.4 ≠ 1.x 패턴 구분).
 - 프로젝트 규칙을 hard constraint로 주입: BattleBridge 단일 게이트웨이, 4개 컨텍스트 경계, NativeQueue 8채널 lifecycle, Burst 호환성, ISystem 우선, 맥락 간 component 직접 쓰기 금지.
@@ -103,8 +111,8 @@
   [Codex adversarial-review]         ← 동일 구간, 더 공격적
   [Codex stop-review-gate]           ← 각 Codex 턴 종료 시 자동 발화
 
-ECS 코드 작성 시
-  └─ [ecs-reviewer] ← domain-specific gate (병렬 또는 대체 투입)
+전투 코어 / 그 Unity 층 변경 시
+  └─ [core-reviewer] ← domain-specific gate (code-reviewer 와 별도 패스)
 ```
 
 ---
@@ -113,7 +121,7 @@ ECS 코드 작성 시
 
 | 상황 | 추천 도구 |
 |---|---|
-| ECS 코드 변경 후 아키텍처/경계 검증 | **ecs-reviewer** |
+| 전투 코어·전투 Unity 층 변경 후 제약/계약 검증 | **core-reviewer** |
 | 플랜/스펙 작성 후 구현 전 검증 | **critic** |
 | 구현 완료 후 merge 전 전반적 검증 | **code-reviewer** (OMC) |
 | 로직 결함/SOLID/안티패턴 집중 검토 | **quality-reviewer** |

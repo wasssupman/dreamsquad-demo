@@ -156,7 +156,7 @@ Red(`Path18Slash`)와 Lightning(짙은 남색)이 이 이유로 탈락했다 —
 | `Play(float seconds)` | 방출 시작 + `seconds` 뒤 자동 정지. 연속 호출은 정지 시각을 **밀 뿐** 코루틴을 겹쳐 만들지 않는다 |
 | `StopNow()` | 즉시 정지 |
 
-현재 유일한 호출처는 `SpineUnitView.AttachWeaponTrail`(스폰 시 1회) / `PlayWeaponTrail`(`PlayAttack` 안). 다른 사건(스킬 시전·돌진·사망 연출)에 물리려면 그 자리에서 `Play` 를 부르면 된다 — **심(ECS)은 건드릴 일이 없다.** 궤적은 판정에 기여하지 않는다.
+현재 호출처는 전투 뷰 둘이다. Spine 유닛 = `BattleCoreUnity/View/CoreSpineUnitView.cs` 의 `AttachWeaponTrail`(스폰 시 1회, `Bind(_skeletonRenderer)`) / `PlayWeaponTrail`(`PlayAttack` 안). 스프라이트 유닛 = `BattleCoreUnity/View/CoreSpriteUnitView.cs` 의 `AttachWeaponTrail`(`Bind(null)` — 레시피 D 형) / `PlayAttack` 안의 `_weaponTrail.Play`. 다른 사건(스킬 시전·돌진·사망 연출)에 물리려면 그 자리에서 `Play` 를 부르면 된다 — **전투 코어(`Scripts/BattleCore/`)는 건드릴 일이 없다.** 궤적은 판정에 기여하지 않는다.
 
 ---
 
@@ -164,7 +164,7 @@ Red(`Path18Slash`)와 Lightning(짙은 남색)이 이 이유로 탈락했다 —
 
 1. **리그 루트의 빈 `Animator`.** 없으면 벤더가 `transform.root` 에 이벤트 수신기를 붙이고 `workWithoutAnimation = true` 로 켜서 **공격과 무관하게 상시 방출**한다.
 2. **정렬의 유일한 소스는 프리셋 asset 이다.** HS 가 매 `LateUpdate` 끝에 `renderer.sortingOrder` 를 프리셋 값으로 되쓴다 → 런타임 외부 쓰기는 무효. **벤더 스크립트 수정 금지**, 프리셋 복사본으로 해결한다.
-3. **파티클 정렬은 리그 소유 + 호스트 스윕 제외가 한 쌍이다.** 리본 메시는 씬 루트라 안전하지만 파티클은 리그의 **자식**이라 `SpineUnitView.UpdateSortingOrder` 의 `GetComponentsInChildren<Renderer>` 에 걸려 유닛 대역으로 끌려간다(실측 111 vs 리본 15500). `WeaponTrailRig.ApplyEffectSorting` 과 `IsChildOf(rigRoot) continue` 중 **한쪽만 있으면 매 프레임 다시 덮인다.**
+3. **파티클 정렬은 리그 소유 + 호스트 스윕 제외가 한 쌍이다.** 리본 메시는 씬 루트라 안전하지만 파티클은 리그의 **자식**이라 `CoreSpineUnitView.UpdateSortingOrder` 의 `GetComponentsInChildren<Renderer>` 에 걸려 유닛 대역으로 끌려간다(실측 111 vs 리본 15500). `WeaponTrailRig.ApplyEffectSorting` 과 `IsChildOf(rigRoot) continue` 중 **한쪽만 있으면 매 프레임 다시 덮인다.**
 4. **방출 창은 `_skeleton.timeScale` 까지 나눈다.** 안 나누면 0.25× 슬로우모에서 창 0.269s 대 스윙 1.075s 로 4배 모자라 방출이 끊긴다.
 5. **`Billboard` 는 `Tilted` 를 유지한다.** `BillboardRotation.Compute(Tilted, …)` = `Quaternion.Euler(tilt,0,0)` 로 **카메라를 보지 않아서** 스프라이트와 리본이 같은 고정 월드 평면에 산다. `Full`/`YAxis` 로 바꾸면 카메라 이동 중 어긋남 우려가 되살아난다.
 6. **시간 제어는 `Time.time` 그대로.** 슬로우모/정지 중에는 두 점이 얼어 새 섹션이 안 생기고 기존 섹션만 수명대로 증발한다 — **이건 사양이다.** 별도 시간 배선을 만들지 않는다(TimeManager 원칙).
@@ -176,11 +176,11 @@ Red(`Path18Slash`)와 Lightning(짙은 남색)이 이 이유로 탈락했다 —
 |---|---|---|
 | 궤적이 아예 안 보인다 | `weaponTrailPrefab` 미할당 | 유닛 SO |
 | 유닛 뒤에 깔린다 | 프리셋 `sortingOrder` 가 0 | 프리셋 asset (15500) |
-| **파티클만** 앞 유닛에 가린다 | 리그/호스트 정렬 한 쌍 중 한쪽 누락 | `WeaponTrailRig` + `SpineUnitView.UpdateSortingOrder` |
+| **파티클만** 앞 유닛에 가린다 | 리그/호스트 정렬 한 쌍 중 한쪽 누락 | `WeaponTrailRig` + `CoreSpineUnitView.UpdateSortingOrder` |
 | 몸통만 한 거대 리본 | `recalculatePointsOnAwake` true | 프리셋 asset |
 | 공격 안 해도 계속 방출 | `startActive` true **또는** 리그 루트 Animator 누락 | 프리셋 asset / base 프리팹 |
 | 칼을 되돌리는 자국이 남는다 | `endNormalized` 가 크다 | 유닛 SO |
-| 슬로우모에서 방출이 끊긴다 | 창 계산에서 `_skeleton.timeScale` 누락 | `SpineUnitView.PlayWeaponTrail` |
+| 슬로우모에서 방출이 끊긴다 | 창 계산에서 `_skeleton.timeScale` 누락 | `CoreSpineUnitView.PlayWeaponTrail` (스프라이트는 재생기 도메인 클럭이 이미 반영 — `CoreSpriteUnitView.PlayAttack`) |
 | 리본이 바닥에 눕는다 | Point 오프셋에 z 성분 | base 프리팹 |
 | 손에서 퍼지는 부채꼴 | Point A 가 회전 피벗(손)에 너무 가깝다 | base 프리팹 |
 | 얼룩으로 보인다 / 안 읽힌다 | 어두운 머티리얼 · 스윙 각도 부족 | 프리셋 룩 교체 · 공격 애니 확인 |
@@ -193,7 +193,8 @@ Red(`Path18Slash`)와 Lightning(짙은 남색)이 이 이유로 탈락했다 —
 ```
 Assets/_Project/Scripts/
   Presentation/WeaponTrailRig.cs         리그 자립 컴포넌트 — Bind / Play / StopNow + 파티클 정렬
-  Presentation/SpineUnitView.cs          AttachWeaponTrail · PlayWeaponTrail · UpdateSortingOrder 제외
+  BattleCoreUnity/View/CoreSpineUnitView.cs    AttachWeaponTrail · PlayWeaponTrail · UpdateSortingOrder 제외
+  BattleCoreUnity/View/CoreSpriteUnitView.cs   AttachWeaponTrail(Bind(null)) · PlayAttack 안의 Play
   Presentation/BoardSortOrder.cs         WeaponTrailOrder = 15500 (Beam 15000 < 여기 < HitBar 16000)
   Data/ISpineUnitVisualData.cs           SpineWeaponTrailPrefab / SpineWeaponTrailEndNormalized
   Data/DefenderUnitData.cs               weaponTrailPrefab / weaponTrailEndNormalized (직렬화 호환 위해 맨 뒤)

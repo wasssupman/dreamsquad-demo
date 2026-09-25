@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Battle.Combat;
+using Wassup.Data.Authoring;
 using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
@@ -108,7 +108,7 @@ namespace Wassup.Tests.EditMode
             foreach (var so in AllEnemies())
             {
                 int mask = EnemyTargetDefaults.Resolve((int)so.targetFactions);
-                if ((mask & Wassup.Battle.Units.Factions.AnyUnit) != 0) continue;
+                if ((mask & Wassup.Skills.Factions.AnyUnit) != 0) continue;
                 Assert.AreEqual(0f, so.detectionRange, 1e-4f,
                     $"'{so.id}' 는 유닛을 안 노리는데 감지가 켜져 있다 — 계약 4 로 후보가 0 이라 " +
                     "사냥 필드 재빌드만 켜지는 순수 낭비다");

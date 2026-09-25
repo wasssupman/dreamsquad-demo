@@ -10,9 +10,8 @@ namespace Wassup.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 5a — 새 PlayMode lane 의 공용 부팅.
     //
-    // ⚠ **빌드 설정을 건드리지 않는다.** `BattleCoreScene` 은 아직 빌드에 실리는 씬이 아니고
-    // (옛 `BattleScene` 이 그 자리다 — unit 9 에서 교대한다), 빌드 목록을 지금 고치면 모바일
-    // 빌드 산출물이 이 전환 도중에 바뀐다. 에디터 경로로 연다.
+    // 에디터 경로로 연다(빌드 목록과 무관하게). unit 8b 의 로비 교대로 `BattleCoreScene` 이 빌드 설정의 전투 씬이 됐지만,
+    // 이 고정구는 로비를 거치지 않는 판(에디터 직접 진입)을 보는 자리라 그대로 둔다 — 로비 경로는 `CoreMatchEntryTests`.
     public static class CoreSceneFixture
     {
         public const string ScenePath = "Assets/_Project/Scenes/BattleCoreScene.unity";

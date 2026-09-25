@@ -159,7 +159,7 @@ namespace Wassup.Tests.PlayMode.Core
             for (int i = 0; i < def.Enemies.Length && enemyDef < 0; i++)
                 if (def.Enemies[i].AttackRange > 0f
                     && (Wassup.BattleCore.Combat.TargetDefaults.ResolveEnemy(def.Enemies[i].TargetFactions)
-                        & Wassup.Battle.Units.Factions.AnyUnit) != 0)
+                        & Wassup.Skills.Factions.AnyUnit) != 0)
                     enemyDef = i;
             Assert.GreaterOrEqual(enemyDef, 0, "라이브 정의표에 유닛을 노리는 적이 없다");
 
@@ -257,7 +257,7 @@ namespace Wassup.Tests.PlayMode.Core
             // 놓는 자는 unit 7 이다 — 여기서는 월드의 **유일한 스폰·제거 문**을 직접 부른다(그 문이 사건을 낸다).
             var p = world.SpawnPickup(PickupKind.RedBull, a, map.CenterOf(a), 30f, tick);
             var r = world.DropResignation(b, map.CenterOf(b), SimEntityId.None,
-                                          Wassup.Battle.Units.Faction.None, tick);
+                                          Wassup.Skills.Faction.None, tick);
             yield return Ticks(driver, 1);
             Assert.AreEqual(world.Pickups.Count, pickups.ViewCount, "픽업 사건 → 픽업 뷰");
             Assert.AreEqual(1, pickups.ViewCount);

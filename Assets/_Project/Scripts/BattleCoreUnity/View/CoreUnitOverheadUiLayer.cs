@@ -154,7 +154,7 @@ namespace Wassup.BattleCoreUnity.View
                 var anchor = view.transform;
                 Vector2 screenAnchor = UnitOverheadLayout.ScreenAnchor(
                     cam.WorldToScreenPoint(anchor.position).x, rect);
-                SetUnit(u.Id, ((int)u.Faction & Wassup.Battle.Units.Factions.AnyDefender) != 0,
+                SetUnit(u.Id, ((int)u.Faction & Wassup.Skills.Factions.AnyDefender) != 0,
                         Mathf.Clamp01(u.Health / u.MaxHealth),
                         screenAnchor, ProjectTileScreenWidth(cam, anchor.position),
                         ShieldRatioOf(u), GatherStacks(u));

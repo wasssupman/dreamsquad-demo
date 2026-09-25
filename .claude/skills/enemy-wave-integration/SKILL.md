@@ -1,6 +1,6 @@
 ---
 name: enemy-wave-integration
-description: Use when (a) adding a new enemy AttackUnitData or changing an existing one's minWaveNumber / maxPerWave / enemyClass / traversalLayers / splitUnit, or (b) editing wave generation itself — WavePatternGenerator, AttackDeck fields, WaveConceptData / Concept_* assets, WavePlanAsset. Case (a) silently rewrites what every live wave contains; case (b) invalidates the rules written here, so this skill must be updated in the same commit. Covers pool insertion position, seed rebaselining, concept assignment, the tutorial roster contract, the traps that produce collapsed or biased waves, and how to re-derive every volatile number instead of trusting a frozen one.
+description: Use when (a) adding a new enemy AttackUnitData or changing an existing one's minWaveNumber / maxPerWave / enemyClass / traversalLayers / splitUnit, or (b) editing wave generation itself — the battle-core generator `BattleCore/Wave/WaveGenerator.cs` (and its authoring translation `MatchDefinitionBuilder.ToDeckDef` / `ToPlanDef`), AttackDeck fields, WaveConceptData / Concept_* assets, WavePlanAsset. Case (a) silently rewrites what every live wave contains; case (b) invalidates the rules written here, so this skill must be updated in the same commit. Covers pool insertion position, seed rebaselining, concept assignment, the traps that produce collapsed or biased waves, and how to re-derive every volatile number instead of trusting a frozen one.
 ---
 
 # Enemy → Wave Integration
@@ -33,13 +33,13 @@ description: Use when (a) adding a new enemy AttackUnitData or changing an exist
 
 | 바뀐 것 | 죽는 주장 | 확인할 절 |
 |---|---|---|
-| `WavePatternGenerator.ResolveWaveEligibleIndex` | 「풀 맨 뒤 금지」의 근거(전방 순환) | 전방 순환 |
-| `WavePatternGenerator.ClampGroupCounts` | 「단일 슬롯 + `maxPerWave 1` = 붕괴」 | 웨이브 붕괴 |
-| `WavePatternGenerator.PickConcept` · `AssignLanes` | 컨셉 후보 게이트(레인 수·`minWaveNumber`) | 컨셉 배정 |
-| `WavePatternGenerator.InheritLanes` · `useVariant` 게이트 · `waveRampBreak*` 필드 | 「두 단계 곡선 덱」 절 전체(rng 중립·상시 변주·신규 레인) | 두 단계 곡선 덱 |
-| `AttackDeck` 필드 추가/삭제 | 정거장 체크표의 「덱에서 손볼 것」 | 정거장 체크표 |
-| `WaveConceptData` · `Concept_*.asset` 슬롯·필터 | 「컨셉 귀속은 자동 파생」·속도 폭 계약 | 컨셉 배정 / 속도 폭 |
-| `WavePlanAsset` · `FromPlanAsset` | 「저작 플랜은 게이트를 안 받는다」 · 「저작 플랜도 레인을 지정할 수 있다」 | 저작 플랜 (2절) |
+| `WaveGenerator.ResolveWaveEligibleIndex` | 「풀 맨 뒤 금지」의 근거(전방 순환) | 전방 순환 |
+| `WaveGenerator.ClampGroupCounts`(2슬롯·N슬롯) · `PickSlotUnitIndex` 완화 순서 | 「단일 슬롯 + `maxPerWave 1` = 붕괴」 | 웨이브 붕괴 |
+| `WaveGenerator.PickConcept` · `AssignLanes` | 컨셉 후보 게이트(레인 수·`minWaveNumber`) | 컨셉 배정 |
+| `WaveGenerator.InheritLanes` · `Generate` 안 `useVariant` 게이트 · `waveRampBreak*` 필드(→ `WaveDeckDef.RampBreakWave/Units`) | 「두 단계 곡선 덱」 절 전체(rng 중립·상시 변주·신규 레인) | 두 단계 곡선 덱 |
+| `AttackDeck` 필드 추가/삭제 · `MatchDefinitionBuilder.ToDeckDef` · `WaveDeckDef` | 정거장 체크표의 「덱에서 손볼 것」 | 정거장 체크표 |
+| `WaveConceptData` · `Concept_*.asset` 슬롯·필터 · `MatchDefinitionBuilder.ToConceptDefs` · `WaveConceptDef` | 「컨셉 귀속은 자동 파생」·속도 폭 계약 | 컨셉 배정 / 속도 폭 |
+| `WavePlanAsset` · `MatchDefinitionBuilder.ToPlanDef` · `WaveGenerator.FromAuthored` · `Expand` | 「저작 플랜은 게이트를 안 받는다」 · 「저작 플랜도 레인을 지정할 수 있다」 | 저작 플랜 (2절) |
 | `AttackUnitData` 의 등장 관련 필드 | When to Use 의 트리거 목록 | frontmatter + When to Use |
 | 라이브 덱·맵 풀 구성 변경 | 정거장 2·7 의 덱 목록 | 값 재도출로 대체됨 |
 
@@ -76,10 +76,10 @@ grep -l "<enemy-guid>" Assets/_Project/Scripts/Data/Decks/*.asset
 
 **(b) 웨이브 생성 로직 자체를 밸런스로 손볼 때** — 이 스킬의 규칙이 죽는다:
 
-- `WavePatternGenerator` 의 순수 함수 (`ResolveWaveEligibleIndex`·`ClampGroupCounts`·`PickConcept`·`AssignLanes`·`ExponentialWaveTotal` 등)
+- 코어 `Assets/_Project/Scripts/BattleCore/Wave/WaveGenerator.cs` 의 순수 함수 (`ResolveWaveEligibleIndex`·`ClampGroupCounts`·`PickConcept`·`AssignLanes`·`ExponentialWaveTotal` 등)
 - `AttackDeck` 필드 추가/삭제/의미 변경
 - `WaveConceptData` 또는 `Concept_*.asset` 의 슬롯·필터·가중치
-- `WavePlanAsset` / `FromPlanAsset` 의 변환 규약
+- `WavePlanAsset` → `MatchDefinitionBuilder.ToPlanDef` → `WaveGenerator.FromAuthored` 의 변환 규약
 
 (b) 는 코드를 고치고 **끝내지 말고** 위 「갱신 트리거」 표를 따라 이 문서를 같은 커밋에서 재확인한다.
 
@@ -94,18 +94,18 @@ grep -l "<enemy-guid>" Assets/_Project/Scripts/Data/Decks/*.asset
 | 3 | **삽입 위치** | 맨 뒤 금지 — 아래 «전방 순환» 참조 |
 | 4 | `waveSeed` 갱신 + `waveGeneratorVersion` bump | 풀이 바뀌면 편성 전체가 재추첨된다. 새 baseline 을 diff 에 드러내라 |
 | 5 | 컨셉 배정 | `enemyClass` × 통행층이 **자동**으로 정한다. 신규 필터 축을 만들지 마라 |
-| 6 | 튜토리얼 플랜 | `WavePlan_Tutorial` 에 그 적을 가르치는 웨이브. EditMode 가 강제한다 |
+| 6 | ~~튜토리얼 플랜~~ | **은퇴**(battle-core-rebuild 8d · 사용자 결정 ④ 2026-09-25 — 튜토리얼 전량 제거). `WavePlan_Tutorial` 은 지워졌고 로스터 전종 교습 계약도 없다 |
 | 7 | dev 전용 덱 | 랩·테스트 덱은 판단. 넣지 않았으면 이유를 적어라 |
 
 ## 규칙과 함정
 
 ### 전방 순환 — 풀 맨 뒤에 넣지 마라
 
-`WavePatternGenerator.ResolveWaveEligibleIndex` 는 뽑힌 인덱스에서 **앞으로 순환**하며 `minWaveNumber <= waveNumber` 인 첫 유닛을 고른다:
+`WaveGenerator.ResolveWaveEligibleIndex` 는 뽑힌 인덱스에서 **앞으로 순환**하며 `MinWaveNumber <= waveNumber` 인 첫 유닛을 고른다(`minWaveNumber` 는 `MatchDefinitionBuilder` 가 `EnemyDef.MinWaveNumber` 로 옮긴다):
 
 ```csharp
 int index = (start + step) % count;   // 전방 순환
-if (unit.minWaveNumber <= waveNumber) return index;
+if (enemies[e].MinWaveNumber <= waveNumber) return index;
 ```
 
 게이트가 걸린 적을 **맨 뒤**에 넣으면, 초반 웨이브에서 그 인덱스가 뽑힐 때마다 순환이 배열 끝을 넘어 **`pool[0]` 으로 쏠린다.** 풀 중간에 넣어라.
@@ -116,7 +116,7 @@ if (unit.minWaveNumber <= waveNumber) return index;
 
 → 엘리트(보통 `maxPerWave: 1`)를 넣기 전에 그 적이 걸릴 컨셉의 슬롯 수를 확인하라. 슬롯 1개면 컨셉을 2슬롯으로 넓히거나 그 컨셉에 안 걸리게 필터를 조정한다.
 
-⚠ **슬롯을 넓히는 조치는 «그 컨셉의 게이트 웨이브에 서로 다른 후보가 슬롯 수만큼 있을 때만» 유효하다.** 후보가 모자라면 `PickSlotUnitIndex` fail-open ②(중복배제 해제)가 같은 유닛을 두 슬롯에 넣는데, `ClampGroupCounts` 는 **슬롯별** 적용이라 `maxPerWave` 가 슬롯 수만큼 곱해진다(공습 w4~7 Dragon×1+Dragon×1 사고 — wave-concept-blocks unit 8). 컨셉의 `minWaveNumber` 와 후보 유닛들의 `minWaveNumber` 를 맞춰라. `WaveConceptAuthoringTests.ConceptSlots_HaveEnoughDistinctCandidates_AtTheirGateWave` 가 에셋만으로 이 술어를 가드하고, `EliteWaves_DoNotCollapseToASingleUnit` 의 종류합 단언이 결과를 가드한다. 컨셉 게이트는 **블록 첫 웨이브 번호**(1·4·7·10…)로 판정되므로 게이트를 올리는 쪽은 보이는 것보다 늦어진다(8 = 실질 10).
+⚠ **슬롯을 넓히는 조치는 «그 컨셉의 게이트 웨이브에 서로 다른 후보가 슬롯 수만큼 있을 때만» 유효하다.** 후보가 모자라면 `WaveGenerator.PickSlotUnitIndex` fail-open ②(중복배제 해제)가 같은 유닛을 두 슬롯에 넣는데, `ClampGroupCounts` 는 **슬롯별** 적용이라 `maxPerWave` 가 슬롯 수만큼 곱해진다(공습 w4~7 Dragon×1+Dragon×1 사고 — wave-concept-blocks unit 8). 컨셉의 `minWaveNumber` 와 후보 유닛들의 `minWaveNumber` 를 맞춰라. `RetiredWaveAuthoringPortTests.컨셉_슬롯은_게이트_웨이브에_슬롯_수만큼_서로_다른_후보가_있다` 가 에셋만으로 이 술어를 가드하고, `엘리트_웨이브는_1기로_붕괴하지_않고_종류합이_상한을_넘지_않는다` 의 종류합 단언이 결과를 가드한다(둘 다 `Tests/EditModeAssets/` · 라이브 덱을 코어 `WaveGenerator` 로 굴린다). 컨셉 게이트는 **블록 첫 웨이브 번호**(1·4·7·10…)로 판정되므로 게이트를 올리는 쪽은 보이는 것보다 늦어진다(8 = 실질 10).
 
 ### 속도 폭 — 컨셉의 「뭉침」 계약
 
@@ -131,19 +131,19 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 변주 격상(상시 변주·신규 레인 개방)의 게이트도 겸한다. 0 = 끔 = 기존 지수 — 라이브 덱이 이 상태다.
 
 ⚠ **rng 중립의 정확한 범위** (리뷰 F2 정정): **곡선 수치**(min/max/growth/`breakUnits`)는 rng
-무소비라 바꿔도 컨셉 시퀀스·유닛 추첨이 불변이다(`RampCurve_DoesNotDisturbConceptSequenceOrPicks`
+무소비라 바꿔도 컨셉 시퀀스·유닛 추첨이 불변이다(`RetiredWaveRulePortTests.두_단계_곡선은_컨셉_시퀀스와_유닛_추첨을_흔들지_않는다`
 가 이 절반을 pin — 변주 미저작 컨셉 기준). 그러나 **`breakWave` 값을 바꾸면 변주 상시 구간이
 이동해 그 지점부터 슬롯 수 = rng 소비가 갈린다** — break 를 튜닝했으면 반드시 시드 스캐너
-(`Scan_SiegeSeedCandidates`)를 다시 돌려 시드를 재선정하라.
+(`RetiredWaveAuthoringPortTests.시드_스캐너_공성_후보`, 수동 실행)를 다시 돌려 시드를 재선정하라.
 
 ### 저작 플랜은 게이트를 받지 않는다
 
-`WavePlanAsset`(튜토리얼·테스트 모드)은 `minWaveNumber` 를 무시한다 — 적용 범위가 seed 생성 경로뿐이다. 그래서 게이트 8 인 적도 **튜토리얼 웨이브 3 에 놓을 수 있다.** 교습 순서는 게이트가 아니라 저작이 정한다.
+`WavePlanAsset`(테스트 모드·맵 풀 엔트리 플랜)은 `minWaveNumber` 를 무시한다 — 적용 범위가 seed 생성 경로뿐이다. 그래서 게이트 8 인 적도 **저작 플랜의 웨이브 3 에 놓을 수 있다.** 순서는 게이트가 아니라 저작이 정한다.
 
 ### 저작 플랜도 레인을 지정할 수 있다 (2026-08-20 신설)
 
 `AuthoredSpawnGroup.laneIndex` — **-1 = 무지정(기본)**, ≥0 = 그 스폰 지점으로 고정.
-`FromPlanAsset` 이 런타임 `WaveSpawnGroup.laneIndex` 로 그대로 넘기고, `ExpandWave` →
+`MatchDefinitionBuilder.ToPlanDef` 가 코어 그룹의 `LaneIndex` 로 그대로 넘기고, `WaveGenerator.Expand` →
 `ResolveAuthoredLane`(펼침 순번 대신 지정값) · `ResolveEffectiveLane`(`EffectiveSpawnIndex`
 우회)이 존중한다. 범위를 넘으면 clamp.
 
@@ -174,17 +174,15 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 2. **컨셉 귀속 판정** — `enemyClass`(None/Tanker/Runner/Bruiser/Shooter) × 통행층(Path/Air)이 어느 `Concept_*` 에 걸리는지 표로 적는다. 걸리는 컨셉의 **슬롯 수**를 함께 확인(붕괴 함정)
 3. **풀 삽입** — 위 덱들에 **중간 위치**로. `.meta` 동반 확인
 4. **baseline 재설정** — `waveSeed` 갱신 + `waveGeneratorVersion` bump. 전 덱 동일하게
-5. **튜토리얼 갱신** — `WavePlan_Tutorial` 의 적절한 웨이브에 추가. 엘리트는 후반, 신규 축(비행 등)은 그 축을 가르치는 웨이브에
+5. ~~튜토리얼 갱신~~ — 은퇴(정거장 6 참조)
 6. **검증** — 아래
-7. **커밋** — 적 에셋 + 덱 + 튜토리얼 + 테스트를 **한 커밋**으로. 「적만 만들고 편입은 나중에」로 나눌 거면 그 이유를 spec 에 적는다
+7. **커밋** — 적 에셋 + 덱 + 테스트를 **한 커밋**으로. 「적만 만들고 편입은 나중에」로 나눌 거면 그 이유를 spec 에 적는다
 
 ## 검증 (건너뛰지 않는다)
 
 - **EditMode 전량.** 특히:
-  - `WaveConceptAuthoringTests` — 컨셉별 로스터 계약(속도 폭·필터·슬롯)
-  - `WaveKillBudgetPinTests` — 덱별 킬 예산
-  - `WaveEligibilityGateTests` — 게이트 동작
-  - `MapDocumentPoolDevEntriesTests.TutorialEntry_TeachesEveryLiveEnemyTypeInTenWaves` — **로스터 전종 교습**. 빠진 이름을 메시지에 찍어준다
+  - 코어 생성기 `Assets/_Project/Tests/EditModeCore/WaveGeneratorTests.cs` — 결정론·게이트/상한 rng 무소비·슬롯 분배·입구 배정·저작 플랜 타임라인
+  - 저작 에셋 × 코어 생성기 `Assets/_Project/Tests/EditModeAssets/RetiredWaveAuthoringPortTests.cs` — 컨셉 로스터 계약 · 슬롯 후보 · 엘리트 붕괴 · 덱별 킬 예산(시드 고정·결정론·보스 간격·실스폰 예산·스폰 창) · 공성 시드 스캐너 `시드_스캐너_공성_후보`(수동). 컨셉 경로·변주·보스·예보 규칙은 `Tests/EditModeCore/RetiredWaveRulePortTests.cs`·`RetiredWaveForecastPortTests.cs`. (옛 생성기용 `WaveConceptAuthoringTests`·`WaveKillBudgetPinTests`·`WaveEligibilityGateTests`·`WaveConceptGenerationTests` 는 battle-core-rebuild unit 9 에서 옛 생성기와 함께 은퇴 — 짝 지도 `docs/spec/battle-core-rebuild/ledgers/retire-test-pairs.md`.)
 - **결정론** — 같은 덱 3회 생성 signature 일치
 - **엘리트를 넣었다면** — 그 적이 뽑힌 웨이브의 총 수량이 1보다 큰지(붕괴 가드)
 
@@ -196,8 +194,7 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 | "풀 맨 뒤에 붙이면 diff 가 깔끔" | 전방 순환이 초반 웨이브를 `pool[0]` 로 쏠리게 한다 |
 | "시드는 안 건드려도 되겠지" | 풀이 바뀌면 편성이 이미 바뀌었다. 시드를 갱신해 **그 사실을 diff 에 드러내라** |
 | "컨셉은 나중에 저작하면 됨" | 컨셉 귀속은 저작이 아니라 **`enemyClass` × 통행층에서 자동 파생**된다. 이미 정해져 있다 |
-| "튜토리얼은 별개 콘텐츠" | EditMode 가 로스터 전종 교습을 요구한다. 빨간불로 돌아온다 |
 | "테스트 초록이니 됐다" | 초록이 **다른 세션이 대신 고쳐서**일 수 있다. 실제로 그런 적이 있다 — 값을 직접 찍어 확인하라 |
 | "스킬에 이렇게 적혀 있으니 맞겠지" | 웨이브 생성은 밸런스로 자주 바뀐다. **주장의 근거 코드를 열어 확인**하고, 어긋나면 스킬을 고쳐라 |
 | "생성 로직만 고쳤으니 스킬은 상관없다" | 이 문서의 규칙 대부분이 그 코드에 매여 있다. 갱신 트리거 표를 보고 같은 커밋에서 재확인한다 |
-| "덱이 N개니까 N개만 넣으면 됨" | 덱 목록은 계속 는다(공성·튜토리얼이 그렇게 늘었다). **매번 재도출**하라 |
+| "덱이 N개니까 N개만 넣으면 됨" | 덱 목록은 계속 는다(공성 덱이 그렇게 늘었다). **매번 재도출**하라 |

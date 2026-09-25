@@ -7,7 +7,7 @@
 
 에디터/빌드에서 그림자 경계가 각지고 계단 형태로 보였다. 원인은 씬 라이트가 아니라 URP 에셋 설정:
 
-- BattleScene 의 Directional Light 는 Soft Shadows 로 정상 설정돼 있었음
+- 당시 전투 씬의 Directional Light 는 Soft Shadows 로 정상 설정돼 있었음. 지금 전투 씬 `Assets/_Project/Scenes/BattleCoreScene.unity` 의 Directional Light 도 Soft Shadows 다(당시 씬 `BattleScene` 은 이력 — 옛 ECS 전투, unit 9 에서 제거)
 - `Mobile_RPAsset` (Android 빌드 기본 퀄리티) 이 **Soft Shadows OFF + 1024 해상도 + 캐스케이드 1개 + Shadow Distance 50** 이라 픽셀당 ~5cm 의 하드 섀도우가 그대로 노출
 - Render Scale 0.8 업스케일이 거칠기를 가중
 

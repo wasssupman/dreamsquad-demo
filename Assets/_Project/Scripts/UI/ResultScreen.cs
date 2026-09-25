@@ -26,7 +26,7 @@ namespace Wassup.UI
     //
     // The pure row model below is deliberately untouched — ResultLeaderboardModelTests
     // covers it.
-    public class ResultScreen : MonoBehaviour
+    public partial class ResultScreen : MonoBehaviour
     {
         // Palette — visual constants matching the in-game HUD (ScoreHudView).
         // No serialized fields: keeps the scene component (and its diff) clean.
@@ -111,7 +111,20 @@ namespace Wassup.UI
         // 일이 없어졌으므로 «어느 쪽으로 끝났나» 를 물을 자리가 없다. 라벨은 `결과` 고정이고
         // 색 분기도 사라졌다(패배색은 이제 쓰이지 않는다).
         // 줄 구성·문구 다듬기는 unit 4 몫 — 여기서는 승패 축만 걷어낸다.
-        public void Show(MatchTally tally)
+        // (옛 씬의 `Show(MatchTally)` 입구는 8c 에서 `ResultScreen.OldBattle.cs` 로 떼었다 — unit 9 가 지운다.)
+
+        // battle-core-rebuild unit 8a — 새 전투 코어의 성적(`MatchOutcome`)을 **직접** 받는다.
+        // 5c 는 `MatchOutcome → MatchTally` 어댑터 한 줄로 이었고(`CoreMatchOutcomePresenter`),
+        // 그 어댑터를 여기서 걷는다. 옛 씬 경로가 아직 `MatchTally` 로 부르므로 **두 입구가 한동안
+        // 공존한다** — 둘 다 아래 `Render` 하나로 모여 화면이 두 벌이 되지 않는다. `MatchTally`
+        // 입구는 옛 씬과 함께 unit 9 에서 지운다.
+        //
+        // ⚠ 히어로 숫자의 단위 「기」는 1킬 = 1점(`KillScoreTimed`)을 전제한다. 웨이브·밀리초가
+        // 점수인 모드는 이 단위가 거짓이 된다 — 모드 선택 UI 와 같이(5c 후속 후보).
+        public void Show(in Wassup.BattleCore.Goals.MatchOutcome outcome)
+            => Render(outcome.Score, outcome.Stability, outcome.StabilityMax, outcome.WaveReached);
+
+        private void Render(int total, int stability, int stabilityMax, int waveReached)
         {
             if (!_built) BuildCanvas();
             resultLabel.text = "결과";
@@ -123,7 +136,7 @@ namespace Wassup.UI
                 // `결과` 하나뿐이라 맨 숫자로는 이게 뭔지 화면에서 안 읽힌다. `점` 이 아니라
                 // `기` 인 이유: 규칙이 «1킬 1점» 이라 마리 수가 곧 점수이고, 플레이어가 세는
                 // 단위는 마리다. 이 수가 그대로 서버에 올라간다(가공 없음 — unit 6).
-                heroScoreLabel.text = $"{tally.Total:N0}<size=55%>기</size>";
+                heroScoreLabel.text = $"{total:N0}<size=55%>기</size>";
                 heroScoreLabel.color = goldColor;
             }
 
@@ -141,8 +154,8 @@ namespace Wassup.UI
             // 뜬다 — 판을 끝낸 축을 «남은 것» 으로 부르는 셈이다.
             SetStatRows(new[]
             {
-                StatRow.State("스트레스", StressText(tally.Stability, tally.StabilityMax)),
-                StatRow.State("도달 웨이브", $"{tally.WaveReached:N0}"),
+                StatRow.State("스트레스", StressText(stability, stabilityMax)),
+                StatRow.State("도달 웨이브", $"{waveReached:N0}"),
             });
 
             // A ranking that landed while we were closed (the response usually beats
@@ -158,7 +171,7 @@ namespace Wassup.UI
                 _heldRanking = null;
                 _heldOwnUserId = null;
             }
-            if (rows == null) rows = BuildPendingRows(tally.Total);
+            if (rows == null) rows = BuildPendingRows(total);
             RenderRows(rows);
             UpdateCaption(rows);
             gameObject.SetActive(true);

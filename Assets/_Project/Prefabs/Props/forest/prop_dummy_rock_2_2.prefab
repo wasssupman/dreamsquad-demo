@@ -51,6 +51,7 @@ MonoBehaviour:
   spriteRenderer: {fileID: 6657790924670190804}
   skeletonAnimation: {fileID: 0}
   billboardMode: 0
+  viewConfig: {fileID: 11400000, guid: 27f8a8d23e5446c693a430cb57a8791a, type: 2}
 --- !u!1 &5758254641495874660
 GameObject:
   m_ObjectHideFlags: 0
@@ -156,6 +157,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.BlobShadow
   authoredInPrefab: 1
+  config: {fileID: 11400000, guid: 057ae949d711494bbb80cd87c12155ef, type: 2}
 --- !u!1 &6672089188388946689
 GameObject:
   m_ObjectHideFlags: 0

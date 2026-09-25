@@ -100,7 +100,7 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsTrue(spawned[0].B.IsNone, "시전자가 없다 — 귀속할 유닛이 없다");
             Assert.AreEqual(site.x, spawned[0].SiteFired.Pos.x, 1e-4f, "쓰러진 그 자리에서");
             Assert.AreEqual(body, spawned[0].SiteFired.OriginBody, 1e-5f, "자기 몸만큼(발화 시점 스냅샷 — 0 으로 새지 않는다)");
-            Assert.AreEqual(Wassup.Battle.Units.Faction.DefenderUnit, spawned[0].Faction, "진영도 값이다 — 적을 때린다");
+            Assert.AreEqual(Wassup.Skills.Faction.DefenderUnit, spawned[0].Faction, "진영도 값이다 — 적을 때린다");
             Assert.IsTrue(hits.Exists(h => h.B == e.Id && System.Math.Abs(h.Amount - 7f) < 1e-4f), "옆의 적이 맞았다");
         }
 

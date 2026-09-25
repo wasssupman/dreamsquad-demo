@@ -487,17 +487,17 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
-        public static CoreStat ToCoreStat(Wassup.Battle.Effects.StatKind authored)
+        public static CoreStat ToCoreStat(Wassup.Data.Authoring.StatKind authored)
         {
             switch (authored)
             {
-                case Wassup.Battle.Effects.StatKind.DamageMul: return CoreStat.DamageMul;
-                case Wassup.Battle.Effects.StatKind.AttackSpeedMul: return CoreStat.AttackSpeedMul;
-                case Wassup.Battle.Effects.StatKind.DmgTakenMul: return CoreStat.DmgTakenMul;
-                case Wassup.Battle.Effects.StatKind.RegenPerSec: return CoreStat.RegenPerSec;
-                case Wassup.Battle.Effects.StatKind.MoveSpeedMul: return CoreStat.MoveSpeedMul;
-                case Wassup.Battle.Effects.StatKind.DamageVsCcMul: return CoreStat.DamageVsCcMul;
-                case Wassup.Battle.Effects.StatKind.MaxHealthMul: return CoreStat.MaxHealthMul;
+                case Wassup.Data.Authoring.StatKind.DamageMul: return CoreStat.DamageMul;
+                case Wassup.Data.Authoring.StatKind.AttackSpeedMul: return CoreStat.AttackSpeedMul;
+                case Wassup.Data.Authoring.StatKind.DmgTakenMul: return CoreStat.DmgTakenMul;
+                case Wassup.Data.Authoring.StatKind.RegenPerSec: return CoreStat.RegenPerSec;
+                case Wassup.Data.Authoring.StatKind.MoveSpeedMul: return CoreStat.MoveSpeedMul;
+                case Wassup.Data.Authoring.StatKind.DamageVsCcMul: return CoreStat.DamageVsCcMul;
+                case Wassup.Data.Authoring.StatKind.MaxHealthMul: return CoreStat.MaxHealthMul;
                 default:
                     UnityEngine.Debug.LogError(
                         $"[CombatDefinitionBuilder] 모르는 스탯({authored}) — 피해 배율로 접는다.");
@@ -505,13 +505,13 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
-        public static CoreOp ToCoreOp(Wassup.Battle.Effects.CombineOp authored)
+        public static CoreOp ToCoreOp(Wassup.Data.Authoring.CombineOp authored)
         {
             switch (authored)
             {
-                case Wassup.Battle.Effects.CombineOp.Multiplicative: return CoreOp.Multiplicative;
-                case Wassup.Battle.Effects.CombineOp.Additive: return CoreOp.Additive;
-                case Wassup.Battle.Effects.CombineOp.Override: return CoreOp.Override;
+                case Wassup.Data.Authoring.CombineOp.Multiplicative: return CoreOp.Multiplicative;
+                case Wassup.Data.Authoring.CombineOp.Additive: return CoreOp.Additive;
+                case Wassup.Data.Authoring.CombineOp.Override: return CoreOp.Override;
                 default:
                     UnityEngine.Debug.LogError(
                         $"[CombatDefinitionBuilder] 모르는 결합 연산자({authored}) — 곱셈으로 접는다.");
@@ -519,16 +519,16 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
-        public static CoreStack ToCoreStackKind(Wassup.Battle.Effects.StackKind authored)
+        public static CoreStack ToCoreStackKind(Wassup.Data.Authoring.StackKind authored)
         {
             switch (authored)
             {
-                case Wassup.Battle.Effects.StackKind.None: return CoreStack.None;
-                case Wassup.Battle.Effects.StackKind.Fire: return CoreStack.Fire;
-                case Wassup.Battle.Effects.StackKind.Ice: return CoreStack.Ice;
-                case Wassup.Battle.Effects.StackKind.Bleed: return CoreStack.Bleed;
-                case Wassup.Battle.Effects.StackKind.Poison: return CoreStack.Poison;
-                case Wassup.Battle.Effects.StackKind.Fatigue: return CoreStack.Fatigue;
+                case Wassup.Data.Authoring.StackKind.None: return CoreStack.None;
+                case Wassup.Data.Authoring.StackKind.Fire: return CoreStack.Fire;
+                case Wassup.Data.Authoring.StackKind.Ice: return CoreStack.Ice;
+                case Wassup.Data.Authoring.StackKind.Bleed: return CoreStack.Bleed;
+                case Wassup.Data.Authoring.StackKind.Poison: return CoreStack.Poison;
+                case Wassup.Data.Authoring.StackKind.Fatigue: return CoreStack.Fatigue;
                 default:
                     UnityEngine.Debug.LogError(
                         $"[CombatDefinitionBuilder] 모르는 스택 종류({authored}) — 없음으로 접는다.");

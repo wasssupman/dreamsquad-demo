@@ -3,6 +3,7 @@ using Spine.Unity;
 using UnityEditor;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.Data.BattleView;
 using Wassup.Presentation;
 
 namespace Wassup.Editor
@@ -13,9 +14,12 @@ namespace Wassup.Editor
         private const string DefaultPrefabFolder = "Assets/_Project/Prefabs/Props";
         private const float PropSpritePixelsPerUnit = 256f;
 
-        // shadow-polish unit 6 — authored 블롭 기본값. 색은 런타임에 BattleBridge 전역값으로 덮인다(프리뷰용).
+        // shadow-polish unit 6 — authored 블롭 기본값. 색은 런타임에 `BlobShadowConfig` 값으로 덮인다(프리뷰용).
+        // battle-core-rebuild unit 8a — 생성 프리팹이 외형 SO 두 개를 **직접 든다**(브리지 static 미러 은퇴).
+        private const string BlobShadowConfigPath = "Assets/_Project/Data/BattleView/BlobShadowConfig.asset";
+        private const string CharacterViewConfigPath = "Assets/_Project/Data/BattleView/CharacterViewConfig.asset";
         private const string BlobShadowSpritePath = "Assets/_Project/Art/blob_shadow.png";
-        private const float BlobBaseSize = 1f; // 1타일 = 유닛 블롭의 환산 기준(BattleBridge.TileToWorld = tileSize)과 같은 출발점
+        private const float BlobBaseSize = 1f; // 1타일 = 유닛 블롭의 환산 기준(타일 → 월드 = tileSize)과 같은 출발점
         // authoring 기본값(프랍별 조정 가능). 구 BlobShadowGroundY(절대 Y 0.216) − 0.02 에서 나온 수다.
         // tilted-billboard unit 7 이 유닛 블롭을 «평면 상대» 로 바꿨지만 프랍 authored 블롭은 프리팹이
         // 정본이라(shadow-polish unit 6) 이 값을 그대로 둔다 — 바꾸면 기존 프랍 프리팹과 어긋난다.
@@ -73,7 +77,8 @@ namespace Wassup.Editor
             }
 
             var billboard = root.AddComponent<PropBillboard>();
-            billboard.Configure(data, visual, spriteRenderer, skeletonAnimation);
+            billboard.Configure(data, visual, spriteRenderer, skeletonAnimation,
+                AssetDatabase.LoadAssetAtPath<CharacterViewConfig>(CharacterViewConfigPath));
 
             AttachAuthoredBlob(root.transform, data, sprite);
 
@@ -107,7 +112,8 @@ namespace Wassup.Editor
             sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(BlobShadowSpritePath);
             sr.color = BlobPreviewColor;
             sr.sortingOrder = BoardSortOrder.ShadowOrder;
-            go.AddComponent<BlobShadow>().MarkAuthored();
+            go.AddComponent<BlobShadow>().MarkAuthored(
+                AssetDatabase.LoadAssetAtPath<BlobShadowConfig>(BlobShadowConfigPath));
 
             if (previous != null)
             {

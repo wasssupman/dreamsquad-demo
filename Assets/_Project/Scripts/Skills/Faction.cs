@@ -8,7 +8,7 @@ using System;
 // 타입 이름을 유지했던 것과 같은 이유다.
 //
 // 이 파일은 순수 C# 이다(`using System;` 뿐). 그래서 엔진 참조 없는 어셈블리에서 산다.
-namespace Wassup.Battle.Units
+namespace Wassup.Skills
 {
     // battle-structures unit 0 — Faction 은 «진영 × 종류» 교차 비트다.
     //

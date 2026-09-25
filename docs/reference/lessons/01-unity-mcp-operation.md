@@ -13,23 +13,23 @@ MCP `execute_code` 로 Play 를 구동해도, **에디터 창이 포커스를 �
 `execute_code` 는 코드를 **method body** 로 컴파일한다(CodeDom, C#6).
 
 - `using` 지시문 금지 → `Wassup.Data.PropData` 처럼 풀네임. UnityEngine/UnityEditor 는 암시적.
-- bridge 내부 상태(`_defenderByTile`/`_effectTilesByCell`/`_generatedMap`)는 reflection 으로 조회.
+- 컴포넌트 내부 private 상태는 reflection 으로 조회(당시 예: 브리지의 `_defenderByTile`/`_effectTilesByCell`/`_generatedMap` — 이력, 옛 ECS 전투는 unit 9 에서 제거. 지금 전투 상태는 코어 담당자의 읽기 모델로 먼저 찾는다).
 - const 필드는 reflection 으로 못 바꾼다.
 
 ## 씬 저장 없이 in-memory 로 배선 검증
 
-`BattleScene.unity` 가 무관한 미커밋 변경으로 dirty 일 때, scene-dependent 기능을 씬 저장으로 검증하면 오염이 섞인다. 회피:
+씬(당시 `BattleScene.unity` — 이력, 옛 ECS 전투는 unit 9 에서 제거. 지금은 `BattleCoreScene.unity`·`OutgameScene.unity` 에 똑같이 적용)이 무관한 미커밋 변경으로 dirty 일 때, scene-dependent 기능을 씬 저장으로 검증하면 오염이 섞인다. 회피:
 
 1. `execute_code`(edit 모드)로 GameObject 생성 + private SerializeField 를 reflection 주입. **SaveScene 안 함.**
 2. `manage_editor play` — in-memory 씬이 그대로 Play 진입(디스크 미반영).
-3. 빌드/전투 트리거(`bb.PrepareDraftMap()`/`StartBattle()`) → reflection·ECS 쿼리·screenshot 으로 검증.
+3. 빌드/전투 트리거(당시 `bb.PrepareDraftMap()`/`StartBattle()` — 이력) → reflection·상태 조회·screenshot 으로 검증.
 4. `stop` → 임시 GO `DestroyImmediate` + 필드 원복. **저장 안 함** → 디스크 baseline 유지.
 
 영속(빌드/실기기) 동작은 결국 씬 저장 필요 — in-memory 는 "코드 맞음"까지.
 
 ## 반복 Play 후 EditMode 거짓 실패 = Play 잔류 오염
 
-MCP 로 `play/stop` + `execute_code` 로 객체 생성/파괴·static 수정을 여러 번 반복한 직후 EditMode 전체 스위트를 돌리면 `BattleBridgeDraftMapTests`/`DraftControllerMapRebuildTests` 가 `Destroy may not be called from edit mode!` 로그 누출로 **거짓 실패**할 수 있다(격리 실행에서도 재현).
+MCP 로 `play/stop` + `execute_code` 로 객체 생성/파괴·static 수정을 여러 번 반복한 직후 EditMode 전체 스위트를 돌리면 `Destroy` 를 쓰는 테스트(당시 `BattleBridgeDraftMapTests`/`DraftControllerMapRebuildTests` — 이력, 옛 ECS 전투와 함께 unit 9 에서 제거)가 `Destroy may not be called from edit mode!` 로그 누출로 **거짓 실패**할 수 있다(격리 실행에서도 재현).
 
 - **처방**: 회귀로 단정하기 전에 `EditorUtility.RequestScriptReload()` → `refresh_unity(wait_for_ready)` → 재실행. **도메인 리로드 후 깨끗한 상태의 결과만 신뢰.**
 
@@ -84,6 +84,8 @@ Write 로 만든 새 `.cs` 는 `refresh_unity(scope=scripts)` 로는 import 안 
 Codex 에도 unityMCP 가 붙어 있어(`~/.codex/config.toml`) 에디터 작업 위임이 가능하다. 단 긴 Play 작업은 백그라운드로 빠져 회수가 불안정 — 짧은 조회/조작 위주로.
 
 ## PlayMode 전투 테스트: 합성 더미는 **멜리 전용**, 투사체는 안 맞는다
+
+> (이력 — 옛 ECS 전투, unit 9 에서 제거) 아래 심볼(`em.CreateEntity`·`IncomingDamage`·`AttackSystem`·`ProjectileMoveSystem`·`ProjectileHitSystem`·`bridge.ForceNextWave`)은 옛 전투의 것이다. 교훈 — **합성 픽스처가 실제 스폰 경로의 무언가를 빠뜨리면 한 갈래만 초록이 된다, 산식은 통과하는 갈래로 고정하고 나머지 갈래는 같은 산식을 쓰는지 코드로 확인한다** — 는 유지한다. 전투 코어의 규칙 테스트는 이제 씬 없이 `Tests/EditModeCore/` 에서 실제 스폰 경로를 그대로 탄다.
 
 **증상**: PlayMode 통합 테스트에서 디펜더를 배치하고 `em.CreateEntity()` 로 만든 합성 더미 적(`Health`+`FactionTag`+`IncomingDamage`+`LocalTransform`)을 사거리 안에 두면 — **멜리 유닛(guardian)은 정상 공격·데미지**가 들어가는데, **투사체 유닛(ranger)은 대상을 아예 못 맞힌다**. 피격 데미지·`ProjectileState.damage` 둘 다 0 (거리 0.05/2 무관, dreamcatcher-new-abilities 마감 때 4회 시도 전부 0).
 

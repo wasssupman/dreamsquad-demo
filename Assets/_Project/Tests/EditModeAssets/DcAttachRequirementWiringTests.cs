@@ -20,14 +20,17 @@ namespace Wassup.Tests.EditMode
     // 정적 사실이므로 에셋을 직접 보는 쪽이 결정론적이고 부작용이 없다.
     public class DcAttachRequirementWiringTests
     {
-        private const string BattleScene = "Assets/_Project/Scenes/BattleScene.unity";
+        private const string BattleCoreScene = "Assets/_Project/Scenes/BattleCoreScene.unity";
         private const string OutgameScene = "Assets/_Project/Scenes/OutgameScene.unity";
 
+        // battle-core-rebuild 8c — 대상을 옛 `BattleScene` 의 손패·인스펙트 뷰에서 새 씬의 후계(손패 = `CoreHandView`,
+        // 부착 카드 줄 = `CoreSelectionPanel` — 7c)로 옮겼다. 옛 씬과 옛 뷰는 unit 9 에서 지워진다. 키 이름은
+        // `_defenderCatalog` 라 아래 `defenderCatalog:` 부분 문자열 대조가 그대로 성립한다.
         [Test]
-        public void BattleScene_HandAndInspectViews_HaveCatalogAssigned()
+        public void BattleCoreScene_HandAndSelectionPanel_HaveCatalogAssigned()
         {
-            AssertWired(BattleScene, "Assets/_Project/Scripts/UI/Dreamcatcher/DreamcatcherHandView.cs");
-            AssertWired(BattleScene, "Assets/_Project/Scripts/UI/Dreamcatcher/DcInspectPanelView.cs");
+            AssertWired(BattleCoreScene, "Assets/_Project/Scripts/BattleCoreUnity/Cards/CoreHandView.cs");
+            AssertWired(BattleCoreScene, "Assets/_Project/Scripts/BattleCoreUnity/Hud/CoreSelectionPanel.cs");
         }
 
         [Test]

@@ -275,8 +275,8 @@ namespace Wassup.Tests.EditMode.Core
             req.Movement = MovementKind.SkyFall;
             req.Payload = PayloadKind.TileAoe;
             req.Owner = new SimEntityId(Caster);
-            req.OwnerFaction = Wassup.Battle.Units.Faction.DefenderUnit;
-            req.TargetMask = (int)Wassup.Battle.Units.Faction.EnemyUnit;
+            req.OwnerFaction = Wassup.Skills.Faction.DefenderUnit;
+            req.TargetMask = (int)Wassup.Skills.Faction.EnemyUnit;
             req.Origin = new float3(2f, 0f, 2f);
             req.Impact = new float3(8f, 0f, 1f);
             req.OnHitCc = CcRequestKind.Stun;

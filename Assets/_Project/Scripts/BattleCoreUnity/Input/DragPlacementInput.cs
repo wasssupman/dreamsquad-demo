@@ -43,6 +43,8 @@ namespace Wassup.BattleCoreUnity.Input
         [SerializeField] private BattleDriver _driver;
         [SerializeField] private CoreDefenderTray _tray;
         [SerializeField] private CoreMapOverlay _overlay;
+        [Tooltip("배치 드래그 중 적을 흐리는 유닛 뷰 풀(unit 8a2 행 4 — 옛 `SetEnemiesDimmed`). 비면 씬에서 한 번 찾는다.")]
+        [SerializeField] private CoreUnitViewPool _units;
         [SerializeField] private Camera _boardCamera;
 
         [Header("손끝 → 칸")]
@@ -309,6 +311,9 @@ namespace Wassup.BattleCoreUnity.Input
                 if (_travelPx < _dragThresholdPx) return;
                 _promoted = true;
                 if (_tray != null) _tray.DraggingDefIndex = _defIndex;
+                // unit 8a2 행 4 — 드래그로 승격된 순간 적을 흐린다(옛 `DefenderDragPlacementController.BeginDrag` `:387` —
+                // 트레이 D&D 세션 시작). 탭(집어 들기)·판 위 armed 제스처에는 없다(옛 그대로). 끄는 곳은 `EndDrag` 하나다.
+                ResolveUnits()?.SetEnemiesDimmed(true);
             }
 
             // 판정 포인터는 손가락의 **파생값**이지 치환이 아니다 — UI 판정·임계 비교는
@@ -464,6 +469,8 @@ namespace Wassup.BattleCoreUnity.Input
 
         private void EndDrag()
         {
+            // unit 8a2 행 4 — 드롭·거부·취소·비활성 **모든 종료**가 여기를 지난다(옛 `CleanupSession` `:2107`).
+            if (_promoted) ResolveUnits()?.SetEnemiesDimmed(false);
             _pressing = false;
             _promoted = false;
             _defIndex = -1;
@@ -478,6 +485,17 @@ namespace Wassup.BattleCoreUnity.Input
         {
             if (_overlay != null) _overlay.HidePlacement();
             if (_dragPreview != null) _dragPreview.Hide();
+        }
+
+        private bool _unitsMissed;
+
+        private CoreUnitViewPool ResolveUnits()
+        {
+            if (_units != null) return _units;
+            if (_unitsMissed) return null;
+            _units = FindAnyObjectByType<CoreUnitViewPool>();
+            if (_units == null) _unitsMissed = true;   // 한 번만 찾는다
+            return _units;
         }
 
         private Camera EnsureCamera()

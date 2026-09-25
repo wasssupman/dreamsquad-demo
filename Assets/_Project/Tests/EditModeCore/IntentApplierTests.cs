@@ -173,6 +173,7 @@ namespace Wassup.Tests.EditMode.Core
                                   Cell = new int2(1, 1), Cell2 = new int2(8, 1), Duration = 2f });
             Assert.AreEqual(3, _m.World.Fields.Count);
             Assert.AreEqual(FieldKind.Portal, _m.World.Fields[2].Kind);
+            Assert.AreEqual(0f, _m.World.Fields[2].Range, "포탈 입구 = 그 칸 자체(칸 반폭은 판정 진입점의 성질)");
         }
 
         [Test]
@@ -187,6 +188,9 @@ namespace Wassup.Tests.EditMode.Core
             _m.Tick();
             Assert.AreEqual(1, ascends.Count);
             Assert.AreEqual(1, ascends[0].Arg, "궁극기 이탈");
+            // unit 8a2 행 2 — 이탈 사건이 착지 슬램 반경을 **값으로** 싣는다(뷰의 착지 예고가 도약자를 되묻지 않게).
+            Assert.AreEqual(1, ascends[0].AreaTiles, "이탈 사건의 AreaTiles = 슬램 칸 수");
+            Assert.AreEqual(0f, ascends[0].SiteTarget.OriginBody, "착지 자리는 자리형(원점 항 = 칸 반폭)");
         }
 
         [Test]

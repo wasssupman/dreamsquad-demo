@@ -1,5 +1,4 @@
 using Unity.Mathematics;
-using Wassup.Battle.Units;
 using Wassup.BattleCore.Map;
 using Wassup.Skills;
 

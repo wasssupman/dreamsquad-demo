@@ -24,7 +24,7 @@ namespace Wassup.Data
         [Tooltip("순차 메테오 간 착탄 시차 (초)")]
         public float meteorStaggerSec = 0.4f;
 
-        [Header("메테오 뷰 (unit 4 cast 시 BattleBridge 가 소비)")]
+        [Header("메테오 뷰 (MatchDefinitionBuilder 가 투사체 정의표로 굽는다)")]
         [Tooltip("메테오 투사체 데이터(SkyFall×TileAoe). 기존 메테오 ProjectileData 재사용 가능.")]
         public ProjectileData meteorProjectile;
     }

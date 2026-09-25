@@ -141,8 +141,7 @@ namespace Wassup.Data
         [Tooltip("드래그/arm 시작 시 하이라이트가 0→placeableColor.a 로 차오르는 시간(초). unscaledTime 기준. 정적(펄스 없음).")]
         public float placeableFadeInDuration = 0.2f;
 
-        // first-run-tutorial unit 1 — 배치 **불가** 칸(가능 칸의 여집합). 온보딩 맵 설명 전용이고
-        // 일반 배치/드래그에서는 켜지 않는다 — 드래그 중에 화면 절반이 빨개지면 정작 놓을 곳이 안 보인다.
+        // 배치 **불가** 칸(가능 칸의 여집합). 새 씬은 드래그 중에만 칠한다(5b 사용자 결정 2026-09-23 · `CoreMapOverlay`).
         //
         // placeableTile 을 빌려 쓰지 않고 자기 필드를 갖는다: 슬랩은 자체 m_Color 가 회색(0.80)이라
         // tint 를 곱하면 색이 죽고, 무엇보다 두 채널이 한 참조를 공유하면 한쪽 저작이 다른 쪽을 끌고 간다.

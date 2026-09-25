@@ -3,7 +3,7 @@
 // (battle-core-rebuild unit 2)
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore.Map;
 using Wassup.BattleCore.Move;
 

@@ -37,7 +37,7 @@ namespace Wassup.Tests.EditMode.Core
                 Assert.AreEqual(Wassup.BattleCore.Map.MapTile.Walk, m.Map.Snapshot.Tiles[cell.y * m.Map.Snapshot.Width + cell.x]);
                 Assert.IsTrue(cells.Add(cell), "같은 칸에 두 번 떨어지지 않는다");
                 Assert.AreEqual(0f, e.SiteFired.OriginBody, 1e-6f, "자리에 떨어지는 것 — 몸 0(제약 13)");
-                Assert.AreEqual(Wassup.Battle.Units.Faction.DefenderUnit, e.Faction, "플레이어 쪽 탄 — 적을 때린다");
+                Assert.AreEqual(Wassup.Skills.Faction.DefenderUnit, e.Faction, "플레이어 쪽 탄 — 적을 때린다");
             }
             foreach (var p in m.World.Projectiles) flights.Add(p.FlightTime);
             flights.Sort();

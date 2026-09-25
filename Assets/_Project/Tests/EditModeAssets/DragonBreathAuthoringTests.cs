@@ -73,7 +73,7 @@ namespace Wassup.Tests.EditMode
             foreach (var o in d.outputs)
                 if (o.kind == AttackOutputKind.ApplyStack) stack = o;
             Assert.IsTrue(stack.HasValue, "드래곤은 화염 스택 producer 다");
-            Assert.AreEqual(Wassup.Battle.Effects.StackKind.Fire, stack.Value.stackKind);
+            Assert.AreEqual(Wassup.Data.Authoring.StackKind.Fire, stack.Value.stackKind);
             Assert.AreEqual(5, stack.Value.stackMaxStack,
                 "maxStack 은 producer 가 소유하고 StackModifier_Fire 의 atStack 과 명시 일치해야 한다");
             Assert.Greater(stack.Value.duration, d.attackCooldown,

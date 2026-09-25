@@ -237,7 +237,7 @@ namespace Wassup.BattleCore
         public static MatchDefinition DetourFixture(int seed)
         {
             var def = MapFixture(seed, detectionRange: 0f);
-            def.Enemies[0].TargetFactions = (int)Wassup.Battle.Units.Faction.DefenderCore;
+            def.Enemies[0].TargetFactions = (int)Wassup.Skills.Faction.DefenderCore;
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }
@@ -397,7 +397,7 @@ namespace Wassup.BattleCore
             var def = WaveFixture(seed, GoalKind.WaveClear, ClockKind.CountUp, 8);
             for (int i = 0; i < def.Enemies.Length; i++)
             {
-                def.Enemies[i].TargetFactions = (int)Wassup.Battle.Units.Faction.DefenderUnit;
+                def.Enemies[i].TargetFactions = (int)Wassup.Skills.Faction.DefenderUnit;
                 def.Enemies[i].StabilityDamage = 60;
             }
             def.Heart = new HeartDef { MaxHealth = 200f, KillHealPerAwakening = 0f };
@@ -438,7 +438,7 @@ namespace Wassup.BattleCore
                 new StructureSpot
                 {
                     Cell = new int2(8, 2),
-                    Faction = (int)Wassup.Battle.Units.Faction.DefenderInstinct,
+                    Faction = (int)Wassup.Skills.Faction.DefenderInstinct,
                     Footprint = StructureSize.Instinct,
                     DefIndex = 0,
                 },

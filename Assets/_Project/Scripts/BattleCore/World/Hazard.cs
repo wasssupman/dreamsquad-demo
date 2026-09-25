@@ -1,5 +1,5 @@
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 
 namespace Wassup.BattleCore
 {
@@ -75,7 +75,7 @@ namespace Wassup.BattleCore
         /// </summary>
         public static Hazard Spawn(BattleWorld world, Map.MapRuntime map, MatchDefinition def,
                                    int defIndex, Unity.Mathematics.int2 cell, SimEntityId source,
-                                   Wassup.Battle.Units.Faction faction, byte targetLayers, int tick)
+                                   Wassup.Skills.Faction faction, byte targetLayers, int tick)
         {
             if (def == null || defIndex < 0 || defIndex >= def.Hazards.Length) return null;
             ref var hd = ref def.Hazards[defIndex];

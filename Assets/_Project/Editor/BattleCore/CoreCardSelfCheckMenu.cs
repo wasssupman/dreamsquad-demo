@@ -89,7 +89,7 @@ namespace Wassup.EditorTools.BattleCore
                 board: new BoardEffectAuthoring
                 {
                     Hazards = Arr<HazardSO>("_hazards"),
-                    ExtraBlockers = Arr<Wassup.Battle.Effects.BlockingHazardSO>("_extraBlockers"),
+                    ExtraBlockers = Arr<Wassup.Data.Authoring.BlockingHazardSO>("_extraBlockers"),
                 },
                 cards: cards, dreamstones: null);
         }

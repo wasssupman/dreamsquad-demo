@@ -82,8 +82,8 @@ namespace Wassup.Data
         // ⚠ **미저작 적의 실제 기본값은 이 이니셜라이저다**(`Resolve` 의 «0 = 폴백» 이 아니다).
         // YAML 에 키가 없으면 이 값이 남아 폴백 분기를 안 탄다 — 두 값을 같은 상수로 묶어둔 이유.
         [Tooltip("이 적이 노리는 대상(진영 × 종류). 비우면(None) 기본값 = 상대 진영 전부.")]
-        public Wassup.Battle.Units.Faction targetFactions =
-            (Wassup.Battle.Units.Faction)Wassup.Battle.Combat.EnemyTargetDefaults.DefaultEnemyMask;
+        public Wassup.Skills.Faction targetFactions =
+            (Wassup.Skills.Faction)Wassup.Data.Authoring.EnemyTargetDefaults.DefaultEnemyMask;
 
         public float health = 100f;
         public float moveSpeed = 2f;

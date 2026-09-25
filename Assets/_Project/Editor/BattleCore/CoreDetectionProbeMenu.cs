@@ -63,7 +63,7 @@ namespace Wassup.EditorTools.BattleCore
             {
                 var o = units[i];
                 if (o.Id == self.Id || o.Dead) continue;
-                if (((int)o.Faction & Wassup.Battle.Units.Factions.AnyDefender) == 0) continue;
+                if (((int)o.Faction & Wassup.Skills.Factions.AnyDefender) == 0) continue;
                 float dist = math.distance(o.Position, self.Position);
                 if (dist >= best) continue;
                 best = dist;

@@ -823,6 +823,10 @@ namespace Wassup.BattleCoreUnity.Cards
             _slomoLease.Dispose();
             _slomoActive = false;
             if (_costDisplay != null) _costDisplay.SetSuppressed(false);
+            // unit 8b — **열기 뒤집기가 도는 중에 닫히면 그 뒤집기를 끊는다.** 안 끊으면 뒤집기가 끝난 뒤 패널을 켜고 딜을
+            // 시작해(`StartDeal` 이 방금 건 가라앉기를 멈춘다) 상태는 「칸 줄」인데 손패가 떠 있고 칸 줄이 영영 접힌 채 남는다.
+            // 선택 직후 곧바로 철수하면(대상이 사라져 선택이 닫힌다) 나는 경로다.
+            if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             StartSink();
         }
 

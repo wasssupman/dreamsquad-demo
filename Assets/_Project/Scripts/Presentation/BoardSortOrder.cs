@@ -16,6 +16,9 @@ namespace Wassup.Presentation
         public const int MaxGridSide = 48;
         // tilted-billboard unit 3 — 블롭 그림자: 바닥 타일맵(ground −20 / overlay −10) 위, 캐릭터(양수) 아래.
         public const int ShadowOrder = -5;
+        // battle-core-rebuild unit 8a2 — 효과 타일 칸(바닥 바로 위 · 모든 오버레이 아래). 옛 `TilemapMapView.EnsureEffectTilemap`
+        // 의 `sortingOrder = -15`(`TilemapMapView.cs:1072`) 그대로 — 리터럴을 이 표로 옮겼다.
+        public const int EffectTileOrder = -15;
         // unit-health-display unit 2 — 적 피격 마이크로바: 캐릭터·투사체(1000) 위, 데미지 숫자(32000) 아래.
         // bg = 이 값, fill = +1.
         public const int HitBarOrder = 16000;

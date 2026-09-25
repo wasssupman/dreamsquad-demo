@@ -116,7 +116,7 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsNotNull(Object.FindAnyObjectByType<CoreMapOverlay>(), "맵 오버레이");
             Assert.IsNotNull(Object.FindAnyObjectByType<CoreSpawnAlertPresenter>(), "예고선");
             Assert.IsNotNull(Object.FindAnyObjectByType<CameraDirector>(), "카메라 디렉터");
-            Assert.IsNotNull(Object.FindAnyObjectByType<CoreCameraFeed>(), "카메라 피드");
+            Assert.IsNotNull(Object.FindAnyObjectByType<Wassup.BattleCoreUnity.View.CorePhaseFeed>(), "카메라 피드");
             // 버튼이 눌리려면 EventSystem 이 있어야 한다 — 없으면 「시작」·「제출」이
             // 조용히 안 눌린다(누락의 전형).
             Assert.IsNotNull(Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>(),

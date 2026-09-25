@@ -13,11 +13,9 @@ namespace Wassup.UI.Draft
     // FadeIn(): soft reveal — used when toggle re-opens the panel after dwell.
     // Roll(): fly-up exit → SnapHidden.
     // Cards are displayed in a horizontal ScrollRect (left-aligned, swipeable).
-    public class WavePatternStripView : MonoBehaviour
+    public partial class WavePatternStripView : MonoBehaviour
     {
         public enum State { Hidden, Unrolling, Shown, Rolling }
-
-        [SerializeField] private AttackDeck deck;
 
         // Header: top-anchored. Rests 100px below screen top; slams in from above.
         private const float HeaderRestY      = -100f;
@@ -63,17 +61,7 @@ namespace Wassup.UI.Draft
 
         // ── Public API ────────────────────────────────────────────────────────
 
-        public void RebuildFromDeck()
-        {
-            if (deck == null) { RebuildFromPlan(default); return; }
-            try { RebuildFromPlan(WavePatternGenerator.Generate(deck)); }
-            catch (Exception ex)
-            {
-                if (!_built) Build();
-                ClearCards();
-                AddMessageCard("웨이브 미리보기 불가", ex.Message);
-            }
-        }
+        // (옛 씬의 덱 경로 `RebuildFromDeck` 는 8c 에서 `WavePatternStripView.OldBattle.cs` 로 떼었다 — unit 9 가 지운다.)
 
         // random-map-pool unit 6 — 외부(draft)에서 실전과 동일한 플랜을 넘겨 프리뷰를 만든다.
         // plan.waves==null(default) 이면 build+clear 만(빈 프리뷰).

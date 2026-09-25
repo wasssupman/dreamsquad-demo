@@ -104,6 +104,17 @@ code + git history        구현 상세
 
 ---
 
+## 은퇴한 spec
+
+기능째 없어진 spec 이다. 폴더는 이력으로 남긴다(삭제 금지) — 다시 짓는다면 새 spec 을 연다.
+
+- `first-run-tutorial/` — **은퇴(결정 ④ 2026-09-25)**. 전투 첫 판 안내 + 로비 배웅. `battle-core-rebuild/8d_tutorial_removal.md` 가 지웠다(옛 씬 몫은 unit 9 퇴역 집합).
+- `first-session-tutorial/` — **은퇴(결정 ④ 2026-09-25)**. 콘텐츠는 `tutorial-content-teardown` 이 이미 걷었고, 남은 안내 도구는 8d 가 퇴역 집합으로 넘겼다.
+- `outgame-tutorial/` — **은퇴(결정 ④ 2026-09-25)**. 로비 로드아웃 차단 오버레이 — 8d 가 로비 씬·코드에서 지웠다.
+- `tutorial-content-teardown/` — **은퇴(결정 ④ 2026-09-25)**. 그 spec 이 남긴 「안내 도구」까지 8d 가 걷었다.
+- `tutorial-map/` — **은퇴(결정 ④ 2026-09-25)**. 스테이지는 `map-diorama-stage` unit 12 에서 은퇴했고, 남은 `Deck_Tutorial`·`WavePlan_Tutorial` 을 8d 가 지웠다.
+- ⚠ `tutorial-offline-match/` 는 **은퇴가 아니다** — 「계정 첫 판은 토너먼트에 올리지 않는다」(서버 `complete` 500 우회)가 라이브다. 튜토리얼과 무관한 규칙이라 8d 가 남겼다(지울지는 사용자 결정 대기).
+
 ## Follow-up Backlog
 
 ### 전투 판정 산식 통일 — 남은 결함 (2026-09-06, `distance-based-range` unit 23 에서 전수 감사)
@@ -727,7 +738,7 @@ unit 9 로 `Next Wave` 가 남은 웨이브 전체를 앞당기게 되면서 "�
 > `EntitiesAssetGC.GetAdditionalRoots` NRE 가 GC 타이밍에 터져 임의 귀속된다.
 > **PlayMode 판정은 에디터 실행으로 한다.** 배치는 EditMode 전용으로 쓸 것.
 
-#### 첫 판 튜토리얼 개선 (first-session-tutorial units 10~12 이관, 2026-07-21)
+#### 첫 판 튜토리얼 개선 (first-session-tutorial units 10~12 이관, 2026-07-21) — **은퇴(결정 ④ 2026-09-25 · 기능 제거)**
 
 - **신규 동작의 테스트 커버리지** [S] · `ClassHint` 전이(`OnPlacementCommitted → ClassHint →
   ContinueTapped → Start` + 12초 폴백)와 `AwakeningGaugeView.SetSuppressed`(=`SetActive` 직접 호출로는
@@ -749,7 +760,7 @@ unit 9 로 `Next Wave` 가 남은 웨이브 전체를 앞당기게 되면서 "�
   단어가 한 번도 등장하지 않는다. 첫 판 이탈자는 게임의 차별점을 영영 못 본다. 대안은 "숨김" 대신
   "보이되 침묵"(버튼·게이지는 노출, 힌트만 억제) — 채택 시 unit 12 의 0단계가 불필요해진다. (units 10·12 리뷰)
 
-#### 아웃게임 튜토리얼 (outgame-tutorial 종료 이관, 2026-07-21)
+#### 아웃게임 튜토리얼 (outgame-tutorial 종료 이관, 2026-07-21) — **은퇴(결정 ④ 2026-09-25 · 기능 제거)**
 
 - **Android 실기기 QA** [S] · 노치·safe area dim 커버리지, Android 백키로 안내가 닫히는지(`Keyboard.current` 가 null 인 기기에서 미동작 가능 — 기존 `DreamcatcherHandView` 와 같은 제약), dim 톤 `UiOverlay.Dim` 알파 0.92 가 로비 배경 위에서 과한지. 링/홀 정렬은 실측 완료라 제외. (outgame-tutorial)
 - **챕터 B 게이트를 독립 신호로 교체** [S] · 현재는 인게임 core 튜토리얼 완료 플래그를 재사용하는데, 그 실제 의미는 "core 튜토리얼이 발동하고 Battle 페이즈에 도달했다"다. `FirstSessionTutorialController` 의 fail-open 경로(참조 누락·affordable 슬롯 부재)를 탄 플레이어는 전투를 몇 판 하든 **챕터 B 를 영원히 못 본다**. 매치 카운트 같은 독립 신호가 의미에 맞다. (outgame-tutorial)

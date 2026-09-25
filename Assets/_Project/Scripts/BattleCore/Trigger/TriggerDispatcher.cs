@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
 using Wassup.Skills;
 
 namespace Wassup.BattleCore.Trigger

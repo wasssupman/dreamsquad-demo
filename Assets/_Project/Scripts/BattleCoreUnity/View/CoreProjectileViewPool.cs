@@ -203,6 +203,11 @@ namespace Wassup.BattleCoreUnity.View
             // unit 9 — SkyFall 낙하 압축(뷰 전용): 낙하가 비행 후반 이 비율에 압축된다.
             // 1 = 전체 구간 등속. ECS state 를 늘리지 않고 view 딕셔너리에 태운다.
             public float fallPortion;
+            // 플레이 3차 — SkyFall 낙하 시작 높이. **탄 SO 의 `dropHeight`** 다(옛 드레인이 `req.arcHeight` 가 비면
+            // `projData.dropHeight` 로 보충 — `BattleBridge.cs:5805-5806`, 운석 캐스트도 dropHeight 를 실었다 `:5544`).
+            // 코어 탄의 `ArcHeight` 는 포물선 높이(SO `arcHeight`)라 낙하탄에선 뷰가 쓸 값이 아니다 — 운석은 0 이라
+            // 지면에서만 잠깐 보였다. 낙하 높이는 판정에 안 쓰이는 뷰 값이라 코어가 아니라 여기서 되찾는다.
+            public float dropHeight;
             // unit 5 — spawn 직후 같은 프레임의 Bridge sync가 weapon/body anchor를
             // 덮지 않도록 딱 한 번 위치 갱신을 보류한다.
             public bool holdLaunchAnchorForFirstSync;
@@ -313,6 +318,7 @@ namespace Wassup.BattleCoreUnity.View
                 lastGroundPosition = spawnGroundView,
                 heightOffset = data.visualHeightOffset,
                 fallPortion = data.fallPortion,
+                dropHeight = data.dropHeight,
                 holdLaunchAnchorForFirstSync = hasLaunchAnchor,
             };
         }
@@ -357,7 +363,7 @@ namespace Wassup.BattleCoreUnity.View
                 else if (frame.movement == MovementKind.BezierHomingToEntity && frame.flightTime > 0f)
                     presentationHeight += BallisticArc.ArcHeight(
                         frame.arcHeight, math.saturate(frame.elapsed / frame.flightTime));
-                // unit 9 — SkyFall 낙하: arcHeight 슬롯 = 낙하 시작 높이. sim 은 착탄 셀에
+                // unit 9 — SkyFall 낙하: 낙하 시작 높이 = 탄 SO dropHeight(state — 위 필드 주석). sim 은 착탄 셀에
                 // 고정이므로 화면 낙하는 전부 여기 camera-up 으로 표현된다. pos 에 접혀
                 // AlongVelocity 페이싱이 아래를 향하고 트레일이 위로 남는다.
                 // fallPortion < 1 이면 낙하를 비행 후반에 압축하고, 대기(pre-fall)
@@ -382,7 +388,7 @@ namespace Wassup.BattleCoreUnity.View
                         // 높이에 고정돼 있어 트레일 스트릭 없음.
                         if (falling) ResetVfx(state.view);
                     }
-                    presentationHeight += frame.arcHeight * (1f - SkyFall.FallProgress(p, fp));
+                    presentationHeight += state.dropHeight * (1f - SkyFall.FallProgress(p, fp));
                 }
                 // bomb-thrower-defender unit 5 — 구르기 arc(travel 낮은 arc; 퓨즈엔 t=1
                 // → ArcHeight 0 = 지면 정지) + 착지 후 폭발 예고 스케일 점멸.

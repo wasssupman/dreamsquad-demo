@@ -59,7 +59,7 @@ namespace Wassup.Tests.EditMode
             // id 는 `anti_air` 그대로다 — 표시 이름만 「넉백머신」으로 바뀌었다(2026-08-17).
             // id 를 바꾸면 저장된 덱(profile.json)이 Validate 에 걸려 안 열린다.
             Assert.IsNotNull(antiAir, "넉백머신(anti_air) 데이터가 카탈로그에 등록돼야 한다");
-            Assert.AreEqual(Wassup.Battle.Units.Faction.EnemyUnit, antiAir.targetFactions);
+            Assert.AreEqual(Wassup.Skills.Faction.EnemyUnit, antiAir.targetFactions);
             // cooldown·magnitude 는 시트 소유 — 값은 자유 튜닝, 여기서는 구조만
             // (test-suite-fast-lane unit 1).
             Assert.Greater(antiAir.attackCooldown, 0f, "쿨다운 0 이면 매 프레임 발사로 폭주한다");

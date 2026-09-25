@@ -1,6 +1,6 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Battle.Combat;
+using Wassup.Data.Authoring;
 using Wassup.Data;
 
 namespace Wassup.Tests.EditMode

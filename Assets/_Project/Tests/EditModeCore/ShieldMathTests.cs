@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat;
 using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;

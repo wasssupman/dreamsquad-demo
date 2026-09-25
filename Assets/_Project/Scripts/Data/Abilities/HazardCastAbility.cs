@@ -1,5 +1,5 @@
 using UnityEngine;
-using Wassup.Battle.Effects;
+using Wassup.Data.Authoring;
 
 namespace Wassup.Data
 {

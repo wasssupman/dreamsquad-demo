@@ -29,7 +29,7 @@ namespace Wassup.BattleCore.Combat.Projectile
         // ── 귀속 ──
         /// <summary>쏜 자. 킬 귀속·위협 누적의 축이다. `None` = 판이 쏜 것(미귀속).</summary>
         public SimEntityId Owner = SimEntityId.None;
-        public Wassup.Battle.Units.Faction OwnerFaction;
+        public Wassup.Skills.Faction OwnerFaction;
         /// <summary>때릴 수 있는 진영 비트. 발사 시점 스냅샷이다.</summary>
         public int TargetMask;
         /// <summary>때릴 수 있는 통행 층. 0 = 무필터.</summary>
@@ -146,7 +146,7 @@ namespace Wassup.BattleCore.Combat.Projectile
             Movement = MovementKind.HomingToEntity;
             Payload = PayloadKind.SingleSplash;
             Owner = SimEntityId.None;
-            OwnerFaction = Wassup.Battle.Units.Faction.None;
+            OwnerFaction = Wassup.Skills.Faction.None;
             TargetMask = 0;
             TargetLayers = 0;
             Target = SimEntityId.None;

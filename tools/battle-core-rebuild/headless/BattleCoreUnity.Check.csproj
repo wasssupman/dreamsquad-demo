@@ -53,8 +53,6 @@
     <Reference Include="$(UnityScriptAssemblies)/Unity.Mathematics.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.Collections.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.Burst.dll" Private="false" />
-    <Reference Include="$(UnityScriptAssemblies)/Unity.Entities.dll" Private="false" />
-    <Reference Include="$(UnityScriptAssemblies)/Unity.Transforms.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.TextMeshPro.dll" Private="false" />
     <!-- unit 5a — 오버헤드 바가 uGUI(Canvas·CanvasScaler)를 쓴다. 패키지 어셈블리라 UnityEngine 모듈 폴더에 없다. -->
     <Reference Include="$(UnityScriptAssemblies)/UnityEngine.UI.dll" Private="false" />
@@ -63,6 +61,8 @@
     <Reference Include="$(UnityScriptAssemblies)/spine-csharp.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/PrimeTween.Runtime.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Wassup.DepthParallax.dll" Private="false" />
+    <!-- unit 8a — `CorePhaseFeed` 가 `BattleCoreUnity/` 로 들어오며 스테이지 포스트 `Volume`(URP core)을 찾는다. 5b 에는 그 파일이 이 lane 밖(`Presentation/`)이었다. -->
+    <Reference Include="$(UnityScriptAssemblies)/Unity.RenderPipelines.Core.Runtime.dll" Private="false" />
   </ItemGroup>
 
 </Project>

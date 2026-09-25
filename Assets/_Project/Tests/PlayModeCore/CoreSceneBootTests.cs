@@ -57,7 +57,7 @@ namespace Wassup.Tests.PlayMode.Core
                 var s = stage[i];
                 if (s.data == null) continue;
                 if (Wassup.Data.StructurePlacements.DeriveFaction(s.side, s.data.kind)
-                    == Wassup.Battle.Units.Faction.DefenderCore) continue;
+                    == Wassup.Skills.Faction.DefenderCore) continue;
                 authoredStructures++;
             }
             int worldStructures = CountStructures(driver, excludeDefenderCore: true);
@@ -144,7 +144,7 @@ namespace Wassup.Tests.PlayMode.Core
             {
                 if (units[i].Kind != UnitKind.Structure) continue;
                 if (excludeDefenderCore
-                    && units[i].Faction == Wassup.Battle.Units.Faction.DefenderCore) continue;
+                    && units[i].Faction == Wassup.Skills.Faction.DefenderCore) continue;
                 n++;
             }
             return n;

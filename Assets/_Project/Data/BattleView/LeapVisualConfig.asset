@@ -27,3 +27,4 @@ MonoBehaviour:
   ultimateHeight: 14
   ultimateLandingSquash: 0.14
   ultimateLandingSquashSeconds: 0.06
+  landingTelegraphColor: {r: 1, g: 0.45, b: 0.08, a: 0.42}

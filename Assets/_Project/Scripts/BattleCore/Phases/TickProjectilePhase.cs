@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Combat.Projectile;
 using Wassup.BattleCore.Effects;
@@ -42,6 +42,10 @@ namespace Wassup.BattleCore
         private Unit[] _victims = new Unit[64];
         private float[] _victimDistSq = new float[64];
         private int[] _victimPick = new int[64];
+        // 경로 스윕 — 그 틱에 가로지른 후보(진행 방향 거리 · 맞힌 기록 슬롯)를 모아 앞에서부터 소비한다.
+        private Unit[] _swept = new Unit[64];
+        private float[] _sweptAlong = new float[64];
+        private int[] _sweptSlot = new int[64];
         // unit 6a2 — 관문이 이번 발사에서 접는 칸들. 발사마다 비운다.
         private readonly List<FoldSlot> _foldSlots = new List<FoldSlot>(4);
 
@@ -864,7 +868,7 @@ namespace Wassup.BattleCore
                 for (int i = 0; i < units.Count; i++)
                 {
                     var u = units[i];
-                    if (u == direct || !u.IsTargetable() || !IsLegal(u, p)) continue;
+                    if (u == direct || !u.IsTargetable() || !IsAreaLegal(u, p)) continue;
                     float dx = u.Position.x - p.Position.x;
                     float dz = u.Position.z - p.Position.z;
                     float reach = p.SplashRadius + u.HitRadius * tileSize;
@@ -905,7 +909,7 @@ namespace Wassup.BattleCore
             for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
-                if (!u.IsTargetable() || !IsLegal(u, p)) continue;
+                if (!u.IsTargetable() || !IsAreaLegal(u, p)) continue;
                 // 제약 13 — **착탄 지점** 진입점. 원점에 주인이 있으면 그 몸, 없으면 칸 반폭.
                 float dx = (u.Position.x - p.Impact.x) / tileSize;
                 float dz = (u.Position.z - p.Impact.z) / tileSize;
@@ -936,17 +940,54 @@ namespace Wassup.BattleCore
             float tileSize = _map != null ? _map.TileSize : 1f;
             var units = ctx.World.Units;
             int hits = 0;
+            // 관통 소진 튕김의 기준점 — 이 틱에 맞힌 적 중 **스윕 진행 방향으로 가장 앞**
+            // (옛 전투는 앞에서부터 맞혔으므로 그 순서의 마지막 피해자와 같다).
+            Unit lastVictim = null;
+            float lastAlong = float.MinValue;
+            float2 sweepDir = p.Position.xz - p.PrevPos.xz;
 
-            for (int i = 0; i < units.Count && p.PierceRemaining > 0; i++)
+            // 1) 그 틱에 가로지른 후보를 모은다 — 순회는 `SimEntityId` 오름차순이다.
+            int n = 0;
+            for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
-                if (!u.IsTargetable() || !IsLegal(u, p)) continue;
+                if (!u.IsTargetable() || !IsAreaLegal(u, p)) continue;
                 float reach = p.HitThreshold + u.HitRadius * tileSize;
                 if (!SweepHitMath.SegmentHits(p.PrevPos.xz, p.Position.xz, u.Position.xz, reach)) continue;
                 if (!PathHits.CanHit(p.HitRecords, u.Id, p.Elapsed, p.RehitCooldown, out int slot)) continue;
+                if (n >= _swept.Length) Grow(ref _swept, ref _sweptAlong, ref _sweptSlot);
+                _swept[n] = u;
+                _sweptAlong[n] = math.dot(u.Position.xz - p.PrevPos.xz, sweepDir);
+                _sweptSlot[n] = slot;
+                n++;
+            }
+
+            // 2) unit 9 감사 A — **진행 방향 앞에서부터** 관통을 쓴다(옛 `ProjectileHitSystem`
+            //    7f9b496e1 :536~545 「a 1-pierce shot must stop at the nearest enemy it crossed」).
+            //    순회 순서(id)로 쓰면 관통 1 탄이 가까운 적을 지나 먼 적을 맞힌다. 안정 삽입 정렬이라
+            //    같은 거리는 수집 순서 = `SimEntityId` 오름차순으로 남는다(결정론).
+            for (int a = 1; a < n; a++)
+            {
+                var ku = _swept[a]; float ka = _sweptAlong[a]; int ks = _sweptSlot[a];
+                int b = a - 1;
+                while (b >= 0 && _sweptAlong[b] > ka)
+                {
+                    _swept[b + 1] = _swept[b]; _sweptAlong[b + 1] = _sweptAlong[b]; _sweptSlot[b + 1] = _sweptSlot[b];
+                    b--;
+                }
+                _swept[b + 1] = ku; _sweptAlong[b + 1] = ka; _sweptSlot[b + 1] = ks;
+            }
+
+            for (int k = 0; k < n && p.PierceRemaining > 0; k++)
+            {
+                var u = _swept[k];
+                int slot = _sweptSlot[k];
+                if (!u.IsTargetable()) continue;   // 앞선 피해·산출물로 이 틱에 쓰러졌다
 
                 Deal(ctx, p, u, p.Damage);
                 hits++;
+                float along = _sweptAlong[k];
+                if (lastVictim == null || along > lastAlong) { lastVictim = u; lastAlong = along; }
 
                 // 기록은 **창**이다. 슬롯을 제자리에 덮어쓴다 — 매 바퀴 append 하면 버퍼가 자란다.
                 var rec = new PathHitRecord { Victim = u.Id, NextHitAt = p.Elapsed + p.RehitCooldown };
@@ -970,7 +1011,39 @@ namespace Wassup.BattleCore
             }
 
             if (hits > 0) ctx.Bus.Publish(CoreEvent.ProjectileHit(ctx.Tick, p, SimEntityId.None, hits));
+
+            // unit 9c — **더 뚫을 수 없게 된 틱**(관통 소진 또는 사거리 끝)에 튕김이 남아 있으면
+            // 마지막으로 맞힌 적에서 다음 적으로 **호밍·단일 착탄으로 바꿔** 다시 난다(옛
+            // `ProjectileHitSystem.cs:648-676`). 머신거너 탄은 관통 1 이라 실사용 형태는 「맞히고 튕김」이다.
+            // · 튕김은 **그 틱에 맞힌 적이 있을 때만** — 아무도 못 맞히고 사거리 끝에 닿으면 기준점이 없다.
+            // · 맞힌 기록(`HitRecords`)은 승계하지 않는다 — 전환 뒤 단일 착탄은 그것을 읽지 않는다.
+            // · 옛 코드가 전환 때 산출물 표를 떼어 낸 것은 「스윕엔 안 걸리던 상태이상이 홉에만 걸리는」
+            //   비대칭을 막으려던 것이다. 코어는 스윕 피격도 같은 `Deal` 로 산출물을 얹으므로 그
+            //   비대칭이 애초에 없다 — 떼어 내면 오히려 홉에서만 빠지는 반대 비대칭이 된다.
+            bool spent = p.PierceRemaining <= 0 || p.ImpactReached;
+            if (spent && lastVictim != null && p.BounceRemaining > 0
+                && TryBounceFrom(ctx, p, lastVictim, tileSize))
+            {
+                p.Movement = MovementKind.HomingToEntity;   // 방향 → 호밍
+                p.Payload = PayloadKind.SingleSplash;       // 스윕 → 단일 착탄
+                return;
+            }
             if (p.PierceRemaining <= 0) p.Expired = true;
+        }
+
+        // 방향탄 튕김 — **맞힌 적의 자리**에서 그 적을 빼고 찾는다(착탄 튕김은 탄의 자리·직격 대상 제외).
+        private bool TryBounceFrom(TickContext ctx, Projectile p, Unit from, float tileSize)
+        {
+            int n = CollectBounceCandidates(ctx, p, from.Id);
+            int pick = BounceRetarget.FindNext(from.Position, -1, _bounceCands, n,
+                                               p.TargetLayers, p.TargetMask,
+                                               p.BounceTileRange, tileSize);
+            if (pick < 0) return false;
+            p.Target = _bounceIds[pick];
+            p.Damage *= p.BounceDamageMul;
+            p.BounceRemaining--;
+            p.ImpactReached = false;
+            return true;
         }
 
         // 길막 설치물을 세운다. **피해는 0 이다** — 배럴은 폭탄이 아니라 물건이고,
@@ -1017,6 +1090,23 @@ namespace Wassup.BattleCore
             byte theirs = u.Move != null ? u.Move.TraversalLayers : (byte)0;
             return LayerBits.CanTarget(p.TargetLayers, theirs);
         }
+
+        // ── 직격이 아닌 피해자 풀(unit 9c · 사용자 결정 ⑦-2) ────────────────────
+        //
+        // 공격 마스크는 **겨눠서 치는** 권리다 — 적의 마스크는 방벽·마음을 품는다(`TargetDefaults.EnemyMask`).
+        // 직격은 `IsLegal` 그대로라 그것들을 겨눈 탄은 맞는다(안 그러면 길막이 무적이 되고 공성이 안 된다).
+        // 직격이 아닌 풀(스플래시·칸 광역·경로 스윕·튕김/재조준 후보)은 공격 마스크에서 **방벽만** 뺀다.
+        // 거점(마음·본능)은 부가 피해도 맞는다 — 사용자 결정 ⑦-2(2026-09-25)가 옛 풀(`OpponentUnitsOf`
+        // · 유닛만)을 복원했던 9c 행 5 를 철회하고 이 동작을 유지했다.
+
+        /// <summary>
+        /// **광역 피해자**인가 — 스플래시·칸 광역·경로 스윕·튕김/재조준 후보. 직격 대상이 아닌 전부다.
+        /// ⚠ **길막(방벽)은 어느 쪽 광역에도 안 맞는다**(unit 9c 행 4 · 옛 광역 풀은 진영 파생 그룹이라
+        /// 방벽 비트가 없었다 — 옛 GoalProjectileTests::TileAoe_BlockingHazard_IsVictimOfNeitherPool).
+        /// 거점은 품는다(결정 ⑦-2).
+        /// </summary>
+        private static bool IsAreaLegal(Unit u, Projectile p)
+            => u.Faction != Faction.BlockingHazard && IsLegal(u, p);
 
         /// <summary>
         /// 한 피해자에게 **이 착탄이 내는 것 전부**를 얹는다(unit 6a2).
@@ -1066,6 +1156,7 @@ namespace Wassup.BattleCore
                 if (!u.IsTargetable()) continue;
                 if (u.Id == exclude) continue;
                 if (u.Id == p.Owner) continue;
+                if (u.Faction == Faction.BlockingHazard) continue;   // 광역 풀과 같은 이유(`IsAreaLegal`)
                 if (n >= _bounceCands.Length)
                 {
                     System.Array.Resize(ref _bounceCands, _bounceCands.Length * 2);

@@ -177,5 +177,27 @@ namespace Wassup.Tests.EditMode.Core
                 Assert.IsFalse(Regex.IsMatch(CodeOnly(path), @"class\s+\w*(Manager|Bridge|Controller)\b"),
                     Path.GetFileName(path) + " — 새 코어 절대 제약 1");
         }
+
+        // unit 9 감사 B — 옛 `ReachEntryPointGuardTests::SimLayer_NeverReadsTheDisplayOnlyShapePadding` 의
+        // 코어판. 그 그물이 옛 sim 소스와 함께 은퇴(e548eda90)한 사이 포탈 입구 반경이 표기 전용 접근자로
+        // 판정 자를 만들고 있었다(`IntentApplier.SpawnField`). 판정의 원점 항은 `SkillMath` 진입점의
+        // 성질이다(제약 13) — 표기 접근자가 코어로 새면 「도형 보정항」이 다시 「내 몸」 행세를 한다.
+        private const string DisplayOnlyShapePadding = "CellShapePaddingTiles";
+
+        [Test]
+        public void 전투_코어는_표기_전용_도형_보정항을_읽지_않는다()
+        {
+            // 존재 단언 짝 — 이름이 바뀌면 아래 스캔이 vacuous 통과한다.
+            string skillMath = Path.Combine(CoreGoldenStore.RepoRoot, "Assets/_Project/Scripts/Skills/SkillMath.cs");
+            StringAssert.Contains("public static float " + DisplayOnlyShapePadding, File.ReadAllText(skillMath),
+                "표기 전용 접근자 이름이 바뀌었다 — 이 스캔을 같이 갱신하라");
+
+            var hits = new List<string>();
+            foreach (var path in Directory.GetFiles(CoreDir, "*.cs", SearchOption.AllDirectories))
+                if (CodeOnly(path).Contains(DisplayOnlyShapePadding))
+                    hits.Add(Path.GetFileName(path));
+            Assert.IsEmpty(hits, "전투 코어가 표기 전용 도형 보정항을 읽는다 — 판정은 `SkillMath.ReachFrom*` "
+                                 + "진입점만 통한다(제약 13): " + string.Join(", ", hits));
+        }
 }
 }

@@ -18,7 +18,7 @@ namespace Wassup.Editor
 
             using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
             {
-                if (GUILayout.Button("▶ Test this plan (Play BattleScene)", GUILayout.Height(30f)))
+                if (GUILayout.Button("▶ Test this plan (Play BattleCoreScene)", GUILayout.Height(30f)))
                     WavePlanTestLauncher.LaunchInPlayMode((WavePlanAsset)target);
             }
             EditorGUILayout.Space(4f);

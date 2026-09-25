@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Combat.Emission;
 using Wassup.BattleCore.Combat.Projectile;
@@ -136,12 +136,7 @@ namespace Wassup.BattleCore
             }
         }
 
-        private static int ClassOf(TickContext ctx, Unit u)
-        {
-            if (u.Kind != UnitKind.Defender) return -1;
-            if (u.DefIndex < 0 || u.DefIndex >= ctx.Def.Units.Length) return -1;
-            return ctx.Def.Units[u.DefIndex].Role;
-        }
+        private static int ClassOf(TickContext ctx, Unit u) => ClassFilter.ClassOf(ctx.Def, u);
 
         // ── ② 공격 루프 ──────────────────────────────────────────────────────
         //
@@ -176,6 +171,7 @@ namespace Wassup.BattleCore
                 bool summonAlive = atk.Policy == AttackPolicy.Summon && HasLiveSummon(ctx, u.Id);
                 if (isDefenderAi)
                 {
+                    var aiBefore = u.Ai.Defender;
                     u.Ai.Defender = DefenderAi.Resolve(new DefenderAiInput
                     {
                         deploying = u.Deploying,
@@ -184,6 +180,9 @@ namespace Wassup.BattleCore
                         policy = ToUnitAiPolicy(atk.Policy),
                         summonAlive = summonAlive,
                     });
+                    // unit 8a2 — 전이 관측(옛 `TraceDefenderAiTransition` — 「변할 때만 한 줄」). 판정이 아니다.
+                    if (u.Ai.Defender != aiBefore)
+                        ctx.Bus.Publish(CoreEvent.DefenderAiChanged(ctx.Tick, u, aiBefore, u.Ai.Defender));
                 }
 
                 bool canStart = isDefenderAi
@@ -1623,12 +1622,9 @@ namespace Wassup.BattleCore
 
         // ── 공통 ─────────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// 직업 필터. **필터의 존재가 게이트다** — 필터가 있으면 마스크 0 은 아무도 못 때린다
-        /// (옛 `AttackSystem` 의 `hasFilter`). 직업이 없는 후보(적·거점, -1)는 거르지 않는다.
-        /// </summary>
+        /// <summary>직업 필터 — 감지와 같은 술어(`ClassFilter.Allows`).</summary>
         private static bool ClassAllowed(AttackState atk, int cls)
-            => !atk.HasClassFilter || cls < 0 || (atk.ClassMask & (1 << cls)) != 0;
+            => ClassFilter.Allows(atk.HasClassFilter, atk.ClassMask, cls);
 
         private bool Legal(in Candidate c, AttackState atk)
         {

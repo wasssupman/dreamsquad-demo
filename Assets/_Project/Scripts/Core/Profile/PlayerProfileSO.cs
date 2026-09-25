@@ -12,7 +12,7 @@ namespace Wassup.Core
     {
         public PlayerProfile profile = new PlayerProfile();
 
-        // first-session-tutorial unit 0 — the asset always contains a default
+        // The asset always contains a default
         // non-null profile, so null alone cannot distinguish a real lobby load
         // from opening BattleScene directly in the editor. Never serialize this:
         // only OutgameMenuController's ProfileStore path may arm disk writes.

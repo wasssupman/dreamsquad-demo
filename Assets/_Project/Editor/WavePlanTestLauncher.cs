@@ -12,7 +12,8 @@ namespace Wassup.Editor
     public static class WavePlanTestLauncher
     {
         public const string SessionKey = "WavePlanTest.guid";
-        private const string BattleScenePath = "Assets/_Project/Scenes/BattleScene.unity";
+        // battle-core-rebuild unit 8b — 새 전투 씬. 소비는 새 드라이버의 진입 해석(`MatchEntry.ConsumeTestMode`)이 한다.
+        private const string BattleScenePath = "Assets/_Project/Scenes/BattleCoreScene.unity";
 
         public static void LaunchInPlayMode(WavePlanAsset plan)
         {

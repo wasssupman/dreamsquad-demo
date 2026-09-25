@@ -7,7 +7,7 @@ using Wassup.BattleCore.Map;
 using Wassup.BattleCoreUnity;
 using UnityEngine.TestTools;
 using Wassup.Data;
-using Faction = Wassup.Battle.Units.Faction;
+using Faction = Wassup.Skills.Faction;
 
 namespace Wassup.Tests.EditMode
 {

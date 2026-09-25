@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Spine.Unity;
 using UnityEngine;
 using UnityEngine.Serialization;
-using Wassup.Battle.Effects;
+using Wassup.Data.Authoring;
 
 namespace Wassup.Data
 {
@@ -239,8 +239,8 @@ namespace Wassup.Data
         // 없이 전 방어유닛이 적 거점을 때릴 수 있게 된다. 그게 이 unit 의 의도다.
         // 적 거점이 저작되지 않은 맵에서는 해당 비트를 가진 엔티티가 아예 없어 변화 0.
         [Tooltip("이 유닛이 노리는 대상(진영 × 종류). 비우면(None) 적 유닛만으로 폴백한다. targetAllies 가 켜져 있으면 그것이 이긴다.")]
-        public Wassup.Battle.Units.Faction targetFactions =
-            (Wassup.Battle.Units.Faction)Wassup.Battle.Units.Factions.AnyEnemy;
+        public Wassup.Skills.Faction targetFactions =
+            (Wassup.Skills.Faction)Wassup.Skills.Factions.AnyEnemy;
 
         // defender-ability-assets unit 2 — 능력별 flat 필드 그룹(volley 4·hazard 8·
         // shield 4·bomb 9)은 능력 서브에셋(Data/Abilities/)으로 이관·삭제됨. 파라미터는

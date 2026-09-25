@@ -7,7 +7,7 @@ namespace Wassup.Data
     public class MapThemeData : ScriptableObject
     {
         [Header("Tilemap Ground")]
-        [Tooltip("Tilemap 모드 바닥 타일셋. 지정 시 scene BattleBridge.tileSet 대신 사용(테마별 바닥). 비면 scene fallback.")]
+        [Tooltip("Tilemap 모드 바닥 타일셋. 지정 시 씬 CoreMapOverlay._tileSet 대신 사용(테마별 바닥). 비면 scene fallback.")]
         public TileSetData tileSet;
 
         [Header("Prop Tint")]

@@ -1,7 +1,7 @@
 using Spine.Unity;
 using UnityEngine;
-using Wassup.Bridge;
 using Wassup.Data;
+using Wassup.Data.BattleView;
 
 namespace Wassup.Presentation
 {
@@ -14,12 +14,23 @@ namespace Wassup.Presentation
         [SerializeField] private SkeletonAnimation skeletonAnimation;
         [SerializeField] private PropBillboardMode billboardMode = PropBillboardMode.FullCamera;
 
+        // battle-core-rebuild unit 8a — 거리 틸트 노브의 **주인을 직접 참조**한다(제약 12 ⓐ·ⓑ).
+        // 이전엔 브리지의 거리 틸트 static 미러를 읽었고, 새 씬에는 브리지가 없어
+        // factor 가 0(= 비활성)이라 스테이지 프랍의 거리 틸트가 통째로 꺼져 있었다.
+        // 옛 씬도 같은 값이다(`CharacterViewConfig` = 옛 씬 브리지 블록 복사). 비면 틸트 비활성.
+        [SerializeField] private CharacterViewConfig viewConfig;
+
         private Camera _camera;
 
         public PropData Data => data;
 
-        public void Configure(PropData propData, Transform visual, SpriteRenderer sprite, SkeletonAnimation skeleton)
+        /// <summary>거리 틸트 계수. 0 = 비활성. 테스트가 「새 씬 프랍 틸트 = 저작 값」을 증언하는 창이다.</summary>
+        public float DistanceTiltFactor => viewConfig != null ? viewConfig.PropDistanceTiltFactor : 0f;
+
+        public void Configure(PropData propData, Transform visual, SpriteRenderer sprite, SkeletonAnimation skeleton,
+                              CharacterViewConfig tiltConfig)
         {
+            viewConfig = tiltConfig;
             data = propData;
             visualRoot = visual;
             spriteRenderer = sprite;
@@ -40,7 +51,7 @@ namespace Wassup.Presentation
             var facing = ToFacing(billboardMode);
             // 거리 틸트(unit 6)는 Tilted 에서도 카메라가 필요하다. factor=0 이면 비활성(고정).
             bool wantsDistance = facing == BillboardRotation.Facing.Tilted
-                                 && BattleBridge.PropDistanceTiltFactor != 0f;
+                                 && DistanceTiltFactor != 0f;
             Camera cam = null;
             if (facing != BillboardRotation.Facing.Tilted || wantsDistance)
             {
@@ -57,8 +68,8 @@ namespace Wassup.Presentation
             if (wantsDistance && cam != null)
             {
                 tilt = BillboardRotation.ResolveDistanceTilt(tilt,
-                    BattleBridge.PropDistanceTiltFactor,
-                    BattleBridge.PropDistanceTiltMin, BattleBridge.PropDistanceTiltMax,
+                    viewConfig.PropDistanceTiltFactor,
+                    viewConfig.PropDistanceTiltMin, viewConfig.PropDistanceTiltMax,
                     cam, transform.position);
             }
             var rot = BillboardRotation.Compute(facing, tilt, cam, target.position, flip180: false);

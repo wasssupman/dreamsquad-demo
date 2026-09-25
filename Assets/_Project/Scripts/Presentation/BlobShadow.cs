@@ -1,5 +1,5 @@
 using UnityEngine;
-using Wassup.Bridge;
+using Wassup.Data.BattleView;
 
 namespace Wassup.Presentation
 {
@@ -11,8 +11,16 @@ namespace Wassup.Presentation
     [DisallowMultipleComponent]
     public class BlobShadow : MonoBehaviour
     {
-        [Tooltip("프리팹에 authoring 된 블롭(프랍 전용). 위치 XZ/스케일/회전은 프리팹 값이 확정값. sprite/color/sort/바닥 Y 는 Awake 에서 전역값(BattleBridge)으로 정규화.")]
+        [Tooltip("프리팹에 authoring 된 블롭(프랍 전용). 위치 XZ/스케일/회전은 프리팹 값이 확정값. sprite/color/sort 는 Awake 에서 외형 SO(`config`)로 정규화.")]
         [SerializeField] private bool authoredInPrefab;
+
+        // battle-core-rebuild unit 8a — 외형의 **주인을 직접 참조**한다(제약 12 판단 순서 ⓐ·ⓑ).
+        // 이전엔 `BattleBridge` 의 static 미러를 읽었는데, 새 씬에는 브리지가 없어 스테이지 블롭이
+        // 옛 씬 색이 아니라 코드 기본값으로 그려졌다. 게다가 스테이지는 `Instantiate` 되자마자
+        // 이 `Awake` 가 돌아서 생성 뒤 주입은 늦다 — 그래서 프리팹이 SO 를 든다.
+        // 옛 씬에서도 같은 값이다(그 SO 의 값 = 옛 씬 브리지 블록 복사, bridge-fields 66).
+        // 비어 있으면 프리팹에 구운 sprite·color 를 그대로 둔다(정렬만 정규화).
+        [SerializeField] private BlobShadowConfig config;
 
         private Transform _target;
         private float _lift;
@@ -23,7 +31,11 @@ namespace Wassup.Presentation
         private Color _baseColor = Color.white;
 
         // 에디터 생성기(PropDataEditor) 전용 — 프리팹 저장 전에 authored 플래그를 굽는다.
-        public void MarkAuthored() => authoredInPrefab = true;
+        public void MarkAuthored(BlobShadowConfig shadowConfig)
+        {
+            authoredInPrefab = true;
+            config = shadowConfig;
+        }
 
         // authored 블롭: 외형(sprite/color/sort)만 전역값 적용. transform 은 일절 건드리지 않는다 —
         // 위치/회전/크기 전부 프리팹 소유. (월드 Y 스냅은 90°X 부모 좌표계에서 authored 오프셋을
@@ -33,8 +45,11 @@ namespace Wassup.Presentation
             if (!authoredInPrefab) return; // 런타임 Attach 경로는 Attach() 가 전부 세팅
             var sr = GetComponent<SpriteRenderer>();
             if (sr == null) return;
-            if (BattleBridge.BlobShadowSprite != null) sr.sprite = BattleBridge.BlobShadowSprite;
-            sr.color = BattleBridge.BlobShadowColor;
+            if (config != null)
+            {
+                if (config.Sprite != null) sr.sprite = config.Sprite;
+                sr.color = config.Color;
+            }
             sr.sortingOrder = BoardSortOrder.ShadowOrder;
             _sr = sr;
             _baseColor = sr.color;

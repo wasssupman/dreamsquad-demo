@@ -20,6 +20,18 @@ namespace Wassup.BattleCoreUnity
     //
     // ⚠ 정의표에 필드를 추가하면 `MatchDefinition.Canonicalize` 도 같이 고친다.
     // 안 고치면 「스탯을 바꿨는데 해시가 그대로」라는 조용한 실패가 된다.
+    /// <summary>
+    /// unit 8b — 로비·테스트가 정의표에 싣는 진입 입력(모드 밖). 전부 기본값이면 오늘까지의 빌드와 같다
+    /// (골든은 이 칸을 안 쓴다). 규칙은 없다 — 푸는 것은 `MatchEntry`, 싣는 것은 `Build` 다.
+    /// </summary>
+    public struct EntryAuthoring
+    {
+        /// <summary>① 테스트 모드 플랜. 모드 플랜보다도 이긴다(「지금 이 플랜을 보겠다」는 명시 지시).</summary>
+        public WavePlanAsset ForcedPlan;
+        /// <summary>④ 맵 풀 엔트리의 플랜(맵과 한 몸). 모드 플랜에 진다.</summary>
+        public WavePlanAsset EncounterPlan;
+    }
+
     public static class MatchDefinitionBuilder
     {
         /// <summary>
@@ -46,11 +58,16 @@ namespace Wassup.BattleCoreUnity
                                             ImbueCapConfig imbueCaps = null,
                                             BoardEffectAuthoring board = default,
                                             System.Collections.Generic.IReadOnlyList<DreamcatcherCard> cards = null,
-                                            System.Collections.Generic.IReadOnlyList<DreamstoneData> dreamstones = null)
+                                            System.Collections.Generic.IReadOnlyList<DreamstoneData> dreamstones = null,
+                                            EntryAuthoring entry = default)
         {
             // 모드가 고른 저작이 호출자(드라이버)의 것을 이긴다 — 모드는 「어느 자산을 쓸지」를 고른다.
             deck = ResolveDeck(mode, deck);
-            plan = ResolvePlan(mode, plan);
+            // unit 8b — 웨이브 원천 7단(8b 문서): ① 테스트(= `entry.ForcedPlan`) > ③ 모드 플랜 > ④ 맵 풀 엔트리 플랜
+            // (= `entry.EncounterPlan`) > 덱 생성. ⑤~⑦ 덱 서열은 `ResolveDeck` + 호출자 덱(= 풀 덱 ?? 드라이버 덱)이 담는다.
+            // ② 자리는 비어 있다 — 첫 판 전용 플랜이었고 사용자 결정 ④(2026-09-25)로 지웠다.
+            var entryPlan = ResolveEntryPlan(entry.ForcedPlan, mode, entry.EncounterPlan);
+            plan = ResolveWavePlan(mode, plan, in entry);
             var enemies = CollectEnemies(deck, plan, bonus);
             var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures,
                             viewAssets, movement, stackModifiers, imbueCaps, board,
@@ -65,6 +82,11 @@ namespace Wassup.BattleCoreUnity
             def.Heart = ToHeartConfig(deck);
             def.Gimmicks = ToGimmickDefs(mode, def);
             def.Roster = RosterOf(defenders);
+
+            // unit 8b — 모드 밖에서 온 플랜(①④)은 **그 플랜의 원천과 시계**로 돈다. 옛 게임은 저작 플랜이 있으면
+            // 웨이브도 그 플랜, 판 길이도 `plan.timerDurationSec`(0 = 끝없음)였다(`BattleBridge.cs:1651` · `:2115`).
+            // 모드 플랜(③)은 모드가 제 시계를 들고 오므로 건드리지 않는다.
+            if (entryPlan != null) ApplyEntryPlanClock(ref def.Mode, entryPlan);
 
             // ⚠ 정의표가 다 찬 **뒤에** 굽는다. 먼저 구우면 「덱을 바꿨는데 해시가 그대로」가 된다.
             def.ConfigHash = def.ComputeConfigHash();
@@ -81,8 +103,8 @@ namespace Wassup.BattleCoreUnity
 
         /// <summary>
         /// 이 판의 덱. **모드가 덱을 골랐으면 그것**, 비었으면 호출자의 덱이다. 툴팁의 「비우면 맵
-        /// 풀이 짝지은 덱」 중 맵 풀 짝은 아직 배선 전이라 그 자리를 호출자 덱이 채운다 — 맵 풀
-        /// 로테이션(`mapPool`·`fixedMapSeed`)의 귀속은 `docs/spec/battle-core-rebuild/` 가 정한다.
+        /// 풀이 짝지은 덱」은 호출자가 채운다 — 드라이버가 `TrySelectEncounter` 로 고른 엔트리의 덱(풀 덱)을
+        /// 넘기고, 엔트리에 덱이 없으면 드라이버 덱이다(unit 8b 에서 배선 — 맵·덱·플랜은 같은 인덱스로 잠긴다).
         /// ⚠ 드라이버도 적 목록을 모을 때 **같은 함수**를 지나야 한다(적 인덱스가 갈린다).
         /// </summary>
         public static AttackDeck ResolveDeck(MatchModeData mode, AttackDeck fallback)
@@ -96,6 +118,79 @@ namespace Wassup.BattleCoreUnity
             => mode != null && mode.waveSourceKind == WaveSourceKind.AuthoredPlan && mode.plan != null
                 ? mode.plan
                 : fallback;
+
+        /// <summary>
+        /// unit 8b — **모드 밖에서 온 플랜**을 서열대로 푼다: 강제(테스트) &gt; 모드 플랜 &gt; 맵 풀 엔트리 플랜.
+        /// 모드 플랜이 이기면 **null** 을 돌려준다 — 그 플랜은 `ResolvePlan` 이 모드 제 것으로 싣는다(시계도 모드 것).
+        /// ⚠ 드라이버도 적 목록을 모을 때 이 함수를 지난다(적 줄 번호가 정의표와 갈리면 안 된다).
+        /// </summary>
+        public static WavePlanAsset ResolveWavePlan(MatchModeData mode, WavePlanAsset fallback, in EntryAuthoring entry)
+        {
+            var entryPlan = ResolveEntryPlan(entry.ForcedPlan, mode, entry.EncounterPlan);
+            return entryPlan != null ? entryPlan : ResolvePlan(mode, fallback);
+        }
+
+        /// <summary>모드 밖 플랜만 푼다(①④ — 모드 플랜이 이기면 null). 시계를 플랜으로 바꿀지의 판별이 이 값이다.</summary>
+        public static WavePlanAsset ResolveEntryPlan(WavePlanAsset forced, MatchModeData mode, WavePlanAsset encounter)
+        {
+            if (forced != null) return forced;
+            if (mode != null && mode.waveSourceKind == WaveSourceKind.AuthoredPlan && mode.plan != null) return null;
+            return encounter;
+        }
+
+        /// <summary>
+        /// unit 8b — 모드 밖 저작 플랜의 원천·시계. 원천 = 저작 타임라인, 판 길이 = `timerDurationSec`, 0 이면 **끝없는
+        /// 판**(`CountUp` — 옛 「0 = endless」). 시간을 적은 플랜과 테스트 플랜 0(끝없음)이 이 두 갈래다.
+        /// </summary>
+        public static void ApplyEntryPlanClock(ref ModeDef mode, WavePlanAsset plan)
+        {
+            if (plan == null) return;
+            mode.WaveSource = WaveSourceKind.AuthoredPlan;
+            if (plan.timerDurationSec > 0f)
+            {
+                mode.Clock = ClockKind.FixedLimit;
+                mode.MatchSeconds = plan.timerDurationSec;
+            }
+            else mode.Clock = ClockKind.CountUp;
+        }
+
+        /// <summary>
+        /// unit 8b — **맵 풀 4갈래**(옛 `BattleBridge.BuildMapForBattle` `:1263~1300` 그대로): dev 강제 인덱스 &gt; 디버그
+        /// 고정 맵 시드 &gt; 서버 토너먼트 시드 &gt; 0번. 맵·덱·플랜은 **같은 인덱스로 잠긴다**(그래서 엔트리 하나를 돌려준다).
+        /// dev 슬롯(풀 뒤에 이어붙은 `[Count..Count+DevCount)`)은 dev 강제만 닿는다 — 시드 갈래는 `Count` 만 본다.
+        /// 순수 함수다 — 정적 상태(`DevMapOverride` · `TournamentMatchReporter`)는 호출자가 값으로 넘긴다.
+        /// </summary>
+        public static bool TrySelectEncounter(MapStagePool pool, int devIndex, int fixedMapSeed,
+                                              bool hasTournamentSeed, ulong tournamentSeed,
+                                              out MapStagePool.Entry entry, out int index, out string source)
+        {
+            entry = default;
+            index = -1;
+            source = "none";
+            if (pool == null || pool.Count <= 0) return false;
+            if (devIndex >= 0)
+            {
+                index = Mathf.Clamp(devIndex, 0, pool.Count + pool.DevCount - 1);
+                source = index >= pool.Count ? "dev(devEntry)" : "dev";
+            }
+            else if (fixedMapSeed != 0)
+            {
+                index = Wassup.Data.MapGrid.MapPoolSelect.SelectIndex(fixedMapSeed, pool.Count);
+                source = "debug";
+            }
+            else if (hasTournamentSeed)
+            {
+                index = Wassup.Data.MapGrid.MapPoolSelect.SelectIndexFromTournamentSeed(tournamentSeed, pool.Count);
+                source = "tournament";
+            }
+            else
+            {
+                index = 0;   // 게스트 · 응답 미도착 · 직접 진입 — 시드 부재는 전부 0번(옛 `fallback0`)
+                source = "fallback0";
+            }
+            entry = index >= pool.Count ? pool.GetDev(index - pool.Count) : pool.Get(index);
+            return entry.stage != null;
+        }
 
         /// <summary>
         /// 모드 선택 3단: **테스트 모드 강제 &gt; 로비/서버 지정 &gt; 기본 모드**.
@@ -293,7 +388,7 @@ namespace Wassup.BattleCoreUnity
                 // `targetFactions: 98`(적 전부)을 들고 있어 raw 로 실으면 **적을 회복시킨다**
                 // (2026-09-24 드리프트 감사 H4). 거점까지 넓히지 않는다 — 마음이 회복을 받는다.
                 TargetFactions = d.targetAllies
-                    ? (int)Wassup.Battle.Units.Faction.DefenderUnit
+                    ? (int)Wassup.Skills.Faction.DefenderUnit
                     : (int)d.targetFactions,
                 MoveSpeed = d.moveSpeed,
 

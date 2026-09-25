@@ -13,7 +13,7 @@
 | `DetectionMark_SKELETON` | 「발견」 표식(「!」 + 몸 플래시) | A | 승인 2026-09-08 | `ConfigureOneShot` 버스트 하한 4 주의 |
 | `DamageNumberSpark_SKELETON` | 대미지 넘버 스파크 | A | 운용 중 | 오프스크린 렌더 튜닝 선례 |
 | `DamageNumber_Popup` | 대미지 넘버 팝업 | A | 운용 중 | |
-| `Meteor_Falling_SKELETON` / `Meteor_Burst_SKELETON` | 운석 낙하 / 착탄 | A(Burst 는 mesh) | 운용 중 | 착탄은 sim 시점(NativeQueue) |
+| `Meteor_Falling_SKELETON` / `Meteor_Burst_SKELETON` | 운석 낙하 / 착탄 | A(Burst 는 mesh) | 운용 중 | 착탄은 판정 시점(코어 사건 `ProjectileHit`) |
 | `Placement_SKELETON` | 배치 착지 링·퍼프 | B | 운용 중 | 퇴근 여운도 재사용 |
 | `Portal_SKELETON` | 포탈 | A | 운용 중 | |
 | `Tornado_SKELETON` | 회오리 장판 | A | 운용 중 | |
@@ -69,7 +69,7 @@
 - **sound_cue_hint**: short alert blip, no tail
 
 ### Meteor
-- **상태**: 운용 중(`Meteor_Falling/Burst_SKELETON`). 경고링은 직접 호출, 착탄은 sim 시점 NativeQueue — 투사체 파이프라인으로 수렴.
+- **상태**: 운용 중(`Meteor_Falling/Burst_SKELETON`). 투사체 파이프라인으로 수렴 — 착탄 예고는 `ProjectileSpawned`(`CoreMapOverlay.ShowTelegraph`), 착탄 버스트는 `ProjectileHit`(`CoreVfxSpawner._meteorBurstPrefab`, 탄 저작 `hitPrefab` 이 있으면 그쪽이 이긴다).
 - **Typical palette**: 오렌지-화이트 코어, 어두운 잔재
 - **Project tone**: 「자리에 떨어지는 것」(칸 반폭 0.5, 몸 없음) — 표기 반경은 `CenteredRingRadius` 와 같은 값
 

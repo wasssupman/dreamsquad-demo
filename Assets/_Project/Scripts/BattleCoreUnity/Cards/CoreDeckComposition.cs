@@ -14,7 +14,7 @@ namespace Wassup.BattleCoreUnity.Cards
     //     ⚠ 옛 롤은 시드 0 이면 **벽시계**로 새로 만들었다(S2) — 그러면 「같은 modeId+seed = 같은 판」이 액티브 2장에서 깨진다.
     //     그래서 판의 시드에서 파생한다(`rule-holders.md` S2 비고). 난수는 `Unity.Mathematics.Random`(코어 `HandDeck` 과 같은 결 —
     //     런타임이 바뀌어도 순열이 같다), 옛 `System.Random` 순열과는 다르다(골든·밸런스가 특정 순열에 안 기댄다).
-    //   · 숨긴 카드의 스킬은 풀에서 뺀다(S4 · `SkillLoadoutController.FilterHiddenSkills` 를 **그대로 부른다** — 순수 함수).
+    //   · 숨긴 카드의 스킬은 풀에서 뺀다(S4 · 옛 `SkillLoadoutController.FilterHiddenSkills` 의 본문을 8c 에서 **이리 옮겼다** — 순수 함수, 옛 쪽은 위임).
     public static class CoreDeckComposition
     {
         /// <summary>굴림 시드 소금 — 판 시드를 그대로 쓰면 `HandDeck` 의 섞기와 같은 첫 난수를 공유한다(서로 상관되지 않게).</summary>
@@ -26,7 +26,7 @@ namespace Wassup.BattleCoreUnity.Cards
                                                      System.Action<string> warn = null)
         {
             var result = ResolveAttachDeck(profile, catalog);
-            var picked = RollActives(SkillLoadoutController.FilterHiddenSkills(
+            var picked = RollActives(FilterHiddenSkills(
                                          activePool ?? System.Array.Empty<SkillData>(), catalog),
                                      activeCount, seed);
             for (int i = 0; i < picked.Count; i++)
@@ -34,6 +34,29 @@ namespace Wassup.BattleCoreUnity.Cards
                 var card = FindActiveCard(activeCards, picked[i]);
                 if (card != null) result.Add(card);
                 else warn?.Invoke($"[CoreDeckComposition] 굴린 스킬 '{picked[i].id}' 를 감싸는 액티브 카드가 없다 — 그 장은 빠진다(D4).");
+            }
+            return result;
+        }
+
+        /// <summary>S4 — 카탈로그에 이 스킬을 감싸는 액티브 카드가 있고 그 **전부**가 숨김(visible 0)이면 풀에서 뺀다.
+        /// 감싸는 카드가 없는 스킬은 남긴다. null 풀 = 빈 목록 · null 카탈로그 = 무필터(옛 `SkillLoadoutController` 그대로).</summary>
+        public static List<SkillData> FilterHiddenSkills(IEnumerable<SkillData> pool, DreamcatcherCardCatalog catalog)
+        {
+            var result = new List<SkillData>();
+            if (pool == null) return result;
+            var cards = catalog != null ? catalog.cards : null;
+            foreach (var skill in pool)
+            {
+                if (skill == null || cards == null) { result.Add(skill); continue; }
+                bool wrapped = false, anyVisible = false;
+                for (int i = 0; i < cards.Length; i++)
+                {
+                    var c = cards[i];
+                    if (c == null || c.type != CardType.Active || c.skill != skill) continue;
+                    wrapped = true;
+                    if (c.visible != 0) { anyVisible = true; break; }
+                }
+                if (!wrapped || anyVisible) result.Add(skill);
             }
             return result;
         }

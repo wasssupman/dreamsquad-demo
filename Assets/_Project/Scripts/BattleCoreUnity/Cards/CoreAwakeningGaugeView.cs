@@ -154,7 +154,7 @@ namespace Wassup.BattleCoreUnity.Cards
         private ISpineUnitVisualData VisualOf(CoreEvent e)
         {
             if (_driver == null || e.DefIndex < 0) return null;
-            if (e.Faction == Wassup.Battle.Units.Faction.EnemyUnit)
+            if (e.Faction == Wassup.Skills.Faction.EnemyUnit)
                 return e.DefIndex < _driver.EnemyAssets.Count ? _driver.EnemyAssets[e.DefIndex] : null;
             return e.DefIndex < _driver.DefenderAssets.Count ? _driver.DefenderAssets[e.DefIndex] : null;
         }

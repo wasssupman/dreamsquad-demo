@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
-using Wassup.Battle.Effects;
+using Wassup.Data.Authoring;
 
 namespace Wassup.Data
 {

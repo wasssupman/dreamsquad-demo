@@ -1,5 +1,5 @@
 using UnityEngine;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore;
 using Wassup.Core;
 using Wassup.Data;

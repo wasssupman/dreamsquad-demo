@@ -1,5 +1,4 @@
 using Unity.Mathematics;
-using Wassup.Battle.Units;
 using Wassup.BattleCore.Combat.Projectile;
 using Wassup.BattleCore.Effects;
 using Wassup.Skills;
@@ -352,10 +351,10 @@ namespace Wassup.BattleCore.Trigger
                                            Speed = i.Amount, Duration = i.Duration };
                     break;
                 case SkillFieldKind.Portal:
-                    // 입구 반경 = 칸 반폭(월드) — 옛 `SpawnPortal(…, tileSize * 0.5, …)`.
+                    // 입구 = **그 칸 자체**(반경 0 칸, 자리형) — 옛 `SpawnPortal(…, tileSize * 0.5, …)`.
+                    // 칸 반폭은 판정 진입점(`SkillMath.ReachFromCell`)의 성질이라 여기서 싣지 않는다(제약 13).
                     f = new FieldCarrier { Kind = FieldKind.Portal, Center = CenterOf(i.Cell), Exit = CenterOf(i.Cell2),
-                                           Range = TileSize * Wassup.Skills.SkillMath.CellShapePaddingTiles,
-                                           Duration = i.Duration };
+                                           Range = 0f, Duration = i.Duration };
                     break;
                 default:
                     Warn($"[Intent] 모르는 장 {(SkillFieldKind)i.Selector} — 깔지 않는다.");
@@ -382,7 +381,8 @@ namespace Wassup.BattleCore.Trigger
             pg.SlamTileRange = math.max(0, i.TileRange);
             pg.SlamProjectileDefIndex = i.DataIndex;
             if (u.Move != null) u.Move.Locked = true;
-            _bus.Publish(CoreEvent.LeapAscend(Tick, u, i.Position, ultimate: true, pg.LeapRemaining));
+            _bus.Publish(CoreEvent.LeapAscend(Tick, u, i.Position, ultimate: true, pg.LeapRemaining,
+                                               areaTiles: pg.SlamTileRange));
         }
 
         // unit 7d — 일반 도약 비행 창 개시. 굴리는 것은 `CombatPhase.StepLeap`(창 끝 = 착지 슬램). 겹쳐 오면 **새 착지점이

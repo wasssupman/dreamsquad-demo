@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Map;
@@ -17,13 +17,16 @@ namespace Wassup.BattleCoreUnity.View
     // 오버레이 몫만 가져왔다(바닥 페인팅은 스테이지 프리팹이, 평면 선언은 `CoreBoardPlane` 이
     // 이미 소유한다 — 옛 뷰가 셋을 겸하던 것을 5a 에서 쪼갰다).
     //
-    // 그리는 것 다섯:
+    // 그리는 것(번호는 추가 순):
     //   ① 격자 — 「칸이 있다」를 말한다. 디오라마 바닥에는 칸 선이 없다.
     //   ② 배치 가이드 — 이 유닛을 **놓을 수 없는 칸**들, 이유별 2색(사용자 결정 2026-09-23).
     //   ③ 고스트 — 지금 손가락이 가리키는 footprint(초록/빨강).
     //   ④ 사거리 링 + 사정권 표식 — 「여기 놓으면 저기까지 닿는다」.
     //   ⑤ 공격 도형 가이드 — 방향 유닛(부채꼴·띠)이 **지금 물 적** 쪽으로 「같이 맞는 범위」
     //      (directional-attack-shape unit 6 — 6c 후속에서 이식 누락을 메웠다).
+    //   ④′ 사거리 칸 채움 — 「어느 칸이 사거리 안인가」의 논리 집합(`IsPlacementRangeCell`) + 링 안 채움 한 겹(unit 8a2).
+    //   ⑧ 궁극기 착지 예고 — **전용 채널**(배치·카드 채널과 공유하지 않는다, unit 8a2).
+    //   ⑨ 효과 타일 칸 — 판마다 한 번, 코어가 뽑은 칸을 그 종류의 저작 타일로(unit 8a2).
     //
     // ⚠ **판정을 한 줄도 갖지 않는다.**
     //   · 「놓을 수 있나」 = `PlacementService` 호출. 고스트는 `Judge`(그 유닛을 그 앵커에),
@@ -69,6 +72,12 @@ namespace Wassup.BattleCoreUnity.View
         private readonly List<SpriteRenderer> _ghostCells = new List<SpriteRenderer>(8);
         private readonly List<SpriteRenderer> _marks = new List<SpriteRenderer>(16);
         private readonly List<Vector3> _ringPoints = new List<Vector3>(80);
+        // ④′ 사거리 칸 채움(unit 8a2 행 8 — rule-holders T3·T13). 「어느 칸이 사거리 안인가」의 **논리 집합**과 링 안 채움.
+        private readonly HashSet<int2> _rangeCells = new HashSet<int2>();
+        private int _rangeCellsDef = -1;
+        private int2 _rangeCellsAnchor;
+        private MeshRenderer _rangeFill;
+        private Mesh _rangeFillMesh;
 
         private LineRenderer _grid;
         private LineRenderer _ring;
@@ -126,6 +135,32 @@ namespace Wassup.BattleCoreUnity.View
             _hasDrag = false;
             _dragDefIndex = -1;
             _guideShownAt = -1f;
+            ClearRangeCells();
+        }
+
+        /// <summary>
+        /// unit 8a2 행 8 — **그 칸이 지금 배치 사거리 안인가**(옛 `TilemapMapView.IsPlacementRangeCell` `:1537` · T13 read seam).
+        /// 채움이 투명해도(링이 있으면 알파 0) 이 집합은 계속 참이다 — 「어느 칸이 사거리 안인가」를 묻는 소비자가 있다
+        /// (자리 고스트가 사거리 칸을 비켜 가는 것 등). 판정이 아니다: 칸 집합은 표준 잡몹을 가정한 **배치 안내**다(T3).
+        /// </summary>
+        public bool IsPlacementRangeCell(int2 cell) => _rangeCells.Contains(cell);
+
+        /// <summary>테스트 창구 — 사거리 칸 수 · 링 안 채움이 켜져 있나와 그 색.</summary>
+        public int PlacementRangeCellCount => _rangeCells.Count;
+
+        public bool TryGetRangeFill(out Color color)
+        {
+            color = default;
+            if (_rangeFill == null || !_rangeFill.enabled) return false;
+            color = _rangeFill.sharedMaterial != null ? _rangeFill.sharedMaterial.color : default;
+            return true;
+        }
+
+        private void ClearRangeCells()
+        {
+            _rangeCells.Clear();
+            _rangeCellsDef = -1;
+            if (_rangeFill != null && _rangeFill.enabled) _rangeFill.enabled = false;
         }
 
         // ── ⑥ 카드 조준(unit 7c) — 손패 드래그가 미는 것 ─────────────────────────
@@ -230,6 +265,208 @@ namespace Wassup.BattleCoreUnity.View
                 for (int i = 0; i < _aimCells.Count; i++) if (_aimCells[i] != null && _aimCells[i].enabled) n++;
                 return n;
             }
+        }
+
+        // ── ⑨ 효과 타일 칸(unit 8a2 행 1 — rule-holders T15) ──────────────────────────────
+        //
+        // 옛 `BattleBridge.AddEffectTile`(`:9075`) → `TilemapMapView.SetEffectTile`(`:1025`)의 후계. **어느 칸이 효과 타일인가**를
+        // 판 위에 그린다. 소유는 코어다(`PlacementService.ArmedEffectTiles` — 판 시작에 한 번 뽑고 판 내내 안 바뀐다, 칸 소비
+        // 없음). 여기는 「보이는 곳」만 — 판마다 한 번 칠한다(소비·회복 사건이 없어 구독할 것이 없다).
+        // 그림 = 그 종류의 저작 타일(`EffectTileData.overlayTile` 의 스프라이트·색) · 머티리얼 = 테마 `effectTileMaterial`(펄스) —
+        // 둘 다 `MatchViewAssets` 가 정의표 줄과 같은 순회로 나른다. 정렬 = `BoardSortOrder.EffectTileOrder`(옛 −15).
+        private readonly List<SpriteRenderer> _effectCells = new List<SpriteRenderer>(4);
+        private readonly List<int2> _effectCellList = new List<int2>(4);
+        private BattleMatch _effectPaintedFor;
+
+        /// <summary>테스트 창구 — 칠한 효과 타일 칸 수.</summary>
+        public int EffectTileCellCount
+        {
+            get
+            {
+                int n = 0;
+                for (int i = 0; i < _effectCells.Count; i++) if (_effectCells[i] != null && _effectCells[i].enabled) n++;
+                return n;
+            }
+        }
+
+        /// <summary>테스트 창구 — 칠한 효과 타일 칸(칠한 순서).</summary>
+        public bool TryGetEffectTileCell(int index, out int2 cell, out Sprite sprite)
+        {
+            cell = default; sprite = null;
+            if (index < 0 || index >= _effectCellList.Count || index >= _effectCells.Count) return false;
+            cell = _effectCellList[index];
+            sprite = _effectCells[index] != null ? _effectCells[index].sprite : null;
+            return _effectCells[index] != null && _effectCells[index].enabled;
+        }
+
+        private void PaintEffectTilesOnce()
+        {
+            var match = _driver.Match;
+            if (match == null || ReferenceEquals(match, _effectPaintedFor)) return;
+            _effectPaintedFor = match;
+
+            var cells = match.Placement.ArmedEffectTiles;
+            var assets = _driver.ViewAssets;
+            _effectCellList.Clear();
+            int used = 0;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var data = assets.EffectTile(match.Placement.EffectTileKindAt(cells[i]));
+                // 저작 그림이 없으면 **안 그린다**(절차적 사각을 지어내면 그게 다음 사람의 정본이 된다 — 가이드와 같은 규약).
+                var tile = data != null ? data.overlayTile as UnityEngine.Tilemaps.Tile : null;
+                if (tile == null || tile.sprite == null) continue;
+
+                while (_effectCells.Count <= used)
+                {
+                    var go = new GameObject($"{name}_effectTile_{_effectCells.Count}");
+                    go.transform.SetParent(transform, false);
+                    _effectCells.Add(go.AddComponent<SpriteRenderer>());
+                }
+                var sr = _effectCells[used++];
+                sr.sprite = tile.sprite;
+                sr.sortingOrder = BoardSortOrder.EffectTileOrder;
+                var mat = assets.EffectTileMaterial;
+                sr.sharedMaterial = mat != null ? mat : Material();
+                sr.color = tile.color;                     // 펄스 머티리얼은 정점색을 읽는다(옛 타일맵 = 타일 색 × 흰 타일맵)
+                if (mat == null) Tint(sr, tile.color);     // 오버레이 기본 머티리얼은 프로퍼티 블록 색을 읽는다
+                sr.transform.position = ViewOf(CellCenterSim(cells[i]));
+                sr.transform.rotation = PlaneRotation();
+                float w = tile.sprite.bounds.size.x;
+                sr.transform.localScale = Vector3.one * (_driver.TileSize / (w > 1e-5f ? w : 1f));   // 한 칸을 덮는다
+                sr.enabled = true;
+                _effectCellList.Add(cells[i]);
+            }
+            SetCount(_effectCells, used);
+        }
+
+        // ── ⑧ 궁극기 착지 예고(unit 8a2 행 2 — rule-holders T16·T17) ────────────────────────
+        //
+        // 옛 `BattleBridge.UltimateLeap.cs:87 ShowLandingTelegraph` → `TilemapMapView.SetTelegraphRing`(`:690`)의 후계.
+        // 매체는 **원 링 하나**다(점 + 거리 — 옛 2026-09-07 사용자 지시 「타일말고 점기준으로」). 칸을 열거하지 않는다.
+        //
+        // ⚠⚠ **채널은 «전용» 이다**(T16). 위 카드 채널(`_area`)도 배치 링도 공유하지 않는다 — 예고 중에 유닛을 빼고 다시
+        // 놓는 것이 이 스킬의 놀이라, 배치 프리뷰가 예고를 지우거나 예고가 배치 링을 지우면 안 된다(옛 `:641-649`).
+        // 그래서 `_hasDrag` 에 양보하지 않고, 반납은 **그 도약자의 강하**만 한다.
+        // 반경 = 슬램 칸 수 + 칸 반폭(자리형 — 보스의 몸을 읽지 않는다, 옛 `CenteredRingRadius`). 호출부가 사건 값으로 낸다.
+        // 색 = 저작(`LeapVisualConfig.LandingTelegraphColor`) — 알파는 채움 세기, 선은 불투명(옛 `:699-703`).
+        private SimEntityId _landingLeaper = SimEntityId.None;
+        private float3 _landingCenter;
+        private float _landingRadius;
+        private Color _landingColor;
+        private LineRenderer _landingRing;
+        private MeshRenderer _landingFill;
+        private Mesh _landingFillMesh;
+        private bool _landingFillWarned;
+        private readonly List<Vector3> _landingPoints = new List<Vector3>(80);
+
+        /// <summary>착지 예고를 건다(궁극기 이탈 순간). 동시 예고는 없다(궁극기는 생존당 1회 — T16 비고) — 마지막이 이긴다.</summary>
+        public void ShowLandingTelegraph(SimEntityId leaper, float3 centerSim, float radiusTiles, Color color)
+        {
+            if (!leaper.IsEntity || radiusTiles <= 0f) return;
+            _landingLeaper = leaper;
+            _landingCenter = centerSim;
+            _landingRadius = radiusTiles;
+            _landingColor = color;
+        }
+
+        /// <summary>그 도약자의 예고를 내린다(강하 확정 순간 — 강하 연출 끝까지 남기면 「아직 피할 수 있다」는 거짓 신호).</summary>
+        public void HideLandingTelegraph(SimEntityId leaper)
+        {
+            if (_landingLeaper == leaper) _landingLeaper = SimEntityId.None;
+        }
+
+        /// <summary>테스트 창구 — 지금 떠 있는 착지 예고(도약자 · 중심 sim · 반경 칸). 없으면 false.</summary>
+        public bool TryGetLandingTelegraph(out SimEntityId leaper, out float3 centerSim, out float radiusTiles)
+        {
+            leaper = _landingLeaper; centerSim = _landingCenter; radiusTiles = _landingRadius;
+            return !_landingLeaper.IsNone && _landingRing != null && _landingRing.enabled;
+        }
+
+        private void PaintLandingTelegraph()
+        {
+            // 도약자가 판에서 사라졌으면(강하 전 소멸 — 궁극기는 무적이라 드물다) 예고를 남기지 않는다.
+            if (!_landingLeaper.IsNone && !_driver.IsAlive(_landingLeaper)) _landingLeaper = SimEntityId.None;
+            if (_landingLeaper.IsNone)
+            {
+                if (_landingRing != null && _landingRing.enabled) _landingRing.enabled = false;
+                if (_landingFill != null && _landingFill.enabled) _landingFill.enabled = false;
+                return;
+            }
+            if (_landingRing == null)
+                _landingRing = CreateLine("LandingTelegraphRing", _ringWidth, BoardSortOrder.RangeRingOrder, _landingColor);
+            var line = _landingColor; line.a = 1f;   // 선은 불투명 — 알파는 채움의 몫(옛 `:699-703`)
+            BuildRing(_landingPoints, _landingCenter, _landingRadius);
+            _landingRing.positionCount = _landingPoints.Count;
+            for (int i = 0; i < _landingPoints.Count; i++) _landingRing.SetPosition(i, _landingPoints[i]);
+            _landingRing.startColor = _landingRing.endColor = line;
+            _landingRing.enabled = true;
+
+            // T17 — 채움을 못 그리면 **한 번은 시끄럽게** 알린다(예고가 안 보이면 회피 불가 = 불공정). 선은 계속 그린다.
+            if (!EnsureDiscFill("LandingTelegraphFill", ref _landingFill, ref _landingFillMesh))
+            {
+                if (!_landingFillWarned)
+                {
+                    _landingFillWarned = true;
+                    Debug.LogWarning("[CoreMapOverlay] 착지 예고 채움 머티리얼을 만들 수 없다(RuntimeMaterials 미배선) — "
+                                     + "링 선만 그린다. 예고가 옅으면 회피가 어렵다.", this);
+                }
+                return;
+            }
+            FillDisc(_landingFill, _landingFillMesh, _landingCenter, _landingPoints, _landingColor);
+        }
+
+        // 원 둘레 점(view, 보드 평면 + 띄움). 링 셋(배치·카드·착지 예고)이 **같은 사상**으로 짓는다.
+        private void BuildRing(List<Vector3> points, float3 centerSim, float radiusTiles)
+        {
+            float ts = _driver.TileSize;
+            Vector3 lift = SurfaceLift();
+            points.Clear();
+            for (int i = 0; i <= _ringSegments; i++)
+            {
+                float a = i / (float)_ringSegments * math.PI * 2f;
+                var p = new float3(centerSim.x + math.cos(a) * radiusTiles * ts, 0f,
+                                   centerSim.z + math.sin(a) * radiusTiles * ts);
+                points.Add((Vector3)BoardSpace.ToView(p) + lift);
+            }
+        }
+
+        // 원 안 채움 = 같은 둘레의 부채 메시(선과 채움이 **정의상 같은 곡선**이다 — 칸 계단이 원을 사각형처럼 보이게 하지 않는다).
+        private void FillDisc(MeshRenderer fill, Mesh mesh, float3 centerSim, List<Vector3> rim, Color color)
+        {
+            var center = (Vector3)BoardSpace.ToView(new float3(centerSim.x, 0f, centerSim.z)) + SurfaceLift();
+            var verts = new Vector3[rim.Count + 1];
+            verts[0] = center;
+            for (int i = 0; i < rim.Count; i++) verts[i + 1] = rim[i];
+            var tris = new int[(rim.Count - 1) * 3];
+            for (int i = 0; i < rim.Count - 1; i++)
+            {
+                tris[i * 3] = 0; tris[i * 3 + 1] = i + 2; tris[i * 3 + 2] = i + 1;
+            }
+            mesh.Clear();
+            mesh.vertices = verts;
+            mesh.triangles = tris;
+            mesh.RecalculateBounds();
+            Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(fill.sharedMaterial, color);
+            fill.enabled = true;
+        }
+
+        private bool EnsureDiscFill(string n, ref MeshRenderer fill, ref Mesh mesh)
+        {
+            if (fill != null) return true;
+            var mat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(Color.white);
+            if (mat == null) return false;
+            var go = new GameObject($"{name}_{n}");
+            go.transform.SetParent(transform, false);
+            mesh = new Mesh { name = n };
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            fill = go.AddComponent<MeshRenderer>();
+            fill.sharedMaterial = mat;
+            fill.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            fill.receiveShadows = false;
+            fill.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            fill.sortingOrder = BoardSortOrder.RangeRingOrder - 1;
+            fill.enabled = false;
+            return true;
         }
 
         private void ClearArea()
@@ -349,7 +586,9 @@ namespace Wassup.BattleCoreUnity.View
 
             if (_showGrid && !_gridBuilt) BuildGrid();
             if (_grid != null) _grid.enabled = _showGrid;
+            PaintEffectTilesOnce();    // 판마다 한 번 — 드래그와 무관하게 늘 보인다
             PaintCardArea();
+            PaintLandingTelegraph();   // 전용 채널 — 드래그에 양보하지 않는다(T16)
 
             if (!_hasDrag || _dragDefIndex < 0)
             {
@@ -360,6 +599,7 @@ namespace Wassup.BattleCoreUnity.View
                 if (_ring != null) _ring.enabled = false;
                 HideShapeGuide();
                 _guideDefIndex = -1;
+                ClearRangeCells();
                 return;
             }
 
@@ -500,6 +740,7 @@ namespace Wassup.BattleCoreUnity.View
                 if (_ring != null) _ring.enabled = false;
                 SetCount(_marks, 0);
                 HideShapeGuide();
+                ClearRangeCells();
                 return;
             }
 
@@ -516,6 +757,7 @@ namespace Wassup.BattleCoreUnity.View
             }
             _ring.positionCount = _ringPoints.Count;
             for (int i = 0; i < _ringPoints.Count; i++) _ring.SetPosition(i, _ringPoints[i]);
+            PaintRangeFill(in unit, foot, w);
 
             // 「이놈이 맞는다」 표식. **판정은 `AttackReach.InReach` 하나**다 — 여기서
             // 거리를 다시 재면 제약 13 위반이고, 그 어긋남은 리터럴도 심볼도 아니라
@@ -573,6 +815,48 @@ namespace Wassup.BattleCoreUnity.View
 
             if (guideHas) PaintShapeGuide(in unit.Attack, foot, guidePos, radiusTiles);
             else HideShapeGuide();   // 사거리 안 적이 없으면 없다 — 기본 방향은 없다(「방향은 타겟이 정한다」)
+        }
+
+        // ── ④′ 사거리 칸 채움(unit 8a2 행 8 — T3·T13) ────────────────────────────────
+        //
+        // 옛 `TilemapMapView.SetPlacementRange`(`:1226-1277`) + `RangeFillAlpha`(`:1185`) + `ApplyRingTint`(`:1140-1175`)의 후계.
+        // **링과 채움을 한 곳이 그린다**(T13 — 옛 뷰가 칸 채움과 링 셰이더 내부 채움을 따로 칠하다 「채움이 두 겹」이 됐다).
+        //   · 칸 집합 = 판정과 **같은 본체**(`AttackReach.InReach`) · 대상 = 표준 잡몹 몸(`CoreDrawRadius.StandardTargetBodyTiles` — T3:
+        //     칸은 크기를 표현 못 해 링보다 최대 0.25칸 바깥까지 들어가는 것을 **감수한다**) · 원점 = 발밑 · 앵커 칸 자신은 빼다
+        //     (옛 `includeCenter = false`). 앵커·유닛이 바뀔 때만 다시 센다(옛: 셀 변경 시에만 페인트).
+        //   · 칸의 채움 알파 = **링이 있으면 0**(옛 `RangeFillAlpha` — 칸 계단이 원을 사각형처럼 보이게 한다). 배치 사거리에는 링이
+        //     언제나 있으므로 칸을 그릴 렌더러를 두지 않고 **논리 집합만** 든다(투명한 칸 = 안 그린 칸).
+        //   · 대신 **링 안을 채운다**(옛 링 셰이더 `_FillAlpha = rangeFillAlphaUnderRing`) — 선과 채움이 정의상 같은 곡선이다.
+        //     채움 색 = 링 선의 색상(옛 사용자 조건 2 「선과 채움은 같은 색」 — 선 색이 새 오버레이 저작 `_ringColor` 이므로 그 RGB),
+        //     알파 = 타일셋 `rangeFillAlphaUnderRing`.
+        private void PaintRangeFill(in UnitDef unit, float3 foot, int footprintWidth)
+        {
+            if (_rangeCellsDef != _dragDefIndex || !_rangeCellsAnchor.Equals(_dragAnchor))
+            {
+                _rangeCellsDef = _dragDefIndex;
+                _rangeCellsAnchor = _dragAnchor;
+                _rangeCells.Clear();
+                float ts = _driver.TileSize;
+                var size = _driver.GridSize;
+                float offX = math.abs((footprintWidth - 1) * 0.5f);
+                int scan = (int)math.ceil(unit.AttackRange + unit.BodyRadiusTiles
+                                          + CoreDrawRadius.StandardTargetBodyTiles + offX) + 1;
+                for (int dx = -scan; dx <= scan; dx++)
+                for (int dz = -scan; dz <= scan; dz++)
+                {
+                    if (dx == 0 && dz == 0) continue;   // 앵커 칸(유닛 자리)은 비운다
+                    var cell = new int2(_dragAnchor.x + dx, _dragAnchor.y + dz);
+                    if (cell.x < 0 || cell.y < 0 || cell.x >= size.x || cell.y >= size.y) continue;
+                    if (!AttackReach.InReach(foot, CellCenterSim(cell), unit.AttackRange, ts,
+                                             unit.BodyRadiusTiles, CoreDrawRadius.StandardTargetBodyTiles)) continue;
+                    _rangeCells.Add(cell);
+                }
+            }
+
+            if (_tileSet == null || !EnsureDiscFill("RangeFill", ref _rangeFill, ref _rangeFillMesh)) return;
+            var c = _ringColor;
+            c.a = _tileSet.rangeFillAlphaUnderRing;
+            FillDisc(_rangeFill, _rangeFillMesh, foot, _ringPoints, c);
         }
 
         // ── ⑤ 공격 도형 가이드 ────────────────────────────────────────────────
@@ -927,6 +1211,10 @@ namespace Wassup.BattleCoreUnity.View
             if (_areaFill != null && _areaFill.sharedMaterial != null) Destroy(_areaFill.sharedMaterial);
             if (_areaFillMesh != null) Destroy(_areaFillMesh);
             if (_shapeRimMesh != null) Destroy(_shapeRimMesh);
+            if (_landingFill != null && _landingFill.sharedMaterial != null) Destroy(_landingFill.sharedMaterial);
+            if (_landingFillMesh != null) Destroy(_landingFillMesh);
+            if (_rangeFill != null && _rangeFill.sharedMaterial != null) Destroy(_rangeFill.sharedMaterial);
+            if (_rangeFillMesh != null) Destroy(_rangeFillMesh);
         }
     }
 }

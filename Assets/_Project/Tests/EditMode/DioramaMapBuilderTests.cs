@@ -2,7 +2,7 @@ using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.Data;
 using Wassup.Data.MapGrid;
 

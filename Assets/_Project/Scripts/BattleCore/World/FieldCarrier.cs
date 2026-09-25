@@ -31,7 +31,7 @@ namespace Wassup.BattleCore
         /// <summary>Portal = 출구. 다른 종류에서는 쓰지 않는다.</summary>
         public float3 Exit;
 
-        /// <summary>Portal = 입구 반경(월드) · Pull = 반경(칸) · AllyBuff = 반경(칸).</summary>
+        /// <summary>반경(칸, 자리형 — 원점 항 칸 반폭은 판정 진입점이 붙인다). Portal = 0(입구 칸 자체) · Pull · AllyBuff.</summary>
         public float Range;
 
         /// <summary>Pull = 초당 당기는 거리.</summary>

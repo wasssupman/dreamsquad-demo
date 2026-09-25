@@ -34,6 +34,19 @@ namespace Wassup.BattleCoreUnity.Hud
         [SerializeField, Min(0.1f)] private float _punchFullRise = 12f;
         [SerializeField, Min(0.1f)] private float _punchDecayPerSec = 2.2f;
 
+        [Header("월드 마음 틴트 (unit 8a2 행 9)")]
+        [Tooltip("스테이지 골 마커의 스트레스 틴트·심박 깊이(옛 브리지 `heartBeatDepth` 의 새 주인). 비면 마커를 안 물들인다.")]
+        [SerializeField] private Wassup.Data.BattleView.HeartHudConfig _heartHud;
+
+        private readonly System.Collections.Generic.List<Wassup.Core.GoalMarker> _markers
+            = new System.Collections.Generic.List<Wassup.Core.GoalMarker>(2);
+        private BattleMatch _markersFor;
+
+        /// <summary>테스트 창구 — 이번 프레임에 스트레스 틴트를 민 골 마커 수와 그 값(스트레스 01 · 박동 배율).</summary>
+        public int TintedMarkerCount { get; private set; }
+        public float LastMarkerStress01 { get; private set; }
+        public float LastMarkerBeatScale { get; private set; }
+
         private TextMeshProUGUI _score;
         private TextMeshProUGUI _clock;
         private TextMeshProUGUI _wave;
@@ -125,6 +138,33 @@ namespace Wassup.BattleCoreUnity.Hud
             _heartRoot.localScale = new Vector3(punchScale, punchScale, 1f);
 
             _heartLabel.text = $"{Mathf.CeilToInt(heart.Health)} / {Mathf.CeilToInt(heart.MaxHealth)}";
+
+            PaintMarkers(stress01, beat);
+        }
+
+        // unit 8a2 행 9 — **월드의 마음이 스트레스만큼 붉어지고 박동에 맞춰 뛴다**(옛 `BattleBridge.SyncGoalOverheadGauges`
+        // `:9659-9689` → `GoalMarker.SetStressTint`). ⚠ 심박의 계산 주체는 **하나**다(옛 `:9662` — 「마음 프랍과 화면이 같은 배율을
+        // 받아야 같이 뛴다」). 그래서 위상은 바와 같은 `_phase`/`beat` 를 쓰고 깊이만 저작(`HeartHudConfig.BeatDepth` — 옛
+        // `heartBeatDepth` 0.5, 옛 씬 `BattleScene.unity:4734`)에서 온다. 스트레스에 따른 세기 보간은 마커가 한다(옛 그대로).
+        // 무너진 뒤에는 마커가 스스로 쓰기를 멈춘다(`GoalMarker._collapsed`).
+        private void PaintMarkers(float stress01, float beat)
+        {
+            TintedMarkerCount = 0;
+            if (_heartHud == null) return;
+            if (!ReferenceEquals(_markersFor, _driver.Match))
+            {
+                _markersFor = _driver.Match;
+                Wassup.BattleCoreUnity.View.CoreGoalMarkers.Collect(_driver, _markers);
+            }
+            float beatScale = HeartStressPulse.BeatScale(beat, _heartHud.BeatDepth);
+            for (int i = 0; i < _markers.Count; i++)
+            {
+                if (_markers[i] == null) continue;
+                _markers[i].SetStressTint(stress01, beatScale);
+                TintedMarkerCount++;
+            }
+            LastMarkerStress01 = stress01;
+            LastMarkerBeatScale = beatScale;
         }
 
         // ── 조립 ─────────────────────────────────────────────────────────────

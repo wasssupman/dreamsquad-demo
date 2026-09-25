@@ -18,7 +18,7 @@ spine-unity 런타임은 **4.2 고정**(2026-07-07 업그레이드, `Assets/Spin
 2. **원본 `.spine` 보존(필수)**: `art/spine/{SkeletonName}.spine` 으로 repo 에 커밋. 외주/구매 시 원본 포함을 계약 조건에 넣는다. 3.8 리소스 전량 폐기의 근본 원인이 원본 부재.
 3. **확장자 rename**: `.skel` → `.skel.bytes`, `.atlas` → `.atlas.txt` (임포터 인식 조건. 3.8 시절 8종이 rename 누락으로 임포트 실패 전례).
 4. **파일명 ASCII 만**: 한글명은 위 NFC/NFD 함정 직행.
-5. **텍스처/알파**: PMA export 기본, Unity 텍스처 설정(sRGB, Alpha Is Transparency 끔)과 일치. `SpineUnitView` 사망 페이드가 PMA 전제(`Skeleton.A` 직접 조작).
+5. **텍스처/알파**: PMA export 기본, Unity 텍스처 설정(sRGB, Alpha Is Transparency 끔)과 일치. 전투 Spine 뷰(`CoreSpineUnitView` — 당시 `SpineUnitView`, 이력: unit 9 에서 제거)의 사망 페이드가 PMA 전제(`skeleton.A` 직접 조작).
 6. **rig 방향**: "ScaleX=+1 에서 -x(왼쪽) 바라봄" 관례. 어기는 rig 은 SkeletonData 의 `skeletonDataModifiers` 에 `Assets/_Project/Characters/SkeletonFlipX.asset` 부착.
 7. **배치 위치**: `Assets/_Project/Characters/{SkeletonName}/` 폴더 단위.
 8. **임포트 검증**: `_SkeletonData`/`_Atlas`/`_Material` 자동 생성 → 프리뷰 애니 재생 → 콘솔 경고 0.
@@ -85,7 +85,8 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 전투 보드 두 렌더 경로가 테마를 다르게 쓴다:
 
-- **Tilemap 모드(현 기본)**: 바닥을 `BattleBridge.tileSet`(`TileSetData` scene 필드)이 칠함(env/place/walk/deco/terrainTile + surroundFarColor). **`MapThemeData`/`SeasonData` 의 tile 텍스처/틴트는 여기서 inert** — 테마는 프랍만 구동.
+- **Tilemap 모드(당시 기본 — 이력, 옛 ECS 전투와 함께 unit 9 에서 제거)**: 바닥을 `BattleBridge.tileSet`(`TileSetData` scene 필드)이 칠함(env/place/walk/deco/terrainTile + surroundFarColor). **`MapThemeData`/`SeasonData` 의 tile 텍스처/틴트는 여기서 inert** — 테마는 프랍만 구동.
+- **지금**: 바닥은 디오라마 스테이지 프리팹이 그린다. `TileSetData` 는 전투 씬 `BattleCoreScene` 의 `CoreMapOverlay._tileSet` 이 **오버레이(격자·배치 가이드·조준 링 등)의 룩**으로만 읽는다. 「이름이 아니라 실제로 물린 에셋을 확인하라」는 아래 교훈은 그대로다.
 - **레거시 MapView**: 여기서만 `MapThemeData` 의 envTileTexture/surfaceRules 가 바닥에 쓰임.
 - 새 테마의 **바닥**을 바꾸려면 전용 `TileSetData` 필요. 테마별 선택은 **`MapThemeData.tileSet` 훅**(`theme.tileSet ?? scene tileSet`, 커밋 5ebe315). "테마만 바꾸면 바닥이 바뀐다"는 오답.
 
@@ -95,16 +96,16 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 | 에셋 | guid | 쓰이는 곳 |
 |---|---|---|
-| `Generated/Tiles/AutoTileTest/TileSet_AutoTileTest` | `d780c834…` | BattleScene `BattleBridge.tileSet` = **씬 fallback** = forest 테마(= 현 시즌 overwork)의 라이브 |
+| `Generated/Tiles/AutoTileTest/TileSet_AutoTileTest` | `d780c834…` | 지금 `BattleCoreScene` 의 `CoreMapOverlay._tileSet`. 당시 BattleScene `BattleBridge.tileSet` = **씬 fallback** = forest 테마(= 현 시즌 overwork)의 라이브(이력) |
 | `Data/TileSets/TileSet_Desert` | `466c1d82…` | `Map/Theme/desert/desert.asset` — **사막 시즌에서만** |
 
-"Desert" 가 정본처럼 보여서 거기만 고치면 **현 시즌에서 아무 변화가 없다**(2026-07-31 사거리 색을 바꾸며 실제로 헛짚었다). 확인 순서는 `BattleScene.unity` 의 `tileSet:` guid → `*.asset.meta` 대조. **`.meta` 여러 개를 한 grep 으로 훑어 출력 순서로 짝짓지 말 것** — 그 착각이 이 사고의 원인이었다. 파일당 한 번씩 읽어라.
+"Desert" 가 정본처럼 보여서 거기만 고치면 **현 시즌에서 아무 변화가 없다**(2026-07-31 사거리 색을 바꾸며 실제로 헛짚었다). 확인 순서는 씬 파일(지금 `BattleCoreScene.unity` 의 `_tileSet:`, 당시 `BattleScene.unity` 의 `tileSet:` — 이력, unit 9 에서 제거)의 guid → `*.asset.meta` 대조. **`.meta` 여러 개를 한 grep 으로 훑어 출력 순서로 짝짓지 말 것** — 그 착각이 이 사고의 원인이었다. 파일당 한 번씩 읽어라.
 
 곁가지 함정: 에디터가 켜진 채 `.asset` YAML 을 **밖에서** 고치면 아무 일도 안 일어난다. 에디터는 메모리의 옛 값을 계속 쓰고, 그 상태로 저장하면 되레 내 수정이 날아간다. `manage_asset action=import`(리임포트) 또는 인스펙터 직접 입력으로 반영시킨다.
 
 ## 배틀 카메라는 페이즈마다 pitch 가 바뀐다
 
-BattleScene Main Camera 는 **런타임 정적이 아니다**. 실측: **Draft pitch 40° / z=−10.44**, **Battle pitch 58° / z=−7.85**. 씬에 잡아둔 포즈가 그대로 유지될 거라 가정하면 안 된다 — `CameraDirector` 가 홈 포즈에 페이즈 델타를 얹어 매 프레임 절대값으로 카메라를 소유한다(맵 빌드 시 `FrameBoard` 가 홈 거리까지 다시 잡는다).
+전투 씬 Main Camera 는 **런타임 정적이 아니다**. 실측(당시 `BattleScene` — 이력, unit 9 에서 제거. 값은 그 뒤에도 계속 바뀌니 인용 전 재측정): **Draft pitch 40° / z=−10.44**, **Battle pitch 58° / z=−7.85**. 씬에 잡아둔 포즈가 그대로 유지될 거라 가정하면 안 된다 — `CameraDirector` 가 홈 포즈에 페이즈 델타를 얹어 매 프레임 절대값으로 카메라를 소유한다(맵 빌드 시 보드 bounds 가 `CameraDirector.SetBoardBounds` 로 들어와 포즈를 다시 푼다 — 당시 이름 `FrameBoard`).
 
 - **처방**: 카메라 pitch/거리 의존 값(빌보드 틸트·그림자·framing)은 **스폰 시 1회 bake 금지, 라이브 재계산**(또는 최소 페이즈 전환 시 재계산). 코드만 믿지 말고 Play 에서 여러 페이즈에 걸쳐 측정.
 

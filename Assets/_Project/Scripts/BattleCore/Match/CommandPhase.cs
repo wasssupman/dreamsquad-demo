@@ -175,7 +175,7 @@ namespace Wassup.BattleCore
                     : new Trigger.TriggerEvent
                     {
                         Seam = Seam.Immediate, Kind = b.Def.Trigger, Subject = SimEntityId.Match,
-                        SubjectFaction = Wassup.Battle.Units.Faction.DefenderUnit, Target = SimEntityId.None,
+                        SubjectFaction = Wassup.Skills.Faction.DefenderUnit, Target = SimEntityId.None,
                     };
                 if (owner?.Attack != null) e.TargetLayers = owner.Attack.TargetLayers;
                 triggers.RaiseFor(b, in e);
@@ -305,7 +305,7 @@ namespace Wassup.BattleCore
             if (_map != null && !_map.Snapshot.InBounds(cmd.Cell)) return Receipt.Reject(RejectReason.OutOfBounds);
             var src = _world.Find(cmd.Target);
             var r = ResignationDrop.At(_world, _map, cmd.Cell, cmd.Target,
-                                       src != null ? src.Faction : Wassup.Battle.Units.Faction.None, tick);
+                                       src != null ? src.Faction : Wassup.Skills.Faction.None, tick);
             return r != null ? Receipt.Ok : Receipt.Reject(RejectReason.OutOfBounds);
         }
 

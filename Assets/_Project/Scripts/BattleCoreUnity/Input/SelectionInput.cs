@@ -191,8 +191,12 @@ namespace Wassup.BattleCoreUnity.Input
             _panel.SetStats(CoreSelectionPanel.ReadoutOf(unit, in units[unit.DefIndex]), true);
 
             // 버튼 잠금은 **코어 답의 미리 보기**다. 배치 중(비행·모션)이면 흐려졌다가 착지하면 풀린다.
-            _panel.SetActionState(!unit.Deploying, "퇴근");
+            _panel.SetActionState(!unit.Deploying, RetireLabel);
         }
+
+        // unit 8b — 화면에 뜨는 글자가 정본이다. 옛 라이브 버튼은 「철수」였고(`DcInspectController.cs:477 RetireLabel`).
+        // 5b 가 기능 이름(퇴근)을 라벨에 썼던 것을 옛 글자로 되돌린다.
+        public const string RetireLabel = "철수";
 
         private void Retire()
         {

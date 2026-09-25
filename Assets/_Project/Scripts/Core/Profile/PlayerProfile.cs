@@ -6,8 +6,10 @@ namespace Wassup.Core
     // outgame-scene-and-flow Unit 0 — persisted player profile, serialized to
     // JSON by ProfileStore. Unit/card references use stable string ids
     // (DefenderUnitData.id), never asset GUIDs or list indices.
+    //
+    // battle-core-rebuild unit 8d — 옛 씬만 쓰는 필드 하나는 `PlayerProfile.OldBattle.cs` 에 떼어 두었다(unit 9 가 파일째 지운다).
     [Serializable]
-    public class PlayerProfile
+    public partial class PlayerProfile
     {
         public int schemaVersion = 1;
 
@@ -16,34 +18,15 @@ namespace Wassup.Core
         // 확장 판매")이 되면 SO 로 이관한다.
         public const int MaxPresets = 30;
 
-        // tutorial-content-teardown unit 2 — 튜토리얼 진행 필드 12개는 걷혔다. 재설계가
-        // 자기 스키마를 새로 잡는다. 기존 세이브에 남은 옛 키는 JsonUtility 가 조용히 버리고
-        // 다음 저장에서 사라진다(마이그레이션 없음 · schemaVersion 불변).
+        // 옛 진행 필드(안내 진행 12개 · 사용자 결정 ④의 완료·배웅 플래그 2개)는 걷혔다. 기존 세이브에 남은
+        // 옛 키는 JsonUtility 가 조용히 버리고 다음 저장에서 사라진다(마이그레이션 없음 · schemaVersion 불변 —
+        // `PlayerProfileCompatTests` 가 증언한다).
         //
-        // 매치 이력. 튜토리얼 진행이 **아니었기 때문에** 튜토리얼과 함께 죽지 않았고, 지금은
+        // 매치 이력. 안내 진행이 **아니었기 때문에** 그것과 함께 죽지 않았고, 지금은
         // 「이 계정의 첫 판인가」의 유일한 소유자다 — OutgameMenuController.IsFirstMatch 가
-        // 이걸 읽어 첫 판을 토너먼트에 올리지 않는다(tutorial-offline-match 우회).
+        // 이걸 읽어 첫 판을 토너먼트에 올리지 않는다(서버 `complete` 500 우회).
         // GameManager 가 **판이 끝날 때** 1 올린다 — 호출처 둘: SetPhase(Result) 와 MenuPopup 의 나가기.
         public int matchesPlayed;
-
-        // first-run-tutorial unit 0 — 계정 첫 판 온보딩을 봤는가. **matchesPlayed 와 겸직시키지
-        // 말 것** — 그건 「첫 판은 토너먼트에 올리지 않는다」(서버 complete 500 우회)의 신호이고,
-        // 한 필드가 두 규칙을 지면 한쪽을 끄는 순간 다른 쪽이 조용히 바뀐다.
-        //
-        // **정상 완료에서만 true 가 된다.** 스텝을 스킵/타임아웃으로 흘려보낸 판은 기록하지
-        // 않는다 — 1회성이라 기록해버리면 핵심을 한 번도 못 본 계정이 다시 볼 기회를 잃는다.
-        // 개발 트레이 RESET TUTORIAL 이 이 값을 false 로 되돌린다.
-        public bool firstRunTutorialDone;
-
-        // first-run-tutorial unit 10 — 온보딩 판을 마치고 **로비로 돌아왔을 때** 뜨는 배웅
-        // 안내를 봤는가. `firstRunTutorialDone` 과 겸직시키지 않는다: 그건 판이 끝나는
-        // 순간 켜지므로, 복귀 로비에서는 이미 참이라 「배웅을 봤나」를 물을 수 없다.
-        // 계약 2 의 이유(한 필드가 두 규칙을 지면 한쪽을 끄는 순간 다른 쪽이 조용히 바뀐다)를
-        // 온보딩 내부에도 적용한 것이다. RESET TUTORIAL 이 둘을 **함께** 되돌린다.
-        //
-        // 이 필드는 **띄운 시점에** 켜진다(완주 조건이 아니다) — 이 스텝에서 플레이어가
-        // 해낼 행동이 START 하나뿐이고 그건 스텝의 완료가 아니라 로비를 떠나는 동작이다.
-        public bool firstRunLobbyOutroDone;
 
         // Units are not profile-owned — all catalog units are always available
         // (the squad page lists the catalog directly). No ownedUnitIds by design.

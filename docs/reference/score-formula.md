@@ -1,7 +1,12 @@
 # 점수 산식 — 어디서 나오고 얼마인가
 
-> 한 판 끝나면 나오는 최종 점수의 전부. 판의 성적은 `Scripts/Core/MatchTally.cs` 값 하나로
-> 취합되고(조립 지점 = `BattleBridge.BuildTally`), 서버로 가는 수는 그 `SubmissionScore` 하나다.
+> 한 판 끝나면 나오는 최종 점수의 전부. 판의 성적은 전투 코어의 `MatchOutcome` 값 하나로
+> 취합되고(조립 지점 = 목표의 `IMatchGoal.BuildOutcome` — `Scripts/BattleCore/Goals/`), 서버로 가는 수는 그 `Score` 하나다.
+> (옛 `MatchTally`·`BattleBridge.BuildTally` 는 이력 — 옛 ECS 전투, unit 9 에서 제거.)
+>
+> **이 문서는 현행 라이브 모드 `KillScoreTimed`(`Data/Modes/MatchMode_KillScore3Min.asset`) 기준이다.**
+> 점수·승패 표기는 매치 모드의 목표가 정한다 — `WaveClear`·`TimeAttack` 은 마음이 부서지면 «패배»이고
+> `TimeAttack` 은 점수가 경과 시간이다(`docs/spec/battle-core-rebuild/match-mode-design.md` 사용자 판정 2).
 > 상세 설계·결정 이력은 `docs/spec/three-minute-kill-race/`(현행) ·
 > `docs/spec/three-minute-survival/`(직전) · `docs/spec/battle-score-formula/`(구 3축).
 
@@ -15,7 +20,7 @@
 
 - **보스도 1점, 분열체도 1점.** 등급으로 점수를 가르던 `killScore` 축은 은퇴했다
   (2026-08-16 사용자 결정 A). 강함의 차이는 체력·공격력·등장 빈도로 표현한다.
-- **놓친 적은 0점.** 골을 뚫은 적은 "잡은 것"으로 안 친다(`EnemyKilledEvent` 미발화).
+- **놓친 적은 0점.** 골을 뚫은 적은 "잡은 것"으로 안 친다(처치 사건 `CoreEvent.UnitSlain` 미발화 — 점수 담당자 `ScoreLedger` 는 그 사건만 센다).
   각성치도 같은 이유로 안 들어온다 — 이것이 **유일한 페널티**이자 그 전부다.
 - **감점이 없다.** 마음 붕괴·조기 제출 어느 것도 점수를 깎지 않는다.
 - **만점이 고정값이 아니다.** 웨이브 구성이 바뀌면 총합도 바뀌므로 이 숫자에 의존하는 코드를
@@ -32,7 +37,9 @@
 | 스트레스 100 | `stress_full` | 마음이 부서졌다. **조기 종료** (heart-stress-axis) |
 | 유저 「제출」 | `submitted` | 경과 60초 후 개방(P1). 무페널티. **공식 절차로 세지 않는다** |
 
-`BattleBridge.EndMatch` 호출부는 정확히 **3곳**이다. **넷째를 만들지 말 것** — 「이러이러하면
+판을 끝내는 함수는 `MatchClock.EndMatch`(`Scripts/BattleCore/Owners/MatchClock.cs`) 하나이고 통로(사유)는 정확히 **3개**다.
+호출처는 만료(`MatchClock`) · 붕괴(`HeartMeter`) · 제출(`CommandPhase`) + 목표 달성(`IMatchGoal` 의 `Complete` — `complete` 통로를 만료와 공유,
+`WaveClear`·`TimeAttack` 전용)이다. **넷째 통로를 만들지 말 것** — 「이러이러하면
 판을 끝낸다」를 하나 더 붙이는 순간 그게 곧 패배 조건의 부활이다.
 
 > **은퇴한 판정(2026-08-16)**: 적 마음 붕괴 승리 · 웨이브 전멸 승리 · 타이머 만료 시
@@ -56,7 +63,7 @@
   스트레스는 한 방향으로만 흐르지 않는다 — 되돌릴 수 있는 저울이다.
 - **맵에 방어 본능이 살아 있는 동안 마음은 표적이 되지 않는다.** 마지막 본능이 무너져야
   마음이 깎이기 시작한다(`CoreShielded`). 라이브에서 본능이 저작된 맵은 Isle·Ford·Duel.
-- 최대치는 `Deck_*.asset` → `goalStabilityMax`(현재 **1500**). 정본은 마음 엔티티의 `Health`.
+- 최대치는 `Deck_*.asset` → `goalStabilityMax`(현재 **1500**). 정본은 마음 담당자 `HeartMeter`(`Scripts/BattleCore/Owners/HeartMeter.cs`)의 체력.
 - 설계는 `docs/spec/heart-stress-axis/` · 공성 이력은 `docs/spec/goal-tower-siege/`.
 
 ## 서버에 보내는 수 = 화면에 보이는 수
@@ -80,14 +87,15 @@
 
 ## 마감 파이프라인 — 취합 → 기록 → 통보 → 표시
 
-종료 3경로는 **판정만** 하고 `BattleBridge.EndMatch(outcome)` 한 곳으로 들어온다.
+종료 3경로는 **판정만** 하고 `MatchClock.EndMatch(reason)` 한 곳으로 들어온다.
 
 | 단계 | 어디 | 하는 일 |
 |---|---|---|
-| 취합 | `BattleBridge.BuildTally` | 흩어진 재료(처치 수·안정도·도달 웨이브·유출)를 `MatchTally` 하나로 |
-| 기록 | `BattleLogger.SetResult/SetScore` | 로컬 `GameLogs` 배틀 로그 |
-| 통보 | `TournamentMatchReporter.ReportResult` | `tally.SubmissionScore` 를 서버로 |
-| 표시 | `ResultScreen.Show` | 총점 + 3줄 |
+| 취합 | `IMatchGoal.BuildOutcome` (코어) | 담당자 읽기 모델(처치 수·마음·도달 웨이브·산화 수)을 `MatchOutcome` 하나로 |
+| 통보 | `CoreMatchOutcomePresenter` → `TournamentMatchReporter.ReportResult` | `outcome.Score` 를 서버로(모드가 `SubmitsReport` 일 때만) |
+| 표시 | `CoreMatchOutcomePresenter` → `ResultScreen.Show(in MatchOutcome)` | 총점 + 3줄 |
+
+(옛 「기록」 단계 `BattleLogger.SetResult/SetScore` 는 이력 — 옛 ECS 전투, unit 9 에서 제거. 새 전투 씬은 로거를 들이지 않았다.)
 
 **제출이 표시보다 앞이라는 순서는 계약이다** — 화면을 기다리다 앱이 죽으면 기록이 사라진다.
 
@@ -100,16 +108,16 @@
 | 돌격형의 마음 직격 | 같은 파일 → `stabilityDamage` (라이브 Runner·Swift 50) |
 | 마음 최대치 = 스트레스 분모 | `Scripts/Data/Decks/Deck_*.asset` → `goalStabilityMax` (라이브 1500) |
 | 처치 시 마음 회복 배율 | 같은 파일 → `killHealPerAwakening` (라이브 10) |
-| 제한시간 180초 | 같은 파일 → `timerDurationSec` |
-| 제출 개방 시점(P1) | 경과 60초 — `docs/spec/three-minute-kill-race/3_player_submit.md` |
+| 제한시간 180초 | `Data/Modes/MatchMode_KillScore3Min.asset` → `durationSec` (판 길이는 모드 단독 — 덱의 `timerDurationSec` 는 판 길이에 안 쓰인다) |
+| 제출 개방 시점(P1) | 같은 모드 자산 → `submitUnlockSec`(경과 60초) — 설계 `docs/spec/three-minute-kill-race/3_player_submit.md` |
 
 ## 전투 중 화면 위 점수
 
 **우상단 HUD 숫자 = 최종 점수**다. 잡을 때마다 **1** 오르고, 전투가 끝나면 그 숫자가 그대로
 결과 화면의 총점이자 서버에 올라간 수다. 합산 연출(탤리)은 제거됐다 — 더할 축이 없다.
 
-버스트 플래시 임계(`ScoreHudView.burstScoreThreshold`)는 4다. 1킬 1점이라 이제 그냥
-**「4마리 동시 처치」** 를 뜻한다.
+(이력 — 옛 ECS 전투, unit 9 에서 제거: 옛 HUD `ScoreHudView` 의 버스트 플래시 임계 `burstScoreThreshold` 4 = 「4마리 동시 처치」.
+새 HUD `CoreScoreHud` 에는 이 플래시가 없다.)
 
 ## 결과 화면에 뭐가 뜨나
 

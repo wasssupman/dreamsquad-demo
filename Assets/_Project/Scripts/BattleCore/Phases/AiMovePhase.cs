@@ -1,5 +1,5 @@
 using Unity.Mathematics;
-using Wassup.Battle.Units;
+using Wassup.Skills;
 using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Map;
 using Wassup.BattleCore.Move;
@@ -230,9 +230,13 @@ namespace Wassup.BattleCore
                     continue;
                 }
 
+                // unit 9c — 도발을 다시 걸면 **남은 시간은 긴 쪽**이다(옛 `AggroStateSystem.cs:289-290`).
+                // 겹친 배치가 남은 시간을 깎지 않게 — CC 갱신 관례와 같은 방향. 히트 어그로의 잔여 0 은
+                // 무기한 센티널이라 max 에서 자연히 진다(도발이 시한을 준다 — 옛 규칙 그대로).
+                float prevRemaining = already && req.Taunt ? enemy.Aggro.Remaining : 0f;
                 enemy.Aggro = enemy.Aggro ?? ctx.World.Parts.RentAggro();   // F4 — 틱 중 할당 0
                 enemy.Aggro.Target = req.Guardian;
-                enemy.Aggro.Remaining = req.Seconds;
+                enemy.Aggro.Remaining = req.Taunt ? math.max(req.Seconds, prevRemaining) : req.Seconds;
                 enemy.Aggro.Taunted = req.Taunt;
                 enemy.Aggro.Chase = cache;
                 if (!already) guardian.Aggro.Held++;
@@ -467,7 +471,7 @@ namespace Wassup.BattleCore
                 for (int i = 0; i < units.Count; i++)
                 {
                     var c = units[i];
-                    if (!ReachProbe.IsLegalDetectionTarget(self, c, def)) continue;
+                    if (!ReachProbe.IsLegalDetectionTarget(self, c, def, ctx.Def)) continue;
                     bool skipped = false;
                     for (int r = 0; r < rejectCount; r++)
                         if (_rejected[r] == c.Id) { skipped = true; break; }
@@ -564,8 +568,14 @@ namespace Wassup.BattleCore
                 {
                     var f = fields[p];
                     if (f.Kind != FieldKind.Portal) continue;
-                    float pdx = current.x - f.Center.x, pdz = current.z - f.Center.z;
-                    if (pdx * pdx + pdz * pdz > f.Range * f.Range) continue;
+                    float pinv = _map.TileSize > 1e-6f ? 1f / _map.TileSize : 1f;
+                    // 제약 13 「자리에 떨어지는 것」 — 입구는 칸이다(원점 항 = 칸 반폭, 진입점의 성질).
+                    // 대상 몸 0 = **옛 규칙**: 포탈은 «발밑 중심이 입구 칸에 들어섰나» 를 묻는다(옛
+                    // `SpawnPortal(…, tileSize * 0.5, …)` 의 점 판정). 몸을 붙이면 큰 적이 먼저 빨려
+                    // 들어가는 규칙 변경이다 — 그건 사용자 결정 사항이라 여기서 바꾸지 않는다.
+                    if (!Wassup.Skills.SkillMath.ReachFromCell(
+                            (current.x - f.Center.x) * pinv, (current.z - f.Center.z) * pinv,
+                            f.Range, 0f)) continue;
                     u.Position = new float3(f.Exit.x, current.y, f.Exit.z);
                     current = u.Position;
                     break;

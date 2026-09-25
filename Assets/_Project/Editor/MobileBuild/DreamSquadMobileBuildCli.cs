@@ -33,7 +33,7 @@ namespace Wassup.Editor.MobileBuild
         internal static readonly string[] ExpectedScenes =
         {
             "Assets/_Project/Scenes/OutgameScene.unity",
-            "Assets/_Project/Scenes/BattleScene.unity"
+            "Assets/_Project/Scenes/BattleCoreScene.unity"
         };
 
         public static void BuildAndroidQa()
@@ -606,7 +606,7 @@ namespace Wassup.Editor.MobileBuild
                     StringComparer.Ordinal))
             {
                 throw new MobileBuildException(
-                    "Enabled scenes must be exactly OutgameScene then BattleScene.");
+                    "Enabled scenes must be exactly OutgameScene then BattleCoreScene.");
             }
 
             if (!IsLandscapeAutorotation(
