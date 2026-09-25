@@ -118,4 +118,8 @@ N/A — 규칙을 옮기지 않았다. 옮긴 것은 타입의 **집**뿐이다(
 - [ ] 볼륨 4개를 부르는 프리팹 5 불변 · `MapStageDuelGenerator` 실행 가능 · 새 씬 스테이지 포스트 효과 육안 무변. — 프리팹 5 불변 · 경로 상수 로드 성공 ○ · **육안은 플레이 4차로 보류**(자산 바이트 동일)
 - [x] `object-pipeline-map.md` 에서 `BattleBridge`·`EntityManager`·`NativeQueue` 가 이력 줄 밖에 0. — 0 · 본문 심볼 254 해석 (2026-09-25 `7b3931631`)
 - [x] 헤드리스 3종 · EditMode 선행 2 외 빨강 0 · PlayMode 코어 초록 · 골든 11종 무변. — 0·685·0 · 1005/1007 · 85/85 · 옛 부분집합 38/38 (2026-09-25 `7b3931631`)
-- [ ] `core-reviewer` APPROVE · **사용자 플레이 4차 통과(8b)** → main 머지(squash 금지, 푸시 승인제) — **조각 E 경계 1**. 이 머지로 동료·GitLab 이 새 전투를 받는다(README 결정 ③).
+- [x] `core-reviewer` **APPROVE**(2026-09-25 — CRITICAL·HIGH 0 · MEDIUM 1 = T3·T13 처분(→ 8a2 행 8) · LOW 1 = `BlockingHazardPresenter.cs:270~278` `Shader.Find`+`new Material` 선행 위반, 후속 후보) · [ ] **사용자 플레이 4차 통과(8b)** → main 머지(squash 금지, 푸시 승인제) — **조각 E 경계 1**. 이 머지로 동료·GitLab 이 새 전투를 받는다(README 결정 ③).
+
+리드 재검증 2026-09-25 — HEAD `e08b2ba4b` 클린 export: build 0 · test 685/685 · Check 0 · `check_ledgers.py` exit 0 · `--retire-assets`(워크트리) exit 0(뿌리 18 · 폐포 1925 · 폐포 안 퇴역 0 · 총계 590 일치) · `--owners` 미실현 12(전부 8a2 행)만 · `--retire-prune` 620 항목 → `Retire.Check` 오류 0(6.7초 실컴파일) · 음성 대조(`BlockingHazardSO.cs` 삭제) 오류 13. Unity EditMode 1005/1007(선행 2) · PlayMode 코어 85/85 · 옛 씬 부분집합 35/38 → `BonusWavePullTest` 단독 13/13(코어 lane 직후 재현 2회 — 함정 20, 옛 lane 은 unit 9 에서 사라진다) · CLI 63/63.
+
+**리드 결정 2026-09-25(보류 2)**: `IngameCharacterTest` · `MenuPopup` dev 토글 「캐릭터/포스트」 = **(a) 옛 씬과 함께 은퇴** — 둘 다 플레이어 규칙이 아니라 개발 실험대이고, 실험의 목적(하이브리드 그림자 증명)은 달성됐으며 블롭 값은 8a 에서 SO 로 승격됐다. `retire-set.md` 의 `hold` 블록은 unit 9 가 `retire` 로 옮기며 총계 줄을 같이 갱신한다(사용자가 그 전에 뒤집으면 (b)). T3·T13 = 8a2 행 8(이식, 사용자 은퇴 선택 가능).
