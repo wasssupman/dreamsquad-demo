@@ -108,17 +108,6 @@
       **가정하던** 곳이 안 고쳐졌다. 흔적이 리터럴도 심볼도 아니라 **함수 뒤에 숨어** grep 이 못 잡는다.
       그래서 「고쳤다」가 아니라 **「호출부가 원점이 무엇인지 선언하게 만든다」**가 이 제약의 이행 방식이다.
 
-## 전투 코어 — 절대 제약 (2026-09-23)
-
-> 적용 범위: `Assets/_Project/Scripts/BattleCore/`(asmdef `Wassup.BattleCore`) 와 그것을 구동·표시하는 Unity 층(`Scripts/BattleCoreUnity/`). 계약의 정본은 `docs/spec/battle-core-rebuild/README.md`(Feature-wide 계약 13) 이고, 아래는 그중 **위반 시 정지하고 질문**해야 할 것만 옮긴 것이다.
-
-1. **매니저를 두지 않는다.** 전투 안에 매니저·브리지·컨트롤러라는 이름의 클래스를 두지 않는다. 판정·상태·저장은 그 일의 담당자만 한다. 담당자 간 순서 의존은 이벤트 구독 순서로 표현한다. `BattleMatch` 는 담당자를 만들고 틱 순서를 나열하는 조립 지점일 뿐이다.
-2. **전투 코어는 엔진을 모른다.** `Wassup.BattleCore` 는 `noEngineReferences` 이고 참조는 `Unity.Mathematics` · `Wassup.Skills` · `Wassup.UnitAi` 뿐이다. Unity 층은 정의표 물질화(`MatchDefinitionBuilder`) · 시간(`BattleDriver`) · 뷰 · 입력만 갖는다. 코어에 `UnityEngine` 타입이 필요해 보이면 정지하고 질문.
-3. **규칙은 옮기고 기계는 옮기지 않는다.** 옛 전투의 컴포넌트·시스템·큐·ECB·Burst 우회를 새 코드에 재현하지 않는다. 땜빵·우연은 의도만 옮기고, 안 옮긴 것은 그 unit 의 「이식 제외」 표에 남긴다.
-4. **커맨드 ≠ 이벤트.** 플레이어 입력은 커맨드(틱 시작 동기 적용 + receipt), 사건은 값 스냅샷 이벤트(`SimEntityId` 키, 자리↔몸 짝). 이벤트로 상태를 되묻지 않는다.
-5. **매치 모드는 닫힌 집합.** 목표 종류는 enum, 모드는 SO(`MatchModeData`), 재현은 modeId + seed. 모드는 값을 덮어쓰지 않고 «어느 저작 자산을 쓸지» 고른다. 담당자는 모드를 모른다.
-6. **결정론.** 고정 틱 1/60 · 단일 스레드 · 순회는 `SimEntityId` 오름차순. 슬로모·정지는 틱 발행률. 판 종료 후 틱 0.
-
 **추가 제약** (구 `docs/TRD.md` §3 추상화 규칙 · §5 금지 패턴에서 2026-09-03 이관. TRD/PRD 는 Phase 시절 문서라 은퇴했고 이 목록이 제약의 전부다):
 
 - **생성 패턴**: 팩토리/빌더는 객체 생성이 3줄 이상일 때만.
@@ -129,6 +118,17 @@
 - **`Shader.Find(...) + new Material(shader)` 금지** — 모바일 shader stripping 으로 null 이 돌아와 렌더가 깨진다. 런타임 Material 은 `Wassup.Rendering.RuntimeMaterialFactory.CreateOpaque / CreateTransparent` 경유(`Assets/Resources/RuntimeMaterials/*.mat` always-included). 새 런타임 shader 는 `Assets/_Project/Shaders/` 명시 추가 + Resources 머티리얼 등록.
 - **Manager 싱글톤의 의도된 예외 2건**: `Wassup.Core.TimeControl.TimeManager`(도메인 스코프 시간 제어, `docs/spec/time-manager/`) · `SoundManager`(전역 SFX, `docs/spec/score-hud-impact-upgrade/` unit 4). 둘 다 판 밖 전역이라 「전투 코어 — 절대 제약」 1(전투 안 매니저 금지)과 충돌하지 않는다. 그 외는 제약 5.
 - **로깅은 마지막이 아니라 첫 축** — 새 사건 채널·이벤트 종류를 열면 로그/트레이스 정거장을 함께 연다.
+
+## 전투 코어 — 절대 제약 (2026-09-23)
+
+> 적용 범위: `Assets/_Project/Scripts/BattleCore/`(asmdef `Wassup.BattleCore`) 와 그것을 구동·표시하는 Unity 층(`Scripts/BattleCoreUnity/`). 계약의 정본은 `docs/spec/battle-core-rebuild/README.md`(Feature-wide 계약 13) 이고, 아래는 그중 **위반 시 정지하고 질문**해야 할 것만 옮긴 것이다.
+
+1. **매니저를 두지 않는다.** 전투 안에 매니저·브리지·컨트롤러라는 이름의 클래스를 두지 않는다. 판정·상태·저장은 그 일의 담당자만 한다. 담당자 간 순서 의존은 이벤트 구독 순서로 표현한다. `BattleMatch` 는 담당자를 만들고 틱 순서를 나열하는 조립 지점일 뿐이다.
+2. **전투 코어는 엔진을 모른다.** `Wassup.BattleCore` 는 `noEngineReferences` 이고 참조는 `Unity.Mathematics` · `Wassup.Skills` · `Wassup.UnitAi` 뿐이다. Unity 층은 정의표 물질화(`MatchDefinitionBuilder`) · 시간(`BattleDriver`) · 뷰 · 입력만 갖는다. 코어에 `UnityEngine` 타입이 필요해 보이면 정지하고 질문.
+3. **규칙은 옮기고 기계는 옮기지 않는다.** 옛 전투의 컴포넌트·시스템·큐·ECB·Burst 우회를 새 코드에 재현하지 않는다. 땜빵·우연은 의도만 옮기고, 안 옮긴 것은 그 unit 의 「이식 제외」 표에 남긴다.
+4. **커맨드 ≠ 이벤트.** 플레이어 입력은 커맨드(틱 시작 동기 적용 + receipt), 사건은 값 스냅샷 이벤트(`SimEntityId` 키, 자리↔몸 짝). 이벤트로 상태를 되묻지 않는다.
+5. **매치 모드는 닫힌 집합.** 목표 종류는 enum, 모드는 SO(`MatchModeData`), 재현은 modeId + seed. 모드는 값을 덮어쓰지 않고 «어느 저작 자산을 쓸지» 고른다. 담당자는 모드를 모른다.
+6. **결정론.** 고정 틱 1/60 · 단일 스레드 · 순회는 `SimEntityId` 오름차순. 슬로모·정지는 틱 발행률. 판 종료 후 틱 0.
 
 ## 원격 저장소 · 푸시 전략 (2026-07-27 확정)
 
