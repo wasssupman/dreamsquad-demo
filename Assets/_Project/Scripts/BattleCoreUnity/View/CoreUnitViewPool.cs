@@ -53,6 +53,34 @@ namespace Wassup.BattleCoreUnity.View
 
         private float _nextSweep;
 
+        // ── unit 8a2 행 4 — 배치 드래그 중 적 반투명(옛 `BattleBridge.SetEnemiesDimmed` `:79` · 페이드 `:3108-3110`) ──
+        // 입력(`DragPlacementInput`)이 켜고 끈다. 알파는 **unscaled** 로 페이드한다 — 드래그 슬로모와 무관(옛 그대로).
+        // 값(목표 알파 · 속도)은 `CharacterViewConfig.EnemyDragDim*` 가 정본이다. 적만 흐린다(방어유닛 루프 미적용 — 옛 그대로).
+        private bool _enemyDimActive;
+        private float _enemyDimAlpha = 1f;
+        private bool _healthTintWarned;
+
+        // ── unit 8a2 행 6 — 소환사 유지 루프(옛 `SyncSummonerAnimationState` `:4108-4122`) — 유닛 줄별 (루프, 상실 원샷) 캐시.
+        private readonly Dictionary<int, SummonPatrolAbility> _summonAbility = new Dictionary<int, SummonPatrolAbility>();
+
+        /// <summary>배치 드래그 중 적을 흐린다/되돌린다(옛 `SetEnemiesDimmed`). 페이드는 풀의 매 프레임이 진다.</summary>
+        public void SetEnemiesDimmed(bool active) => _enemyDimActive = active;
+
+        /// <summary>테스트 창구 — 지금 적에게 미는 알파(1 = 안 흐림).</summary>
+        public float EnemyDimAlpha => _enemyDimAlpha;
+        public bool EnemiesDimmed => _enemyDimActive;
+
+        // 증언 창(테스트) — 풀이 **마지막으로 민 값**. 「사건/입력 → 뷰 호출」을 백엔드 내부를 열지 않고 잰다.
+        private readonly Dictionary<int, Color> _pushedTint = new Dictionary<int, Color>();
+        private readonly Dictionary<int, Wassup.UnitAi.DefenderAiState> _pushedAi = new Dictionary<int, Wassup.UnitAi.DefenderAiState>();
+
+        /// <summary>테스트 창구 — 그 적에게 마지막으로 민 체력 틴트(행 5).</summary>
+        public bool TryGetPushedEnemyTint(SimEntityId id, out Color tint) => _pushedTint.TryGetValue(id.Value, out tint);
+
+        /// <summary>테스트 창구 — 그 소환사에게 마지막으로 민 AI 상태(행 6).</summary>
+        public bool TryGetPushedAiState(SimEntityId id, out Wassup.UnitAi.DefenderAiState state)
+            => _pushedAi.TryGetValue(id.Value, out state);
+
         /// <summary>살아 있는 유닛 뷰 수. 「뷰 수 = 코어 유닛 수」 검사의 오른쪽 항이다.</summary>
         public int ViewCount => _byId.Count + _quadById.Count;
 
@@ -88,6 +116,12 @@ namespace Wassup.BattleCoreUnity.View
         {
             switch (e.Kind)
             {
+                case CoreEventKind.MatchStarted:
+                    _summonAbility.Clear();   // 유닛 표는 판마다 새로 짓는다(8b 로비 편성)
+                    _pushedTint.Clear();
+                    _pushedAi.Clear();
+                    break;
+
                 case CoreEventKind.UnitSpawned:
                     TrySpawn(e);
                     break;
@@ -267,6 +301,8 @@ namespace Wassup.BattleCoreUnity.View
 
         public void Despawn(SimEntityId id)
         {
+            _pushedTint.Remove(id.Value);
+            _pushedAi.Remove(id.Value);
             if (_byId.TryGetValue(id.Value, out var view))
             {
                 _byId.Remove(id.Value);
@@ -290,9 +326,47 @@ namespace Wassup.BattleCoreUnity.View
         // ── 매 프레임 ────────────────────────────────────────────────────────
         private void LateUpdate()
         {
+            // 페이드는 판 상태와 무관하게 돈다(옛 `_running` 앞 — 드래그가 끝나면 어느 페이즈든 원복된다).
+            StepEnemyDim();
             if (_driver == null || !_driver.Running) return;
             SyncViews();
             SelfHealOnce();
+        }
+
+        private void StepEnemyDim()
+        {
+            float target = _enemyDimActive && _characterView != null ? Mathf.Clamp01(_characterView.EnemyDragDimAlpha) : 1f;
+            float speed = _characterView != null ? _characterView.EnemyDragDimFadeSpeed : float.PositiveInfinity;
+            _enemyDimAlpha = Mathf.MoveTowards(_enemyDimAlpha, target, speed * Time.unscaledDeltaTime);
+        }
+
+        // 적 틴트 두 축(옛 `:3863-3882`): **흐림을 틴트 앞에** — 쿼드는 `SetHealthTint` 가 알파를 반영한다.
+        // 0.999 = 「다 돌아왔다」 판별(옛 `:3866` `_enemyDimAlpha < 0.999f`) — 페이드 꼬리에서 불투명 전환을 한 번에 한다.
+        private Color EnemyTintOf(Unit u)
+        {
+            var style = _characterView != null ? _characterView.HealthDisplayStyle : null;
+            var mode = _characterView != null ? _characterView.HealthPresentationMode : UnitHealthPresentationMode.Legacy;
+            if (style == null && mode != UnitHealthPresentationMode.UnifiedOverhead && !_healthTintWarned)
+            {
+                _healthTintWarned = true;
+                Debug.LogWarning("[CoreUnitViewPool] healthDisplayStyle 미할당 — 적 체력 틴트 스킵.", this);
+            }
+            return CoreEnemyHealthTint.Resolve(mode, style, u.Health, u.MaxHealth);
+        }
+
+        // 소환사 — 「그 줄에 순찰 소환 능력 + 유지 루프 이름이 있나」(옛 `FindSummonPatrolAbility` · `activeAnimation` 게이트).
+        private SummonPatrolAbility SummonAbilityOf(int defIndex)
+        {
+            if (_summonAbility.TryGetValue(defIndex, out var cached)) return cached;
+            SummonPatrolAbility found = null;
+            var units = _driver.DefenderAssets;
+            var data = defIndex >= 0 && defIndex < units.Count ? units[defIndex] : null;
+            if (data != null && data.abilities != null)
+                for (int i = 0; i < data.abilities.Count && found == null; i++)
+                    found = data.abilities[i] as SummonPatrolAbility;
+            if (found != null && string.IsNullOrEmpty(found.activeAnimation)) found = null;
+            _summonAbility[defIndex] = found;
+            return found;
         }
 
         private void SyncViews()
@@ -328,17 +402,45 @@ namespace Wassup.BattleCoreUnity.View
                 else if (!_driver.TryGetRenderPosition(u.Id, out pos))
                     continue;
 
+                bool enemy = u.Kind == UnitKind.Enemy;
+                bool dimmed = _enemyDimAlpha < 0.999f;
                 if (_byId.TryGetValue(u.Id.Value, out var view) && view != null)
                 {
                     view.SetFlightHeight(flightHeight);
                     view.UpdatePosition((Vector3)pos);
                     view.UpdateSortingOrder(gridSize, tileSize);
+                    if (enemy)
+                    {
+                        view.SetDimmed(dimmed, _enemyDimAlpha);   // 행 4
+                        var tint = EnemyTintOf(u);                 // 행 5
+                        view.SetHealthTint(tint);
+                        _pushedTint[u.Id.Value] = tint;
+                    }
+                    else if (u.Kind == UnitKind.Defender && u.Attack != null
+                             && u.Attack.Policy == AttackPolicy.Summon && view is CoreSpineUnitView)
+                    {
+                        // 행 6 — **매 프레임** 민다(원샷 도중 요청은 그 프레임에 못 들어가 재시도가 필요하다 — 뷰의 계약).
+                        // 뷰는 AI 상태 하나로 루프를 고르고, 엣지(걸려 있었나)는 뷰가 판정한다. Spine 만(옛 `is SpineUnitView`).
+                        var ability = SummonAbilityOf(u.DefIndex);
+                        if (ability != null)
+                        {
+                            view.SetAiState(u.Ai.Defender, ability.activeAnimation, ability.lostAnimation);
+                            _pushedAi[u.Id.Value] = u.Ai.Defender;
+                        }
+                    }
                 }
                 else if (_quadById.TryGetValue(u.Id.Value, out var quad) && quad != null)
                 {
                     quad.SetFlightHeight(flightHeight);
                     quad.UpdatePosition((Vector3)pos);
                     quad.UpdateSortingOrder(gridSize, tileSize);
+                    if (enemy)
+                    {
+                        quad.SetDimmed(dimmed, _enemyDimAlpha);
+                        var tint = EnemyTintOf(u);
+                        quad.SetHealthTint(tint);
+                        _pushedTint[u.Id.Value] = tint;
+                    }
                 }
             }
         }

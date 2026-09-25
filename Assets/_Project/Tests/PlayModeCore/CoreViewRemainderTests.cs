@@ -176,5 +176,135 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsFalse(overlay.TryGetRangeFill(out _), "드래그가 끝나면 채움도 내린다");
             AssertNoErrors();
         }
+        // ── 행 4 — 배치 드래그 중 적 반투명 ─────────────────────────────────────────
+        [UnityTest]
+        public IEnumerator 행4_트레이_드래그로_승격되면_적이_흐려지고_놓으면_돌아온다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return Boot(d => driver = d);
+            var input = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Input.DragPlacementInput>();
+            var pool = Object.FindAnyObjectByType<CoreUnitViewPool>();
+            Assert.IsNotNull(input, "씬에 DragPlacementInput 이 없다");
+            Assert.IsNotNull(pool, "씬에 CoreUnitViewPool 이 없다");
+            var enemy = SpawnEnemy(driver);
+            yield return Ticks(driver, 0);
+
+            var from = new Vector2(Screen.width * 0.5f, Screen.height * 0.2f);
+            input.BeginPress(0, from);
+            input.StepDrag(from + new Vector2(4f, 0f));   // 임계 전 — 아직 탭일 수 있다
+            yield return null;
+            Assert.IsFalse(pool.EnemiesDimmed, "임계 전(탭)에는 흐리지 않는다 — 옛 흐림은 D&D 세션 시작에서만");
+
+            input.StepDrag(from + new Vector2(0f, 200f));  // 승격
+            Assert.IsTrue(pool.EnemiesDimmed, "드래그 승격 → 적 흐림 켜짐");
+            for (int i = 0; i < 90 && pool.EnemyDimAlpha > 0.31f; i++) yield return null;
+            Assert.Less(pool.EnemyDimAlpha, 0.999f, "알파가 목표 쪽으로 페이드한다");
+
+            input.Release(from + new Vector2(0f, 200f));
+            Assert.IsFalse(pool.EnemiesDimmed, "놓으면(드롭·취소 전부) 끈다");
+            for (int i = 0; i < 90 && pool.EnemyDimAlpha < 0.999f; i++) yield return null;
+            Assert.AreEqual(1f, pool.EnemyDimAlpha, 1e-4f, "원복");
+            Assert.IsTrue(driver.IsAlive(enemy.Id));
+            AssertNoErrors();
+        }
+
+        // ── 행 5 — 적 체력 틴트 ───────────────────────────────────────────────────
+        [UnityTest]
+        public IEnumerator 행5_적_체력이_바뀌면_풀이_그_체력의_틴트를_민다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return Boot(d => driver = d);
+            var pool = Object.FindAnyObjectByType<CoreUnitViewPool>();
+            Assert.IsNotNull(pool, "씬에 CoreUnitViewPool 이 없다");
+            var enemy = SpawnEnemy(driver);
+            yield return Ticks(driver, 0);
+
+            // 피해를 코어의 문으로 낸다(디버그 투사체는 준비가 크다 — 체력 읽기 창만 재는 테스트라 값을 직접 깎는다).
+            enemy.Health = enemy.MaxHealth * 0.3f;
+            yield return null;
+
+            Assert.IsTrue(pool.TryGetPushedEnemyTint(enemy.Id, out var tint), "적 뷰에 틴트를 민 적이 없다");
+            var cfg = AssetFromPool(pool);
+            var expected = CoreEnemyHealthTint.Resolve(cfg.HealthPresentationMode, cfg.HealthDisplayStyle,
+                                                       enemy.Health, enemy.MaxHealth);
+            Assert.AreEqual(expected, tint, "틴트 = 옛 산식(모드 · 체력비 · 그라디언트)");
+            AssertNoErrors();
+        }
+
+        private static Wassup.Data.BattleView.CharacterViewConfig AssetFromPool(CoreUnitViewPool pool)
+        {
+            var f = typeof(CoreUnitViewPool).GetField("_characterView",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var cfg = f.GetValue(pool) as Wassup.Data.BattleView.CharacterViewConfig;
+            Assert.IsNotNull(cfg, "풀에 CharacterViewConfig 가 배선되지 않았다");
+            return cfg;
+        }
+
+        // ── 행 6 — 소환사 유지 루프 ───────────────────────────────────────────────
+        [UnityTest]
+        public IEnumerator 행6_소환물이_살아있는_동안_소환사_뷰에_유지중을_밀고_유지_루프를_튼다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return CoreSceneFixture.LoadAndBoot(d => driver = d);
+            Assert.IsNotNull(driver);
+#if UNITY_EDITOR
+            var summonerData = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.DefenderUnitData>(
+                "Assets/_Project/Data/Defenders/Defender_Summoner.asset");
+            Assert.IsNotNull(summonerData, "소환사 에셋이 없다");
+            var field = typeof(BattleDriver).GetField("_defenders",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var list = new System.Collections.Generic.List<Wassup.Data.DefenderUnitData>(
+                (Wassup.Data.DefenderUnitData[])field.GetValue(driver));
+            if (!list.Contains(summonerData)) list.Add(summonerData);
+            field.SetValue(driver, list.ToArray());
+#endif
+            driver.Begin();
+            driver.Apply(Command.FinishPlacement());
+            driver.Pause(true);
+            var pool = Object.FindAnyObjectByType<CoreUnitViewPool>();
+            Assert.IsNotNull(pool);
+
+            int idx = -1;
+            var assets = driver.DefenderAssets;
+            for (int i = 0; i < assets.Count; i++) if (assets[i] != null && assets[i].name == "Defender_Summoner") idx = i;
+            Assert.GreaterOrEqual(idx, 0, "소환사가 유닛 표에 없다");
+
+            var enemy = SpawnEnemy(driver);
+            var map = driver.Match.Map;
+            var cell = map.CellOf(enemy.Position);
+            Unit summoner = null;
+            for (int dx = -2; dx <= 2 && summoner == null; dx++)
+            for (int dy = -2; dy <= 2 && summoner == null; dy++)
+            {
+                if (dx == 0 && dy == 0) continue;
+                var c = new int2(cell.x + dx, cell.y + dy);
+                if (!driver.Apply(Command.DebugSpawnDefender(idx, c)).Accepted) continue;
+                var units = driver.Match.World.Units;
+                for (int i = 0; i < units.Count; i++)
+                    if (units[i].Kind == UnitKind.Defender && units[i].DefIndex == idx) summoner = units[i];
+            }
+            Assert.IsNotNull(summoner, "소환사를 적 옆에 세우지 못했다");
+
+            for (int t = 0; t < 120 && summoner.Ai.Defender != Wassup.UnitAi.DefenderAiState.Sustaining; t++)
+                driver.Match.Tick();
+            Assert.AreEqual(Wassup.UnitAi.DefenderAiState.Sustaining, summoner.Ai.Defender, "순찰병이 서면 유지중");
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(pool.TryGetPushedAiState(summoner.Id, out var pushed), "소환사 뷰에 AI 상태를 민 적이 없다");
+            Assert.AreEqual(Wassup.UnitAi.DefenderAiState.Sustaining, pushed, "뷰에 민 상태 = 유지중");
+            // 증상 쪽(「유지 루프가 돈다」): 원샷(소환 모션)이 끝나면 트랙 0 이 저작 루프(`activeAnimation`)로 들어간다.
+            Assert.IsTrue(pool.TryGet(summoner.Id, out var view), "소환사 뷰가 없다");
+            string loop = null;
+            for (int i = 0; i < summonerData.abilities.Count && loop == null; i++)
+                if (summonerData.abilities[i] is Wassup.Data.SummonPatrolAbility sp) loop = sp.activeAnimation;
+            float until = Time.realtimeSinceStartup + 5f;
+            while (Time.realtimeSinceStartup < until && view.CurrentAnimationName != loop) yield return null;
+            Assert.AreEqual(loop, view.CurrentAnimationName, "유지 루프가 돌아야 한다(옛 SyncSummonerAnimationState)");
+            AssertNoErrors();
+        }
     }
 }
