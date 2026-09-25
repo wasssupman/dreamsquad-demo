@@ -17,9 +17,8 @@ namespace Wassup.Data
         [Header("Gauge")]
         public int gaugeMax = 100;   // awakening cap; gains past this are lost
         // value at match start (reset every Placement entry). 20 = DcConfig 시트 기준값.
-        // 카드 비용도 전부 20 이라 전투 시작에 정확히 1장을 낼 수 있고, 그래서 각성 힌트
-        // A단계가 Battle 진입 즉시 발화한다 — 이 값이 20 미만이 되면 그 전제가 깨진다
-        // (first-session-tutorial unit 16 "알려진 한계" 참조).
+        // 카드 비용도 전부 20 이라 전투 시작에 정확히 1장을 낼 수 있다 — 이 값이 20 미만이 되면
+        // 그 전제가 깨진다.
         public int gaugeStart = 20;
 
         // Per-CardType use cost. Serialized separately (not an array) so the

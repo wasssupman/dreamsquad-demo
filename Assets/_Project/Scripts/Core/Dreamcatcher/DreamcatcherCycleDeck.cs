@@ -35,13 +35,8 @@ namespace Wassup.Core
         public int AttachedCount => _attached.Count;
         public int TotalCount => _queue.Count + _attached.Count;
 
-        // first-run-tutorial — pinnedFront 는 «앞 N장은 준 순서를 지키고 나머지만 섞는다».
-        //
-        // 온보딩이 첫 손패를 저작하기 위한 것이다: 첫 판 유저에게 무작위 4장을 주면 그 판의
-        // 설명(«이 카드를 붙이면 이렇게 된다»)이 매번 달라진다. 0 = 기존 동작(전량 셔플).
-        //
-        // **뒤는 계속 섞는다** — 손패가 통째로 고정되면 그 판의 이후 드로우까지 대본이 되고,
-        // 온보딩이 끝난 뒤의 플레이가 «튜토리얼 모드» 로 남는다. 고정은 첫 노출까지만이다.
+        // pinnedFront 는 «앞 N장은 준 순서를 지키고 나머지만 섞는다». 0 = 전량 셔플.
+        // 소비처는 옛 씬의 첫 판 손패 고정 하나였고(퇴역 집합 — unit 9), 새 코어는 이 축을 옮기지 않았다(사용자 결정 ④).
         public DreamcatcherCycleDeck(IReadOnlyList<DreamcatcherCard> cards, int seed, int pinnedFront = 0)
         {
             if (cards != null)

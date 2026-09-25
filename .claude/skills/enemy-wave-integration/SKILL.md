@@ -1,6 +1,6 @@
 ---
 name: enemy-wave-integration
-description: Use when (a) adding a new enemy AttackUnitData or changing an existing one's minWaveNumber / maxPerWave / enemyClass / traversalLayers / splitUnit, or (b) editing wave generation itself — WavePatternGenerator, AttackDeck fields, WaveConceptData / Concept_* assets, WavePlanAsset. Case (a) silently rewrites what every live wave contains; case (b) invalidates the rules written here, so this skill must be updated in the same commit. Covers pool insertion position, seed rebaselining, concept assignment, the tutorial roster contract, the traps that produce collapsed or biased waves, and how to re-derive every volatile number instead of trusting a frozen one.
+description: Use when (a) adding a new enemy AttackUnitData or changing an existing one's minWaveNumber / maxPerWave / enemyClass / traversalLayers / splitUnit, or (b) editing wave generation itself — WavePatternGenerator, AttackDeck fields, WaveConceptData / Concept_* assets, WavePlanAsset. Case (a) silently rewrites what every live wave contains; case (b) invalidates the rules written here, so this skill must be updated in the same commit. Covers pool insertion position, seed rebaselining, concept assignment, the traps that produce collapsed or biased waves, and how to re-derive every volatile number instead of trusting a frozen one.
 ---
 
 # Enemy → Wave Integration
@@ -94,7 +94,7 @@ grep -l "<enemy-guid>" Assets/_Project/Scripts/Data/Decks/*.asset
 | 3 | **삽입 위치** | 맨 뒤 금지 — 아래 «전방 순환» 참조 |
 | 4 | `waveSeed` 갱신 + `waveGeneratorVersion` bump | 풀이 바뀌면 편성 전체가 재추첨된다. 새 baseline 을 diff 에 드러내라 |
 | 5 | 컨셉 배정 | `enemyClass` × 통행층이 **자동**으로 정한다. 신규 필터 축을 만들지 마라 |
-| 6 | 튜토리얼 플랜 | `WavePlan_Tutorial` 에 그 적을 가르치는 웨이브. EditMode 가 강제한다 |
+| 6 | ~~튜토리얼 플랜~~ | **은퇴**(battle-core-rebuild 8d · 사용자 결정 ④ 2026-09-25 — 튜토리얼 전량 제거). `WavePlan_Tutorial` 은 지워졌고 로스터 전종 교습 계약도 없다 |
 | 7 | dev 전용 덱 | 랩·테스트 덱은 판단. 넣지 않았으면 이유를 적어라 |
 
 ## 규칙과 함정
@@ -138,7 +138,7 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 
 ### 저작 플랜은 게이트를 받지 않는다
 
-`WavePlanAsset`(튜토리얼·테스트 모드)은 `minWaveNumber` 를 무시한다 — 적용 범위가 seed 생성 경로뿐이다. 그래서 게이트 8 인 적도 **튜토리얼 웨이브 3 에 놓을 수 있다.** 교습 순서는 게이트가 아니라 저작이 정한다.
+`WavePlanAsset`(테스트 모드·맵 풀 엔트리 플랜)은 `minWaveNumber` 를 무시한다 — 적용 범위가 seed 생성 경로뿐이다. 그래서 게이트 8 인 적도 **저작 플랜의 웨이브 3 에 놓을 수 있다.** 순서는 게이트가 아니라 저작이 정한다.
 
 ### 저작 플랜도 레인을 지정할 수 있다 (2026-08-20 신설)
 
@@ -174,9 +174,9 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 2. **컨셉 귀속 판정** — `enemyClass`(None/Tanker/Runner/Bruiser/Shooter) × 통행층(Path/Air)이 어느 `Concept_*` 에 걸리는지 표로 적는다. 걸리는 컨셉의 **슬롯 수**를 함께 확인(붕괴 함정)
 3. **풀 삽입** — 위 덱들에 **중간 위치**로. `.meta` 동반 확인
 4. **baseline 재설정** — `waveSeed` 갱신 + `waveGeneratorVersion` bump. 전 덱 동일하게
-5. **튜토리얼 갱신** — `WavePlan_Tutorial` 의 적절한 웨이브에 추가. 엘리트는 후반, 신규 축(비행 등)은 그 축을 가르치는 웨이브에
+5. ~~튜토리얼 갱신~~ — 은퇴(정거장 6 참조)
 6. **검증** — 아래
-7. **커밋** — 적 에셋 + 덱 + 튜토리얼 + 테스트를 **한 커밋**으로. 「적만 만들고 편입은 나중에」로 나눌 거면 그 이유를 spec 에 적는다
+7. **커밋** — 적 에셋 + 덱 + 테스트를 **한 커밋**으로. 「적만 만들고 편입은 나중에」로 나눌 거면 그 이유를 spec 에 적는다
 
 ## 검증 (건너뛰지 않는다)
 
@@ -184,7 +184,6 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
   - `WaveConceptAuthoringTests` — 컨셉별 로스터 계약(속도 폭·필터·슬롯)
   - `WaveKillBudgetPinTests` — 덱별 킬 예산
   - `WaveEligibilityGateTests` — 게이트 동작
-  - `MapDocumentPoolDevEntriesTests.TutorialEntry_TeachesEveryLiveEnemyTypeInTenWaves` — **로스터 전종 교습**. 빠진 이름을 메시지에 찍어준다
 - **결정론** — 같은 덱 3회 생성 signature 일치
 - **엘리트를 넣었다면** — 그 적이 뽑힌 웨이브의 총 수량이 1보다 큰지(붕괴 가드)
 
@@ -196,8 +195,7 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 | "풀 맨 뒤에 붙이면 diff 가 깔끔" | 전방 순환이 초반 웨이브를 `pool[0]` 로 쏠리게 한다 |
 | "시드는 안 건드려도 되겠지" | 풀이 바뀌면 편성이 이미 바뀌었다. 시드를 갱신해 **그 사실을 diff 에 드러내라** |
 | "컨셉은 나중에 저작하면 됨" | 컨셉 귀속은 저작이 아니라 **`enemyClass` × 통행층에서 자동 파생**된다. 이미 정해져 있다 |
-| "튜토리얼은 별개 콘텐츠" | EditMode 가 로스터 전종 교습을 요구한다. 빨간불로 돌아온다 |
 | "테스트 초록이니 됐다" | 초록이 **다른 세션이 대신 고쳐서**일 수 있다. 실제로 그런 적이 있다 — 값을 직접 찍어 확인하라 |
 | "스킬에 이렇게 적혀 있으니 맞겠지" | 웨이브 생성은 밸런스로 자주 바뀐다. **주장의 근거 코드를 열어 확인**하고, 어긋나면 스킬을 고쳐라 |
 | "생성 로직만 고쳤으니 스킬은 상관없다" | 이 문서의 규칙 대부분이 그 코드에 매여 있다. 갱신 트리거 표를 보고 같은 커밋에서 재확인한다 |
-| "덱이 N개니까 N개만 넣으면 됨" | 덱 목록은 계속 는다(공성·튜토리얼이 그렇게 늘었다). **매번 재도출**하라 |
+| "덱이 N개니까 N개만 넣으면 됨" | 덱 목록은 계속 는다(공성 덱이 그렇게 늘었다). **매번 재도출**하라 |
