@@ -85,7 +85,7 @@
 |---|---|---|---|
 | 1 | `CreateUltimateLeapChannel/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 2 | `DisposeUltimateLeapChannel/0` | 삭제 | 위와 같다 — 채널이 없다 |
-| 3 | `ShowLandingTelegraph/1` | 미실현 — 궁극기 착지 예고 칸 — 새 층은 아치 비행만(`CoreLeapPresenter`), 예고 칸 그림 없음 (8c 발견 · 처분 대기) | 착지 예고 링은 보드에 그리는 것이라 오버레이의 몫이다 |
+| 3 | `ShowLandingTelegraph/1` | `CoreMapOverlay.ShowLandingTelegraph` — 구동 `CoreLeapPresenter`(이탈 `LeapAscend.AreaTiles` · 색 `LeapVisualConfig.LandingTelegraphColor`) (8a2) | 착지 예고 링은 보드에 그리는 것이라 오버레이의 몫이다 |
 | 4 | `DrainUltimateLeapVisualEvents/0` | `CoreLeapPresenter.OnCoreEvent` — 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 5 | `RunUltimateLeapAscend/2` | CoreLeapPresenter | 이탈 — 올라가서 **머무른다**(예고 시간은 코어가 소유) |
 | 6 | `RunUltimateLeapDescend/3` | CoreLeapPresenter | 강하 — `LeapDescend` 를 받아 내려온다 |
@@ -100,7 +100,7 @@
 
 | # | 메서드 | 새 주인 | 비고 |
 |---|---|---|---|
-| 1 | `SetEnemiesDimmed/1` | 미실현 — 배치 드래그 중 적 흐리게 — `CoreUnitView.SetDimmed` 호출처 0 (8c 발견 · 처분 대기) | 유닛 뷰 `SetDimmed` fan-out. 구동은 5b 의 드래그 입력 |
+| 1 | `SetEnemiesDimmed/1` | `CoreUnitViewPool.SetEnemiesDimmed` — 켜기/끄기 `DragPlacementInput`(승격 · `EndDrag`) · 페이드·fan-out `CoreUnitViewPool.SyncViews` (8a2) | 유닛 뷰 `SetDimmed` fan-out. 구동은 5b 의 드래그 입력 |
 | 2 | `SetPlacementHighlightAboveUnits/1` | `CoreMapOverlay.ShowPlacement` — PlacementService |  |
 | 3 | `CreateAliveAttackerQueries/0` | 삭제 (코어 스폰 = BattleWorld.Spawn*) |  |
 | 4 | `MirrorLiftKnobs/0` | `CoreViewKnobs.ResolveLift` — 뷰 풀 |  |
@@ -192,9 +192,9 @@
 | 90 | `ShieldRatioOf/2` | `ShieldMath.Sum` — ShieldMath.Sum (뷰 = 6c) | `ShieldMath.Sum(u.Shield.Slots) / u.MaxHealth`. 오버헤드 바가 읽는다 |
 | 91 | `GatherOverheadStacks/1` | `StackSet.CountOf` — StackSet.CountOf (뷰 = 6c) | 스택 아이콘 행. 열기(`HeatAccrual`)는 6b2 가 같은 자리에 합류한다 |
 | 92 | `TryMapOverheadStackKind/2` | `CoreUnitOverheadUiLayer.GatherStacks` — MapRuntime (코어) |  |
-| 93 | `EvaluateEnemyHealthTint/1` | 미실현 — 적 체력 틴트 — `CoreUnitView.SetHealthTint` 호출처 0 (8c 발견 · 처분 대기) | 저체력 틴트. 값은 `CharacterViewConfig.healthDisplayStyle` |
-| 94 | `SyncSummonerAnimationState/3` | 미실현 — 소환사 유지 애니메이션 — `CoreUnitView.SetAiState` 호출처 0 (8c 발견 · 처분 대기) |  |
-| 95 | `TraceDefenderAiTransition/1` | 미실현 — 방어유닛 AI 전이 트레이스 — 코어 트레이스 채널 없음 (8c 발견 · 처분 대기) |  |
+| 93 | `EvaluateEnemyHealthTint/1` | `CoreEnemyHealthTint.Resolve` — 통합 머리 위면 흰색(라이브) · 호출 `CoreUnitViewPool.SyncViews` (8a2) | 저체력 틴트. 값은 `CharacterViewConfig.healthDisplayStyle` |
+| 94 | `SyncSummonerAnimationState/3` | `CoreUnitViewPool.SyncViews` — 소환 정책 Spine 뷰에 매 프레임 `CoreUnitView.SetAiState`(읽기 창 `Unit.Ai` · 이름 `SummonPatrolAbility`) (8a2) |  |
+| 95 | `TraceDefenderAiTransition/1` | `CoreEvent.DefenderAiChanged` — 발행 `CombatPhase`(변할 때만) · 트레이스 `CoreTraceChannel.DefenderAiChanged`(61 · 골든 하네스 비구독) (8a2 — 새 트레이스에 같은 사건이 없어 흡수 불가 → 신설) |  |
 | 96 | `FindSummonPatrolAbility/1` | `CombatDefinitionBuilder.BuildDefenderAttack` — CombatDefinitionBuilder (7d 확인) | `GetAbility<SummonPatrolAbility>()` → `AttackDef.SummonPatrolDefIndex` · 순찰 유닛을 정의표 줄에 편입 |
 | 97 | `DrainDefenderDeathEvents/0` | `PlacementService.OnDestroyed` — 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 98 | `OccupyDefenderFootprint/2` | PlacementService |  |
@@ -286,7 +286,7 @@
 | 184 | `ShowResult/1` | CoreMatchOutcomePresenter | `MatchOutcome` → `MatchTally` 어댑터 한 줄 + `ResultScreen.Show` |
 | 185 | `HoldThenShowResult/1` | CoreMatchOutcomePresenter | 박자 판정은 코어(`MatchClock.EndHasPresentationBeat`)가 이미 한다 |
 | 186 | `ReleaseCoreBurstHold/1` | CoreMatchOutcomePresenter | 접두사 휴리스틱 오귀속 정정(5c) — 배치와 무관한 **결과 박자**의 리스 정리다 |
-| 187 | `PlayCoreBurst/1` | 미실현 — 마음 붕괴 연출(VFX·슬로모) — `HeartCollapsed` 뷰 구독 0 (8c 발견 · 처분 대기) |  |
+| 187 | `PlayCoreBurst/1` | `CoreVfxSpawner.OnHeartCollapsed` — 골 칸 붕괴 원샷 + `GoalMarker.MarkCollapsed` · 슬로모 = `CoreMatchOutcomePresenter`(5c 도메인 리스) (8a2) |  |
 | 188 | `BuildTally/1` | IMatchGoal.BuildOutcome | 정정(5c) — 조립 지점은 목표다. `ScoreLedger` 는 그 재료 하나(점수)만 갖는다 |
 | 189 | `PlaceDefender/2` | PlacementService.TryPlace | 커맨드 `PlaceDefender` → receipt |
 | 190 | `SpatialPlacementCheck/4` | PlacementService |  |
@@ -376,8 +376,8 @@
 | 274 | `DrainHazardSpawnRequests/0` | `HazardSpawn.Spawn` — 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
 | 275 | `SyncBlockingHazardOverheadGauges/1` | `CoreUnitOverheadUiLayer.SetBlocker` — 뷰 풀 |  |
 | 276 | `DrainHazardDestroyedEvents/0` | `CoreHazardViewPool.OnCoreEvent` — 뷰 풀 / 담당자 구독 (이벤트로 접힘) |  |
-| 277 | `DrainGoalCollapsedEvents/0` | 미실현 — 마음 붕괴 원샷 VFX — `HeartCollapsed` 뷰 구독 0 (8c 발견 · 처분 대기) |  |
-| 278 | `SyncGoalOverheadGauges/1` | HeartMeter |  |
+| 277 | `DrainGoalCollapsedEvents/0` | `CoreVfxSpawner.OnHeartCollapsed` — `HeartCollapsed` 구독(트레이스는 코어 채널 29) (8a2) |  |
+| 278 | `SyncGoalOverheadGauges/1` | `GoalMarker.SetStressTint` — 소비자(옛과 같다) · 구동 `CoreScoreHud.PaintMarkers`(마음 바와 같은 위상 · 마커 사상 `CoreGoalMarkers`) · 마음 바 = `CoreScoreHud.PaintHeart`(5b) · 체력 정본 `HeartMeter` (8a2 행 9) | 8c 는 `HeartMeter` 로 해석해 뷰 몫(월드 틴트)이 새는 것을 못 잡았다(8a2 행 9) |
 | 279 | `RecordBlockingHazard/4` | 삭제 (`UnitSpawned` 사건 — `UnitKind.BlockingHazard`) | 길막은 유닛이라 스폰 사건이 이미 있다 |
 | 280 | `RecordBlockingHazardDestroyed/2` | 삭제 (`UnitDestroyed` 사건 — `UnitKind.BlockingHazard`) | 같은 이유 — 문은 「부서짐」 하나 |
 | 281 | `WorldToLogCell/1` | 삭제 (배틀 JSON 로그 전용 — rules X28 제거 · README 조각 E 에이전트 결정 ⑷) |  |
