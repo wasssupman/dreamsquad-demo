@@ -100,7 +100,7 @@
 | FrontmostAttackLockTests | 최전방 카드 — 흐름 dist 최소 · 선딜 중 유지 · strict lapse · 골 지난 적 포함 · 주 대상만 배율 · 가디언 swap | 짝 | AttackModTests::최전방_수식자가_있으면_최전방을_물고_주_대상에_배율이_붙는다 · CombatRulesTests::골을_지난_적도_때린다 · 가디언_대표는_실제로_때린_적이다 · 선딜_중_대상이_사라지면_빗나간다 |
 | FrontmostTargetingTests | 최전방 순위 — 흐름 dist > 거리² > simId · 도달 불가 제외 | 짝 | CombatPureMathTests::최전방은_골까지_남은_거리로_정렬한다 · 최전방은_도달_불가를_건너뛴다 · 동률은_먼저_스폰된_쪽이_이긴다 |
 | GameManagerMatchCountTests | 판 수 카운트 — 결과·나가기 모두 1회 · 이중 신호 1회 | 짝 | PlayCore:CoreMatchEntryTests::나가기와_결과가_겹쳐도_한_판은_한_번만_센다 · 메뉴_나가기는_로비로_돌아가고_한_판을_센다 |
-| GoalProjectileTests | 호밍 직격은 골도 맞는다 · 방어 광역은 골 포함 · 적 광역은 골 무시·적 거점 포함 · 길막은 어느 풀도 아님 | 짝 | MatchStructureTests::공성형은_마음_타워를_때리고_그만큼_마음이_깎인다 · ProjectileBehaviorTests::칸_광역은_반경_안_전원을_때린다. ⚠ 부분 공백: 광역 풀별 거점 포함/제외 · 길막 제외 |
+| GoalProjectileTests | 호밍 직격은 골도 맞는다 · 방어 광역은 골 포함 · 적 광역은 골 무시·적 거점 포함 · 길막은 어느 풀도 아님 | 짝 | MatchStructureTests::공성형은_마음_타워를_때리고_그만큼_마음이_깎인다 · ProjectileBehaviorTests::칸_광역은_반경_안_전원을_때린다. ~~⚠ 부분 공백: 광역 풀별 거점 포함/제외 · 길막 제외~~ **9c 실현**(`ea73d1ddd` 길막 제외 · `0cbb0cd31` 풀별 거점 — 칸 광역은 품고 스플래시·스윕·튕김·재조준은 유닛만) · ProjectileBehaviorTests 8 |
 | GoalTargetingPriorityTests | 거점은 일반 후보 — 거리로 경쟁 · 힐러는 거점 안 봄 · Focus 가 거점도 문다 | 짝 | CombatRulesTests::거점은_거리로만_경쟁한다 · CombatPureMathTests::힐러는_가장_다친_아군을_고른다 · Assets:AuthoredTargetMaskTests 는 같은 묶음 퇴역 — Assets:CoreBuilderDriftTests::힐러는_다친_아군을_회복하고_적은_회복하지_않는다 |
 | GoalTauntGrantTests | 무공격 골-grant 적의 도발 마스크 OR·원복 | 짝 없음 — 옛 기계 전용 | rules **C26 제거**(무장 해제 적 임시 도발 공격 · 골 grant 은퇴) |
 | GoalTowerArchetypeTests | 브리지가 만든 골 타워 아키타입 = 공용 픽스처 | 짝 없음 — 옛 기계 전용 | ECS 아키타입 drift 방지선. 「거리로 경쟁」은 CombatRulesTests::거점은_거리로만_경쟁한다 |
