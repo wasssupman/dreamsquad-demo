@@ -4,12 +4,8 @@ using Wassup.UI;
 
 namespace Wassup.Tests.EditMode
 {
-    // tutorial-content-teardown unit 1 — 계정의 첫 판은 토너먼트 참가 신청을 보내지 않는다
-    // (tutorial-offline-match). 서버 `complete` 500 을 피하는 우회이고 **서버는 아직 안 고쳐졌다**.
-    //
-    // 원래 이 판정은 튜토리얼 술어(`TutorialProgress.ShouldRunCore`)를 공유했는데, 튜토리얼
-    // 콘텐츠가 걷히면서 그 술어가 사라졌다. 신호를 `matchesPlayed` 로 옮겼고, 그 옮김이
-    // 조용히 뒤집히지 않도록 여기서 못 박는다 — 뒤집히면 첫 판 유저가 서버 버그를 그대로 맞는다.
+    // 계정의 첫 판은 토너먼트 참가 신청을 보내지 않는다(spec `tutorial-offline-match`). 서버 `complete` 500 을 피하는
+    // 우회이고 **서버는 아직 안 고쳐졌다**. 신호는 `matchesPlayed` 다 — 뒤집히면 첫 판 유저가 서버 버그를 그대로 맞는다.
     //
     // ⚠ 이 순수 함수는 게이트의 **절반**이다. 호출부는 여기에 `profileSO.IsLoadedThisSession`
     // 을 곱한다(옛 술어가 갖고 있던 가드 — 미로드 프로필의 빈 인스턴스가 0 으로 읽혀
