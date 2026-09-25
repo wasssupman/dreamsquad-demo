@@ -73,7 +73,8 @@
 | 남기는 것 | 이유 |
 |---|---|
 | Burst·Collections 패키지 | 구현 4 |
-| 8c 도달성이 「남는다」로 판정한 옛 폴더 밖 공유 부품(`KeyringSim`·`BlobShadow`·`DefenderRetireFlight`·`DcInspectPanelView`·`DreamcatcherCardText` 등) | 새 층이 부른다 |
+| 8c 도달성이 「남는다」로 판정한 옛 폴더 밖 공유 부품(`KeyringSim`·`BlobShadow`·`DcInspectPanelView`·`DreamcatcherCardText` 등) | 새 층이 부른다 |
+| ~~`DefenderRetireFlight`~~ | **퇴역**(장부 묶음 3 — 옛 뷰·옛 UI) · 후계 `CoreRetireFlightPresenter`(`BattleCoreUnity/View/`) |
 | `TimeManager`·`SoundManager` | 추가 제약의 의도된 예외 |
 | 덱·플랜의 `timerDurationSec` 필드 | 구현 6 |
 | `docs/spec/**` 의 옛 포인터 | 역사서 |
@@ -91,6 +92,7 @@ N/A — 새 정거장이 없다. 지우는 정거장은 8c 가 맵에서 이미 
 - **`check_ledgers.py` 를 삭제 뒤 상태에 맞췄다** — 브리지가 없으면 두 장부를 이력으로 동결(「미정 0」만 본다) · 퇴역 목록이 다 지워지면 총계 대조 생략.
 - **패키지 제거 중 Unity 가 `ProjectSettings/EntitiesClientSettings.asset` 을 한 번 다시 만들었다**(첫 refresh 에서 Entities 가 아직 로드된 채) — 재삭제. 첫 refresh 뒤에는 옛 Entities 어셈블리가 도메인에 남아 있었고, 두 번째 refresh 에서 사라졌다.
 - **인스펙터 문구 5곳**(Tooltip·Header)이 `BattleBridge` 를 주인으로 적고 있어 새 주인으로 고쳤다(완료 기준 첫 줄).
+- **이식 제외 표가 `DefenderRetireFlight` 를 「남긴다」에 적고 있었다**(unit 9 감사 2026-09-25) — 실제로는 장부 묶음 3 으로 퇴역했고 후계는 `CoreRetireFlightPresenter` 다. 표를 정정했다.
 - 동결 훅 `.githooks/commit-msg` 는 마지막 커밋에서 파일만 지웠다. `core.hooksPath` unset 은 main 머지 뒤(리드 몫).
 
 ## 완료 기준

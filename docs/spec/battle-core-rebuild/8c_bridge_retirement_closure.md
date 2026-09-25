@@ -98,7 +98,7 @@ N/A — 규칙을 옮기지 않았다. 옮긴 것은 타입의 **집**뿐이다(
 | lane | 결과 | 기준선(8b) |
 |---|---|---|
 | 헤드리스 build · test · Check | 0 · **685** · 0 | 0 · 685 · 0 |
-| `Retire.Check`(퇴역 309 줄 + 보류 2 줄 → 618 항목을 지운 export) | **오류 0** · 음성 대조(남는 `BlockingHazardSO.cs` 를 지우면 오류 26) | — |
+| `Retire.Check`(퇴역 309 줄 + 보류 2 줄 → 618 항목을 지운 export) | **오류 0** · 음성 대조(남는 `BlockingHazardSO.cs` 를 지우면 오류 — 에이전트 26 / 리드 13 · export 범위 차이, 둘 다 ≠ 0 이 증명) | — |
 | `check_ledgers.py`(기본) · `--retire-assets` | exit 0 · exit 0(뿌리 18 · 폐포 1,925 · 퇴역 스크립트 576 중 폐포 안 0 · 옛 경로 문자열 0) | exit 0 |
 | `--owners` | **exit 1** — bridge-methods 미실현 7 · rule-holders 미실현 5(위 결정 2). 나머지 실패 0(심볼 278/85/114 · 삭제 82/6/14) | — |
 | Unity EditMode Core + Assets | **1005/1007**(선행 2 `boomerang`·`bomb_man` 만) · 골든 무변 | 1005/1007 |
@@ -111,15 +111,15 @@ N/A — 규칙을 옮기지 않았다. 옮긴 것은 타입의 **집**뿐이다(
 
 ## 완료 기준
 
-- [x] `Retire.Check.csproj` — 퇴역 후보를 지운 export 사본에서 Runtime + Editor + 남는 테스트 **컴파일 오류 0**. 후보 목록(파일 수·줄 수)을 `ledgers/retire-set.md` 에. — 퇴역 590 파일(C# 574 · 113,228줄) + 보류 2(456줄) · 오류 0 (2026-09-25 `7b3931631`)
+- [x] `Retire.Check.csproj` — 퇴역 후보를 지운 export 사본에서 Runtime + Editor + 남는 테스트 **컴파일 오류 0**. ⚠ 8c 시점 검사는 Library 의 Entities dll 을 참조해 Entities 의존 잎 7 을 못 잡았다 — unit 9 `e9b741760` 에서 검사 수정·3c 추가(함정 25). 후보 목록(파일 수·줄 수)을 `ledgers/retire-set.md` 에. — 퇴역 590 파일(C# 574 · 113,228줄) + 보류 2(456줄) · 오류 0 (2026-09-25 `7b3931631`)
 - [x] `--retire-assets` exit 0 — 뿌리 폐포 안의 퇴역 스크립트 GUID 0 · 남는 에디터 코드의 옛 씬 경로 문자열 0. — 남는 코드 전부(런타임·에디터·테스트)로 넓혀 0 (2026-09-25)
-- [ ] `--owners` exit 0 — 「삭제」 아닌 행 전원 심볼 해석 · `rule-holders` 133 행 실현 위치 또는 삭제 근거. — **보류**: 133행 열은 채웠고 해석 실패 0 이지만 「미실현」 12행(bridge-methods 7 · rule-holders 5)이 남아 exit 1 — 10행은 8a2 가 닫는다 · T3·T13 은 처분 미정(「사용자·리드 결정 필요」 2)
+- [x] `--owners` exit 0 — 「삭제」 아닌 행 전원 심볼 해석 · `rule-holders` 133 행 실현 위치 또는 삭제 근거. — **8a2 `03982fae7` 로 미실현 0 · 지금 exit 0**(T3·T13 은 8a2 행 8 로 이식). 8c 시점 기록: 133행 열은 채웠고 해석 실패 0 이지만 「미실현」 12행(bridge-methods 7 · rule-holders 5)이 남아 exit 1 — 10행은 8a2 가 닫는다 · T3·T13 은 처분 미정(「사용자·리드 결정 필요」 2)
 - [x] 이사한 SO·컴포넌트의 자산이 그대로 열린다: `.asset`·`.prefab` diff 0 · 이사한 `.cs.meta` 의 `guid:` 무변 · 길막 프리팹 2 Missing Script 0 · Assets lane 초록. — 위 수치 표 (2026-09-25)
 - [ ] 볼륨 4개를 부르는 프리팹 5 불변 · `MapStageDuelGenerator` 실행 가능 · 새 씬 스테이지 포스트 효과 육안 무변. — 프리팹 5 불변 · 경로 상수 로드 성공 ○ · **육안은 플레이 4차로 보류**(자산 바이트 동일)
 - [x] `object-pipeline-map.md` 에서 `BattleBridge`·`EntityManager`·`NativeQueue` 가 이력 줄 밖에 0. — 0 · 본문 심볼 254 해석 (2026-09-25 `7b3931631`)
 - [x] 헤드리스 3종 · EditMode 선행 2 외 빨강 0 · PlayMode 코어 초록 · 골든 11종 무변. — 0·685·0 · 1005/1007 · 85/85 · 옛 부분집합 38/38 (2026-09-25 `7b3931631`)
 - [x] `core-reviewer` **APPROVE**(2026-09-25 — CRITICAL·HIGH 0 · MEDIUM 1 = T3·T13 처분(→ 8a2 행 8) · LOW 1 = `BlockingHazardPresenter.cs:270~278` `Shader.Find`+`new Material` 선행 위반, 후속 후보) · [ ] **사용자 플레이 4차 통과(8b)** → main 머지(squash 금지, 푸시 승인제) — **조각 E 경계 1**. 이 머지로 동료·GitLab 이 새 전투를 받는다(README 결정 ③).
 
-리드 재검증 2026-09-25 — HEAD `e08b2ba4b` 클린 export: build 0 · test 685/685 · Check 0 · `check_ledgers.py` exit 0 · `--retire-assets`(워크트리) exit 0(뿌리 18 · 폐포 1925 · 폐포 안 퇴역 0 · 총계 590 일치) · `--owners` 미실현 12(전부 8a2 행)만 · `--retire-prune` 620 항목 → `Retire.Check` 오류 0(6.7초 실컴파일) · 음성 대조(`BlockingHazardSO.cs` 삭제) 오류 13. Unity EditMode 1005/1007(선행 2) · PlayMode 코어 85/85 · 옛 씬 부분집합 35/38 → `BonusWavePullTest` 단독 13/13(코어 lane 직후 재현 2회 — 함정 20, 옛 lane 은 unit 9 에서 사라진다) · CLI 63/63.
+리드 재검증 2026-09-25 — HEAD `e08b2ba4b` 클린 export: build 0 · test 685/685 · Check 0 · `check_ledgers.py` exit 0 · `--retire-assets`(워크트리) exit 0(뿌리 18 · 폐포 1925 · 폐포 안 퇴역 0 · 총계 590 일치) · `--owners` 미실현 12(전부 8a2 행)만 · `--retire-prune` 620 항목 → `Retire.Check` 오류 0(6.7초 실컴파일) · 음성 대조(`BlockingHazardSO.cs` 삭제) 오류 13(에이전트 측정 26 과의 차이는 export 범위 — 둘 다 ≠ 0 이 증명). 가지치기 항목 수 이력: 618(8c 시점) → 620(hold 포함 재측정) → 626(8d 뒤). Unity EditMode 1005/1007(선행 2) · PlayMode 코어 85/85 · 옛 씬 부분집합 35/38 → `BonusWavePullTest` 단독 13/13(코어 lane 직후 재현 2회 — 함정 20, 옛 lane 은 unit 9 에서 사라진다) · CLI 63/63.
 
 **리드 결정 2026-09-25(보류 2)**: `IngameCharacterTest` · `MenuPopup` dev 토글 「캐릭터/포스트」 = **(a) 옛 씬과 함께 은퇴** — 둘 다 플레이어 규칙이 아니라 개발 실험대이고, 실험의 목적(하이브리드 그림자 증명)은 달성됐으며 블롭 값은 8a 에서 SO 로 승격됐다. `retire-set.md` 의 `hold` 블록은 unit 9 가 `retire` 로 옮기며 총계 줄을 같이 갱신한다(사용자가 그 전에 뒤집으면 (b)). T3·T13 = 8a2 행 8(이식, 사용자 은퇴 선택 가능).

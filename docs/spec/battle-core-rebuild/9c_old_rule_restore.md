@@ -1,10 +1,10 @@
-# 9c — 옛 규칙 복원 5건
+# 9c — 옛 규칙 복원 6건
 
-상태: **구현 2026-09-25** — `27297a0cb` · `125d002b0` · `356596355` · `ea73d1ddd` · 행 5 `0cbb0cd31`(리드 추가 2026-09-25). core-reviewer **APPROVE**(2026-09-25 — 행 1~4 MEDIUM 1 = 행 5 로 해소 · LOW 1 `ClassFilter` Role 미설정 함정(옛과 같은 함정, 후속 후보) · 행 5 부록 finding 0). 플레이 4차 대기.
+상태: **구현 2026-09-25** — `27297a0cb` · `125d002b0` · `356596355` · `ea73d1ddd` · 행 5 `0cbb0cd31`(리드 추가 2026-09-25) · 행 6 `484e950b4`(unit 9 감사 A 2026-09-25). core-reviewer **APPROVE**(2026-09-25 — 행 1~4 MEDIUM 1 = 행 5 로 해소 · LOW 1 `ClassFilter` Role 미설정 함정(옛과 같은 함정, 후속 후보) · 행 5 부록 finding 0). 플레이 4차 대기.
 
 ## 목적
 
-unit 9 의 옛 테스트 이식이 드러낸 「옛 규칙 vs 코어」 차이 6건 중 **전투 규칙 4건**을 옛 규칙으로 되돌린다. 행 5 는 구현 중 드러난 차이로, 리드 판단으로 추가했다(결정 ⑥ — 「기획 그대로」 기본값. 사용자가 뒤집으면 되돌린다). 표현 2건(같은 입구 종별 예고선 · 예보 경로 해석)은 이 unit 밖이다 — 사용자 결정 대기, `RetiredWaveForecastPortTests` 의 `[Ignore]` 2 유지.
+unit 9 의 옛 테스트 이식이 드러낸 「옛 규칙 vs 코어」 차이 6건 중 **전투 규칙 4건**을 옛 규칙으로 되돌린다. 행 5·6 은 원본 9c 에서 **「보고만 하고 고치지 않은 차이 2 — 사용자 결정 필요」**였던 것을 리드가 닫았다 — **리드 판단: 옛 규칙 복원 방향 · 사용자 재확인 대기**(결정 ⑥ 「기획 그대로」 기본값. 사용자가 뒤집으면 되돌린다). 행 5 는 9c 구현 중, 행 6 은 unit 9 감사(2026-09-25)에서 복원했다. 표현 2건(같은 입구 종별 예고선 · 예보 경로 해석)은 이 unit 밖이다 — 사용자 결정 대기, `RetiredWaveForecastPortTests` 의 `[Ignore]` 2 유지.
 
 ## 변경 대상
 
@@ -19,16 +19,20 @@ unit 9 의 옛 테스트 이식이 드러낸 「옛 규칙 vs 코어」 차이 6
 | 3 | 같은 적에게 도발을 다시 걸면 남은 시간은 **긴 쪽** | `Battle/Effects/AggroStateSystem.cs:289-290` | `Phases/AiMovePhase.cs:239` | 신설 `DetectionRulesTests::도발을_다시_걸면_남은_시간은_긴_쪽이_남는다` |
 | 4 | 길막(방벽)은 **어느 쪽 광역에도** 안 맞는다 — 칸 광역·스플래시·경로 스윕·튕김/재조준. 방벽을 **겨눈 직격**은 맞는다 | 칸 광역 풀 `ProjectileHitSystem.cs` `AnyDefender/AnyEnemy` · 스플래시·튕김·스윕 `:330`·`:384`·`:504`·`:651`(`OpponentUnitsOf`) · 재조준 `ProjectileMoveSystem.cs:78`(적 유닛 풀) · 옛 테스트 `GoalProjectileTests::TileAoe_BlockingHazard_IsVictimOfNeitherPool` | `TickProjectilePhase.cs:1070` `IsAreaLegal` → `:908`(칸 광역). 스플래시·스윕·튕김은 행 5 의 유닛 풀이 방벽을 함께 뺀다 | 신설 `ProjectileBehaviorTests` 3 — `적의_칸_광역은_길막을_치지_않고_옆의_방어유닛은_친다` · `방어유닛의_칸_광역도_길막을_치지_않는다` · `적_탄의_스플래시는_길막을_치지_않지만_길막을_겨눈_직격은_맞는다` |
 | 5 | 스플래시·경로 스윕·튕김·재조준은 **유닛만** 고른다 — 마음·본능(거점)과 방벽은 빠진다. 칸 광역은 옛 풀대로 거점을 친다. 직격은 무변 | 스플래시·튕김·스윕 `ProjectileHitSystem.cs:330`·`:384`·`:504`·`:651`(`OpponentMaskOfOwner` → `OpponentUnitsOf` `:874-897`) · 재조준 `ProjectileMoveSystem.cs:78`(적 유닛 쿼리) · 칸 광역 대조 `GoalProjectileTests::TileAoe_EnemyFaction_IncludesEnemyStructures` | `TickProjectilePhase.cs:1079` `IsUnitPoolLegal`(`AnyUnit` ∩ 공격 마스크) → `:867`(스플래시)·`:948`(스윕) · `:1130`(튕김·재조준 후보) | 신설 `ProjectileBehaviorTests` 5 — `적_탄의_스플래시는_마음을_치지_않는다` · `방어유닛_탄의_재조준은_거점을_고르지_않는다` · `방어유닛_탄의_튕김은_거점을_고르지_않는다` · `방어유닛의_경로_스윕은_적_거점을_지나친다` · 대조 `방어유닛의_칸_광역은_적_거점도_친다` |
+| 6 | 관통탄이 한 틱에 여럿을 가로지르면 **진행 방향 앞(가까운 쪽)부터** 관통을 쓴다 — 관통 1 탄은 가로지른 적 중 가장 가까운 적에서 멈춘다. 같은 거리는 `SimEntityId` 오름차순(결정론) | `ProjectileHitSystem.cs:536-545`(`sweptDist` 최소부터 소비 · 「a 1-pierce shot must stop at the nearest enemy it crossed」) | `TickProjectilePhase.cs:938` `SweepPath` — 후보 수집 → `:965` 진행 방향 투영 거리 안정 정렬 → `:981` 앞에서부터 소비. 튕김 기준(`lastVictim` = 최전방)은 무변 | 신설 `ProjectileBehaviorTests::관통_1_탄은_한_틱에_가로지른_적_중_가까운_쪽에서_멈춘다`(먼 적이 작은 id) |
 
 이식 제외: ① 1번의 옛 「전환 때 산출물 표 떼기」 — 옛 스윕은 피해만 냈기에 홉에만 상태이상이 걸리는 비대칭을 막으려던 것이다. 코어는 스윕 피격도 같은 `Deal` 로 산출물을 얹어 그 비대칭이 없다. ② 4번 방어유닛 쪽은 원래 방벽을 안 쳤다(`DefenderMask = AnyEnemy`) — 무변. ③ 5번 옛 재조준 풀은 주인과 무관하게 **적 유닛**이었다(적이 쏜 재조준 탄이 자기편을 고를 수 있는 모양). 옮긴 것은 「유닛만」이라는 의도이고, 진영은 공격 마스크와의 교집합이 정한다 — 방어유닛 탄은 옛과 같고, 적 탄은 자기편을 고르지 않는다. 힐러처럼 아군 유닛을 겨누는 저작도 교집합이라 그대로 따라간다.
 
-**유지한 차이 1**(리드 판단 2026-09-25): 옛 스윕은 한 틱에 가로지른 적을 **앞에서부터** 맞혔다(`:536-545` front-most). 코어는 `SimEntityId` 순을 유지한다 — 동률 결정론 의도이고, 도달 패리티 때 사용자가 같은 취지로 유지한 선례가 있다. 관통 예산보다 많은 적을 한 틱에 가로지를 때만 누가 맞는지 갈린다. 1번의 튕김 기준점은 옛 정의(맞힌 적 중 최전방)로 맞췄다.
+**행 6 복원**(unit 9 감사 2026-09-25 — 앞선 「유지한 차이 1」 판단을 뒤집음): 9c 리드 판단은 스윕 피격을 `SimEntityId` 순으로 **유지**했다(동률 결정론 의도). 그러나 **동률 결정론과 기하 순서 규칙은 다른 문제**다 — `SimEntityId` 는 같은 거리의 순서만 정하면 되고, 누가 앞에 있는지는 기하가 정한다. 수정 전 코어는 관통 1 탄이 가까운 적을 지나 먼 적(작은 id)을 맞혔다(테스트 빨강 = 먼 적만 피해). 1번의 튕김 기준점(맞힌 적 중 최전방)은 원래 옛 정의였다.
 
 ## 완료 기준
 
 - [x] 건마다 빨강 확인 → 수정 → 초록(헤드리스): 1 `null` · 2 `True` · 3 `2.0` · 4 `75`(2건, 방어 쪽은 원래 초록) · 5 빨강 4(마음·본능 `195` · 튕김·재조준이 거점 id 를 고름) → 초록, 대조 1 은 원래 초록.
 - [x] 행 1~4(`ea73d1ddd`): 헤드리스 882/884 · EditMode 2502(선행 2) · PlayMode.Core 95/95 · `PresetBarPopupLayerTest` 2/2 · 골든 11 일치.
 - [x] 행 5(`0cbb0cd31`): 헤드리스 클린 export build 0 · test **887/889**(건너뜀 2 = 표현 2건) · Check 0 · `check_ledgers.py` 0 · EditMode 3 어셈블리 **2507** 중 실패 2(선행 bomb_man·boomerang 문안) · PlayMode.Core **95/95** · 골든 Verify **11 일치** — 재굽기 없음.
-- [x] core-reviewer APPROVE(행 1~5) · [ ] 사용자 플레이 4차.
+- [x] 행 6(`484e950b4`): 빨강(먼 적만 피해 · 가까운 적 100/100) → 초록 · 헤드리스 클린 export build 0 · test **891/893**(9 감사 B 3 포함 · 건너뜀 2 = 표현 2건) · Check 0 · Retire.Check 0. [ ] Unity EditMode·PlayMode 코어 · 골든 Verify(Unity 게이트 뒤).
+- [x] core-reviewer APPROVE(행 1~5) · [ ] 행 6 리뷰 · [ ] 사용자 플레이 4차 · [ ] 사용자 재확인(행 5·6).
 
-리드 재검증 2026-09-25 — HEAD `d3f8d026c` 클린 export: build 0 · test 887/889(Ignore 2 = 표현 2건) · Check 0 · 장부 기본 통과 · 골든 파일 diff 0. Unity: EditMode 3 어셈블리 2505/2507(선행 2) · PlayMode 코어 95/95 · 골든 Verify 11 일치(행 1~4 뒤 · 행 5 뒤 각 1회 — 코퍼스가 다섯 경로를 구조적으로 안 탄다: bounce·classFilter·taunt·blocker·splash 저작 0). 리드 판단: 스윕 피격 순서 `SimEntityId` 순 유지(동률 결정론 선례).
+리드 재검증 2026-09-25 — HEAD `d3f8d026c` 클린 export: build 0 · test 887/889(Ignore 2 = 표현 2건) · Check 0 · 장부 기본 통과 · 골든 파일 diff 0. Unity: EditMode 3 어셈블리 2505/2507(선행 2) · PlayMode 코어 95/95 · 골든 Verify 11 일치(행 1~4 뒤 · 행 5 뒤 각 1회 — 코퍼스가 다섯 경로를 구조적으로 안 탄다: bounce·classFilter·taunt·blocker·splash 저작 0). 리드 판단: 스윕 피격 순서 `SimEntityId` 순 유지(동률 결정론 선례) — **unit 9 감사에서 뒤집힘 → 행 6 복원.**
+
+리드 재검증 2026-09-25(감사 후속 뒤, HEAD `f86772dfd`): 헤드리스 export 891/893(Ignore 2) · Unity EditMode 3 어셈블리 2509/2511(선행 2) · PlayMode 코어 97/97(G16 2 포함) · 골든 Verify 11 일치(행 6 규칙 변경에도 무변 — 코퍼스에 관통 예산 초과 장면 없음).
