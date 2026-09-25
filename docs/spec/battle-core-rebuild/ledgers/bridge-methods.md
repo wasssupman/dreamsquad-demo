@@ -8,7 +8,7 @@
 
 | # | 메서드 | 새 주인 | 비고 |
 |---|---|---|---|
-| 1 | `SetBonusPullSuppressed/1` | WaveScheduler |  |
+| 1 | `SetBonusPullSuppressed/1` | 삭제 (8d · 결정 ④) | 생산자가 첫 판 안내 하나였다 — 안내 제거로 억제 스위치째 지웠다(rules X6) |
 | 2 | `ResetBonusWaveState/0` | WaveScheduler |  |
 | 3 | `TickBonusPullOffer/0` | WaveScheduler |  |
 | 4 | `TryBonusPull/0` | WaveScheduler |  |
@@ -126,7 +126,7 @@
 | 24 | `TeardownPickupSpawnState/0` | MatchClock |  |
 | 25 | `ComputeSpawnLateralOffset/1` | `SpawnSpread.LaneFraction` — EnemySpawn (코어) | 스폰 칸 흐름 수직 이산 N-레인 분산 = `Move/SpawnSpread` + `World/EnemySpawn` · 값은 `MovementTuningDef.SpawnSpread*`(bridge-fields 40~42). 가변 순번은 X25 보류(후속 후보) |
 | 26 | `BuildStageMarkerRegistry/0` | BattleDriver | 스테이지 스캔 → 거점 목록. `Build(…, structures:)` 의 입력 |
-| 27 | `TryGetGoalVisualAnchor/1` | `CoreFirstRunGuide.TryGetGoalAnchor` — HeartMeter |  |
+| 27 | `TryGetGoalVisualAnchor/1` | 삭제 (8d · 결정 ④) | 새 소비자가 첫 판 안내(`CoreFirstRunGuide`) 하나였다 — 안내와 함께 지웠다 |
 | 28 | `TryGetSpawnVisualAnchor/2` | 삭제 (옛 호출처 0 — 선언만 있던 휴면 코드 · 8c 확인) |  |
 | 29 | `CellCenterView/1` | `CoreCardTargets.CellViewCenter` — MapRuntime (코어) |  |
 | 30 | `TeardownGeneratedMap/0` | MatchClock |  |
@@ -227,7 +227,7 @@
 | 125 | `ResolveUnitViewTransform/1` | `CoreStatusFxSpawner.AnchorOf` — 뷰 풀 |  |
 | 126 | `TryGetUnitScreenAnchor/3` | CoreUnitOverheadUiLayer | 화면 앵커는 오버헤드가 직접 뷰에 묻는다 |
 | 127 | `ProjectTileScreenWidth/1` | `CoreUnitOverheadUiLayer.ProjectTileScreenWidth` — MapRuntime (코어) |  |
-| 128 | `TryGetGoalViewAnchor/1` | `CoreFirstRunGuide.TryGetGoalAnchor` — HeartMeter |  |
+| 128 | `TryGetGoalViewAnchor/1` | 삭제 (8d · 결정 ④) | 새 소비자가 첫 판 안내(`CoreFirstRunGuide`) 하나였다 — 안내와 함께 지웠다 |
 | 129 | `TryGetUnitViewAnchor/2` | `CoreCardTargets.TryGetUnitViewPosition` — 뷰 풀 |  |
 | 130 | `TryGetUnitView/2` | `CoreCardTargets.TryGetUnitView` — 뷰 풀 |  |
 | 131 | `SpawnCardAbsorbVfx/1` | `CoreVfxSpawner.SpawnCardAbsorb` — HandDeck |  |
@@ -303,7 +303,7 @@
 | 201 | `CloseCellLayers/1` | `MapSnapshot.CloseReservedPlacement` — MapRuntime (코어) |  |
 | 202 | `ShowPlacementHighlight/2` | `CoreMapOverlay.ShowPlacement` — PlacementService |  |
 | 203 | `HidePlacementHighlight/0` | `CoreMapOverlay.ShowPlacement` — PlacementService |  |
-| 204 | `AnyEnemyWithinTilesOfGoal/1` | `CoreFirstRunGuide.AnyEnemyWithinTilesOfGoal` — HeartMeter |  |
+| 204 | `AnyEnemyWithinTilesOfGoal/1` | 삭제 (8d · 결정 ④) | 새 소비자가 첫 판 안내(`CoreFirstRunGuide`) 하나였다 — 안내와 함께 지웠다 |
 | 205 | `NearestGoalDistance/1` | HeartMeter |  |
 | 206 | `ShowBlockedHighlight/1` | CoreMapOverlay.ShowPlacement | 고스트가 빨강으로 답한다 |
 | 207 | `HideBlockedHighlight/0` | CoreMapOverlay.HidePlacement |  |

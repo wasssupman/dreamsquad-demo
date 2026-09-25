@@ -3,7 +3,7 @@
 > 생성 2026-09-25(8c). **unit 9 는 아래 `retire` 블록의 목록만 지운다** — 더 지우지도, 덜 지우지도 않는다. 목록은 손으로 고른 것이 아니라 **검사의 결과**다:
 > 퇴역 후보를 지운 export 사본이 컴파일되고(코드 도달성) · 남는 뿌리에서 퇴역 스크립트에 닿지 않고(자산 도달성) · 남는 코드가 옛 경로를 문자열로 들지 않을 때(`--retire-assets`)만 이 목록이 성립한다. 목록을 고치면 아래 세 명령을 다시 돌린다.
 
-총계: 퇴역 590 파일 · C# 574 파일 · 113228 줄
+총계: 퇴역 598 파일 · C# 579 파일 · 114282 줄
 
 ## 검증 명령
 
@@ -74,7 +74,6 @@ Assets/_Project/Scripts/UI/Outgame/ReturnToMenuButton.cs
 Assets/_Project/Scripts/UI/Outgame/SquadPrepView.cs
 Assets/_Project/Scripts/UI/PlacementPhaseView.cs
 Assets/_Project/Scripts/UI/ScoreHudView.cs
-Assets/_Project/Scripts/UI/Tutorial/FirstRunTutorialController.cs
 
 # 4. 옛 씬 전용 입력(8c 가 떼어 둔 `*.OldBattle.cs` 부분 파일)과 잔여 이중화(옛 웨이브 생성기 · 보너스 스케줄 · 옛 판 설정 SO + 자산)
 Assets/_Project/Data/Config/BattleConfig.asset
@@ -85,6 +84,18 @@ Assets/_Project/Scripts/Data/WavePatternGenerator.cs
 Assets/_Project/Scripts/Presentation/CameraDirector.OldBattle.cs
 Assets/_Project/Scripts/UI/Draft/WavePatternStripView.OldBattle.cs
 Assets/_Project/Scripts/UI/ResultScreen.OldBattle.cs
+
+# 4b. 옛 첫 판 안내(unit 8d · 사용자 결정 ④ 2026-09-25 — 튜토리얼 전량 제거). 새 씬·로비의 소비처는 8d 가 지웠고, 남은 소비자는
+#     옛 씬(`BattleScene` 의 안내 오브젝트 7 · `GameManager` 의 첫 판 분기 · `FirstRunTutorialController`)뿐이다.
+#     필드·읽기 창 둘은 `*.OldBattle.cs` 부분 파일로 떼었다(4번 묶음과 같은 관용).
+Assets/_Project/Data/Config/FirstRunTutorialConfig.asset
+Assets/_Project/Data/Config/TutorialGuidanceStyle_Default.asset
+Assets/_Project/Scripts/Core/Profile/PlayerProfile.OldBattle.cs
+Assets/_Project/Scripts/Data/FirstRunTutorialConfig.cs
+Assets/_Project/Scripts/Data/WavePlans/WavePlan_FirstRunTutorial.asset
+Assets/_Project/Scripts/UI/Dreamcatcher/DcInspectPanelView.OldBattle.cs
+Assets/_Project/Scripts/UI/Outgame/Tutorial/
+Assets/_Project/Scripts/UI/Tutorial/
 
 # 5. 옛 테스트 — `Wassup.Tests.EditMode`(옛 ECS 시스템 · 옛 타입 · 옛 소스 텍스트 · 옛 코퍼스). 짝은 unit 9 구현 2 가 파일마다 적는다
 Assets/_Project/Tests/EditMode/AgentCollisionTests.cs
@@ -229,8 +240,6 @@ Assets/_Project/Tests/EditMode/ThreatTableTests.cs
 Assets/_Project/Tests/EditMode/TileAoeTests.cs
 Assets/_Project/Tests/EditMode/TileRangeTests.cs
 Assets/_Project/Tests/EditMode/TilemapMapViewTests.cs
-Assets/_Project/Tests/EditMode/TutorialDragGuidanceTests.cs
-Assets/_Project/Tests/EditMode/TutorialGuidanceCopyTests.cs
 Assets/_Project/Tests/EditMode/UnitLifecycleSystemTests.cs
 Assets/_Project/Tests/EditMode/WaveConceptBossTests.cs
 Assets/_Project/Tests/EditMode/WaveConceptGenerationTests.cs
@@ -254,7 +263,6 @@ Assets/_Project/Tests/EditMode/ZoneApplyFactionGateTests.cs
 Assets/_Project/Tests/EditModeAssets/AttackReachParityTests.cs
 Assets/_Project/Tests/EditModeAssets/AuthoredTargetMaskTests.cs
 Assets/_Project/Tests/EditModeAssets/DirectionalVolleyIntegrationTests.cs
-Assets/_Project/Tests/EditModeAssets/FirstRunTutorialWavePlanTests.cs
 Assets/_Project/Tests/EditModeAssets/WaveConceptAuthoringTests.cs
 Assets/_Project/Tests/EditModeAssets/WaveKillBudgetPinTests.cs
 Assets/_Project/Tests/EditModeAssets/WaveSpawnLeadInTests.cs
@@ -383,5 +391,5 @@ Assets/_Project/Scenes/FluidScratch.unity
 
 - **옛 씬 전용 입력은 부분 파일로 떼었다**(4번 묶음) — `CameraDirector`·`SoundManager` 의 `GameManager.PhaseChanged` 구독, `ResultScreen.Show(MatchTally)`, `WavePatternStripView.RebuildFromDeck`. 본 파일은 남고 `*.OldBattle.cs` 만 지운다. `partial void` 선언은 구현이 사라지면 호출째 빠진다. unit 9 의 「이중 입력을 걷는다」(구현 8)는 이 파일들을 지우는 것으로 끝난다.
 - **옛 웨이브 생성기는 퇴역한다**(unit 9 「잔여 이중화」). 마지막 소비처였던 스트립의 덱 경로를 부분 파일로 떼자 남는 코드의 소비처가 0 이 됐다. `GeneratedWavePlan` 은 스트립 입력이라 남는다. 같은 커밋에서 `enemy-wave-integration` 스킬을 코어 `WaveGenerator` 로 옮기는 것은 unit 9 구현 7 몫이다.
-- **테스트 짝**(unit 9 구현 2)은 이 목록에 아직 적지 않았다 — 파일마다 「같은 규칙을 증언하는 코어 테스트」를 적는 일은 삭제 커밋의 것이다. 짝 확인이 특히 필요한 것: `EditModeAssets` 의 `FirstRunTutorialWavePlanTests`·`WaveConceptAuthoringTests`·`WaveKillBudgetPinTests`(저작 덱을 옛 생성기로 굴린다) · `EditMode/SkillLoadoutControllerTests`(그중 `FilterHiddenSkills` 단언은 본문이 `CoreDeckComposition` 으로 이사했다).
+- **테스트 짝**(unit 9 구현 2)은 이 목록에 아직 적지 않았다 — 파일마다 「같은 규칙을 증언하는 코어 테스트」를 적는 일은 삭제 커밋의 것이다. 짝 확인이 특히 필요한 것: `EditModeAssets` 의 `WaveConceptAuthoringTests`·`WaveKillBudgetPinTests`(저작 덱을 옛 생성기로 굴린다) · `EditMode/SkillLoadoutControllerTests`(그중 `FilterHiddenSkills` 단언은 본문이 `CoreDeckComposition` 으로 이사했다).
 - 이사해서 **남는** 것(목록에 없다): `Scripts/Data/Authoring/**`(8c 구현 3·4) · 볼륨 프로필 4(`Art/Theme/<맵>/`).

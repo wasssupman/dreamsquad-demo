@@ -190,7 +190,7 @@
 |---|---|---|
 | 저작 SO | `BonusWaveData` | |
 | 정의표 행 | `MatchDefinitionBuilder.ToBonusDef` → `BonusWaveDef` | |
-| 코어 사건 | `WaveScheduler` → `BonusOffered`(22)/`BonusPulled`(23) | 온보딩 판은 당김 억제(`WaveScheduler.BonusPullSuppressed`) |
+| 코어 사건 | `WaveScheduler` → `BonusOffered`(22)/`BonusPulled`(23) |  |
 | 뷰 풀 | `CoreBonusPortalPresenter`(`CoreBonusPortalPresenter._portalPrefab`) · 당김 UI `CoreNextWaveDock` | 8a 실현(초판 배정 「unit 6 의 보너스 뷰」는 실체가 없었다) |
 | 뷰 순서 | `ViewOrder.Board` | |
 | 소멸 회수 | `MatchStarted` · `CoreBonusPortalPresenter.Clear` | |
