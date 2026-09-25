@@ -8,9 +8,11 @@ using UnityEngine;
 // 에디터가 열려 있으면 격리 리그(worktree + Library CoW 클론, lessons 02)에서 실행할 것.
 public static class SpineUpgradeSmoke
 {
+    // battle-core-rebuild unit 8c — 전투 씬이 `BattleCoreScene` 으로 교대했다(8b). 옛 `BattleScene` 은 unit 9 에서 지워진다.
+    // 메서드 이름은 배치 호출(`-executeMethod SpineUpgradeSmoke.OpenBattleScene`)이 쓰므로 그대로 둔다.
     public static void OpenBattleScene()
     {
-        var scene = EditorSceneManager.OpenScene("Assets/_Project/Scenes/BattleScene.unity");
+        var scene = EditorSceneManager.OpenScene("Assets/_Project/Scenes/BattleCoreScene.unity");
         Debug.Log($"[SMOKE] scene loaded: {scene.name}, rootCount={scene.rootCount}, isLoaded={scene.isLoaded}");
         EditorApplication.Exit(0);
     }

@@ -13,8 +13,9 @@ namespace Wassup.EditorTools
     public static class MapStageDuelGenerator
     {
         public const string PrefabPath = "Assets/_Project/Art/Theme/duel/MapStage_Duel.prefab";
-        const string ProfilePath = "Assets/_Project/Scenes/BattleScene/Duel.asset";
-        const string ProfileSourcePath = "Assets/_Project/Scenes/BattleScene/Street.asset";
+        // battle-core-rebuild 8c — 볼륨 프로필은 옛 씬 폴더(`Scenes/BattleScene/`, unit 9 에서 지워진다)에서 각 스테이지 프리팹 옆으로 옮겼다(GUID 보존).
+        const string ProfilePath = "Assets/_Project/Art/Theme/duel/Duel.asset";
+        const string ProfileSourcePath = "Assets/_Project/Art/Theme/street/Street.asset";
         const string PoolPath = "Assets/_Project/Data/Maps/MapStagePool.asset";
         const string DeckPath = "Assets/_Project/Scripts/Data/Decks/Deck_Duel.asset";
 
