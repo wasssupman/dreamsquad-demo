@@ -17,7 +17,7 @@ battle-core-rebuild 초안은 내용 리뷰만 통과시켰다가 **씬 · 브�
 
 ## 리뷰어도 틀린다 — 지적은 코드로 대조한 뒤 반영한다
 
-리뷰어가 `using Wassup.Battle.Units` 를 죽은 import 로 **두 번** 지적했다(5c · 7e). `Faction` 열거형이 Skills asmdef 안에 있지만 namespace 는 그 이름이다. 반영했으면 컴파일이 깨졌다.
+리뷰어가 `using Wassup.Battle.Units` 를 죽은 import 로 **두 번** 지적했다(5c · 7e). 당시 `Faction` 열거형은 Skills asmdef 안에 있었지만 namespace 는 그 이름이었다 — 반영했으면 컴파일이 깨졌다. 폴더·asmdef 이름으로 네임스페이스를 추정한 오판이다(unit 9 이후 `Faction` 은 namespace `Wassup.Skills`).
 
 - **처방**: 지적마다 해당 `파일:줄` 을 리드가 열어 본다. 반복된 오판은 리뷰어 정의(`.claude/agents/*.md`)에 적어 막는다.
 
