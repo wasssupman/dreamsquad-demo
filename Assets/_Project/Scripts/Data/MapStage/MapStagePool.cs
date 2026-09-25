@@ -18,7 +18,7 @@ namespace Wassup.Data
             [Tooltip("디오라마 스테이지 프리팹 (루트에 MapStage). 인스턴스가 곧 비주얼이다.")]
             public MapStage stage;
 
-            [Tooltip("이 맵과 함께 도는 공격 덱. null 이면 BattleBridge 인스펙터의 deck 필드(BattleScene: Deck_Duel)로 폴백 — 그 폴백은 «기본 덱»이지 맵 전용 패턴이 아니다.")]
+            [Tooltip("이 맵과 함께 도는 공격 덱. null 이면 BattleDriver 인스펙터의 _deck 필드로 폴백 — 그 폴백은 «기본 덱»이지 맵 전용 패턴이 아니다.")]
             public AttackDeck deck;
 
             [Tooltip("저작 웨이브 플랜(튜토리얼·스크립트 인카운터). null = 덱의 생성 웨이브.")]

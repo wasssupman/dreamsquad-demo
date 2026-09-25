@@ -18,7 +18,7 @@ namespace Wassup.Core
         [Tooltip("셀 (0,0)의 최소 모서리가 놓이는 스테이지 로컬 위치. 셀은 로컬 XZ 평면, Y 는 논리 평면(=유닛 발바닥) 높이.")]
         public Vector3 gridOriginLocal;
 
-        [Tooltip("에디터 기즈모 표시 전용 셀 크기. 런타임 양자화 정본은 BattleBridge.tileSize — 두 값이 다르면 unit 1 린트가 경고한다.")]
+        [Tooltip("에디터 기즈모 표시 전용 셀 크기. 런타임 양자화 정본은 BattleDriver._tileSize — 두 값이 다르면 unit 1 린트가 경고한다.")]
         [Min(0.01f)] public float previewTileSize = 1f;
 
         [Tooltip("US-004b — 이 스테이지에서 시즌 효과 타일 배치를 끈다. 열린 마당에서는 효과 타일이 전 셀 후보라 " +

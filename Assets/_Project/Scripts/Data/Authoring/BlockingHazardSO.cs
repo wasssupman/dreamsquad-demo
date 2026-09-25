@@ -6,7 +6,7 @@ namespace Wassup.Data.Authoring
     public class BlockingHazardSO : ScriptableObject
     {
         [Header("Visual")]
-        [Tooltip("Spawned by BattleBridge as the visual representation.")]
+        [Tooltip("Spawned by CoreHazardViewPool as the visual representation.")]
         public GameObject visualPrefab;
 
         [Tooltip("Optional particle prefab spawned when the hazard visual is bound.")]
@@ -33,7 +33,7 @@ namespace Wassup.Data.Authoring
         public float healthDecayPerSec;
 
         [Header("Destruction VFX")]
-        [Tooltip("Optional. If set, BattleBridge spawns this on destruction.")]
+        [Tooltip("Optional. If set, CoreHazardViewPool spawns this on destruction.")]
         public GameObject destructionVfxPrefab;
 
         // bomb-barrel-on-place unit 0 — 「부서지면 터진다」. 적이 부숴 체력이 0 이 되는 순간
