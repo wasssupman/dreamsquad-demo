@@ -99,6 +99,7 @@
 | `RuntimeMaterialFactory` | + `CreateCardCrumpleUi`(always-included `Resources/RuntimeMaterials/CardCrumpleUI.mat`) | 옛 카드면 메쉬는 셰이더를 이름으로 찾았다(추가 제약 · 구현 10) — `CoreCardFaceMesh` 는 이 창구만 쓴다 |
 | `ViewOrder` | + `Hand = 55`(오버헤드 뒤) | 몸에 붙는 것(표식·아이콘)이 선 뒤 손패가 같은 사건으로 창을 다시 읽는다 |
 | `BattleCoreUnity.Check.csproj` | + `Rendering/RuntimeMaterialFactory.cs` 명시 컴파일 | 에디터가 새 메서드를 컴파일하기 전 `Wassup.Runtime.dll` 이라(5a~6a2 의 새 SO 와 같은 이유) |
+| 선택 패널 캔버스 순서(`CoreSelectionPanel`) — **플레이 3차 「퇴근 작동 하지 않음」** | 0 → **9** | 7c 에서 선택이 손패를 연다. 손패 캔버스(5)의 전화면 바깥 탭 캐처가 패널 위를 덮어 퇴근 버튼 탭이 「선택 닫기」가 됐다(공개 진입 `InvokeAction` 테스트는 포인터 경로를 안 타 초록이었다). 옛 패널 = `DcInspectPanelView.cs:26` `PanelSortingOrder = 9`(손패 5 · 항아리 7 위). 증상 단언 `CorePlayThreeSymptomTests.유닛을_선택해_…`(버튼 자리 레이캐스트 최상단 = 버튼) |
 
 ### `rule-holders.md` 귀속 행 → 코드 포인터(7c 몫)
 

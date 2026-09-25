@@ -26,6 +26,9 @@ namespace Wassup.BattleCoreUnity.Hud
     [DisallowMultipleComponent]
     public sealed class CoreSelectionPanel : MonoBehaviour
     {
+        /// <summary>손패(5)·항아리 독(7) 위 — 옛 `DcInspectPanelView.PanelSortingOrder`.</summary>
+        private const int PanelSortingOrder = 9;
+
         [SerializeField] private BattleDriver _driver;
 
         [Header("자리")]
@@ -345,7 +348,10 @@ namespace Wassup.BattleCoreUnity.Hud
             if (_built) return;
             _built = true;
 
-            var canvas = CoreHudUi.EnsureCanvas(gameObject);
+            // 플레이 3차 — 선택이 손패를 연다(7c). 손패 캔버스(order 5)의 전화면 바깥 탭 캐처가 이 패널 **위**에 있으면
+            // 퇴근 버튼 탭이 캐처로 가서 「선택 닫기」가 된다. 옛 패널도 같은 이유로 손패 위였다
+            // (`DcInspectPanelView.cs:26` — `PanelSortingOrder = 9`, 항아리 독 7 위 · 메뉴 팝업 아래).
+            var canvas = CoreHudUi.EnsureCanvas(gameObject, PanelSortingOrder);
             _root = CoreHudUi.Rect("SelectionPanel", canvas.transform,
                                    new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
                                    _anchoredPos, new Vector2(_width, 268f));
