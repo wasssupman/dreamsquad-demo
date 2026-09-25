@@ -124,5 +124,57 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsFalse(overlay.TryGetLandingTelegraph(out _, out _, out _), "강하 사건 → 예고 내림");
             AssertNoErrors();
         }
+        // ── 행 8 — 배치 사거리 칸 채움(T3·T13) ──────────────────────────────────────
+        [UnityTest]
+        public IEnumerator 행8_배치_드래그의_사거리_칸은_판정과_같은_자로_세고_링_안을_한_겹으로_채운다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return Boot(d => driver = d);
+            var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
+            Assert.IsNotNull(overlay, "씬에 CoreMapOverlay 가 없다");
+            Assert.IsNotNull(overlay.TileSet, "오버레이 타일셋 저작이 없다");
+
+            var def = driver.Definition;
+            int defIndex = -1;
+            for (int i = 0; i < def.Units.Length && defIndex < 0; i++)
+                if (def.Units[i].AttackRange > 0f) defIndex = i;
+            Assert.GreaterOrEqual(defIndex, 0, "사거리 있는 방어유닛이 없다");
+            var unit = def.Units[defIndex];
+            var size = driver.GridSize;
+            var anchor = new int2(size.x / 2, size.y / 2);
+
+            overlay.ShowPlacement(defIndex, anchor, true);
+            yield return null;
+            yield return null;
+
+            Assert.Greater(overlay.PlacementRangeCellCount, 0, "사거리 칸이 하나도 없다");
+            // 판정과 **같은 자** — 발밑 원점 · 표준 잡몹 몸(T3) · 앵커 칸 자신은 빈다(옛 includeCenter=false).
+            float ts = driver.TileSize;
+            int w = Mathf.Max(1, unit.FootprintWidth);
+            var foot = new float3((anchor.x + (w - 1) * 0.5f) * ts, 0f, anchor.y * ts);
+            int expected = 0;
+            for (int y = 0; y < size.y; y++)
+            for (int x = 0; x < size.x; x++)
+            {
+                var c = new int2(x, y);
+                bool inReach = !c.Equals(anchor) && Wassup.BattleCore.Combat.AttackReach.InReach(
+                    foot, new float3(x * ts, 0f, y * ts), unit.AttackRange, ts,
+                    unit.BodyRadiusTiles, Wassup.Skills.SkillMath.StandardBodyRadiusTiles);
+                if (inReach) expected++;
+                Assert.AreEqual(inReach, overlay.IsPlacementRangeCell(c), $"칸 {c} 의 사거리 판단이 판정 자와 다르다");
+            }
+            Assert.AreEqual(expected, overlay.PlacementRangeCellCount);
+
+            // 링 안 채움 한 겹 — 알파 = 링이 있을 때의 채움(`rangeFillAlphaUnderRing`). 칸 채움은 링이 있으면 0(그리지 않는다).
+            Assert.IsTrue(overlay.TryGetRangeFill(out var fill), "링 안 채움이 없다");
+            Assert.AreEqual(overlay.TileSet.rangeFillAlphaUnderRing, fill.a, 1e-4f, "채움 알파 = rangeFillAlphaUnderRing");
+
+            overlay.HidePlacement();
+            yield return null;
+            Assert.AreEqual(0, overlay.PlacementRangeCellCount, "드래그가 끝나면 사거리 칸도 비운다");
+            Assert.IsFalse(overlay.TryGetRangeFill(out _), "드래그가 끝나면 채움도 내린다");
+            AssertNoErrors();
+        }
     }
 }

@@ -69,6 +69,12 @@ namespace Wassup.BattleCoreUnity.View
         private readonly List<SpriteRenderer> _ghostCells = new List<SpriteRenderer>(8);
         private readonly List<SpriteRenderer> _marks = new List<SpriteRenderer>(16);
         private readonly List<Vector3> _ringPoints = new List<Vector3>(80);
+        // ④′ 사거리 칸 채움(unit 8a2 행 8 — rule-holders T3·T13). 「어느 칸이 사거리 안인가」의 **논리 집합**과 링 안 채움.
+        private readonly HashSet<int2> _rangeCells = new HashSet<int2>();
+        private int _rangeCellsDef = -1;
+        private int2 _rangeCellsAnchor;
+        private MeshRenderer _rangeFill;
+        private Mesh _rangeFillMesh;
 
         private LineRenderer _grid;
         private LineRenderer _ring;
@@ -151,6 +157,32 @@ namespace Wassup.BattleCoreUnity.View
             _hasDrag = false;
             _dragDefIndex = -1;
             _guideShownAt = -1f;
+            ClearRangeCells();
+        }
+
+        /// <summary>
+        /// unit 8a2 행 8 — **그 칸이 지금 배치 사거리 안인가**(옛 `TilemapMapView.IsPlacementRangeCell` `:1537` · T13 read seam).
+        /// 채움이 투명해도(링이 있으면 알파 0) 이 집합은 계속 참이다 — 「어느 칸이 사거리 안인가」를 묻는 소비자가 있다
+        /// (자리 고스트가 사거리 칸을 비켜 가는 것 등). 판정이 아니다: 칸 집합은 표준 잡몹을 가정한 **배치 안내**다(T3).
+        /// </summary>
+        public bool IsPlacementRangeCell(int2 cell) => _rangeCells.Contains(cell);
+
+        /// <summary>테스트 창구 — 사거리 칸 수 · 링 안 채움이 켜져 있나와 그 색.</summary>
+        public int PlacementRangeCellCount => _rangeCells.Count;
+
+        public bool TryGetRangeFill(out Color color)
+        {
+            color = default;
+            if (_rangeFill == null || !_rangeFill.enabled) return false;
+            color = _rangeFill.sharedMaterial != null ? _rangeFill.sharedMaterial.color : default;
+            return true;
+        }
+
+        private void ClearRangeCells()
+        {
+            _rangeCells.Clear();
+            _rangeCellsDef = -1;
+            if (_rangeFill != null && _rangeFill.enabled) _rangeFill.enabled = false;
         }
 
         // ── ⑥ 카드 조준(unit 7c) — 손패 드래그가 미는 것 ─────────────────────────
@@ -586,6 +618,7 @@ namespace Wassup.BattleCoreUnity.View
                 SetCount(_marks, 0);
                 if (_ring != null) _ring.enabled = false;
                 HideShapeGuide();
+                ClearRangeCells();
                 PaintBriefing();
                 return;
             }
@@ -599,6 +632,7 @@ namespace Wassup.BattleCoreUnity.View
                 if (_ring != null) _ring.enabled = false;
                 HideShapeGuide();
                 _guideDefIndex = -1;
+                ClearRangeCells();
                 return;
             }
 
@@ -781,6 +815,7 @@ namespace Wassup.BattleCoreUnity.View
                 if (_ring != null) _ring.enabled = false;
                 SetCount(_marks, 0);
                 HideShapeGuide();
+                ClearRangeCells();
                 return;
             }
 
@@ -797,6 +832,7 @@ namespace Wassup.BattleCoreUnity.View
             }
             _ring.positionCount = _ringPoints.Count;
             for (int i = 0; i < _ringPoints.Count; i++) _ring.SetPosition(i, _ringPoints[i]);
+            PaintRangeFill(in unit, foot, w);
 
             // 「이놈이 맞는다」 표식. **판정은 `AttackReach.InReach` 하나**다 — 여기서
             // 거리를 다시 재면 제약 13 위반이고, 그 어긋남은 리터럴도 심볼도 아니라
@@ -854,6 +890,48 @@ namespace Wassup.BattleCoreUnity.View
 
             if (guideHas) PaintShapeGuide(in unit.Attack, foot, guidePos, radiusTiles);
             else HideShapeGuide();   // 사거리 안 적이 없으면 없다 — 기본 방향은 없다(「방향은 타겟이 정한다」)
+        }
+
+        // ── ④′ 사거리 칸 채움(unit 8a2 행 8 — T3·T13) ────────────────────────────────
+        //
+        // 옛 `TilemapMapView.SetPlacementRange`(`:1226-1277`) + `RangeFillAlpha`(`:1185`) + `ApplyRingTint`(`:1140-1175`)의 후계.
+        // **링과 채움을 한 곳이 그린다**(T13 — 옛 뷰가 칸 채움과 링 셰이더 내부 채움을 따로 칠하다 「채움이 두 겹」이 됐다).
+        //   · 칸 집합 = 판정과 **같은 본체**(`AttackReach.InReach`) · 대상 = 표준 잡몹 몸(`SkillMath.StandardBodyRadiusTiles` — T3:
+        //     칸은 크기를 표현 못 해 링보다 최대 0.25칸 바깥까지 들어가는 것을 **감수한다**) · 원점 = 발밑 · 앵커 칸 자신은 빼다
+        //     (옛 `includeCenter = false`). 앵커·유닛이 바뀔 때만 다시 센다(옛: 셀 변경 시에만 페인트).
+        //   · 칸의 채움 알파 = **링이 있으면 0**(옛 `RangeFillAlpha` — 칸 계단이 원을 사각형처럼 보이게 한다). 배치 사거리에는 링이
+        //     언제나 있으므로 칸을 그릴 렌더러를 두지 않고 **논리 집합만** 든다(투명한 칸 = 안 그린 칸).
+        //   · 대신 **링 안을 채운다**(옛 링 셰이더 `_FillAlpha = rangeFillAlphaUnderRing`) — 선과 채움이 정의상 같은 곡선이다.
+        //     채움 색 = 링 선의 색상(옛 사용자 조건 2 「선과 채움은 같은 색」 — 선 색이 새 오버레이 저작 `_ringColor` 이므로 그 RGB),
+        //     알파 = 타일셋 `rangeFillAlphaUnderRing`.
+        private void PaintRangeFill(in UnitDef unit, float3 foot, int footprintWidth)
+        {
+            if (_rangeCellsDef != _dragDefIndex || !_rangeCellsAnchor.Equals(_dragAnchor))
+            {
+                _rangeCellsDef = _dragDefIndex;
+                _rangeCellsAnchor = _dragAnchor;
+                _rangeCells.Clear();
+                float ts = _driver.TileSize;
+                var size = _driver.GridSize;
+                float offX = math.abs((footprintWidth - 1) * 0.5f);
+                int scan = (int)math.ceil(unit.AttackRange + unit.BodyRadiusTiles
+                                          + Wassup.Skills.SkillMath.StandardBodyRadiusTiles + offX) + 1;
+                for (int dx = -scan; dx <= scan; dx++)
+                for (int dz = -scan; dz <= scan; dz++)
+                {
+                    if (dx == 0 && dz == 0) continue;   // 앵커 칸(유닛 자리)은 비운다
+                    var cell = new int2(_dragAnchor.x + dx, _dragAnchor.y + dz);
+                    if (cell.x < 0 || cell.y < 0 || cell.x >= size.x || cell.y >= size.y) continue;
+                    if (!AttackReach.InReach(foot, CellCenterSim(cell), unit.AttackRange, ts,
+                                             unit.BodyRadiusTiles, Wassup.Skills.SkillMath.StandardBodyRadiusTiles)) continue;
+                    _rangeCells.Add(cell);
+                }
+            }
+
+            if (_tileSet == null || !EnsureDiscFill("RangeFill", ref _rangeFill, ref _rangeFillMesh)) return;
+            var c = _ringColor;
+            c.a = _tileSet.rangeFillAlphaUnderRing;
+            FillDisc(_rangeFill, _rangeFillMesh, foot, _ringPoints, c);
         }
 
         // ── ⑤ 공격 도형 가이드 ────────────────────────────────────────────────
@@ -1210,6 +1288,8 @@ namespace Wassup.BattleCoreUnity.View
             if (_shapeRimMesh != null) Destroy(_shapeRimMesh);
             if (_landingFill != null && _landingFill.sharedMaterial != null) Destroy(_landingFill.sharedMaterial);
             if (_landingFillMesh != null) Destroy(_landingFillMesh);
+            if (_rangeFill != null && _rangeFill.sharedMaterial != null) Destroy(_rangeFill.sharedMaterial);
+            if (_rangeFillMesh != null) Destroy(_rangeFillMesh);
         }
     }
 }
