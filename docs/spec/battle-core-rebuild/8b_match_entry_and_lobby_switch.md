@@ -67,6 +67,7 @@
 | 철수 버튼 글자 | `DcInspectController.cs:477 RetireLabel = "철수"` | 5b 가 「퇴근」(기능 이름)으로 바꿔 놓았다 — 옛 라이브 글자로 복구(온보딩 문구가 그 말을 가리킨다) | `847305ce9` |
 | 손패 뒤집기 경합 | — | 열기 뒤집기 중 닫히면 뒤집기를 끊는다(안 끊으면 칸 줄이 영영 접힌다 — 선택 직후 철수). 온보딩 자동 증언이 잡았다 | `847305ce9` |
 | 결과·나가기·기록 | `MenuPopup.cs:113~161` · `GameManager.RecordMatchPlayed` | `CoreMatchOutcomePresenter.RecordMatchPlayed`(래치 1 · 이번 세션 프로필만 저장) · `AbandonAndLeave` · `CoreMenuPopup` 「나가기」↔「제출」 | `f4cefe7d4` |
+| ⚠ **드라이버 시드 기본값 `1`→`0`** | `BattleDriver._seed`(G3 — 옛 `debugFixedMatchSeed`) · 씬 노브 20260923 | 0 = `MatchEntry.Resolve` 3단(`selectionSeed` → `FixedSeed` → `GenerateRandom`) 의 마지막 = **판마다 새 난수**(옛 라이브와 같다). 영향은 에디터 직접 진입의 반복 재현성뿐 — 골든·테스트는 하네스가 시드를 명시해 무변. 재현하려면 씬 노브에 비0 을 넣는다 (리뷰 M1 보충) | `c899b6ab7`·`f4cefe7d4` |
 | 로비 교대 | `SceneNames.cs:8` · 빌드 설정 · CLI `:33~37·:603~610` | 상수 · 빌드 설정 · CLI 목록·문구(결정 ②). CLI 테스트는 같은 상수를 참조해 **변경 0** | `d101b9dab` |
 | 옛 전투 PlayMode lane | 128곳이 `SceneNames.Battle` 로 옛 씬을 열었다 | `Tests/PlayMode/LegacyBattleScene.Load()`(경로로 연다 — 빌드 목록 밖) · unit 9 에서 파일째 삭제 | `d101b9dab` |
 | 진입 테스트 6 | `Tests/PlayMode/` 6 파일 | 삭제 → `PlayModeCore/CoreMatchEntryTests` 14(왕복·전환·프리셋·못 찾는 id·확정 덱·덱 없음·스탯 돌·코스트 돌·테스트 모드·래치·메뉴 나가기·온보딩 판·다음 판·**온보딩 완주**) | `d101b9dab` |
@@ -104,4 +105,6 @@ N/A — 판 오브젝트의 생성→렌더 경로는 바뀌지 않는다(입력
       헤드리스(커밋 4개 각각 클린 export): build 0 · test 685 · Check 0. Unity EditMode 코어+Assets 1005/1007(선행 2 `bomb_man`·`boomerang` · 골든 무변) · PlayMode 코어 **85/85**(71 + 신규 14) · 옛 PlayMode 부분집합 38/38(8a 의 40 중 재작성 2 를 뺀 6 파일 — ⚠ 첫 실행은 코어 lane 직후라 `BonusWavePullTest` 3 빨강, 단독 13/13 · 재실행 38/38 로 재현 안 됨) · `check_ledgers.py` exit 0.
 - [ ] **Android QA 빌드**(`DreamSquadMobileBuildCli.BuildAndroidQa`) 성공 + 실기기 1판(로비 → 판 → 결과 → 로비). ⚠ Entities 가 아직 있어 기본 월드가 옛 시스템을 만든다 — 이 빌드의 성능 수치는 unit 9 뒤 빌드와 바로 비교하지 않는다.
       **미시도**: 저장소 CLI 는 keystore 비밀번호를 **숨김 입력**으로 받고(에이전트가 가진 값이 아니다) · 작업 트리 clean 을 요구하며(무관한 dirty 파일이 있다) · 같은 프로젝트를 연 에디터와 배치 Unity 가 공존할 수 없다. SDK/OpenJDK/NDK 는 Hub 에 있다. 사용자가 실행할 몫.
-- [ ] `core-reviewer` APPROVE → **사용자 플레이 4차**(조각 D 의 3차 뒤 · 질문 = 「로비에서 들어간 판이 옛 판과 같은 판인가」).
+- [x] `core-reviewer` **APPROVE**(2026-09-25 — CRITICAL·HIGH 0 · MEDIUM 1 = 시드 기본값 문서 보충(위 표) · LOW 2 = 후속 후보) → [ ] **사용자 플레이 4차**(조각 D 의 3차 뒤 · 질문 = 「로비에서 들어간 판이 옛 판과 같은 판인가」).
+
+리드 재검증 2026-09-25 — HEAD `7d5d99722` 클린 export: build 0 · test 685/685 · Check 0 · `check_ledgers.py` exit 0. Unity EditMode 코어+Assets 1005/1007(선행 2 `bomb_man`·`boomerang`) · PlayMode 코어 85/85 · 옛 씬 PlayMode 부분집합 38/38(`BonusWavePullTest` 빨강 재현 안 됨) · `DreamSquadMobileBuildCliTests` 63/63. 스모크 부수 효과: 이 머신 프로필 `matchesPlayed` 410→411(게스트 세션 기록 1회). 실제 랭킹·Android 빌드·플레이 4차는 8c 머지 게이트에서 사용자 몫.
