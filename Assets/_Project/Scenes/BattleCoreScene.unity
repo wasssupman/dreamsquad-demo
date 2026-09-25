@@ -1794,7 +1794,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreNextWaveDock
   _driver: {fileID: 302}
-  panelOffset: {x: 40, y: 40}
+  panelOffset: {x: 40, y: 110}
   pillSize: {x: 256, y: 96}
   pillCornerRadius: 28
   pillFill: {r: 1, g: 0.78, b: 0.28, a: 1}
