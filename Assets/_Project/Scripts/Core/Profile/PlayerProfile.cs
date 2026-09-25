@@ -9,7 +9,7 @@ namespace Wassup.Core
     //
     // battle-core-rebuild unit 8d — 옛 씬만 쓰는 필드 하나는 `PlayerProfile.OldBattle.cs` 에 떼어 두었다(unit 9 가 파일째 지운다).
     [Serializable]
-    public partial class PlayerProfile
+    public class PlayerProfile
     {
         public int schemaVersion = 1;
 

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Wassup.Presentation
 {
     // Lightweight object pool for DamageNumberView instances. Plain C# (not a
-    // MonoBehaviour); owned by DamageNumberSpawner. Recycles popups to avoid GC
+    // MonoBehaviour); owned by CoreDamageNumberSpawner. Recycles popups to avoid GC
     // spikes when many enemies are hit at once.
     public class DamageNumberPool
     {

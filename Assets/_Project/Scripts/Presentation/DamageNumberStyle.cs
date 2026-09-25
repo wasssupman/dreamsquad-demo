@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Wassup.Presentation
 {
     // Serialized tuning bundle for floating damage numbers. Lives on
-    // DamageNumberSpawner and is passed by-ref to each DamageNumberView.Play.
+    // CoreDamageNumberSpawner and is passed by-ref to each DamageNumberView.Play.
     // No hardcoded numbers in the view/spawner — everything tunable here.
     [System.Serializable]
     public class DamageNumberStyle

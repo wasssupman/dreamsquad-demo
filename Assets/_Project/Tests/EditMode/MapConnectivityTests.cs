@@ -10,12 +10,30 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void AllSpawnsReachGoal_ReturnsTrueForConnectedWalkPath()
         {
-            var map = BattleMapBuilder.BuildFallbackLinear(new int2(8, 6), 1, 1);
+            // 한 줄 복도(y=1) — spawn (0,1) 에서 goal (3,1) 까지 Walk 로 이어진다.
+            var tiles = new NativeArray<MapTileType>(4 * 3, Allocator.Persistent);
+            var spawns = new NativeArray<int2>(1, Allocator.Persistent);
             try
             {
+                for (int i = 0; i < tiles.Length; i++) tiles[i] = MapTileType.Place;
+                for (int x = 0; x < 4; x++) tiles[1 * 4 + x] = MapTileType.Walk;
+                spawns[0] = new int2(0, 1);
+
+                var map = new GeneratedMap
+                {
+                    tiles = tiles,
+                    spawns = spawns,
+                    gridSize = new int2(4, 3),
+                    goal = new int2(3, 1),
+                };
+
                 Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map));
             }
-            finally { map.Dispose(); }
+            finally
+            {
+                if (tiles.IsCreated) tiles.Dispose();
+                if (spawns.IsCreated) spawns.Dispose();
+            }
         }
 
         [Test]

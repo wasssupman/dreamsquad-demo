@@ -22,7 +22,7 @@ namespace Wassup.UI
     //
     // 뷰는 Entity/BattleBridge 를 모른다 — 컨트롤러가 이름·포트레이트·스탯·부착을 해석해 넘긴다.
     // battle-core-rebuild unit 8d — 옛 씬 안내만 읽던 창 하나는 `DcInspectPanelView.OldBattle.cs` 로 떼었다(unit 9 가 지운다).
-    public partial class DcInspectPanelView : MonoBehaviour
+    public class DcInspectPanelView : MonoBehaviour
     {
         private const int PanelSortingOrder = 9; // SquadPrep(8) 위, MenuPopup(960) 아래
         private const float HiddenScale = 0.94f;

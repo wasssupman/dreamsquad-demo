@@ -26,7 +26,7 @@ namespace Wassup.UI
     //
     // The pure row model below is deliberately untouched — ResultLeaderboardModelTests
     // covers it.
-    public partial class ResultScreen : MonoBehaviour
+    public class ResultScreen : MonoBehaviour
     {
         // Palette — visual constants matching the in-game HUD (ScoreHudView).
         // No serialized fields: keeps the scene component (and its diff) clean.

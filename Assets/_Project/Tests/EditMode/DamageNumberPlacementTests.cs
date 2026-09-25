@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Presentation;
+using Wassup.BattleCoreUnity.View;
 
 namespace Wassup.Tests.EditMode
 {
@@ -13,7 +13,7 @@ namespace Wassup.Tests.EditMode
         public void FreeIntended_ReturnsIntended()
         {
             var occ = new HashSet<Vector2Int>();
-            var cell = DamageNumberSpawner.FindFreeCell(new Vector2Int(3, 5), occ, 4);
+            var cell = CoreDamageNumberSpawner.FindFreeCell(new Vector2Int(3, 5), occ, 4);
             Assert.AreEqual(new Vector2Int(3, 5), cell);
         }
 
@@ -22,7 +22,7 @@ namespace Wassup.Tests.EditMode
         {
             // 의도 셀만 점유 → ring 1 첫 후보는 바로 위(위쪽 편향).
             var occ = new HashSet<Vector2Int> { new Vector2Int(0, 0) };
-            var cell = DamageNumberSpawner.FindFreeCell(new Vector2Int(0, 0), occ, 4);
+            var cell = CoreDamageNumberSpawner.FindFreeCell(new Vector2Int(0, 0), occ, 4);
             Assert.AreEqual(new Vector2Int(0, 1), cell);
         }
 
@@ -31,7 +31,7 @@ namespace Wassup.Tests.EditMode
         {
             // 같은 위치 연타: 의도+바로위 점유 → 그 다음 후보.
             var occ = new HashSet<Vector2Int> { new Vector2Int(0, 0), new Vector2Int(0, 1) };
-            var cell = DamageNumberSpawner.FindFreeCell(new Vector2Int(0, 0), occ, 4);
+            var cell = CoreDamageNumberSpawner.FindFreeCell(new Vector2Int(0, 0), occ, 4);
             Assert.AreEqual(new Vector2Int(-1, 1), cell);
         }
 
@@ -43,7 +43,7 @@ namespace Wassup.Tests.EditMode
             for (int dy = -1; dy <= 1; dy++)
                 for (int dx = -1; dx <= 1; dx++)
                     occ.Add(new Vector2Int(dx, dy));
-            var cell = DamageNumberSpawner.FindFreeCell(Vector2Int.zero, occ, 4);
+            var cell = CoreDamageNumberSpawner.FindFreeCell(Vector2Int.zero, occ, 4);
             Assert.AreEqual(new Vector2Int(0, 2), cell);
         }
 
@@ -55,7 +55,7 @@ namespace Wassup.Tests.EditMode
             for (int dy = -1; dy <= 1; dy++)
                 for (int dx = -1; dx <= 1; dx++)
                     occ.Add(new Vector2Int(dx, dy));
-            var cell = DamageNumberSpawner.FindFreeCell(Vector2Int.zero, occ, 1);
+            var cell = CoreDamageNumberSpawner.FindFreeCell(Vector2Int.zero, occ, 1);
             Assert.AreEqual(Vector2Int.zero, cell);
         }
 
@@ -63,8 +63,8 @@ namespace Wassup.Tests.EditMode
         public void Deterministic_SameInputsSameOutput()
         {
             var occ = new HashSet<Vector2Int> { new Vector2Int(2, 2), new Vector2Int(2, 3) };
-            var a = DamageNumberSpawner.FindFreeCell(new Vector2Int(2, 2), occ, 4);
-            var b = DamageNumberSpawner.FindFreeCell(new Vector2Int(2, 2), occ, 4);
+            var a = CoreDamageNumberSpawner.FindFreeCell(new Vector2Int(2, 2), occ, 4);
+            var b = CoreDamageNumberSpawner.FindFreeCell(new Vector2Int(2, 2), occ, 4);
             Assert.AreEqual(a, b);
         }
 
@@ -77,7 +77,7 @@ namespace Wassup.Tests.EditMode
                 for (int dx = -2; dx <= 2; dx++)
                     if (!(dx == 1 && dy == -2))
                         occ.Add(new Vector2Int(dx, dy));
-            var cell = DamageNumberSpawner.FindFreeCell(Vector2Int.zero, occ, 4);
+            var cell = CoreDamageNumberSpawner.FindFreeCell(Vector2Int.zero, occ, 4);
             Assert.IsFalse(occ.Contains(cell));
         }
     }

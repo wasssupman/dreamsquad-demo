@@ -13,7 +13,7 @@ namespace Wassup.UI.Draft
     // FadeIn(): soft reveal — used when toggle re-opens the panel after dwell.
     // Roll(): fly-up exit → SnapHidden.
     // Cards are displayed in a horizontal ScrollRect (left-aligned, swipeable).
-    public partial class WavePatternStripView : MonoBehaviour
+    public class WavePatternStripView : MonoBehaviour
     {
         public enum State { Hidden, Unrolling, Shown, Rolling }
 
