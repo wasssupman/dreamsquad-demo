@@ -100,42 +100,5 @@ namespace Wassup.Tests.EditMode
             }
             finally { Object.DestroyImmediate(plan); }
         }
-
-        [Test]
-        public void 첫_손패는_덱에_든_카드만_앞으로_끌어온다()
-        {
-            var a = ScriptableObject.CreateInstance<DreamcatcherCard>();
-            var b = ScriptableObject.CreateInstance<DreamcatcherCard>();
-            var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
-            var outside = ScriptableObject.CreateInstance<DreamcatcherCard>();
-            try
-            {
-                var deck = new List<DreamcatcherCard> { a, b, c };
-                string warned = null;
-                int pinned = CoreDeckComposition.PinFront(deck, new[] { c, outside, a }, w => warned = w);
-                Assert.AreEqual(2, pinned, "덱 밖 카드는 무시");
-                Assert.AreSame(c, deck[0]);
-                Assert.AreSame(a, deck[1]);
-                Assert.AreSame(b, deck[2]);
-                Assert.IsNotNull(warned, "고정 못 한 만큼 말한다");
-            }
-            finally
-            {
-                Object.DestroyImmediate(a); Object.DestroyImmediate(b);
-                Object.DestroyImmediate(c); Object.DestroyImmediate(outside);
-            }
-        }
-
-        [Test]
-        public void 라이브_온보딩_플랜은_60초다_튜토리얼_1분()
-        {
-            var plan = AssetDatabase.LoadAssetAtPath<WavePlanAsset>("Assets/_Project/Scripts/Data/WavePlans/WavePlan_FirstRunTutorial.asset");
-            Assert.IsNotNull(plan);
-            var mode = ModeDef.Default();
-            MatchDefinitionBuilder.ApplyEntryPlanClock(ref mode, plan);
-            Assert.AreEqual(ClockKind.FixedLimit, mode.Clock);
-            Assert.AreEqual(plan.timerDurationSec, mode.MatchSeconds);
-            Assert.Greater(mode.MatchSeconds, 0f, "온보딩 문구 「튜토리얼 1분」과 한 몸이다");
-        }
     }
 }

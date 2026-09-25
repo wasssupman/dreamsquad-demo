@@ -121,10 +121,6 @@ namespace Wassup.BattleCoreUnity.Hud
         private bool _bonusShown;
         private float _bonusRestY;
 
-        // wave-pull-revival unit 4 — 튜토리얼 포커스 링이 감쌀 대상(8b 온보딩이 읽는다).
-        public RectTransform PullButtonRect =>
-            _pillRoot != null ? (RectTransform)_pillRoot.transform : null;
-
         /// <summary>일반 알약이 떠 있나. 테스트가 「전투 중·생성 웨이브 판에만」을 증언하는 창이다.</summary>
         public bool PillShown => _panel != null && _panel.activeSelf && _pillRoot != null && _pillRoot.activeSelf;
 

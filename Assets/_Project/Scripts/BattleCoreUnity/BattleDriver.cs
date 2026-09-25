@@ -51,10 +51,6 @@ namespace Wassup.BattleCoreUnity
         [SerializeField] private int _fixedMapSeed;
         [SerializeField] private DefenderCatalog _defenderCatalog;
         [SerializeField] private DreamstoneCatalog _stoneCatalog;
-        [Tooltip("첫 판 온보딩의 저작 웨이브(쉬운 웨이브 + 60초).")]
-        [SerializeField] private WavePlanAsset _onboardingPlan;
-        [Tooltip("온보딩 수치·첫 손패 저작.")]
-        [SerializeField] private FirstRunTutorialConfig _onboardingConfig;
 
         [Tooltip("보드 평면 선언(격자). 비어 있으면 뷰가 sim→view 변환을 못 한다.")]
         [SerializeField] private View.CoreBoardPlane _boardPlane;
@@ -177,7 +173,7 @@ namespace Wassup.BattleCoreUnity
         // unit 8b — 진입 해석을 거친 판은 그 편성(로비 판 = 저장 편성), 정의표를 직접 건 판(테스트)은 저작 편성.
         public IReadOnlyList<DefenderUnitData> DefenderAssets => _entry != null ? _activeDefenders : _defenders;
 
-        /// <summary>unit 8b — 이 판이 어느 문으로 들어왔나(로비·온보딩·테스트·에디터). 판 전엔 null.</summary>
+        /// <summary>unit 8b — 이 판이 어느 문으로 들어왔나(로비·테스트·에디터). 판 전엔 null.</summary>
         public MatchEntryPlan Entry => _entry;
 
         /// <summary>
@@ -301,15 +297,13 @@ namespace Wassup.BattleCoreUnity
             if (season == null || season.mapTheme == null)
                 Debug.LogError("[BattleDriver] SeasonRegistry / activeSeason / mapTheme 가 배선되지 않았다 — 효과 타일 없이 짓는다. "
                                + "BattleCoreScene 드라이버에 SeasonRegistry.asset 을 연결하라.", this);
-            // unit 8b — **진입 해석**(G3·G5·G7·G11·G13). 순서는 옛 것 그대로: 시드 → (기믹 = 코어가 시드로) → 맵.
+            // unit 8b — **진입 해석**(G3·G5·G7·G13). 순서는 옛 것 그대로: 시드 → (기믹 = 코어가 시드로) → 맵.
             // 시드 0 은 「아무도 안 골랐다」다 — 고정 노브, 그것도 0 이면 새 난수(G3).
             var entry = MatchEntry.Resolve(new MatchEntry.Sources
             {
                 Profile = _profile,
                 DefenderCatalog = _defenderCatalog,
                 StoneCatalog = _stoneCatalog,
-                OnboardingPlan = _onboardingPlan,
-                OnboardingConfig = _onboardingConfig,
                 FixedSeed = _seed,
             }, MatchEntry.ConsumeTestMode(), selection.Seed);
             _entry = entry;
@@ -350,7 +344,6 @@ namespace Wassup.BattleCoreUnity
             // 모드(테스트 모드 SO)에서 카드마다 빌더 에러가 난다(dev 덱 `d06ae0bcd` 이 그 구멍을 열었다).
             // ⚠ unit 8b — **로비 판은 개발용 덮어쓰기(`_cards`)가 프로필 덱에 양보한다.** 덮어쓰기는 에디터 메뉴 판 전용이다.
             IReadOnlyList<DreamcatcherCard> cards;
-            List<DreamcatcherCard> composed = null;
             if (mode.awakeningConfig == null)
             {
                 Debug.LogWarning($"[BattleDriver] 모드 '{mode.name}' 에 각성 저작(AwakeningConfig)이 없다 — 드림캐쳐 덱 없이 짓는다"
@@ -358,13 +351,8 @@ namespace Wassup.BattleCoreUnity
                 cards = Array.Empty<DreamcatcherCard>();
             }
             else if (!entry.FromLobby && _cards != null && _cards.Length > 0) cards = _cards;
-            else cards = composed = Cards.CoreDeckComposition.Compose(_profile, _cardCatalog, _activePool, _activeCount, _activeCards,
+            else cards = Cards.CoreDeckComposition.Compose(_profile, _cardCatalog, _activePool, _activeCount, _activeCards,
                                                                       seed, msg => Debug.LogWarning(msg, this));
-
-            // G11 — 온보딩 첫 손패. 덱에 든 카드만 앞으로 끌어와 고정한다(뒤는 계속 섞인다).
-            int pinned = composed != null
-                ? Cards.CoreDeckComposition.PinFront(composed, entry.FirstHand, msg => Debug.LogWarning(msg, this))
-                : 0;
 
             // ⚠ **거점 목록을 반드시 넘긴다**(`55688ef5`). 격자 투영에는 셀과 진영밖에 없어
             // 스탯이 없다 — 안 넘기면 마음 타워·본능이 한 기도 안 서고 콘솔 에러 0 으로
@@ -377,8 +365,6 @@ namespace Wassup.BattleCoreUnity
             {
                 ForcedPlan = entry.ForcedPlan,
                 EncounterPlan = encounterPlan,
-                PinnedHandFront = pinned,
-                BonusPullSuppressed = entry.BonusPullSuppressed,
             };
             _enemyAssets = MatchDefinitionBuilder.CollectEnemies(
                                MatchDefinitionBuilder.ResolveDeck(mode, poolDeck),

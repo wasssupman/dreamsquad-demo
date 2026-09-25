@@ -194,8 +194,8 @@ namespace Wassup.BattleCoreUnity.Input
             _panel.SetActionState(!unit.Deploying, RetireLabel);
         }
 
-        // unit 8b — 화면에 뜨는 글자가 정본이다. 옛 라이브 버튼은 「철수」였고(`DcInspectController.cs:477 RetireLabel`),
-        // 온보딩 문구(「철수시켜 보세요」)가 그 말을 가리킨다. 5b 가 기능 이름(퇴근)을 라벨에 썼던 것을 옛 글자로 되돌린다.
+        // unit 8b — 화면에 뜨는 글자가 정본이다. 옛 라이브 버튼은 「철수」였고(`DcInspectController.cs:477 RetireLabel`).
+        // 5b 가 기능 이름(퇴근)을 라벨에 썼던 것을 옛 글자로 되돌린다.
         public const string RetireLabel = "철수";
 
         private void Retire()

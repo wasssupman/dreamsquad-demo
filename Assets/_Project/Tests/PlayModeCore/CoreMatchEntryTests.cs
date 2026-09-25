@@ -22,7 +22,7 @@ namespace Wassup.Tests.PlayMode.Core
     // 직접 불렀다). 판정은 정의표로 본다 — 「무엇으로 지어졌나」가 이 테스트의 질문이고, 그 답은 정의표에 있다.
     //
     // ⚠ 로비(`OutgameScene`)가 **디스크 프로필을 읽는다**(`IsLoadedThisSession`). 테스트는 메모리 사본만 바꾸고 저장하지 않는다 —
-    // 결과·나가기·온보딩 완료의 저장 seam 은 전부 no-op 로 갈아 끼우고, TearDown 이 바꾼 칸을 되돌린다.
+    // 결과·나가기의 저장 seam 은 전부 no-op 로 갈아 끼우고, TearDown 이 바꾼 칸을 되돌린다.
     public sealed class CoreMatchEntryTests
     {
         private PlayerProfileSO _profSO;
@@ -31,7 +31,6 @@ namespace Wassup.Tests.PlayMode.Core
         private string _savedSelectedSquad;
         private List<DreamcatcherPreset> _savedDecks;
         private string _savedSelectedDeck;
-        private bool _savedTutorialDone;
         private int _savedMatchesPlayed;
 
         [TearDown]
@@ -59,7 +58,6 @@ namespace Wassup.Tests.PlayMode.Core
             }
             if (_savedDecks != null) p.dreamcatcherDecks = _savedDecks;
             p.selectedDeckId = _savedSelectedDeck;
-            p.firstRunTutorialDone = _savedTutorialDone;
             p.matchesPlayed = _savedMatchesPlayed;
             p.NormalizePresets();
             // 로비가 켠 「이번 세션에 읽은 프로필」 표시를 테스트 전 상태로 되돌린다 — 안 되돌리면 같은 PlayMode 실행의 뒤
@@ -89,10 +87,7 @@ namespace Wassup.Tests.PlayMode.Core
             _savedSelectedSquad = p.selectedSquadId;
             _savedDecks = p.dreamcatcherDecks != null ? new List<DreamcatcherPreset>(p.dreamcatcherDecks) : null;
             _savedSelectedDeck = p.selectedDeckId;
-            _savedTutorialDone = p.firstRunTutorialDone;
             _savedMatchesPlayed = p.matchesPlayed;
-            // 온보딩 판이 아닌 판을 보려면 온보딩을 끝낸 계정이어야 한다(개별 테스트가 필요하면 다시 끈다).
-            p.firstRunTutorialDone = true;
         }
 
         private static DefenderCatalog Catalog()
@@ -113,8 +108,6 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsTrue(driver.Running, "판이 지어졌다");
             var outcome = Object.FindAnyObjectByType<CoreMatchOutcomePresenter>();
             if (outcome != null) outcome.ProfileSaver = _ => { };
-            var guide = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Hud.CoreFirstRunGuide>();
-            if (guide != null) guide.ProfileSaver = _ => { };
             found(driver);
         }
 
@@ -344,142 +337,18 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.AreEqual(before + 1, prof.matchesPlayed, "씬 전환 앞에서 기록했다");
         }
 
-        // ── 온보딩(결정 ①) ───────────────────────────────────────────────────
+        // ── 새 계정(사용자 결정 ④ 2026-09-25 — 첫 판 안내 제거) ────────────────────────
 
         [UnityTest]
-        public IEnumerator 새_계정의_판은_온보딩_판이다_저작_웨이브_60초_첫_손패_보너스_억제()
-        {
-            yield return EnterLobby();
-            UseFreshAccount();
-
-            BattleDriver driver = null;
-            yield return EnterBattle(d => driver = d);
-            var def = driver.Definition;
-            Assert.AreEqual(MatchEntryKind.Onboarding, driver.Entry.Kind);
-            Assert.AreEqual(WaveSourceKind.AuthoredPlan, def.Mode.WaveSource);
-            Assert.AreEqual(ClockKind.FixedLimit, def.Mode.Clock);
-            Assert.AreEqual(60f, def.Mode.MatchSeconds, 1e-3f, "플랜 시간(「튜토리얼 1분」)");
-            Assert.IsTrue(def.BonusPullSuppressed, "G12");
-            Assert.Greater(def.PinnedHandFront, 0, "첫 손패 고정(덱에 든 만큼)");
-            var guide = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Hud.CoreFirstRunGuide>();
-            Assert.IsNotNull(guide);
-            yield return null;
-            Assert.IsTrue(guide.Running, "안내가 돈다");
-        }
-
-        [UnityTest]
-        public IEnumerator 온보딩_판은_참가_신청을_안_내는_판이고_끝낸_계정의_판은_일반_판이다()
-        {
-            yield return EnterLobby();
-            UseFreshAccount();
-            Assert.IsTrue(FirstRunTutorialConfig.ShouldRun(_profSO.profile));
-            _profSO.profile.firstRunTutorialDone = true;
-            Assert.IsFalse(FirstRunTutorialConfig.ShouldRun(_profSO.profile), "완료 기록 → 로비가 참가 신청을 낸다");
-            BattleDriver driver = null;
-            yield return EnterBattle(d => driver = d);
-            Assert.AreEqual(MatchEntryKind.Squad, driver.Entry.Kind);
-            Assert.IsFalse(driver.Definition.BonusPullSuppressed, "억제는 판마다 정해진다 — 물려받지 않는다");
-        }
-
-        // 사람 손과 같은 문(입력 창 · 커맨드)으로 온보딩을 끝까지 몰아 본다: 말파이트 선택 → 적 접근 → 배치 → 철수 →
-        // 샷건맨 배치 → 재선택 → 부착 → 생존 안내 → **완료 기록**. 이것이 결정 ① 의 검증 질문이다.
-        [UnityTest]
-        [Timeout(240000)]
-        public IEnumerator 온보딩을_완주하면_완료가_기록되고_다음_판은_일반_판이다()
+        public IEnumerator 새_계정의_판은_일반_판이다_생성_웨이브_보너스_억제_없음()
         {
             yield return EnterLobby();
             UseFreshAccount();
             BattleDriver driver = null;
             yield return EnterBattle(d => driver = d);
-            var guide = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Hud.CoreFirstRunGuide>();
-            var placement = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Input.DragPlacementInput>();
-            var selection = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Input.SelectionInput>();
-            var panel = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Hud.CoreSelectionPanel>();
-            Assert.AreEqual(MatchEntryKind.Onboarding, driver.Entry.Kind);
-            int malphite = IndexOf(driver, "malphite");
-            int shotgun = IndexOf(driver, "shotgunner");
-            Assert.GreaterOrEqual(malphite, 0, "새 계정 편성에 말파이트가 있다");
-            Assert.GreaterOrEqual(shotgun, 0, "새 계정 편성에 샷건맨이 있다");
-
-            float deadline = Time.unscaledTime + 200f;
-            var log = new List<string>();
-            string last = "";
-            float since = 0f;
-            while (guide.Running && Time.unscaledTime < deadline)
-            {
-                if (guide.Step != last) { last = guide.Step; since = Time.unscaledTime; log.Add($"{Time.unscaledTime:0.0}s {last}"); }
-                if (Time.frameCount % 120 == 0)
-                    log.Add($"{Time.unscaledTime:0.0}s [{guide.Step}] tick={driver.Match.Clock.BattleTicks} phase={driver.Match.Clock.Phase} ended={driver.Match.Clock.Ended} sel={selection.Selected.Value} act={(panel.ActionRect != null)} armed={placement.ArmedDefIndex}");
-                // 안내가 **지금 기다리는 동작**만 한다(사람의 박자) — 앞질러 누르면 안내가 그 사건을 못 본다.
-                // 사람은 문구를 읽고 누른다 — 대기가 열린 뒤 0.5초(연출 전이가 끝날 틈).
-                if (Time.unscaledTime - since >= 0.5f)
-                switch (guide.Step)
-                {
-                    case "B3a.pick": if (placement.ArmedDefIndex != malphite) placement.ToggleArm(malphite, Vector2.zero); break;
-                    case "B3a.place": if (PlaceSomewhere(driver, malphite)) placement.Disarm(); break;
-                    case "B3b.select": selection.SelectByTraySlot(malphite); break;
-                    case "B3b.retire": panel.InvokeAction(); break;
-                    case "B3c.pick": if (placement.ArmedDefIndex != shotgun) placement.ToggleArm(shotgun, Vector2.zero); break;
-                    case "B3c.place": if (PlaceSomewhere(driver, shotgun)) placement.Disarm(); break;
-                    case "B4.host": PlaceSomewhere(driver, shotgun); break;
-                    case "B4.select": selection.SelectByTraySlot(shotgun); break;
-                    case "B4.card": TryAttachFromHand(driver, selection.Selected); break;
-                }
-                yield return null;
-            }
-            log.Add($"end running={guide.Running} step={guide.Step} ended={driver.Match.Clock.Ended} t={Time.unscaledTime:0.0}");
-            Debug.Log("[CoreMatchEntryTests] 온보딩 경로: " + string.Join(" → ", log));
-            Assert.IsTrue(guide.B3Completed, "B3(배치·철수·두 번째 배치)");
-            Assert.IsTrue(guide.B4Completed, "B4(부착)");
-            Assert.IsTrue(guide.B5Completed, "B5(생존 안내)");
-            Assert.IsTrue(guide.CompletionRecorded, "완료 기록");
-            Assert.IsTrue(_profSO.profile.firstRunTutorialDone, "firstRunTutorialDone = true");
-            Assert.IsFalse(FirstRunTutorialConfig.ShouldRun(_profSO.profile), "다음 판은 로비가 참가 신청을 낸다");
-
-            yield return EnterBattle(d => driver = d);
-            Assert.AreEqual(MatchEntryKind.Squad, driver.Entry.Kind, "다음 판은 온보딩 판이 아니다");
-        }
-
-        private static int IndexOf(BattleDriver d, string idPart)
-        {
-            var a = d.DefenderAssets;
-            for (int i = 0; i < a.Count; i++)
-                if (a[i] != null && a[i].name.ToLowerInvariant().Contains(idPart)) return i;
-            return -1;
-        }
-
-        private static bool AnyEnemyNear(BattleDriver d)
-        {
-            foreach (var u in d.Units) if (u.Kind == UnitKind.Enemy && !u.Dead) return true;
-            return false;
-        }
-
-        // 놓을 수 있는 첫 칸(적에게 가까운 쪽부터 — 배치 스킬이 누구든 때리게). 판정은 코어(`Judge`)가 한다.
-        private static bool PlaceSomewhere(BattleDriver d, int defIndex)
-        {
-            var p = d.Match.Placement;
-            var size = d.GridSize;
-            for (int x = size.x - 1; x >= 0; x--)
-            for (int y = 0; y < size.y; y++)
-            {
-                var cell = new Unity.Mathematics.int2(x, y);
-                if (p.Judge(defIndex, cell) != RejectReason.None) continue;
-                return d.Apply(Command.PlaceDefender(defIndex, cell)).Accepted;
-            }
-            return false;
-        }
-
-        private static bool TryAttachFromHand(BattleDriver d, SimEntityId host)
-        {
-            var hand = new List<HandDeck.Entry>();
-            d.Match.Hand.Hand(hand);
-            foreach (var e in hand)
-            {
-                if (d.Definition.Cards[e.CardIndex].Kind != CardKind.Attach) continue;
-                if (d.Match.Hand.WouldAttach(e.CardIndex, host) != RejectReason.None) continue;
-                if (d.Apply(Command.AttachCard(e.EntryId, host)).Accepted) return true;   // 손패 칸 = 엔트리 id(`HandDeck.TryAttach`)
-            }
-            return false;
+            Assert.AreEqual(MatchEntryKind.Squad, driver.Entry.Kind, "새 계정도 저장 편성 판으로 들어간다");
+            Assert.AreNotEqual(WaveSourceKind.AuthoredPlan, driver.Definition.Mode.WaveSource,
+                "새 계정 판이 저작 웨이브로 떨어졌다 — 첫 판 전용 플랜이 남아 있다");
         }
 
         private void UseFreshAccount()
@@ -489,7 +358,7 @@ namespace Wassup.Tests.PlayMode.Core
                 Field<DreamcatcherDeck>(menu, "defaultDeck"), Field<DreamcatcherCardCatalog>(menu, "cardCatalog"),
                 Field<DreamstoneData[]>(menu, "defaultStones"));
             _profSO.SetLoadedProfile(fresh);
-            Assert.IsFalse(fresh.firstRunTutorialDone, "새 계정");
+            Assert.AreEqual(0, fresh.matchesPlayed, "새 계정");
         }
 
         private static WavePlanAsset LoadPlan(string name)

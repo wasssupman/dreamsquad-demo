@@ -51,7 +51,7 @@ namespace Wassup.BattleCoreUnity.Hud
 
         /// <summary>지금 그 버튼이 「성적 확정」인가(여는 순간 판정). 테스트의 창.</summary>
         public bool ExitIsSubmit => _submitMode;
-        /// <summary>나가기/성적 확정 버튼을 누른다(테스트·온보딩 도구 창 — 사람 손과 같은 경로).</summary>
+        /// <summary>나가기/성적 확정 버튼을 누른다(테스트 창 — 사람 손과 같은 경로).</summary>
         public void PressExit() => OnExit();
         /// <summary>메뉴를 연다(테스트 창 — 「II」 버튼과 같은 경로).</summary>
         public void Open() { if (!_built && _driver != null) Build(); SetPaused(true); }

@@ -129,31 +129,6 @@ namespace Wassup.BattleCoreUnity.View
             _hasDrag = true;
         }
 
-        // ── ⑦ 브리핑 가이드(unit 8b — 첫 판 온보딩 B1 「배치가능영역 / 배치 불가 영역」) ────────────────
-        //
-        // 옛 온보딩은 맵 설명 동안 **드래그 없이** 가능 칸과 불가 칸을 번갈아 칠했다(`BattleBridge.ShowPlacementHighlight` /
-        // `ShowBlockedHighlight`). 새 가이드는 드래그 중에만 불가 칸을 칠하므로(사용자 결정 2026-09-23), 설명 전용 창을 둔다.
-        // 룩은 지어내지 않는다 — 가능 칸 = 타일셋 `placeableColor`(옛 하이라이트 색) · 불가 칸 = 드래그 가이드 그대로.
-        // 묻는 것은 같은 `CellStateAt` 이다(칸의 상태 — 유닛 층 무관). 드래그가 오면 드래그가 이긴다.
-        public enum Briefing : byte { None = 0, Placeable = 1, Blocked = 2 }
-        private Briefing _briefing;
-
-        /// <summary>지금 켜 둔 브리핑 가이드. 테스트의 창.</summary>
-        public Briefing BriefingShown => _briefing;
-        /// <summary>브리핑 가이드가 칠한 칸 수(마지막 도색).</summary>
-        public int BriefingCellCount => _briefing != Briefing.None ? _guideUsed : 0;
-
-        public void ShowBriefing(Briefing mode)
-        {
-            if (mode == _briefing) return;
-            _briefing = mode;
-            _guideShownAt = Time.unscaledTime;
-            _nextGuideRepaint = 0f;
-            _guideDefIndex = -2;   // 드래그 가이드와 캐시가 섞이지 않게 강제로 다시 칠한다
-        }
-
-        public void HideBriefing() => ShowBriefing(Briefing.None);
-
         /// <summary>드래그가 끝났다. 가이드·고스트·링을 전부 내린다.</summary>
         public void HidePlacement()
         {
@@ -615,17 +590,6 @@ namespace Wassup.BattleCoreUnity.View
             PaintCardArea();
             PaintLandingTelegraph();   // 전용 채널 — 드래그에 양보하지 않는다(T16)
 
-            if ((!_hasDrag || _dragDefIndex < 0) && _briefing != Briefing.None)
-            {
-                SetCount(_ghostCells, 0);
-                SetCount(_marks, 0);
-                if (_ring != null) _ring.enabled = false;
-                HideShapeGuide();
-                ClearRangeCells();
-                PaintBriefing();
-                return;
-            }
-
             if (!_hasDrag || _dragDefIndex < 0)
             {
                 SetCount(_guideCells, 0);
@@ -674,48 +638,6 @@ namespace Wassup.BattleCoreUnity.View
             // 색·알파는 **매 프레임** 민다 — 페이드인이 돌아야 하고(정적이지만 등장은 페이드),
             // Play 중 저작 튜닝도 그대로 보여야 한다.
             ApplyGuideTint(tile);
-        }
-
-        private void PaintBriefing()
-        {
-            var tile = GuideTile();
-            if (tile == null) { SetCount(_guideCells, 0); _guideUsed = 0; return; }
-            bool placeable = _briefing == Briefing.Placeable;
-            if (_guideDefIndex != -2 || Time.unscaledTime >= _nextGuideRepaint)
-            {
-                _guideDefIndex = -2;
-                _nextGuideRepaint = Time.unscaledTime + _guideRepaintSeconds;
-                if (placeable) RebuildFreeCells(tile.sprite);
-                else RebuildGuideCells(tile.sprite);
-            }
-            if (!placeable) { ApplyGuideTint(tile); return; }
-            float fade = _tileSet.placeableFadeInDuration > 0f && _guideShownAt >= 0f
-                ? Mathf.Clamp01((Time.unscaledTime - _guideShownAt) / _tileSet.placeableFadeInDuration)
-                : 1f;
-            var color = Multiply(_tileSet.placeableColor, tile.color, fade);
-            for (int i = 0; i < _guideUsed && i < _guideCells.Count; i++) Tint(_guideCells[i], color);
-        }
-
-        // 가능 칸 = `CellStateAt == Free`. 드래그 가이드(불가 칸)의 여집합이고 같은 질문이다.
-        private void RebuildFreeCells(Sprite sprite)
-        {
-            var placement = _driver.Match.Placement;
-            var size = _driver.GridSize;
-            _guideOccupied.Clear();
-            int used = 0;
-            for (int y = 0; y < size.y; y++)
-            for (int x = 0; x < size.x; x++)
-            {
-                if (placement.CellStateAt(new int2(x, y)) != PlacementService.CellState.Free) continue;
-                var sr = Rent(_guideCells, used++, BoardSortOrder.PlacementHighlightOrder);
-                sr.sprite = sprite;
-                sr.transform.position = ViewOf(CellCenterSim(new int2(x, y)));
-                sr.transform.rotation = PlaneRotation();
-                sr.transform.localScale = Vector3.one * _driver.TileSize;
-                _guideOccupied.Add(false);
-            }
-            SetCount(_guideCells, used);
-            _guideUsed = used;
         }
 
         private void RebuildGuideCells(Sprite sprite)

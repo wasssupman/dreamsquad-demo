@@ -5,15 +5,14 @@ using Wassup.Data;
 
 namespace Wassup.BattleCoreUnity
 {
-    /// <summary>이 판이 어느 문으로 들어왔나. 규칙이 갈리는 축이 이것 하나다(G5 · G11 · G13).</summary>
+    /// <summary>이 판이 어느 문으로 들어왔나. 규칙이 갈리는 축이 이것 하나다(G5 · G13).</summary>
     public enum MatchEntryKind : byte
     {
         /// <summary>로비를 거치지 않은 진입(에디터 메뉴 · 테스트 하네스). 드라이버 저작 편성·덱이 쓰인다.</summary>
         EditorDirect = 0,
         /// <summary>로비에서 저장 편성으로(G5·G7).</summary>
         Squad = 1,
-        /// <summary>로비에서 — 계정 첫 판 온보딩(G11·G12).</summary>
-        Onboarding = 2,
+        // 2 는 비워 둔다 — 첫 판 안내 진입이었고 사용자 결정 ④(2026-09-25)로 제거됐다.
         /// <summary>테스트 모드 플랜(G13). 로비 패널·에디터 「Test this plan」.</summary>
         TestMode = 3,
     }
@@ -27,11 +26,8 @@ namespace Wassup.BattleCoreUnity
         public DefenderUnitData[] Defenders;
         /// <summary>null = 드라이버 저작 돌. 스탯 돌·코스트 돌이 섞여 있다 — 가르는 것은 빌더다(G9·G10).</summary>
         public DreamstoneData[] Stones;
-        /// <summary>① 테스트 모드 플랜 · ② 온보딩 플랜. 없으면 null.</summary>
+        /// <summary>테스트 모드 플랜. 없으면 null.</summary>
         public WavePlanAsset ForcedPlan;
-        /// <summary>온보딩 첫 손패(덱에 실제로 든 것만 고정된다).</summary>
-        public DreamcatcherCard[] FirstHand;
-        public bool BonusPullSuppressed;
         /// <summary>반입 기록용 **원시 id**(못 찾는 id 도 id 로 — G23).</summary>
         public readonly List<string> UnitIds = new List<string>();
         public readonly List<string> StoneIds = new List<string>();
@@ -40,12 +36,12 @@ namespace Wassup.BattleCoreUnity
         public bool FromLobby => Kind != MatchEntryKind.EditorDirect;
     }
 
-    // battle-core-rebuild unit 8b — **판에 들어가는 문의 해석.** 옛 `GameManager.Start`(G3·G5·G7·G9·G10·G11·G12·G13)와
+    // battle-core-rebuild unit 8b — **판에 들어가는 문의 해석.** 옛 `GameManager.Start`(G3·G5·G7·G9·G10·G13)와
     // 반입 기록(G22·G23)의 후계다. 여기서 하는 일은 «로비가 남긴 것을 정의표 입력 값으로 푼다» 하나뿐이고,
     // 판정도 상태도 없다 — 테스트 모드 문맥을 **한 번 소비**하는 것(G13)이 유일한 부수 효과다.
     //
     // ⚠ **「로비에서 왔나」의 판별 = 이번 세션에 읽은 프로필인가**(`PlayerProfileSO.IsLoadedThisSession`). 옛 코드가
-    // 온보딩·「한 판 해봤다」 기록에 이미 쓰던 가드다. 옛 편성 반입은 이 가드 없이 SO 의 메모리 사본을 읽었는데,
+    // 「한 판 해봤다」 기록에 이미 쓰던 가드다. 옛 편성 반입은 이 가드 없이 SO 의 메모리 사본을 읽었는데,
     // 그러면 에디터에서 새 씬을 직접 열어도 개발자의 저장 편성이 끼어든다 — 그래서 에디터 직접 진입은 드라이버 저작이다
     // (8b 「구현」 G5 행: 「드라이버 `_defenders` 는 에디터 직접 진입 폴백으로만」).
     public static class MatchEntry
@@ -55,8 +51,6 @@ namespace Wassup.BattleCoreUnity
             public PlayerProfileSO Profile;
             public DefenderCatalog DefenderCatalog;
             public DreamstoneCatalog StoneCatalog;
-            public WavePlanAsset OnboardingPlan;
-            public FirstRunTutorialConfig OnboardingConfig;
             /// <summary>G3 의 고정 노브. 0 = 판마다 새 난수.</summary>
             public int FixedSeed;
         }
@@ -129,18 +123,7 @@ namespace Wassup.BattleCoreUnity
             plan.Defenders = resolved;
             plan.Stones = ResolveStones(squad, src.StoneCatalog);
             CopyIds(squad, plan);
-
-            // G11·G12 — 온보딩 판 = 저작 웨이브 + 첫 손패 고정 + 보너스 억제. 억제는 **조건 밖에서 무조건** 값이 정해진다
-            // (정의표가 판마다 새로 지어지므로 이 대입이 곧 그 규칙이다).
-            bool onboarding = FirstRunTutorialConfig.ShouldRun(src.Profile.profile);
-            plan.BonusPullSuppressed = onboarding;
-            if (onboarding)
-            {
-                plan.Kind = MatchEntryKind.Onboarding;
-                plan.ForcedPlan = src.OnboardingPlan;
-                plan.FirstHand = src.OnboardingConfig != null ? src.OnboardingConfig.firstHandCards : null;
-            }
-            else plan.Kind = MatchEntryKind.Squad;
+            plan.Kind = MatchEntryKind.Squad;
             return plan;
         }
 

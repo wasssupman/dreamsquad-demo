@@ -94,31 +94,6 @@ namespace Wassup.BattleCoreUnity.Cards
             return picked;
         }
 
-        /// <summary>
-        /// unit 8b — 온보딩 첫 손패(G11 · 옛 `DreamcatcherHandController.PinTutorialFirstHand`). `firstHand` 의 카드를 이 순서로
-        /// `composed` 앞으로 끌어오고 **고정한 장수**를 돌려준다(코어 `HandDeck` 의 `pinnedFront` — 뒤는 계속 섞인다).
-        /// **덱에 실제로 든 카드만** 옮긴다 — 없는 카드를 끼워 넣으면 온보딩이 저장 덱을 조작하는 셈이다(옛 계약 4).
-        /// </summary>
-        public static int PinFront(List<DreamcatcherCard> composed, IReadOnlyList<DreamcatcherCard> firstHand,
-                                   System.Action<string> warn = null)
-        {
-            if (composed == null || firstHand == null || firstHand.Count == 0) return 0;
-            int pinned = 0;
-            for (int i = 0; i < firstHand.Count; i++)
-            {
-                var want = firstHand[i];
-                if (want == null) continue;
-                int at = composed.IndexOf(want);
-                if (at < pinned) continue;   // 덱에 없거나(-1) 이미 고정 구간에 있다
-                composed.RemoveAt(at);
-                composed.Insert(pinned, want);
-                pinned++;
-            }
-            if (pinned < firstHand.Count)
-                warn?.Invoke($"[CoreDeckComposition] 온보딩 첫 손패 {firstHand.Count}장 중 {pinned}장만 덱에 있어 그만큼만 고정했다.");
-            return pinned;
-        }
-
         private static DreamcatcherCard FindActiveCard(IReadOnlyList<DreamcatcherCard> cards, SkillData skill)
         {
             if (cards == null || skill == null) return null;

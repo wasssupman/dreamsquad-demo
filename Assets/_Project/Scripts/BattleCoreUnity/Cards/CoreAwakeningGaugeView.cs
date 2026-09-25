@@ -106,9 +106,6 @@ namespace Wassup.BattleCoreUnity.Cards
         public string ShownValue => _valueLabel != null ? _valueLabel.text : "";
         public bool IsVisible => _panel != null && _panel.activeInHierarchy;
 
-        /// <summary>unit 8b — 항아리 판의 사각(옛 `AwakeningGaugeView.HitRect`). 온보딩이 「에너지가 찼다」를 가리키는 자리.</summary>
-        public RectTransform HitRect => _panel != null ? (RectTransform)_panel.transform : null;
-
         public void SetOpen(bool open)
         {
             _open = open;
