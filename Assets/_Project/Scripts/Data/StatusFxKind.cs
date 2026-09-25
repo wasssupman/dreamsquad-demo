@@ -1,8 +1,8 @@
 namespace Wassup.Data
 {
     // unit-status-fx Unit 0 — 상태 연출 종류. append-only(직렬화 안전: 새 상태는 끝에).
-    // 각 kind 는 StatusFxRegistry 에서 프리팹으로 매핑되고, BattleBridge reconcile 이
-    // 대응 ECS 소스(Aggro=Aggroed)로 활성 유닛을 찾는다.
+    // 각 kind 는 StatusFxRegistry 에서 프리팹으로 매핑된다(옛 전투에선 BattleBridge reconcile 이
+    // 대응 ECS 소스(Aggro=Aggroed)로 활성 유닛을 찾았다 — 이력).
     public enum StatusFxKind : byte
     {
         Aggro = 0,
@@ -18,7 +18,7 @@ namespace Wassup.Data
         // (레드불 소비~crash 창을 권위적으로 정의, review #3).
         LastRun = 4,
         // subconscious-curse-expansion unit 3 — 살찌운 제물 표식(적 전용). 소스 =
-        // BattleBridge 표식 등록부(_bountyMarked) — 처치/유출 드레인이 제거하므로
+        // 옛 BattleBridge 표식 등록부(_bountyMarked — 이력) — 처치/유출 드레인이 제거하므로
         // 잔존 키 = 활성 표식(ECS 쿼리 불요).
         Marked = 5,
         // unit-status-fx 6 — Stun(CcKind.Stun, 적·아군 공통 action-lock). 소스 = CcEffect 버퍼.

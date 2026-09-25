@@ -3,7 +3,7 @@ namespace Wassup.Data
     // elite-enemy-tier unit 0 — 적의 **등급** 축. 값이 곧 직렬화 계약이다(int) — append-only.
     //
     // 이 enum 이 소유하는 유일한 런타임 술어는 `tier == Boss` 다. 그것이
-    // `BattleBridge.BakeNightmareMechanics` 에서 BossTag·ThreatEntry·등장경보의 부착을 가른다.
+    // `CombatDefinitionBuilder` 에서 보스 표지·위협·등장경보를 가른다(옛 `BattleBridge.BakeNightmareMechanics` 의 후계).
     // 그 앞까지는 「nightmareMechanics 가 비어있지 않으면 곧 보스」였고, 그래서 특수 메커니즘을
     // 가진 «보스가 아닌 적» 을 만들 수 없었다(CC·어그로 면역이 딸려온다).
     //

@@ -12,7 +12,7 @@ namespace Wassup.Data
     // ability SO 가 그 rule 의 데이터 홈이 될 수 있음").
     //
     // 정의 계층 계약 승계: `Unity.Entities`/ECS 타입 무참조. `DcMechanic` 자체가 ECS-free 다.
-    // 해석(슬롯 bake)은 `BattleBridge.BakeUnitMechanics` 단독.
+    // 해석은 `BindingDefinitionBuilder` 단독(옛 `BattleBridge.BakeUnitMechanics` 의 후계).
     [CreateAssetMenu(fileName = "Ability_UnitSkill", menuName = "Wassup/Ability/Unit Skill", order = 46)]
     public class UnitSkillAbility : DefenderAbilityData
     {

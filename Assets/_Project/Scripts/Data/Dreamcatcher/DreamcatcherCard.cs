@@ -13,9 +13,8 @@ namespace Wassup.Data
     // EffectiveHealth→DmgTakenMul (damage-taken reduction proxy), MoveSpeed→MoveSpeedMul.
     // dreamstone-loadout Unit 6 — CostRate appended at the end (existing card/stone
     // assets serialize kind as int 0~3; inserting earlier would relabel them).
-    // CostRate has no StatModifier/entity mapping — BattleBridge.MapDcEffect's
-    // switch has no case for it and safely no-ops via its default branch; the value
-    // is consumed entirely by GameManager -> CostRuntime.SetRegenRateMultiplier.
+    // CostRate has no StatModifier/entity mapping (old battle: BattleBridge.MapDcEffect
+    // no-op'd it and GameManager -> CostRuntime.SetRegenRateMultiplier consumed it — history).
     // dreamcatcher-new-abilities unit 0 — DamageVsCc: 활성 CcEffect(기절/수면/DoT/넉백)가
     // 걸린 적에게 추가 피해 %. ⚠ 이동감속(Slow)은 이 엔진에서 CcEffect 가 아니라 MoveSpeedMul
     // StatModifier 라 여기 해당 없음(카드 문안에 "둔화" 표기 금지). StatKind.DamageVsCcMul
@@ -102,8 +101,8 @@ namespace Wassup.Data
         // 끝에 추가 → 기존 카드 에셋은 빈 문자열로 역직렬화(inert).
         [TextArea] public string description;
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 부착 커밋 시 선불로
-        // 지불하는 유출 허용치(0 = 없음). SO 는 불변 — 지불은 BattleBridge 런타임
-        // 오프셋(_leakAllowancePenalty)으로만 반영되고 환불되지 않는다(§6 리스크
+        // 지불하는 유출 허용치(0 = 없음). SO 는 불변 — 옛 전투에선 지불이 BattleBridge 런타임
+        // 오프셋(_leakAllowancePenalty — 이력)으로만 반영되고 환불되지 않는다(§6 리스크
         // 선불·세탁 차단). 끝에 추가 → 기존 카드 에셋은 0 으로 역직렬화(inert).
         public int leakAllowanceCost;
         // dreamcatcher-attach-requirement unit 0(+unit 7 rev) — 부착 대상 제한.

@@ -6,7 +6,7 @@ namespace Wassup.Data
     // dreamcatcher-unit-trigger Unit 0 — architecture-agnostic triggered-mechanic
     // definition. This layer is pure data + asset references: it must not reference
     // Unity.Entities or Wassup.Battle types. Interpretation (bake into unmanaged
-    // slots + execution) lives entirely in BattleBridge/Combat, so an architecture
+    // slots + execution) lives entirely in the Unity-layer translator (`CardDefinitionBuilder`) and the battle core, so an architecture
     // swap only rewrites the translator, never these definitions.
     // Append new enum cases at the end (existing card assets serialize these as
     // int; inserting earlier would relabel them).
@@ -21,8 +21,8 @@ namespace Wassup.Data
     // AttackSystem RESOLVE 를 타지 않는다. append-only.
     // dreamcatcher-shield-break unit 0 — OnShieldBreak(부여된 실드가 피격으로 완전 소진될 때).
     // 발동 지점 = DamageApplicationSystem 실드 Absorb(시간만료 경로는 없음/배제). append-only.
-    // dreamcatcher-content-4 unit 0 — OnRetire(이 유닛이 퇴근할 때). 발동 지점은 **브리지의
-    // 퇴근 경로**(`BattleBridge.RetireDefender`)이며, 사망 경로를 한 글자도 공유하지 않는다.
+    // dreamcatcher-content-4 unit 0 — OnRetire(이 유닛이 퇴근할 때). 발동 지점은 **퇴근
+    // 경로**(옛 `BattleBridge.RetireDefender` — 이력)이며, 사망 경로를 한 글자도 공유하지 않는다.
     //
     // ⚠ **OnDeath 와 교차 발동하지 않는다 — 이것이 이 트리거의 존재 이유다.** 퇴근은 `DeadTag`
     // 를 달지 않고 `DefenderDied` 를 쏘지 않으므로(defender-clock-out 계약 1) OnDeath 카드가
@@ -86,7 +86,7 @@ namespace Wassup.Data
         BountyMark = 15,
         // dreamcatcher-shield-break unit 1 — 실드 파열(OnShieldBreak) 시 N타일 내 가장 가까운
         // M명을 L초 수면. magnitude=M·tileRange=N·duration=L 재사용(신규 DcPayloadSpec 필드 0).
-        // 실행=BattleBridge.DrainShieldBreakEvents(적 쿼리+AoeTargetCap+EnemyCcEvent{Sleep}). append-only.
+        // 옛 실행=BattleBridge.DrainShieldBreakEvents(이력 — 적 쿼리+AoeTargetCap+EnemyCcEvent{Sleep}). append-only.
         AreaSleep = 16,
         // projectile-emission-pattern unit 3 — 발사 명세(ProjectilePatternData)를
         // 트리거한다. 이 payload 는 발사 내부를 모르고, emitter 는 드림캐쳐를 모른다 —
@@ -242,7 +242,7 @@ namespace Wassup.Data
     // **Mono 가 host 귀속으로 볼 수 있는 사건**(DefenderRetired / DefenderDied / EnemyGone)
     // 에만 배선할 수 있다.
     //
-    // 이 술어를 bake(BattleBridge) · 적용성(DcApplicability) · 컨트롤러가 공유하므로,
+    // 이 술어를 정의표 번역(`CardDefinitionBuilder`) · 적용성(DcApplicability) · 컨트롤러가 공유하므로,
     // 두 번째 손패 카드가 드는 비용은 **enum 값 1 + 컨트롤러 case 1** 이다(브리지 0 · 적용성 0).
     // 카드마다 `HasXxx()` 불리언을 늘리는 방식(HasBountyMark 선례)을 여기서 쓰지 않는 이유다.
     public static class DcPayloadKinds
@@ -253,7 +253,7 @@ namespace Wassup.Data
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
     // 계층은 Battle 타입 참조 금지라 Battle.Effects.CcKind 를 직접 못 쓴다 → 이 미러를
-    // 두고 BattleBridge 가 bake 시 CcKind 로 번역(CardBuffKind→StatKind 와 동일 패턴).
+    // 두고 `BindingDefinitionBuilder` 가 정의표로 번역(옛 bake 는 BattleBridge — 이력 · CardBuffKind→StatKind 와 동일 패턴).
     // 실제 CcEffect 로 소비되는 종류만: Stun(행동 정지=얼림), Impulse(넉백). unit 1 발견 —
     // 이 엔진의 "Slow" 는 CcEffect 가 아니라 MoveSpeedMul StatModifier(ZoneApplySystem)라
     // 제외. 슬로우 카드가 필요하면 별도 stat 페이로드로(후속). append-only.
@@ -262,7 +262,7 @@ namespace Wassup.Data
     public enum DcCcKind { Stun, Impulse, Sleep }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 스택 선택자. Battle.Effects.StackKind
-    // 의 비-None 미러(번역은 BattleBridge). append-only.
+    // 의 비-None 미러(번역은 `BindingDefinitionBuilder`). append-only.
     public enum DcStackKind { Fire, Ice, Bleed, Poison }
 
     // dreamcatcher-trigger-gates unit 1 — 사건 트리거에 얹는 동적 술어 게이트.
@@ -367,8 +367,8 @@ namespace Wassup.Data
         // 아니라 DPS 로 해석된다(dot-tick-cadence 계약). append-only 라 기존 저작은 그대로.
         public float tickIntervalSec;
         // dreamcatcher-content-3 unit 6 — ApplyStackToTarget 전용. **문안 전용 참조**다:
-        // 런타임 임계 조회는 여전히 BattleBridge 의 kind→rules 레지스트리(씬의
-        // stackModifierAuthoring)가 권위이고, 이 필드는 카드 문안이 "몇 중첩에 무엇이
+        // 런타임 임계 조회는 정의표(`MatchDefinitionBuilder` 가 옮긴 스택 규칙)가 권위이고
+        // (옛 전투에선 BattleBridge 의 kind→rules 레지스트리 — 이력), 이 필드는 카드 문안이 "몇 중첩에 무엇이
         // 터지나"를 같은 SO 에서 읽게 해 수치가 문자열로 복제되는 것을 막는다(제약 6).
         // 정의 계층의 SO 참조는 위 projectile·auraPrefab·pattern 선례와 동일 — 금지
         // 대상은 Entities/Battle 타입이다. null = 요약 라인 생략(기존 카드 무변화).
@@ -413,8 +413,8 @@ namespace Wassup.Data
     // dreamcatcher-attack-mod-bounce Unit 0 — card class (c): trigger-less,
     // always-on modification of the bound unit's base attack output. Same
     // architecture-agnostic contract as the trigger definitions above: pure
-    // data, no ECS references; interpretation lives in BattleBridge (bake) and
-    // AttackSystem (spawn-time injection). Append new kinds at the end.
+    // data, no ECS references; interpretation lives in the Unity-layer translator
+    // (`CardDefinitionBuilder`) and the battle core (old: BattleBridge bake + AttackSystem — history). Append new kinds at the end.
     // dreamcatcher-content-4 unit 0 — DamageVsSleeping: 잠든 적을 때리면 그 타격의 피해 ×배율.
     // **판정은 피해자별**이다 — 잠든 적 옆의 깨어 있는 적은 그대로다. 배율은 기존
     // `DcAttackModSpec.damageMul` 재사용(2.0 = ×2) → **신규 필드 0**.

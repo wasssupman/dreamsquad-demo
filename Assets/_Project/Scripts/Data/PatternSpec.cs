@@ -31,7 +31,7 @@ namespace Wassup.Data
     // projectile-emission-pattern unit 0 — ProjectilePatternData 의 unmanaged 미러.
     // 정의 계층 계약: UnityEngine/Entities/Battle 타입 무참조(DcMechanic.cs 선례).
     // asset 참조는 정수 핸들(barrelDataIndex)로 치환되며 핸들 해석은 아키텍처
-    // 몫이다 — ECS 는 BattleBridge 의 ProjectileData 레지스트리, Mono 라면 자기
+    // 몫이다 — 지금은 Unity 층 정의표 빌더(`CombatDefinitionBuilder`)가 탄 정의표로, 다른 아키텍처라면 자기
     // 테이블. 이 struct 자체는 어느 아키텍처도 모른다.
     public struct PatternSpec
     {

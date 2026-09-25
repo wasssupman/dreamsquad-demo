@@ -111,13 +111,12 @@ namespace Wassup.UI
         // 일이 없어졌으므로 «어느 쪽으로 끝났나» 를 물을 자리가 없다. 라벨은 `결과` 고정이고
         // 색 분기도 사라졌다(패배색은 이제 쓰이지 않는다).
         // 줄 구성·문구 다듬기는 unit 4 몫 — 여기서는 승패 축만 걷어낸다.
-        // (옛 씬의 `Show(MatchTally)` 입구는 8c 에서 `ResultScreen.OldBattle.cs` 로 떼었다 — unit 9 가 지운다.)
+        // (옛 씬의 `Show(MatchTally)` 입구는 8c 에서 `ResultScreen.OldBattle.cs` 로 떼었다가 unit 9 에서 지웠다 — 이력.)
 
         // battle-core-rebuild unit 8a — 새 전투 코어의 성적(`MatchOutcome`)을 **직접** 받는다.
         // 5c 는 `MatchOutcome → MatchTally` 어댑터 한 줄로 이었고(`CoreMatchOutcomePresenter`),
-        // 그 어댑터를 여기서 걷는다. 옛 씬 경로가 아직 `MatchTally` 로 부르므로 **두 입구가 한동안
-        // 공존한다** — 둘 다 아래 `Render` 하나로 모여 화면이 두 벌이 되지 않는다. `MatchTally`
-        // 입구는 옛 씬과 함께 unit 9 에서 지운다.
+        // 그 어댑터를 여기서 걷는다. 옛 씬의 `MatchTally` 입구와 한동안 공존했고(둘 다 아래 `Render`
+        // 하나로 모였다), 그 입구는 옛 씬과 함께 unit 9 에서 지웠다(이력).
         //
         // ⚠ 히어로 숫자의 단위 「기」는 1킬 = 1점(`KillScoreTimed`)을 전제한다. 웨이브·밀리초가
         // 점수인 모드는 이 단위가 거짓이 된다 — 모드 선택 UI 와 같이(5c 후속 후보).

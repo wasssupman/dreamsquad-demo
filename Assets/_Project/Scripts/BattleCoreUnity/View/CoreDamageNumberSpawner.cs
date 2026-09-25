@@ -6,9 +6,8 @@ using Wassup.Presentation;
 
 namespace Wassup.BattleCoreUnity.View
 {
-    // Prefab-only floating damage-number layer, mirroring VfxSpawner. BattleBridge
-    // holds a SerializeField reference and calls Spawn() when draining
-    // DamageNumberEvents. Pools popups to avoid GC spikes under heavy fire.
+    // Prefab-only floating damage-number layer, mirroring VfxSpawner. Subscribes to
+    // core damage events through `BattleDriver` and calls Spawn() per event. Pools popups to avoid GC spikes under heavy fire.
     //
     // Placement (damage-number-visual-upgrade unit 0):
     //  - Head anchor is applied in VIEW space (post-ToView, world-up) — sim-Y is
@@ -18,7 +17,7 @@ namespace Wassup.BattleCoreUnity.View
     //    board tilt; a deterministic upward-biased spiral finds the nearest free cell.
     //
     // Impact spark (unit 3):
-    //  - Spawn is called per-event during BattleBridge drain; it only accumulates the
+    //  - Spawn is called per core damage event; it only accumulates the
     //    frame's spawn positions. LateUpdate clusters them and plays ONE pooled spark
     //    per cluster (mobile draw-call safe — not one particle per number). Pure
     //    presentation: no ECS access, no new event channel.

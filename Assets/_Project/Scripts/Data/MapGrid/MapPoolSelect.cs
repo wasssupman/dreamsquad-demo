@@ -3,7 +3,7 @@ namespace Wassup.Data.MapGrid
     /// <summary>
     /// 맵 풀에서 seed 로 엔트리 인덱스를 결정론적으로 고르는 순수 함수(random-map-pool unit 0).
     /// 아키텍처 무참조 — UnityEngine/Entities 를 참조하지 않는다(MatchSeed 선례, 제약 10).
-    /// 라이브 선택 seed 는 BattleBridge 의 로컬 map seed(fixedMapSeed override → DeriveMapSeed(matchSeed)).
+    /// 라이브 선택은 `MatchDefinitionBuilder.TrySelectEncounter` 가 한다(옛 BattleBridge 로컬 map seed 의 후계).
     /// </summary>
     public static class MapPoolSelect
     {

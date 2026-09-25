@@ -11,7 +11,7 @@ namespace Wassup.BattleCoreUnity.View
     // 컴파일은 통과하고 버그만 남는 종류다. MonoBehaviour 파생이면 이 문제가 애초에 없고,
     // 소비처가 쓰는 transform/gameObject/GetComponent 도 그대로 닿는다.
     //
-    // 멤버는 소비 seam(BattleBridge·DefenderRetireFlight·DefenderRelocationController·PlayMode 테스트)이
+    // 멤버는 소비 seam(뷰 풀·DefenderRetireFlight·DefenderRelocationController·PlayMode 테스트)이
     // **실제로 호출하는 것**만이다. CoreSpineUnitView 의 public 표면에서 뺀 것:
     //   Spawn — 백엔드별 시그니처(풀이 concrete 로 부른다)
     //   SetLoopOverride / ClearLoopOverride — Spine 애니 **이름 문자열** API. 스프라이트에 대응 축이 없다.

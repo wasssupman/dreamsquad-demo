@@ -20,8 +20,8 @@ namespace Wassup.UI
     // 유닛↔패널의 공간적 연결은 **리티클**이 진다(README 계약 11) — 그래서 리티클은 간소화하되
     // 없애지 않는다.
     //
-    // 뷰는 Entity/BattleBridge 를 모른다 — 컨트롤러가 이름·포트레이트·스탯·부착을 해석해 넘긴다.
-    // battle-core-rebuild unit 8d — 옛 씬 안내만 읽던 창 하나는 `DcInspectPanelView.OldBattle.cs` 로 떼었다(unit 9 가 지운다).
+    // 뷰는 전투 상태를 모른다 — 컨트롤러가 이름·포트레이트·스탯·부착을 해석해 넘긴다.
+    // battle-core-rebuild unit 8d — 옛 씬 안내만 읽던 창 하나는 `DcInspectPanelView.OldBattle.cs` 로 떼었다가 unit 9 에서 파일째 지웠다(이력).
     public class DcInspectPanelView : MonoBehaviour
     {
         private const int PanelSortingOrder = 9; // SquadPrep(8) 위, MenuPopup(960) 아래

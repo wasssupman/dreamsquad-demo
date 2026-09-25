@@ -66,7 +66,7 @@ namespace Wassup.Data
         }
 
         // ratio → tint Color. ratio 는 clamp[0,1] + NaN(=max<=0 division) 가드 후 gradient 평가.
-        // 뷰는 이 메서드를 모른다 — BattleBridge 가 호출해 Color 만 뷰에 넘긴다.
+        // 뷰는 이 메서드를 모른다 — `CoreUnitViewPool` 이 호출해 Color 만 뷰에 넘긴다.
         // NaN-safe [0,1] 정규화 — Mathf.Clamp01(NaN)==NaN 트랩 회피. 체력 표기 전역 단일 정의
         // (SO evaluator 3종 + 뷰의 fill 계산이 공유). NaN → 0(빈사).
         public static float SafeRatio01(float ratio)

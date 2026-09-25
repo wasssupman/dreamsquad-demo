@@ -4,9 +4,9 @@ using Unity.Mathematics;
 
 namespace Wassup.Data
 {
-    // Phase 10: 판 1회용 맵 데이터. BattleBridge 가 owner.
+    // Phase 10: 판 1회용 맵 데이터(옛 owner 는 BattleBridge — 이력).
     // map-diorama-stage — 생산자는 DioramaMapBuilder.Assemble(스테이지 스캔). 연결성 실패는 하드 실패
-    // (BuildFallbackLinear 폴백 은퇴 — 테스트 픽스처 빌더로만 잔존).
+    // (BuildFallbackLinear 폴백 은퇴 — 테스트 픽스처 빌더도 9d 에서 지웠다).
     public struct GeneratedMap : IDisposable
     {
         public NativeArray<MapTileType> tiles;   // gridSize.x * gridSize.y

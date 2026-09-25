@@ -31,19 +31,19 @@ namespace Wassup.Data
 
     // Trajectory mode. Homing tracks the target entity (legacy). BallisticToCell
     // lobs an arc to the target's cell locked at fire time and resolves as a
-    // tile-AOE. BattleBridge maps this to (MovementKind, PayloadKind) at convert.
+    // tile-AOE. `CombatDefinitionBuilder` maps this into the projectile definition table.
     public enum ProjectileFlightMode
     {
         Homing,
         BallisticToCell,
         // defender-directional-volley unit 1 — 방향 벡터 직선 비행 + 경로 스윕 히트.
-        // 타겟 엔티티/착탄 셀 없음. BattleBridge 가 (DirectionalLinear, PathHit) 로 매핑.
+        // 타겟 엔티티/착탄 셀 없음. 정의표 빌더(`CombatDefinitionBuilder`)가 직선 비행 + 경로 히트로 매핑.
         Directional,
         // projectile-emission-pattern unit 1 — 3차 베지어 곡선 + 타겟 추적.
         // (BezierHomingToEntity, SingleSplash) 로 매핑.
         BezierHoming,
         // projectile-emission-pattern unit 4 — 낙하 텔레그래프 후 착탄 셀 AoE.
-        // 지금까지 이 축은 BattleBridge.ApplyMeteor 가 하드코딩으로만 만들었고
+        // 그 전까지 이 축은 옛 BattleBridge.ApplyMeteor 가 하드코딩으로만 만들었고(이력)
         // flightMode 어휘엔 없었다 — 발사 명세(패턴)가 데이터로 SkyFall 탄을
         // 지정할 수 있어야 하므로 개통한다. (SkyFall, TileAoe) 로 매핑.
         SkyFall,

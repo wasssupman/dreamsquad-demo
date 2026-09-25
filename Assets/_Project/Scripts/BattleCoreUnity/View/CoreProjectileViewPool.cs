@@ -9,8 +9,8 @@ using Wassup.Data;
 
 namespace Wassup.BattleCoreUnity.View
 {
-    // BattleBridge가 ECS 상태를 Presentation 값으로 번역한 프레임 스냅샷.
-    // CoreProjectileViewPool은 EntityManager/Component에 직접 접근하지 않는다.
+    // 코어 탄 상태를 Presentation 값으로 번역한 프레임 스냅샷.
+    // CoreProjectileViewPool 은 코어 상태를 직접 쓰지 않는다.
     public struct CoreProjectileViewFrame
     {
         public float3 simPosition;

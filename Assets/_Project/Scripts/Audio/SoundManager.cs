@@ -6,7 +6,7 @@ namespace Wassup.Core
     // TRD §5.2). Scene-local (BattleScene). Round-robins a small AudioSource pool for
     // overlapping one-shots (score tick, projectile fire) + a dedicated looping BGM
     // source. All clips are authored-time assets (ElevenLabs) played locally — no
-    // runtime API calls. BGM auto-plays during the Battle phase (GameManager.PhaseChanged).
+    // runtime API calls. BGM auto-plays during the Battle phase (pushed by `CorePhaseFeed` via SetPhase).
     public class SoundManager : MonoBehaviour
     {
         public static SoundManager Instance { get; private set; }
@@ -130,10 +130,8 @@ namespace Wassup.Core
         }
 
         // battle-core-rebuild unit 8a — 페이즈 **push**. `CameraDirector.SetPhase` 와 같은 단방향 계약이다.
-        // 새 전투 코어의 씬에는 `GameManager` 가 없어(매니저를 두지 않는 것이 그쪽의 절대 제약) 위
-        // 구독이 성립하지 않고, 그러면 BGM 이 영영 안 켜진다. 새 씬에서는 `CorePhaseFeed` 가 민다.
-        // 두 입력(구독 + push)이 공존해도 마지막에 민 쪽이 이기므로 옛 씬의 거동은 무변이다 —
-        // 구독은 unit 9 에서 옛 씬과 함께 지운다.
+        // 페이즈의 유일한 입력이다 — `CorePhaseFeed` 가 민다. 새 전투 씬에는 매니저가 없다(그쪽의 절대 제약).
+        // 옛 씬의 `GameManager.PhaseChanged` 구독은 unit 9 에서 옛 씬과 함께 지웠다(이력).
         public void SetPhase(GamePhase phase) => OnPhaseChanged(phase);
 
         /// <summary>BGM 이 지금 울리고 있나. 테스트가 「전투 중에만 BGM」을 증언하는 창이다.</summary>

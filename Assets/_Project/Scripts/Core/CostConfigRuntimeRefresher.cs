@@ -10,8 +10,8 @@ namespace Wassup.Core
     // sheet-export-push unit 7 — dev/QA 런타임 refresher. 로비에서 CostConfig 탭을
     // fetch 해 코스트 경제 SO 를 메모리에서 갱신한다(에셋 저장 없음, 재시작 시 원복).
     // DcSheetRuntimeRefresher 형제 — IRuntimeRefresher 3번째 구현체.
-    // 반영 시점: GameManager 는 battle-scoped 라 Awake 에서 CostRuntime.Configure 를
-    // 다시 호출한다 → 로비에서 누른 refresh 는 "다음 전투부터" 적용된다(형제들과 동일).
+    // 반영 시점: 판마다 `MatchDefinitionBuilder` 가 모드의 `costConfig` 를 정의표로 다시 읽는다
+    // → 로비에서 누른 refresh 는 "다음 전투부터" 적용된다(형제들과 동일).
     public class CostConfigRuntimeRefresher : MonoBehaviour, IRuntimeRefresher
     {
         // 탭명 contract-fixed (docs/spec/sheet-export-push/7_costconfig_tab.md).

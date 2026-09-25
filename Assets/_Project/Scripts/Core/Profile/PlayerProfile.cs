@@ -7,7 +7,7 @@ namespace Wassup.Core
     // JSON by ProfileStore. Unit/card references use stable string ids
     // (DefenderUnitData.id), never asset GUIDs or list indices.
     //
-    // battle-core-rebuild unit 8d — 옛 씬만 쓰는 필드 하나는 `PlayerProfile.OldBattle.cs` 에 떼어 두었다(unit 9 가 파일째 지운다).
+    // battle-core-rebuild unit 8d — 옛 씬만 쓰는 필드 하나는 `PlayerProfile.OldBattle.cs` 에 떼어 두었다가 unit 9 에서 파일째 지웠다(이력).
     [Serializable]
     public class PlayerProfile
     {
@@ -25,7 +25,7 @@ namespace Wassup.Core
         // 매치 이력. 안내 진행이 **아니었기 때문에** 그것과 함께 죽지 않았고, 지금은
         // 「이 계정의 첫 판인가」의 유일한 소유자다 — OutgameMenuController.IsFirstMatch 가
         // 이걸 읽어 첫 판을 토너먼트에 올리지 않는다(서버 `complete` 500 우회).
-        // GameManager 가 **판이 끝날 때** 1 올린다 — 호출처 둘: SetPhase(Result) 와 MenuPopup 의 나가기.
+        // `CoreMatchOutcomePresenter.RecordMatchPlayed` 가 **판이 끝날 때** 1 올린다 — 호출처 둘: 결과로 끝난 판과 메뉴의 나가기(`AbandonAndLeave`).
         public int matchesPlayed;
 
         // Units are not profile-owned — all catalog units are always available

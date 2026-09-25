@@ -14,8 +14,8 @@ namespace Wassup.Presentation
     // 씬의 Main Camera 포즈는 런타임에 읽지 않는다 — 에디터 미리보기 전용이다.
     //
     // 실행 순서 계약: LateUpdate 에서 카메라를 읽는 소비자(빌보드/데미지넘버/드래그 프리뷰,
-    // 전부 order 0)보다 항상 먼저 최종 포즈를 확정해야 한다 → 음수 order. 단 GameManager(-100)
-    // 보다는 뒤(-90) — Start 순서가 결정적이 되어 씬 시작 페이즈를 항상 스냅으로 잡는다.
+    // 전부 order 0)보다 항상 먼저 최종 포즈를 확정해야 한다 → 음수 order(-90). 옛 씬의 GameManager(-100)
+    // 보다 뒤였던 것이 이 값의 유래다(이력) — Start 순서가 결정적이 되어 씬 시작 페이즈를 항상 스냅으로 잡는다.
     // 구 CameraImpactKick 의 self-cancel 패턴은 매 프레임 절대 쓰기 소유자와 양립 불가
     // (revert 가 이중 차감이 됨)라서 킥을 채널로 흡수하고 해당 컴포넌트는 은퇴.
     [DefaultExecutionOrder(-90)]
@@ -42,7 +42,7 @@ namespace Wassup.Presentation
         private Quaternion _lastSolvedRot = Quaternion.identity;
         private float _lastSolvedFov;
 
-        // unit 11 — 보드 bounds 는 맵 빌드 때 BattleBridge 가 밀어준다. Director 가 맵이나
+        // unit 11 — 보드 bounds 는 맵 빌드 때 `CorePhaseFeed` 가 밀어준다. Director 가 맵이나
         // 브리지에서 당겨오지 않는다(경계 우회의 입구). 없으면 카메라를 건드리지 않는다.
         private Bounds _boardBounds;
         private bool _hasBoardBounds;
@@ -144,10 +144,9 @@ namespace Wassup.Presentation
         }
 
         // battle-core-rebuild 5b — 페이즈 **push**. `SetBoardBounds` 와 같은 단방향 계약이다
-        // (Director 가 남의 상태를 당겨오지 않는다). 새 전투 코어의 씬에는 `GameManager` 가
-        // 없으므로 — 매니저를 두지 않는 것이 그쪽의 절대 제약이다 — 위 구독이 성립하지 않고,
-        // 그러면 `_currentPhase` 가 `None` 에 굳어 **배치 레시피가 영영 안 걸린다.**
-        // 두 입력이 공존해도 마지막에 민 쪽이 이기므로 옛 씬의 거동은 무변이다.
+        // (Director 가 남의 상태를 당겨오지 않는다). 페이즈의 유일한 입력이다 — `CorePhaseFeed` 가 민다.
+        // 밀지 않으면 `_currentPhase` 가 `None` 에 굳어 **배치 레시피가 영영 안 걸린다.**
+        // 옛 씬의 `GameManager.PhaseChanged` 구독은 unit 9 에서 옛 씬과 함께 지웠다(이력).
         public void SetPhase(Wassup.Core.GamePhase phase) => OnPhaseChanged(phase);
 
         // unit 11 — 페이즈 7종을 카메라 상태 2종으로 접는다.
@@ -287,7 +286,7 @@ namespace Wassup.Presentation
             return null;
         }
 
-        // unit 11 — 보드 bounds 입력. 맵 빌드 직후 BattleBridge 가 한 번 밀어준다.
+        // unit 11 — 보드 bounds 입력. 맵 빌드 직후 `CorePhaseFeed` 가 한 번 밀어준다.
         //
         // 구 FrameBoard 는 fit 계산 + 홈 쓰기 + DoF 구동 + aspect 기억 네 가지를 겸했다.
         // 이제 포즈는 매 프레임 상태 레시피에서 계산되므로 여기는 **입력 저장 하나**만 한다.

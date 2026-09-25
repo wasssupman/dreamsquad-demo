@@ -17,9 +17,9 @@ namespace Wassup.Data
         public bool useGeneratedWaves = true;
         // wave-pattern unit 6(2026-07-20): 비0 = 라이브 고정 오버라이드 — 매판 동일 공격 패턴
         // (테스트 버전). 브리핑 스트립(Generate(deck))과 런타임이 같은 플랜을 공유하게 된다.
-        // 0 = GameManager.matchSeed 파생(MatchSeed.DeriveWaveSeed, 매판 랜덤).
+        // 0 = 판 시드 파생(MatchSeed.DeriveWaveSeed, 매판 랜덤).
         // ResolveWaveSeed 의 0→1 폴백은 레거시 Generate(deck) 오버로드(프리뷰/테스트) 전용 —
-        // 라이브 분기는 0 판별이 필요하므로 waveSeed 필드를 직접 본다(BattleBridge).
+        // 라이브 분기는 0 판별이 필요하므로 waveSeed 필드를 직접 본다(`MatchDefinitionBuilder`).
         public int waveSeed = 0;
         public int waveGeneratorVersion = 1;
         public AttackUnitData[] attackUnitPool;
@@ -64,7 +64,7 @@ namespace Wassup.Data
         // 전멸로 리셋되는 카운터가 「빠른 안정화 → 더 일찍 투입할 선택권」을 그대로 구현하고,
         // 막으려던 것(무한 스태킹)도 같은 값으로 잡힌다.
         //
-        // 0 이하는 «당김 금지»가 아니라 폴백이다(BattleBridge.MaxPullsPerClear) — 저작 누락이
+        // 0 이하는 «당김 금지»가 아니라 폴백이다(코어 `EffectiveMaxPullsPerClear` · 옛 BattleBridge.MaxPullsPerClear 의 후계) — 저작 누락이
         // 조용히 기능을 끄면 «버튼이 안 먹는다»의 원인을 찾을 수 없다.
         [Tooltip("필드를 비운 뒤 당길 수 있는 최대 횟수. 전멸하면 0으로 리셋. 0 이하=폴백 3.")]
         public int maxPullsPerClear = 3;

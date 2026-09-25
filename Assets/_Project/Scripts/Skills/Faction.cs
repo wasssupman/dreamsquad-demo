@@ -41,7 +41,7 @@ namespace Wassup.Skills
     }
 
     // 파생 그룹 — 저작·술어가 읽는 이름. int 로 두어 사용처에서 캐스트가 늘지 않게 한다.
-    // 프로덕션 소비처(2026-08-09 기준): AnyUnit = 도발 범위 게이트(AggroStateSystem) ·
+    // 프로덕션 소비처(2026-08-09 기준 — 옛 전투 이름, 이력): AnyUnit = 도발 범위 게이트(AggroStateSystem) ·
     // AnyCore/AnyInstinct = 거점 종류 파생(StructurePlacements) · AnyEnemy = 공격형 판별
     // (BattleBridge.Dreamcatcher). AnyStructure/AnyDefender 는 분류 선언 + 테스트 소비만 —
     // 최후순위 판정이 쓰다가 계약 4 폐기(38b051f8)로 소비처를 잃었다. 술어를 위한 추상

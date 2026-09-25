@@ -6,7 +6,7 @@ namespace Wassup.Presentation
 {
     // map-diorama-stage unit 6 — 스폰/골 마커 **공용** 프랍(포탈) 설치자. 사용자 결정(2026-08-27): 포탈 프랍은 맵에 상관없이
     // 공유한다 — 스테이지 프리팹은 마커만 두고, 스테이지가 켜지면(MapStage.Enabled) visualRoot 가 빈 마커에 스타일의 프랍을 얹는다.
-    // Mono↔Mono 연출이라 BattleBridge(ECS 창구)를 거치지 않는다. 프랍은 마커의 자식이라 스테이지 teardown 이 함께 지운다.
+    // Mono↔Mono 연출이라 전투 코어를 거치지 않는다. 프랍은 마커의 자식이라 스테이지 teardown 이 함께 지운다.
     // 프리팹이 visualRoot 를 직접 채웠으면(맵 전용 연출) 그쪽이 이긴다.
     // 타이밍: Instantiate 중 OnEnable 이 동기로 불리므로 브리지가 마커 등록부(앵커·균열·스트레스 훅)를 읽기 전에 visualRoot 가 차 있다
     // (스테이지 루트가 활성일 때만 — 비활성 루트는 OnEnable 도 등록부도 없다). GoalMarker 는 visualRoot 가 바뀌면 렌더러 캐시를 다시 짓는다.

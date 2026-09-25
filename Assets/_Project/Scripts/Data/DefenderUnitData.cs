@@ -277,8 +277,8 @@ namespace Wassup.Data
         public int aggroCapacity = 0;
 
         // Phase 8: Spine skeleton skin + animation names. When spineSkinName is
-        // empty or skeletonDataAsset is null, BattleBridge falls back to the
-        // Phase 5 billboard path, so skeletons can be rolled out incrementally
+        // empty or skeletonDataAsset is null, the view pool falls back to a
+        // non-Spine backend, so skeletons can be rolled out incrementally
         // one unit type at a time without breaking the rest of the roster.
         [Header("Phase 8 — Spine")]
         public SkeletonDataAsset skeletonDataAsset;

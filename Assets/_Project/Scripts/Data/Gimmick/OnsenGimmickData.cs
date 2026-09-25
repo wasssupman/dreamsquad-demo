@@ -7,7 +7,7 @@ namespace Wassup.Data
     //     healPercent 만큼 회복하되, 스택이 flipThreshold 를 초과하면 같은 크기의 손실로 반전
     //     (lossPercent, HP 1 바닥 — 열기는 아무도 못 죽인다). "열기"는 스택 명칭일 뿐, 별도
     //     스탯 디버프 없음.
-    // ECS 소비는 OnsenGimmickConfig 로 복사돼 들어간다 (BattleBridge 주입 seam).
+    // 판마다 `MatchDefinitionBuilder` 가 모드의 기믹 풀에서 정의표로 옮긴다(옛 ECS 주입 seam 은 이력).
     [CreateAssetMenu(fileName = "Gimmick_Onsen", menuName = "Wassup/Gimmick/Onsen", order = 42)]
     public sealed class OnsenGimmickData : GimmickData
     {

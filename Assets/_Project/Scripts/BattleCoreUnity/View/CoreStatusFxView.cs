@@ -6,7 +6,7 @@ using Wassup.Presentation;
 namespace Wassup.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 6c — 옛 `Presentation.StatusFxView` 의 **키 타입만 바꾼 복사본**이다
-    // (`Entity` → `SimEntityId`). 옛 것은 unit 9 까지 옛 전투가 쓴다(5a 의 `UnitView` 복사와 같은 처분).
+    // (`Entity` → `SimEntityId`). 옛 것은 unit 9 에서 옛 전투와 함께 지웠다(5a 의 `UnitView` 복사와 같은 처분 — 이력).
     // 그림 규칙(프리팹 · 절차 글리프 폴백 · 빌보드 · LateUpdate 추종)은 한 줄도 안 바꿨다.
     //
     // unit-status-fx Unit 1 — 상태 연출 뷰(구 AggroIconView 일반화). registry 프리팹을

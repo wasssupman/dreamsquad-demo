@@ -5,7 +5,7 @@ using Wassup.Data;
 namespace Wassup.Presentation
 {
     // unit-health-display unit 3 — 방어유닛 타일 게이지 레이어. cell 키로 게이지 뷰를
-    // 풀링/관리한다. BattleBridge 가 defender 폴링에서 Set, 사망에서 Hide, teardown 에서 Clear.
+    // 풀링/관리한다. 옛 전투에선 BattleBridge 가 Set/Hide/Clear 를 불렀다 — 지금 호출처 0(이력).
     // 만피(hideWhenFull)면 자동 Hide — 배치 직후 바닥 클러터 방지.
     public class TileHealthGaugeLayer : MonoBehaviour
     {

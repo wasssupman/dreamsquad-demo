@@ -78,7 +78,7 @@ namespace Wassup.Data
         public readonly int swarmIndex;
         public readonly int laneIndex;
         // duel-route-tours unit 1 — 이 스폰을 만든 그룹의 경로 지정. -1 = 무지정.
-        // 스폰(BattleBridge)과 예고(BuildSpawnGuideForecasts)가 **같은 값**을 읽어야 하므로
+        // 스폰(`MatchDefinitionBuilder` 가 정의표로 옮긴다)과 예고(BuildSpawnGuideForecasts)가 **같은 값**을 읽어야 하므로
         // 여기까지 실어 나른다 — 예고 쪽에서 그룹을 역추적하면 규칙이 두 벌이 된다.
         public readonly int pathIndex;
 

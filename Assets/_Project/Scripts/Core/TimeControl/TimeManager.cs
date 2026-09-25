@@ -6,8 +6,8 @@ namespace Wassup.Core.TimeControl
 {
     // 도메인 스코프 시간 스케일의 단일 소유자.
     //
-    // 의도된 예외적 싱글턴 — 프로젝트 제약 #5(Manager 싱글턴은 GameManager 1개)의
-    // 명시적 예외. 시간 제어는 전투 시뮬(ECS)·BattleBridge 웨이브/타이머·전투 표현·UI
+    // 의도된 예외적 싱글턴 — 프로젝트 제약 #5(Manager 싱글턴 제한)의
+    // 명시적 예외. 시간 제어는 전투 틱 발행(`BattleDriver`)·전투 표현·UI
     // 다수 계층에 걸쳐 널리 소비되므로 단일 권한이 필요하다. TRD 섹션 5 에 기록.
     //
     // 순수 C# 싱글턴(MonoBehaviour 아님): 자체 Update 가 없다. 스케일은 요청 목록에서

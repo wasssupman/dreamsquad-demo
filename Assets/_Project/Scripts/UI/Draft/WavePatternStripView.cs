@@ -61,7 +61,7 @@ namespace Wassup.UI.Draft
 
         // ── Public API ────────────────────────────────────────────────────────
 
-        // (옛 씬의 덱 경로 `RebuildFromDeck` 는 8c 에서 `WavePatternStripView.OldBattle.cs` 로 떼었다 — unit 9 가 지운다.)
+        // (옛 씬의 덱 경로 `RebuildFromDeck` 는 8c 에서 `WavePatternStripView.OldBattle.cs` 로 떼었다가 unit 9 에서 지웠다 — 이력.)
 
         // random-map-pool unit 6 — 외부(draft)에서 실전과 동일한 플랜을 넘겨 프리뷰를 만든다.
         // plan.waves==null(default) 이면 build+clear 만(빈 프리뷰).

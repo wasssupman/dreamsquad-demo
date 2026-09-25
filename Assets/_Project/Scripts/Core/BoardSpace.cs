@@ -14,7 +14,7 @@ namespace Wassup.Core
         private static float _tileSize = 1f;
         private static GridLayout _grid;
 
-        // BattleBridge 맵 빌드 시 1회 호출. 정적 상태 쓰기는 이 메서드가 유일하다.
+        // `CoreBoardPlane` 이 맵 빌드 시 1회 호출. 정적 상태 쓰기는 이 메서드가 유일하다.
         // grid 없는 잘못된 구성은 받지 않는다 — 마지막 유효 구성을 유지하고 명시 에러.
         // (identity 폴백 모드는 legacy-render-removal unit 3 에서 제거. 사용 전 Configure 가 계약.)
         public static void Configure(float3 simOrigin, float tileSize, GridLayout grid)

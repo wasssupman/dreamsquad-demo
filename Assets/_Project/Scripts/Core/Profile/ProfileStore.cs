@@ -104,7 +104,7 @@ namespace Wassup.Core
         // design) with normalized 7-slot arrays, and a valid selection.
         // rev 2026-06-05: seed a PLAYABLE starter squad. A fresh install (or a device
         // that ran an earlier build and saved an empty squad) would otherwise resolve
-        // to an empty squad, and GameManager.Start falls back to the legacy draft.
+        // to an empty squad, and the old battle entry (GameManager.Start, retired) fell back to the legacy draft.
         // Filling the selected squad from owned units when it is empty makes the build
         // enter squad mode out of the box.
         static void EnsureDefaultSquad(PlayerProfile p, DefenderCatalog catalog)

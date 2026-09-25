@@ -5,7 +5,7 @@ namespace Wassup.Core
     // wave-authoring-test-mode unit 3 — 아웃게임 "테스트 모드" 진입 carry-in.
     // 판을 짓는 컴포넌트가 비영속(씬 전환 시 teardown)이라 씬 경계는 static 으로 넘긴다.
     // 아웃게임 버튼(unit 4)이 Set, 새 전투 씬의 진입 해석(`BattleCoreUnity.MatchEntry.ConsumeTestMode`, battle-core-rebuild
-    // unit 8b)이 읽고 즉시 Clear(1회 소비). 옛 `GameManager.Start` 도 같은 방식으로 읽는다(unit 9 까지).
+    // unit 8b)이 읽고 즉시 Clear(1회 소비). 옛 `GameManager.Start` 도 같은 방식으로 읽었다(unit 9 에서 퇴역 — 이력).
     public static class TestModeContext
     {
         public static bool Active { get; private set; }
@@ -42,7 +42,7 @@ namespace Wassup.Core
             var plan = UnityEditor.AssetDatabase.LoadAssetAtPath<WavePlanAsset>(path);
             if (plan != null)
             {
-                Set(plan, null); // 디펜더는 GameManager 가 저장 스쿼드 반입(없으면 프리셋 폴백)
+                Set(plan, null); // 디펜더는 `MatchEntry` 가 저장 스쿼드 반입(없으면 프리셋 폴백)
                 UnityEngine.Debug.Log($"[TestModeContext] 에디터 테스트 캐리 적용 — plan='{plan.displayName}'.");
             }
         }

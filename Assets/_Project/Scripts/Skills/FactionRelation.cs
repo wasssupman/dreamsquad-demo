@@ -37,8 +37,8 @@ namespace Wassup.Skills
 
         // 진영 폴백 정책. **이 4단 체인이 정본이다.**
         //
-        // 투트랙 리뷰 M3 — 오늘 이 결정이 두 곳에 복제돼 있다(`FactionQuery`=ECS lookup,
-        // `BattleBridge.FactionOfEntity`=managed `_em`). 브리지엔 `ComponentLookup` 이
+        // 투트랙 리뷰 M3 — 옛 전투에선 이 결정이 두 곳에 복제돼 있었다(`FactionQuery`=ECS lookup,
+        // `BattleBridge.FactionOfEntity`=managed `_em` — 둘 다 unit 9 에서 퇴역, 이력). 브리지엔 `ComponentLookup` 이
         // 없어 **호출 방식**의 복제는 구조적으로 강제되지만, **결정 자체**는 그럴 이유가
         // 없다. 순수하게 빼서 양쪽이 이 함수를 부른다 — 한쪽만 고치면 조용히 갈리는
         // 자리였다(제약 10 의 (a) 비자명 분기 + (b) 호출처 2+).

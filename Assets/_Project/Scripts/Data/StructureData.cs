@@ -40,7 +40,7 @@ namespace Wassup.Data
         // ⚠ **연속 반지름**(distance-based-range unit 9) — 타일 길이 단위.
         [Min(0f)] public float attackRange = 3f;
         // unit 12 (계약 1 rev 3) — 몸 반경 저작은 은퇴. 거점의 footprint 는 **진영이 정하므로**
-        // (`StructurePlacements.FootprintOf`) SO 가 알 수 없고, bake(BattleBridge)가 점유 내접원
+        // (`StructurePlacements.FootprintOf`) SO 가 알 수 없고, 정의표 빌더(`MatchDefinitionBuilder`)가 점유 내접원
         // `FootprintOf(faction)/2` 로 파생한다 — 본능 3×3 → 1.5, 마음 1×1 → 0.5.
         [Min(0.01f)] public float attackCooldown = 1.5f;
         [Min(0f)] public float attackDamage = 10f;

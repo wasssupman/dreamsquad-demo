@@ -308,7 +308,7 @@ namespace Wassup.Data
 
         // elite-enemy-tier unit 0 — 등급 축. **BossTag·위협테이블·등장경보의 유일한 출처**다
         // (그 앞까지는 「nightmareMechanics 가 비어있지 않으면 곧 보스」였다 —
-        // BattleBridge.BakeNightmareMechanics). 폴백 Normal 이라 기존 에셋 17종 중 보스 3종에만
+        // 옛 BattleBridge.BakeNightmareMechanics — 이력). 폴백 Normal 이라 기존 에셋 17종 중 보스 3종에만
         // Boss 를 찍으면 무회귀다. 값 대역(stabilityDamage)과는 독립 축이다 —
         // 근거는 EnemyTier.cs 주석. Appended last (직렬화 back-compat).
         [Header("Tier")]

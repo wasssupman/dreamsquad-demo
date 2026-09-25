@@ -80,7 +80,7 @@ namespace Wassup.Core.Api
             => !string.IsNullOrEmpty(error)
                && error.IndexOf("cannot wait", StringComparison.OrdinalIgnoreCase) >= 0;
 
-        // GameManager.OnEnable 진입용(비게이트). 로비 발행 attempt 를 adopt 하거나,
+        // 판 진입용(비게이트 — `BattleDriver` 가 부른다). 로비 발행 attempt 를 adopt 하거나,
         // 로비를 거치지 않은 진입(TestMode/에디터 직접 Play)이면 상태만 리셋하고
         // **발행하지 않는다** (unit 8 — 결함 A: 개발/테스트 진입이 실서버 토너먼트
         // 엔트리를 만들지 않게). ReportResult/AbandonMatch 는 attemptId 부재로 자연
@@ -207,7 +207,7 @@ namespace Wassup.Core.Api
             // 부재는 위에서 걸러졌다). 그런데 덱이 비었으면 body 는 키가 빠진 `{}` 가 되어
             // 서버엔 점수만 쌓인다 — 예전엔 무성 실패라 "서버에 덱만 없다"를 추적할 단서가
             // 없었다. 완주 경로에서 이건 항상 이상이다(0점 마감의 빈 덱은 정상이라 그쪽엔
-            // 경고를 두지 않는다). 로거 미배선 자체는 GameManager.Awake 가 따로 경고한다.
+            // 경고를 두지 않는다). 로거 미배선 경고는 옛 GameManager.Awake 의 몫이었다(이력).
             if (string.IsNullOrEmpty(deckInfoJson))
                 Debug.LogWarning("[TournamentReporter] deckInfo 없음 — 점수만 제출된다(덱 스냅샷 누락).");
 

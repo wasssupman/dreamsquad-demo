@@ -69,7 +69,7 @@ namespace Wassup.Logging
             currentEntry.match.fixedSeed = fixedSeed;
         }
 
-        // 실제 맵 빌드에 사용된 시드로 덮어쓴다 (BattleBridge.fixedMapSeed 오버라이드,
+        // 실제 맵 빌드에 사용된 시드로 덮어쓴다 (고정 맵 시드 오버라이드,
         // 수동 MapDocument(-1) 포함). SetMatchSeeds 의 파생값은 빌드 전 추정치다.
         public void SetActualMapSeed(int seed)
         {
@@ -379,7 +379,7 @@ namespace Wassup.Logging
         }
 
         // Set the final battle outcome. Caller should invoke this before EndSession
-        // (typically on VICTORY / DEFEAT trigger inside BattleBridge).
+        // (old battle: VICTORY / DEFEAT inside BattleBridge — history; no live caller).
         public void SetResult(string outcome, int enemiesReachedGoal)
         {
             if (currentEntry == null) return;

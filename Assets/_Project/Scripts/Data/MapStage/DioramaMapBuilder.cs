@@ -223,7 +223,7 @@ namespace Wassup.Data
             }
 
             // unit 9 — 보너스 포탈 = 셀 사전순(y, x), 골과 같은 규약(저작 순서 비의존). 0개도 생성해
-            // 둔다(MapDocumentBuilder 와 동형) — 소비 측(BattleBridge.BonusWave)은 Length>0 으로 미저작을 읽는다.
+            // 둔다(MapDocumentBuilder 와 동형) — 소비 측(`MatchDefinitionBuilder` 의 보너스 스폰 번역)은 Length>0 으로 미저작을 읽는다.
             var sortedBonus = new List<Vector2Int>(scan.bonusSpawns);
             sortedBonus.Sort((a, b) => a.y != b.y ? a.y.CompareTo(b.y) : a.x.CompareTo(b.x));
             var bonusSpawns = new NativeArray<int2>(sortedBonus.Count, allocator);

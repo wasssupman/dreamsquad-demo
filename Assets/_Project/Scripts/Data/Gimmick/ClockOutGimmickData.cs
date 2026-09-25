@@ -6,7 +6,7 @@ namespace Wassup.Data
     // 룰1: 배치 유닛이 (원인 불문) 사망하면 그 배치 타일에 사직서를 드랍한다. (unit 8 재설계 —
     //      강제 퇴근 10초 타이머는 폐기; 배치 유닛이 강제로 사라지는 감성 문제 해소.)
     // 룰2: 사직서 resignationThreshold 장 모이면 소모 + Walk 타일 meteorCount 곳에 메테오 순차 낙하(적만).
-    // ECS 소비는 ClockOutGimmickConfig 로 복사돼 들어간다 (BattleBridge 주입 seam).
+    // 판마다 `MatchDefinitionBuilder` 가 모드의 기믹 풀에서 정의표로 옮긴다(옛 ECS 주입 seam 은 이력).
     [CreateAssetMenu(fileName = "Gimmick_ClockOut", menuName = "Wassup/Gimmick/ClockOut", order = 42)]
     public sealed class ClockOutGimmickData : GimmickData
     {

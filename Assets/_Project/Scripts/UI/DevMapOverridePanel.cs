@@ -7,7 +7,7 @@ namespace Wassup.UI
 {
     // map-play-feel unit 2 — 개발 확인용 맵 강제 스테퍼. 로비 DevOnlyGroup 아래에 두어
     // 개발 빌드/에디터에서만 노출된다(릴리스 APK 무노출). ◀ ▶ 로 풀 인덱스 순환, OFF 로 서버 시드 복귀.
-    // 값은 DevMapOverride(PlayerPrefs)에 저장 → 다음 배틀 진입 시 BattleBridge 가 최우선으로 읽는다.
+    // 값은 DevMapOverride(PlayerPrefs)에 저장 → 다음 배틀 진입 시 `BattleDriver` → `MatchDefinitionBuilder.TrySelectEncounter` 가 최우선으로 읽는다.
     public class DevMapOverridePanel : MonoBehaviour
     {
         // map-diorama-stage unit 2 — 문서 풀 → 스테이지 풀 교체 (구조·인덱스 의미 동일).

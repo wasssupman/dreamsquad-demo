@@ -100,7 +100,7 @@ namespace Wassup.BattleCoreUnity.View
             PlayIdleLooping();
 
             // tilted-billboard unit 0 — 틸트는 Billboard 컴포넌트가 소유. 스폰 시 1회 주입
-            // (tilemapBillboardTilt, BattleBridge 가 세팅).
+            // (틸트 값은 스폰할 때 풀이 넘긴다 — 옛 BattleBridge 미러의 후계).
             // 카메라 yaw 고정(0) 전제라 월드 X 틸트로 충분. ScaleX(좌우반전)는 skeleton 채널이라 독립.
             var billboard = gameObject.AddComponent<Billboard>();
             billboard.Setup(BillboardMode.Tilted, _knobs.CharacterBillboardTilt);
@@ -414,7 +414,7 @@ namespace Wassup.BattleCoreUnity.View
             }
         }
 
-        // unit-health-display unit 1 — 적 저체력 틴트. BattleBridge 가 HealthDisplayStyle 로
+        // unit-health-display unit 1 — 적 저체력 틴트. `CoreUnitViewPool` 이 HealthDisplayStyle 로
         // ratio→Color 를 평가해 주입한다(뷰는 SO 를 모른다). _dying 중엔 마지막 틴트를 유지해
         // 죽음 연출 색을 덮지 않는다. 알파는 건드리지 않음(RGB 만).
         public override void SetHealthTint(Color tint)
@@ -794,7 +794,7 @@ namespace Wassup.BattleCoreUnity.View
         private string ResolveBaseIdle() => ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
 
         // ---- unit 10: 유닛별 애니메이션 구조 -------------------------------------
-        // 뷰는 «언제»를 모른다. 조건(예: 소환물 생존)은 sim 사실이고 BattleBridge 가 읽어
+        // 뷰는 «언제»를 모른다. 조건(예: 소환물 생존)은 코어의 사실이고 뷰 풀이 읽어
         // 여기로 **이름만** 밀어 넣는다(절대 제약 1). 이 두 API 는 어떤 유닛에도 쓸 수 있다.
 
         private string _loopOverride;          // 활성 시 정지 자리를 대체하는 루프

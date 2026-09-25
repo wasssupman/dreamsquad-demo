@@ -76,7 +76,7 @@ namespace Wassup.Core
         }
 
         // Units that would actually reach the field. SquadDraw.Resolve owns "which
-        // ids deploy" (drop empties, de-dup, cap at FieldCount) and GameManager
+        // ids deploy" (drop empties, de-dup, cap at FieldCount) and MatchEntry
         // runs it at match start; re-deriving that here would let the gate and the
         // match disagree. The gate only adds what Resolve deliberately omits —
         // catalog resolution — so a squad of stale ids reads as 0, not 7.

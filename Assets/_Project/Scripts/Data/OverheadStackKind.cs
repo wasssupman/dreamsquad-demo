@@ -1,8 +1,8 @@
 namespace Wassup.Data
 {
     // unit-overhead-ui 확장(unit 6) — 오버헤드 스택 아이콘 종류(presentation 계층 심볼).
-    // Presentation 은 Battle.StackKind 를 참조하지 않으므로(overhead-ui 계약), gather(BattleBridge,
-    // unit 8)가 Battle.StackKind / HeatAccrual 을 이 enum 으로 번역해 뷰에 넘긴다. append-only.
+    // Presentation 은 Battle.StackKind 를 참조하지 않으므로(overhead-ui 계약), `CoreUnitOverheadUiLayer`
+    // 가 코어 스택 종류를 이 enum 으로 번역해 뷰에 넘긴다(옛 gather 는 BattleBridge — 이력). append-only.
     public enum OverheadStackKind : byte
     {
         Fatigue = 0,

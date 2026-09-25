@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Wassup.Core.Api
 {
     // outgame-login-gate Unit 0 — in-memory auth state. Not a MonoBehaviour
-    // manager (GameManager stays the only one); plain data holder, gone on app
+    // manager; plain data holder, gone on app
     // restart. Persistence (refresh token / user name) lives in PlayerPrefs on
     // the login view side.
     public static class UserSession

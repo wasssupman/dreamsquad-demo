@@ -5,9 +5,9 @@ namespace Wassup.BattleCoreUnity.View
     // battle-core-rebuild unit 6c — 옛 `Wassup.Battle.Effects.ResignationPresenter` 의 복사본. 바뀐 것은
     // 플레이스홀더 머티리얼(`Shader.Find` → `RuntimeMaterialFactory`) 하나다.
     //
-    // season-gimmick-clockout unit 1 — 사직서 뷰 (BattleBridge 가 엔티티↔GameObject 조정).
+    // season-gimmick-clockout unit 1 — 사직서 뷰 (`CoreResignationViewPool` 이 코어 개체↔GameObject 조정).
     // prefab 있으면 그걸, 없으면 절차적 플레이스홀더(흰 종이). idle 부양(unscaled — 정지/슬로우모 무관).
-    // 좌표는 BattleBridge 가 셀 월드중심(BoardSpace.ToView)으로 세팅. PickupPresenter 동형(단순화).
+    // 좌표는 `CoreResignationViewPool` 이 셀 월드중심(BoardSpace.ToView)으로 세팅. PickupPresenter 동형(단순화).
     public sealed class CoreResignationPresenter : MonoBehaviour
     {
         [SerializeField] private float bobAmplitude = 0.08f;
@@ -17,7 +17,7 @@ namespace Wassup.BattleCoreUnity.View
         private float _baseLocalY;
         private float _phase;
 
-        // BattleBridge 가 뷰 생성 직후 1회 호출. prefab null → 절차적 흰 종이.
+        // `CoreResignationViewPool` 이 뷰 생성 직후 1회 호출. prefab null → 절차적 흰 종이.
         public void Init(GameObject prefab, float baseLocalY)
         {
             if (_visual != null) return;

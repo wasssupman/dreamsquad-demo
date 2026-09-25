@@ -3,8 +3,8 @@ using UnityEngine;
 namespace Wassup.Presentation
 {
     // Phase 8 §13 — prefab-only VFX layer. Creates particle effects at world
-    // positions in response to ECS events drained by BattleBridge. Non-singleton;
-    // BattleBridge holds a SerializeField reference.
+    // positions. Non-singleton. (Old battle: driven by BattleBridge drains — history;
+    // the live battle VFX owner is `CoreVfxSpawner`.)
     //
     // Design notes:
     //   - Shuriken only (VFX Graph deliberately out of scope for Android compat).
@@ -236,7 +236,7 @@ namespace Wassup.Presentation
         }
 
         // goal-stability unit 5 — 골 붕괴 원샷. 루프형 벤더 프리팹이 와도 ConfigureOneShot
-        // 으로 단발화(공유 에셋 무접촉). 호출 = BattleBridge.DrainGoalCollapsedEvents.
+        // 으로 단발화(공유 에셋 무접촉). 옛 호출 = BattleBridge.DrainGoalCollapsedEvents(이력).
         public void SpawnGoalCollapse(Vector3 worldPos)
         {
             if (goalCollapsePrefab == null)
@@ -253,8 +253,8 @@ namespace Wassup.Presentation
             Destroy(go, lifetime);
         }
 
-        // elite-enemy-tier unit 4 — 드래곤 화염 브레스 원샷. 호출 = BattleBridge 의
-        // UnitAttackVisualEvents 드레인(브레스 플래그 분기).
+        // elite-enemy-tier unit 4 — 드래곤 화염 브레스 원샷. 옛 호출 = BattleBridge 의
+        // UnitAttackVisualEvents 드레인(브레스 플래그 분기 — 이력).
         //
         // ★**초판은 이 전부를 BattleBridge 안에 넣었다** — 프리팹 슬롯·Instantiate·정렬 변이·
         // Destroy 타이머·튜닝 knob 4개가 브리지에 있었다. 브리지는 ECS 창구이고 원샷 VFX 의

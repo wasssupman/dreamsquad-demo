@@ -6,10 +6,10 @@ namespace Wassup.BattleCoreUnity.View
     // unit 9 에 쓸려 간다). 바뀐 것은 **머티리얼 한 줄**뿐이다 — 옛 플레이스홀더는 `Shader.Find` + `new Material`
     // 이었고(추가 제약 위반 · 모바일 stripping 에서 null), 여기서는 `RuntimeMaterialFactory` 를 지난다.
     //
-    // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 (BattleBridge 가 엔티티↔GameObject 조정).
-    // BattleBridge 가 AddComponent 직후 Init 호출: modelPrefab(FBX 등) 있으면 그걸, 없으면
+    // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 (`CorePickupViewPool` 이 코어 개체↔GameObject 조정).
+    // `CorePickupViewPool` 이 AddComponent 직후 Init 호출: modelPrefab(FBX 등) 있으면 그걸, 없으면
     // 절차적 발광 큐브 플레이스홀더. 둘 다 동일하게 bob/spin idle 연출.
-    // 좌표는 BattleBridge 가 셀 월드중심(BoardSpace.ToView)으로 세팅.
+    // 좌표는 `CorePickupViewPool` 이 셀 월드중심(BoardSpace.ToView)으로 세팅.
     public sealed class CorePickupPresenter : MonoBehaviour
     {
         [SerializeField] private float bobAmplitude = 0.12f;
@@ -23,7 +23,7 @@ namespace Wassup.BattleCoreUnity.View
         // 모델을 정규화할 목표 월드 크기(최대 변) — FBX 네이티브 스케일 미지수를 auto-fit 으로 흡수.
         private const float TargetWorldSize = 0.8f;
 
-        // BattleBridge 가 뷰 생성 직후 1회 호출. modelPrefab null → 절차적 큐브.
+        // `CorePickupViewPool` 이 뷰 생성 직후 1회 호출. modelPrefab null → 절차적 큐브.
         // modelScale: auto-fit 결과에 곱하는 미세 배율(기본 1). baseLocalY: 지면 위 hover 기준.
         // overrideMaterial: FBX 임베디드 머티리얼(텍스처 미바인딩)을 덮어쓸 머티리얼(null=원본 유지).
         public void Init(GameObject modelPrefab, float modelScale, float baseLocalY, Material overrideMaterial)
