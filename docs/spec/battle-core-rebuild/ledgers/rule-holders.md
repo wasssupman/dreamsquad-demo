@@ -25,7 +25,7 @@
 
 규칙 아님(배선만): **67 메서드** (파일별 수는 각 절 끝).
 
-> **8c(2026-09-25) — 「실현 위치」 열.** 「새 주인」은 범주(담당자·뷰·입력)라 실체를 말하지 않는다. 그래서 행마다 그 규칙이 **지금 사는 심볼**을 코드로 대조해 적었다(`check_ledgers.py --owners` 가 남는 코드의 심볼로 해석되는지 본다). 「삭제」는 근거를 같이 적는다. **「미실현」 5행(T3·T13·T15·T16·T17)** 은 배정만 되고 새 층에 실체가 없던 것 — 처분은 8c 문서 「사용자·리드 결정 필요」.
+> **8c(2026-09-25) — 「실현 위치」 열.** 「새 주인」은 범주(담당자·뷰·입력)라 실체를 말하지 않는다. 그래서 행마다 그 규칙이 **지금 사는 심볼**을 코드로 대조해 적었다(`check_ledgers.py --owners` 가 남는 코드의 심볼로 해석되는지 본다). 「삭제」는 근거를 같이 적는다. **「미실현」 5행(T3·T13·T15·T16·T17)** 은 배정만 되고 새 층에 실체가 없던 것 — 처분은 8c 문서 「사용자·리드 결정 필요」. → **8a2(2026-09-25)가 5행 모두 실현했다**(심볼로 채움).
 
 ---
 
@@ -37,7 +37,7 @@
 |---|---|---|---|---|---|
 | T1 | 사거리 안으로 밝히는 칸은 **전투에서 실제로 닿는 칸과 같은 자를 쓴다** — 화면이 모양을 다시 그리지 않는다 | `SetPlacementRange` → `AttackReach.InReach` | 뷰 | `CoreMapOverlay.PaintRange` — 표식 판정은 `AttackReach.InReach` 호출만 | 도달 산식 자체는 순수 함수라 그대로 salvage(UML 머리말) · 제약 13 · **코어 밖 유일 판정 호출** |
 | T2 | 사거리 링의 반지름 = 사거리 + 내 몸. **상대의 몸은 더하지 않는다** — 그건 적의 그림자가 말한다 | `SetPlacementRange` → `ShowRangeRing` | 뷰 | `CoreMapOverlay.PaintRange` — 반지름 = 사거리 + 내 몸 | 그래야 「적 그림자가 링에 닿으면 사거리 안」이 판정식과 정확히 동치 |
-| T3 | 칸 채움은 표준 잡몹 크기를 가정한다 — 링보다 최대 0.25칸 바깥까지 칠해지는 것을 **감수한다**(칸은 크기를 표현 못 한다) | `SetPlacementRange` | 뷰 | 미실현 — 새 오버레이는 사거리를 링과 표식으로만 그리고 칸 채움이 없다(`CoreMapOverlay.PaintRange`) (8c 발견 · 처분 대기) | 칸은 배치 안내, 링은 판정 — 서로 다른 것을 말한다 |
+| T3 | 칸 채움은 표준 잡몹 크기를 가정한다 — 링보다 최대 0.25칸 바깥까지 칠해지는 것을 **감수한다**(칸은 크기를 표현 못 한다) | `SetPlacementRange` | 뷰 | `CoreMapOverlay.PaintRangeFill` — 칸 집합 = `AttackReach.InReach`(발밑 · 표준 잡몹 몸 `CoreDrawRadius.StandardTargetBodyTiles`) · 앵커 칸 제외 (8a2) | 칸은 배치 안내, 링은 판정 — 서로 다른 것을 말한다 |
 | T4 | 조준·착탄 예고의 링 반지름은 **판정 입력의 복사본**이고 표준 상대 항을 더하지 않는다 | `SetAreaRange` | 뷰 | `CoreMapOverlay.ShowAimRing` — 반경은 호출부 판정값 복사, 착탄 예고는 `ShowTelegraph` | 형제 경로(T2)와 같은 계약 |
 | T5 | 칸↔월드 정합의 권위는 `Grid` 하나다 — 셀 중심 기준(0.5) · 바닥에 눕힌 90° 회전 | `ConfigureGrid` · `CellCenterToWorld` | 뷰 | `CoreBoardPlane.Declare` — Grid 90° 눕힘 · `BoardSpace.Configure` | `BoardSpace.ToSim/ToView/RaycastPlane` 가 이 회전을 추종 · P4(입력)가 같은 평면을 읽는다 |
 | T6 | 격자의 위치를 옮기는 곳은 **한 곳뿐**이다(스테이지 정렬) | `AlignGridTo` | 뷰 | `CoreBoardPlane.Declare` — 격자 transform writer 하나 | writer 가 둘이면 프랍-논리 정렬이 조용히 깨지고 격자 기준 검증은 전부 통과한 채로 깨진다 |
@@ -47,11 +47,11 @@
 | T10 | 배치 미리보기와 확정 팝은 손끝 한 칸이 아니라 **유닛이 실제로 먹을 자리 전체**를 덮는다 | `SetPlacementHover(anchor,size,valid)` · `PulsePlacementHover(anchor,size,valid)` → `FootprintMath.Cells` | 뷰 | `CoreMapOverlay.PaintGhost` — footprint 전 칸 고스트 | 점유 자리의 소유자는 `PlacementService` — 뷰는 받기만 |
 | T11 | 「여기 놓을 수 있나」의 표시를 바꾸는 곳은 **한 함수뿐**이고 전이에만 반응한다 | `SetPlacementRangeValidity` | 뷰 | `CoreMapOverlay.ShowPlacement` — 유효성 입력 단일 창구 | ⚠ 순서 의존: `SetPlacementRange` 가 내부에서 `ClearPlacementRange` 를 먼저 부르므로 거기서 리셋하면 무효 영역을 훑는 동안 플래시가 연발한다 |
 | T12 | 놓을 수 없을 때 사거리는 **붉어지지 않고 채도만 떨어진다** — 빨강은 자리 충돌 전용 | `RangeTintColor` · `ApplyRingTint` | 뷰 | `CoreMapOverlay.PaintRange` — 부분: 무효 시 링 불변·마크만 숨김, 채도 저하 없음 | 한 색에 「왜 안 되나」와 「어디까지 닿나」를 겹치면 무효인 동안 사거리를 못 읽는다 |
-| T13 | 채움의 진하기는 링이 있느냐가 정한다(링 있으면 투명). **타일은 투명해도 계속 칠한다** — 「어느 칸이 사거리 안인가」를 묻는 소비자가 있다 | `RangeFillAlpha` · `IsPlacementRangeCell` | 뷰 | 미실현 — 사거리 채움·`IsPlacementRangeCell` read seam 없음(소비자 0) (8c 발견 · 처분 대기) | 자리 고스트가 사거리 칸을 비켜 가는 read seam · ⚠ 되돌리면 채움이 두 겹이 된다 |
+| T13 | 채움의 진하기는 링이 있느냐가 정한다(링 있으면 투명). **타일은 투명해도 계속 칠한다** — 「어느 칸이 사거리 안인가」를 묻는 소비자가 있다 | `RangeFillAlpha` · `IsPlacementRangeCell` | 뷰 | `CoreMapOverlay.IsPlacementRangeCell` — 논리 집합은 링이 있어도 참 · 칸 채움 알파 = 링 있으면 0(렌더러 없음) · 링 안 채움 한 겹 `CoreMapOverlay.PaintRangeFill`(`rangeFillAlphaUnderRing`) — 링과 채움을 한 곳이 그린다 (8a2) | 자리 고스트가 사거리 칸을 비켜 가는 read seam · ⚠ 되돌리면 채움이 두 겹이 된다 |
 | T14 | 마음(골)과 스폰 칸의 마커는 맵 정의에서 칠한다 — 마음은 목록 순회, 없으면 단일 폴백 | `PaintMarkers` | 뷰 | `GoalMarker` — 스테이지 프리팹 마커가 표시 겸 맵 원천(코드 도색 없음) | 원천은 `MapSnapshot.goals/spawns`(UML §3) |
-| T15 | 효과 타일이 칠해진 칸 목록은 **미러**다 — 소유권은 브리지에 있고 여기는 「보이는 곳」만 | `SetEffectTile` · `TryGetEffectTileAnchor` | 뷰 | 미실현 — 소유는 `PlacementService.ArmedEffectTiles`, 뷰 도색 소비처 0(효과 타일 미표시) (8c 발견 · 처분 대기) | 새 소유자 = `MapRuntime.EffectTiles`(조각 C) · **중복 8** |
-| T16 | 착지 예고는 배치 미리보기와 **채널을 공유하지 않는다** — 예고 중 유닛을 빼는 것이 그 스킬의 놀이라서 둘이 서로를 지우면 안 된다 | `SetTelegraphCells` · `EnsureTelegraphTilemap` | 뷰 | 미실현 — 궁극기 착지 예고 칸 표시 없음(`CoreLeapPresenter` 는 아치만) (8c 발견 · 처분 대기) | 동시 예고가 없어서(궁극기는 생존당 1회) refcount 를 두지 않는다 |
-| T17 | 예고 타일이 저작에 없으면 폴백하되 **한 번은 시끄럽게** 알린다 — 예고가 안 뜨면 회피 불가 = 불공정 | `SetTelegraphCells` | 뷰 | 미실현 — 착지 예고 자체가 없어 폴백 경고도 없음 (8c 발견 · 처분 대기) | 조용한 열화가 「색이 안 먹는다」로 위장했던 사례 |
+| T15 | 효과 타일이 칠해진 칸 목록은 **미러**다 — 소유권은 브리지에 있고 여기는 「보이는 곳」만 | `SetEffectTile` · `TryGetEffectTileAnchor` | 뷰 | `CoreMapOverlay.PaintEffectTilesOnce` — 소유 `PlacementService.ArmedEffectTiles` · 그림 `MatchViewAssets.EffectTile`(정의표 줄과 같은 순회) · 새 씬 시즌 묶기 `BattleDriver._seasonRegistry` (8a2) | 새 소유자 = `MapRuntime.EffectTiles`(조각 C) · **중복 8** |
+| T16 | 착지 예고는 배치 미리보기와 **채널을 공유하지 않는다** — 예고 중 유닛을 빼는 것이 그 스킬의 놀이라서 둘이 서로를 지우면 안 된다 | `SetTelegraphCells` · `EnsureTelegraphTilemap` | 뷰 | `CoreMapOverlay.ShowLandingTelegraph` — 전용 채널(드래그·카드 채널에 양보 안 함) · 구동 `CoreLeapPresenter`(이탈 사건 `AreaTiles` → 링 · 강하에 내림) (8a2) | 동시 예고가 없어서(궁극기는 생존당 1회) refcount 를 두지 않는다 |
+| T17 | 예고 타일이 저작에 없으면 폴백하되 **한 번은 시끄럽게** 알린다 — 예고가 안 뜨면 회피 불가 = 불공정 | `SetTelegraphCells` | 뷰 | `CoreMapOverlay.PaintLandingTelegraph` — 채움 머티리얼 실패 1회 경고(선은 계속) · 오버레이 부재 1회 경고 `CoreLeapPresenter` (8a2) | 조용한 열화가 「색이 안 먹는다」로 위장했던 사례 |
 | T18 | 손끝 셀의 끈적 하이라이트는 **꺼져 있다** — 다칸 유닛에서 「릴리즈하면 이 한 칸」이 거짓말이 되기 때문 | `SetPlacementStretch` | 뷰 | `CoreMapOverlay.PaintGhost` — 끈적 하이라이트 부재, 고스트가 footprint 전체 | 되살리려면 액체가 점유 자리를 따라가야 한다 |
 | T19 | 「사거리 안에 누가 있나」 마크는 **판정 결과를 받기만 한다** — 뷰는 거리 계산을 갖지 않는다 | `SetRangeTargetMarks` | 뷰 | `CoreMapOverlay.PaintRange` — 마크는 `AttackReach.InReach` 결과만 | 대상 선정은 전투 코어 · T1 과 같은 규율 |
 | T20 | 모든 표시(링·마크·가이드·고스트·예고)는 맵 리빌드·판 경계에서 회수된다 — 살아남으면 다음 판에 남아 있다 | `Clear` · `ClearPlacementRange` | 뷰 | `CoreMapOverlay.HidePlacement` — 제스처 끝 회수, 판 경계 = 씬 수명(`OnDestroy`) |  |
