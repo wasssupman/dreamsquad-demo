@@ -4,7 +4,7 @@
 
 ## 목적
 
-옛 판에서 플레이어가 보던 것 6 + 진단 채널 1 을 새 씬에 실체로 만든다. 규칙은 이미 코어에서 돈다 — 옮기는 것은 **그리기·흐리기·느리게 하기·트레이스**뿐이다. 끝나면 `check_ledgers.py --owners` exit 0.
+옛 판에서 플레이어가 보던 것 7 + 진단 채널 1 을 새 씬에 실체로 만든다. 규칙은 이미 코어에서 돈다 — 옮기는 것은 **그리기·흐리기·느리게 하기·트레이스**뿐이다. 끝나면 `check_ledgers.py --owners` exit 0.
 
 ## 변경 대상 (정본 표는 `8c_…md` 「미실현 뷰 7건」 — 옛 `파일:줄` 과 새 자리는 거기서 읽는다)
 
@@ -17,6 +17,7 @@
 | 5 | 적 체력 틴트 | `BattleBridge.cs EvaluateEnemyHealthTint` | 피해 사건 뒤 `SetHealthTint`(`CoreUnitView.cs:47`) — 산식은 옛 것 그대로(순수 함수로, 값은 SO) |
 | 6 | 소환사 유지 애니메이션 | `BattleBridge.cs SyncSummonerAnimationState` | AI 상태 읽기 창 → `SetAiState`(`CoreUnitView.cs:59`) — 지속 루프/상실 원샷 이름은 저작 SO |
 | 7 | 방어유닛 AI 전이 트레이스 | `BattleBridge.cs TraceDefenderAiTransition` | 새 트레이스(60종)에 AI 전이 사건이 **있으면** 장부만 정정(흡수). 없으면 코어 사건 하나(값 스냅샷: id·이전·이후·틱) + 트레이스 정거장 |
+| 8 | 배치 사거리 **칸 채움**(링과 함께 「어느 칸이 사거리 안인가」를 칠한다 · 링 있으면 투명) | rule-holders T3·T13 · `SetPlacementRange`·`RangeFillAlpha`·`IsPlacementRangeCell` | `CoreMapOverlay.PaintRange` 옆에 칸 채움 층 + 자리 고스트가 사거리 칸을 비켜 가는 read seam. ⚠ T13 비고 「되돌리면 채움이 두 겹」 — 링과 채움을 한 곳이 그린다. **리드 기본값 = 이식**(옛 플레이어 가시 · 은퇴 결정 없음) · 사용자가 은퇴를 택하면 이 행만 「삭제」로 닫는다 |
 
 ## 구현
 
@@ -34,5 +35,5 @@
 
 - [ ] `check_ledgers.py --owners` exit 0(8c 가 보류한 줄이 닫힌다).
 - [ ] 새 씬 Play: 효과 타일 칸이 보인다 · 궁극기 이탈 뒤 착지 칸 예고가 보인다 · 마음 붕괴 시 연출 + 슬로모 · 드래그 중 적이 흐려진다 · 적 체력에 따라 틴트 · 소환사 유지 루프.
-- [ ] PlayMode 코어 +6(또는 +7) 초록 · EditMode 선행 2 외 빨강 0 · 골든 무변 · 헤드리스 3종 · Retire.Check 0.
+- [ ] PlayMode 코어 +7(또는 +8) 초록 · EditMode 선행 2 외 빨강 0 · 골든 무변 · 헤드리스 3종 · Retire.Check 0.
 - [ ] `core-reviewer` APPROVE → 8c 의 머지 게이트(플레이 4차)에 합류.
