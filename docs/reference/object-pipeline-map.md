@@ -218,7 +218,7 @@
 | 저작 SO | 타일 세트(`CoreMapOverlay._tileSet`) · 스테이지 프리팹 | |
 | 정의표 행 | `MatchDefinitionBuilder.BuildMap` → `MapSnapshot` | |
 | 코어 읽기 | `PlacementService`(칸의 상태) · `MapRuntime` | 사건 구독이 아니라 **입력이 민다** — 드래그 중에만 그린다 |
-| 뷰 | `CoreMapOverlay`(`ShowPlacement`·`PaintRange`·`ShowAimRing`·`ShowTelegraph`·`ShowBriefing`) · 평면 `CoreBoardPlane` · 판 경계 `CorePhaseFeed` | 도달 판정은 `AttackReach.InReach` **호출만**(제약 13) — 뷰가 자를 새로 만들지 않는다 |
+| 뷰 | `CoreMapOverlay`(`ShowPlacement`·`PaintRange`·`ShowAimRing`·`ShowTelegraph`) · 평면 `CoreBoardPlane` · 판 경계 `CorePhaseFeed` | 도달 판정은 `AttackReach.InReach` **호출만**(제약 13) — 뷰가 자를 새로 만들지 않는다 |
 | 씬 배선 | `CoreMapOverlay` · `CoreBoardPlane` | |
 
 이력: 옛 `TilemapMapView`(1,608줄).
