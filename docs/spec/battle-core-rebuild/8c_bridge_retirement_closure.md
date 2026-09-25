@@ -91,7 +91,7 @@ N/A — 규칙을 옮기지 않았다. 옮긴 것은 타입의 **집**뿐이다(
    - 배치 드래그 중 적 흐리게(`SetEnemiesDimmed`) · 적 체력 틴트(`EvaluateEnemyHealthTint`)
    - 소환사 유지 애니메이션(`SyncSummonerAnimationState`) · 방어유닛 AI 전이 트레이스(`TraceDefenderAiTransition`)
    - 사거리 칸 채움(T3·T13) — 새 오버레이는 링과 표식만 그린다. 옛 채움은 링이 있으면 투명이라 보이는 차이는 작을 수 있다
-   이식(8c 안 · 또는 새 unit)인지 은퇴(사용자 결정)인지 정해져야 `--owners` 가 exit 0 이 된다.
+   → **리드 판단(2026-09-25): 8c 안에서 이식하지 않고 unit 9 앞의 필수 unit `8a2_view_transfer_remainder.md` 로 뗐다**(위 7행). ⚠ **사거리 칸 채움(T3·T13)은 8a2 목록에 없다** — 8a2 가 끝나도 이 2행이 남으면 `--owners` 는 exit 1 이다. 8a2 에 넣을지, 은퇴(사용자 결정)로 닫을지 정해야 한다.
 
 ## 검증 수치 (HEAD `7b3931631` · 2026-09-25)
 
@@ -113,7 +113,7 @@ N/A — 규칙을 옮기지 않았다. 옮긴 것은 타입의 **집**뿐이다(
 
 - [x] `Retire.Check.csproj` — 퇴역 후보를 지운 export 사본에서 Runtime + Editor + 남는 테스트 **컴파일 오류 0**. 후보 목록(파일 수·줄 수)을 `ledgers/retire-set.md` 에. — 퇴역 590 파일(C# 574 · 113,228줄) + 보류 2(456줄) · 오류 0 (2026-09-25 `7b3931631`)
 - [x] `--retire-assets` exit 0 — 뿌리 폐포 안의 퇴역 스크립트 GUID 0 · 남는 에디터 코드의 옛 씬 경로 문자열 0. — 남는 코드 전부(런타임·에디터·테스트)로 넓혀 0 (2026-09-25)
-- [ ] `--owners` exit 0 — 「삭제」 아닌 행 전원 심볼 해석 · `rule-holders` 133 행 실현 위치 또는 삭제 근거. — **보류**: 133행 열은 채웠고 해석 실패 0 이지만 「미실현」 12행(bridge-methods 7 · rule-holders 5)이 남아 exit 1 — 「사용자·리드 결정 필요」 2
+- [ ] `--owners` exit 0 — 「삭제」 아닌 행 전원 심볼 해석 · `rule-holders` 133 행 실현 위치 또는 삭제 근거. — **보류**: 133행 열은 채웠고 해석 실패 0 이지만 「미실현」 12행(bridge-methods 7 · rule-holders 5)이 남아 exit 1 — 10행은 8a2 가 닫는다 · T3·T13 은 처분 미정(「사용자·리드 결정 필요」 2)
 - [x] 이사한 SO·컴포넌트의 자산이 그대로 열린다: `.asset`·`.prefab` diff 0 · 이사한 `.cs.meta` 의 `guid:` 무변 · 길막 프리팹 2 Missing Script 0 · Assets lane 초록. — 위 수치 표 (2026-09-25)
 - [ ] 볼륨 4개를 부르는 프리팹 5 불변 · `MapStageDuelGenerator` 실행 가능 · 새 씬 스테이지 포스트 효과 육안 무변. — 프리팹 5 불변 · 경로 상수 로드 성공 ○ · **육안은 플레이 4차로 보류**(자산 바이트 동일)
 - [x] `object-pipeline-map.md` 에서 `BattleBridge`·`EntityManager`·`NativeQueue` 가 이력 줄 밖에 0. — 0 · 본문 심볼 254 해석 (2026-09-25 `7b3931631`)
