@@ -34,3 +34,5 @@ unit 9 의 옛 테스트 이식이 드러낸 「옛 규칙 vs 코어」 차이 6
 - [x] core-reviewer APPROVE(행 1~5) · [ ] 행 6 리뷰 · [ ] 사용자 플레이 4차 · [ ] 사용자 재확인(행 5·6).
 
 리드 재검증 2026-09-25 — HEAD `d3f8d026c` 클린 export: build 0 · test 887/889(Ignore 2 = 표현 2건) · Check 0 · 장부 기본 통과 · 골든 파일 diff 0. Unity: EditMode 3 어셈블리 2505/2507(선행 2) · PlayMode 코어 95/95 · 골든 Verify 11 일치(행 1~4 뒤 · 행 5 뒤 각 1회 — 코퍼스가 다섯 경로를 구조적으로 안 탄다: bounce·classFilter·taunt·blocker·splash 저작 0). 리드 판단: 스윕 피격 순서 `SimEntityId` 순 유지(동률 결정론 선례) — **unit 9 감사에서 뒤집힘 → 행 6 복원.**
+
+리드 재검증 2026-09-25(감사 후속 뒤, HEAD `f86772dfd`): 헤드리스 export 891/893(Ignore 2) · Unity EditMode 3 어셈블리 2509/2511(선행 2) · PlayMode 코어 97/97(G16 2 포함) · 골든 Verify 11 일치(행 6 규칙 변경에도 무변 — 코퍼스에 관통 예산 초과 장면 없음).
