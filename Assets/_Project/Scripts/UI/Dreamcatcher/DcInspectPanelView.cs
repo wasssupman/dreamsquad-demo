@@ -21,7 +21,8 @@ namespace Wassup.UI
     // 없애지 않는다.
     //
     // 뷰는 Entity/BattleBridge 를 모른다 — 컨트롤러가 이름·포트레이트·스탯·부착을 해석해 넘긴다.
-    public class DcInspectPanelView : MonoBehaviour
+    // battle-core-rebuild unit 8d — 옛 씬 안내만 읽던 창 하나는 `DcInspectPanelView.OldBattle.cs` 로 떼었다(unit 9 가 지운다).
+    public partial class DcInspectPanelView : MonoBehaviour
     {
         private const int PanelSortingOrder = 9; // SquadPrep(8) 위, MenuPopup(960) 아래
         private const float HiddenScale = 0.94f;
@@ -173,28 +174,6 @@ namespace Wassup.UI
         // defender-clock-out unit 2 — cost(int) 가 label(string) 에 흡수됐다. 뷰는 무슨 기능인지
         // 모르고, 라벨 문안은 컨트롤러가 만든다("퇴근" / 부활 시 "이동  {cost}").
         private (bool enabled, string label)? _actionState;
-
-        // first-run-tutorial unit 9 — 온보딩이 「퇴근」 버튼에 구멍을 뚫기 위한 읽기 전용
-        // 접근자(`AwakeningGaugeView.HitRect` 선례). 뷰는 여전히 기능을 모른다 — 「액션
-        // 슬롯의 rect」 를 줄 뿐이고, 그것이 퇴근인지 이동인지는 컨트롤러가 정한다.
-        //
-        // 미빌드/미표시면 null 이다. `Show(onAction: null)` 이면 버튼 자체가 꺼지므로
-        // activeInHierarchy 까지 본다 — 온보딩의 딤은 **비활성 대상을 구멍에서 버리고
-        // 다시 담지 않으므로**(OutgameTutorialOverlay.SetHoles) 꺼진 rect 를 넘기면
-        // 구멍 0개 = 전면 차단이 된다.
-        // ⚠ `activeInHierarchy` 만으로는 부족하다. Hide() 는 `_visible=false` 만 세우고
-        // 루트는 알파가 0.02 밑으로 떨어질 때까지 **켜져 있으며**, 그동안 Update 가
-        // `blocksRaycasts=false` 로 입력을 끊는다 — 즉 «보이지만 누를 수 없는» rect 를
-        // 몇 프레임 계속 내주게 된다. 그 rect 에 구멍을 뚫으면 온보딩은 «열어줬다» 고
-        // 믿고 기다리는데 플레이어는 영영 못 누른다(그 구간은 정지라 판도 안 끝난다).
-        // `interactable` 도 같은 이유로 본다 — 잠긴 버튼에 구멍을 뚫을 이유가 없고,
-        // 이 접근자가 null 을 내주는 것이 곧 호출측의 «지금은 안 된다» 신호다.
-        public RectTransform ActionRect =>
-            _built && _visible && _actionButton != null
-            && _actionButton.gameObject.activeInHierarchy
-            && _actionButtonComp != null && _actionButtonComp.interactable
-                ? _actionButton
-                : null;
 
         public void SetActionState(bool enabled, string label)
         {
