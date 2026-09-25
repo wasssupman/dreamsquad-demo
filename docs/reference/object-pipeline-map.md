@@ -1,12 +1,22 @@
-# Object Pipeline Map — 플레이 오브젝트 생성→렌더 정거장 체크표
+# Object Pipeline Map — 플레이 오브젝트 저작→렌더 정거장 체크표
 
-> **대조용 문서다.** 플레이 오브젝트를 신설하거나 생성→렌더 경로를 바꾸는 spec 의 README 를 쓸 때, 아래에서 가장 가까운 아키타입 표를 복사해 `파이프라인 커버리지` 섹션으로 붙인다. 해당 없는 정거장은 빈 칸이 아니라 **`N/A + 이유`** 를 적는다 (빈 칸은 "잊었음"과 "필요 없음"을 구분하지 못한다). 대조 중 표가 실제 코드와 어긋나면 **그 자리에서 이 문서를 고친다.**
+> **대조용 문서다.** 플레이 오브젝트를 신설하거나 저작→렌더 경로를 바꾸는 spec 의 README 를 쓸 때, 아래에서 가장 가까운 아키타입 표를 복사해 `파이프라인 커버리지` 섹션으로 붙인다. 해당 없는 정거장은 빈 칸이 아니라 **`N/A + 이유`** 를 적는다(빈 칸은 「잊었음」과 「필요 없음」을 구분하지 못한다). 대조 중 표가 코드와 어긋나면 **그 자리에서 이 문서를 고친다.**
 >
-> 앵커 경로는 `Assets/_Project/Scripts/` 기준. 구현 상세의 source of truth 는 코드 — 이 문서는 정거장 유무만 답한다.
+> 2026-09-25 전면 재작성(battle-core-rebuild unit 8c) — 전투는 순수 C# 전투 코어(`Scripts/BattleCore/`)와 새 Unity 층(`Scripts/BattleCoreUnity/`)이 돈다. 옛 정거장(ECS 컴포넌트 · 시스템 · 큐 싱글턴 · 브리지 드레인)은 각 표 끝의 **이력 한 줄**로만 남긴다. 앵커는 심볼이다 — 경로는 `Scripts/` 기준. 구현 상세의 정본은 코드이고, 이 문서는 정거장 유무만 답한다.
 
-**공통 정거장 어휘**: 데이터 SO → 스폰 진입점 → ECS 컴포넌트(소유 맥락) → 시뮬 시스템 → 이벤트 큐(생성·drain·Dispose 3종 확인) → View/Pool → 씬 wiring(Play 검증까지).
+## 공통 정거장
 
-정거장별 시공법 스킬: 씬 wiring = `unity-feature-wiring` · VFX 저작/통합 = `unity-vfx-authoring`/`unity-vfx-integration` · 프랍/타일 = `unity-prop-tile-authoring`.
+| # | 정거장 | 어디 | 확인 포인트 |
+|---|---|---|---|
+| 1 | 저작 SO | `Data/**`(유닛·적·탄·해저드·카드 SO) · `Data/BattleView/**`(뷰 설정 SO 7종) | 수치는 SO 에서만 온다(제약 6). 뷰만 쓰는 값은 뷰 설정 SO 로, 판 규칙 값은 정의표로 |
+| 2 | 정의표 행 | `MatchDefinitionBuilder.Build` → `MatchDefinition` 배열(`Units`·`Enemies`·`Projectiles`·`Patterns`·`Structures`·`Hazards`·`BlockingHazards`·`EffectTiles`·`Cards`·`Gimmicks`·…) | **빌더 매핑 누락은 조용히 죽는다**(인계 함정 8) — 새 SO 필드마다 빌더 매핑 테스트 + 열거 번호 핀 테스트(`BuilderEnumPinTests`) |
+| 3 | 코어 스폰 · 사건 | `BattleWorld.Spawn*` · 담당자(`PlacementService`·`WaveScheduler`·`GimmickHost`·`HandDeck`) → `CoreEvent`(`CoreEventKind` 번호) | 사건은 **값 스냅샷**이다(`SimEntityId` 키 · 자리↔몸 짝, 절대 제약 4). 뷰는 사건으로 코어 상태를 되묻지 않는다 |
+| 4 | 뷰 풀 | `BattleDriver.Subscribe(order, handler)` 구독자 — `Core*ViewPool` · `Core*Presenter` · `Core*Spawner` | 풀마다 자기 구독(통합 뷰 없음). 틱 뒤 `BattleDriver` 가 사건을 순서대로 흘린다 |
+| 5 | 뷰 순서 | `ViewOrder`(Trace 0 → Leap 10 → Board 15 → Unit 20 → Projectile 30 → Effect 35 → Damage 40 → Status 45 → Overhead 50 → Hand 55 → Audio 60 → Outcome) | C# 이벤트 등록 순서(= 하이어라키 순서)에 기대지 않는다. 새 풀은 여기 상수 하나를 고른다 |
+| 6 | 소멸 사건 회수 | `UnitDestroyed`(3) · `ProjectileDespawned`(11) · `HazardDestroyed`(45) · `FieldDespawned`(47) · `PickupTaken`(49)/`PickupExpired`(52) · `ResignationConsumed`(53) · `CardDetached`(61) + 판 경계 `MatchStarted`(1) | 스폰 사건과 **짝**이 있어야 한다. 판 경계 회수가 없으면 다음 판에 남는다 |
+| 7 | 씬 배선 | `BattleCoreScene.unity` — 드라이버·뷰 풀 컴포넌트의 SerializeField · `MatchViewAssets`(정의표 번호 → 그림 SO) | UnityMCP 로 배선하고 Play 검증까지가 완료(CLAUDE.md 금지 행동). 폴백 `FindAnyObjectByType` + 경고는 배선 전 임시다 |
+
+정거장별 시공법 스킬: 씬 배선 = `unity-feature-wiring` · VFX 저작/통합 = `unity-vfx-authoring`/`unity-vfx-integration` · 프랍/타일 = `unity-prop-tile-authoring`.
 
 ---
 
@@ -14,242 +24,217 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/DefenderUnitData.cs` (+`DefenderCatalog.cs`) · 고유능력 = `Data/Abilities/`(`DefenderAbilityData` 서브에셋, 유닛 `abilities` 리스트로 참조) | 공통 스탯(체력/사거리/쿨다운/코스트)은 유닛 SO, **능력별 파라미터**(volley/hazard/shield/bomb)는 능력 서브에셋. bake = `CreateDefenderEntity` 가 `GetAbility<T>()` 로 해석(defender-ability-assets). 신규 유닛은 **DefenderCatalog 등록까지** (미등록 = 로스터 미노출) |
-| 스폰 진입점 | `Bridge/BattleBridge.cs` `PlaceDefenderAs`→`CreateDefenderEntity` | 플레이어 배치 기반 |
-| ECS 컴포넌트 (Units) | `Battle/Units/` DefenderUnitTag·Health·IncomingDamage·DefenderTile | 능력별 조건부: AttackState / HazardCastState / AggroProvider / DeployedFacing(방향 지정 배치 — 활성화 시 1회 기록) / VolleyFireState(Combat 소유, shotCount>1 만) |
-| 시뮬 시스템 | `Battle/Combat/AttackSystem.cs` · `Battle/Units/DamageApplicationSystem.cs`·`HealthDeathSystem.cs` | **타일 배치 방어유닛은** 이동 없음(고정) — PathFollowState 미부여. ★이것은 더 이상 「방어 진영 전체」의 성질이 아니다 — 순찰병이 `PathFollowState` 를 갖고 walk 위를 걷는다(아래 **순찰 아군** 아키타입). 「방어유닛이면 안 움직인다」에 기대는 코드를 새로 쓰지 말 것 |
-| 이벤트 큐 | `Battle/Units/DefenderDeathEventsSingleton.cs` + 공유 UnitAttackVisual/DamageNumber/HealApplied · 연출 전용 `Battle/Combat/KnockupVisualEvents.cs` | drain = `BattleBridge.DrainDefenderDeathEvents`. ★넉업 채널은 **연출 귀속용** — 심의 넉업은 Stun 이라 뷰가 `CcEffect.kind` 로는 일반 스턴과 구분 못 한다(knockup-fighter-defender unit 3) |
-| View/Pool | `Presentation/SpineUnitPool.cs`+`SpineUnitView.cs` **또는 `SpriteUnitView.cs`**(공통 베이스 `UnitView.cs`), 폴백 `QuadUnitViewPool.cs` · 지속 빔 = `Presentation/BeamPresenter.cs` | 위치/틴트 sync = `BattleBridge.SyncMonoUnitViews` 매 프레임. ★**백엔드 선택은 `SpineUnitPool.TrySpawn` 한 곳** — 유닛 SO 의 `spriteMotions`(`UnitSpriteMotionSet`)가 있으면 스프라이트 시트, 비면 Spine(sprite-unit-backend, 2026-09-15 · 임시 기능 — 되돌리기 = 필드 비우기). 스폰 게이트·소비 seam 은 `UnitView` 멤버만 불러 백엔드를 모른다. ★빔은 고속 틱 공격 사건을 TTL 세션으로 뭉친 결과이지 심 개념이 아니다. 빔 유닛 판별 = SO `beamVfxPrefab` 유무(beam-ranger-defender unit 1). ★**리그는 두 분기다** — `partSkins` 가 비면 고유 스켈레톤, 차 있으면 `Casual Character` 파츠 합성(`SpineCombinedSkinCache.ResolveSkin`). 같은 진입점이고 유닛 구조·로직은 어느 쪽도 모른다. 고유 리그 저작은 **코드 0** 이며 facing 규약이 반대인 리그는 `SkeletonFlipXModifier` 로 데이터에서 정규화한다(코드로 분기 금지) — summon-patrol-defender unit 8 |
-| 체력 표시 | 기본: `Presentation/UnitOverheadUiLayer.cs`+`UnitOverheadView.cs` / Legacy: `TileHealthGaugeLayer.cs`+`TileHealthGaugeView.cs` | ★큐 아님 — `BattleBridge.SyncMonoUnitViews`가 매 프레임 Health read-only 폴링 |
-| 씬 wiring | BattleBridge SerializeField: spineUnitPool·defenderFallbackViewPool·unitOverheadUiLayer·tileHealthGaugeLayer | Unified/Legacy 상호배타, Spine 실패 시 Quad 폴백 |
+| 저작 SO | `DefenderUnitData`(+`DefenderCatalog`) · 고유 능력 = `Data/Abilities/`(`DefenderAbilityData` 서브에셋) | 신규 유닛은 **`DefenderCatalog` 등록까지**(미등록 = 로스터 미노출). 편성은 로비 → `MatchEntry.ResolveSquadUnits` |
+| 정의표 행 | `MatchDefinitionBuilder.ToUnitDef` → `UnitDef` · 공격 = `CombatDefinitionBuilder.BuildDefenderAttack` · 배치 스킬·실드 = `BindingDefinitionBuilder` | 배치 저작 7칸(코스트 등)이 정의표로 안 옮겨져 배치가 공짜였던 선례(함정 8) |
+| 코어 스폰 · 사건 | 커맨드 `PlaceDefender` → `PlacementService.TryPlace` → `PlacementService.SpawnDefender` → `Placed`(25) · 비행 착지 커맨드 → `DefenderActivated`(28) · 퇴근 → `Retired`(26) · 거절 → `PlacementRejected`(27) | 「배치 중」은 코어가 소유한 페이즈다(`PlacementService.StepActivation`) — 길이 = 배치 모션 |
+| 뷰 풀 | `CoreUnitViewPool`(`UnitSpawned`·`DefenderActivated`·`AttackResolved`·`Knockup`·`UnitSlain`) → `CoreSpineUnitView` / `CoreSpriteUnitView` / 폴백 `CoreQuadUnitView` · 배치 비행 `CoreDeployFlightPresenter` · 퇴근 비행 `CoreRetireFlightPresenter` · 드래그 `CoreDragPreviewPresenter` | ★백엔드 선택은 **`CoreUnitViewPool.TrySpawn` 한 곳**(스프라이트 모션이 있으면 스프라이트, 비면 Spine). 무기 궤적은 `CoreSpriteUnitView` 가 붙인다(`WeaponTrailRig`) |
+| 뷰 순서 | `ViewOrder.Unit`(비행·퇴근 포함) · 체력 = `ViewOrder.Overhead` | |
+| 체력 · 오버헤드 | `CoreUnitOverheadUiLayer`(+카드 아이콘 줄 `CoreUnitOverheadUiLayer.RebuildCardView`) | 폴링이 아니라 사건 구독 |
+| 소멸 회수 | `UnitDestroyed`(3) — 사망 모션 뒤 반납 · 판 경계 `MatchStarted` | |
+| 씬 배선 | `BattleDriver._defenders` · `CoreUnitViewPool` · `CoreUnitOverheadUiLayer` · 트레이 `CoreDefenderTray` | |
 
-## 순찰 아군 (Patrol — summon-patrol-defender, 2026-08-12)
+이력: 옛 정거장 = `BattleBridge.PlaceDefenderAs`/`CreateDefenderEntity` → ECS `DefenderUnitTag` → `DefenderDeathEventsSingleton` → `SpineUnitPool`/`SyncMonoUnitViews`(unit 9 에서 삭제).
 
-**아군인데 walk 위를 이동하는 첫 유닛.** 위 방어유닛 아키타입에서 **갈라지는 정거장만** 적는다 — 나머지는 방어유닛 표를 그대로 따른다. 이동형 아군을 또 만들면 이 표를 복사한다.
+## 순찰 아군 (Patrol)
+
+방어유닛 표에서 **갈라지는 정거장만** 적는다.
 
 | 정거장 | 앵커 | 방어유닛과 무엇이 다른가 |
 |---|---|---|
-| 데이터 SO | `Data/DefenderUnitData.cs` **재사용** + `Data/Abilities/SummonPatrolAbility.cs`(소환사 쪽) | **신규 SO 타입을 만들지 않았다** — `ISpineUnitVisualData` 구현체 3번째의 확장 비용이 근거. 갭은 필드 2개(`moveSpeed`·`SpineWalkAnimation`)를 **맨 뒤에 덧붙여** 메웠다. ★소환수는 `DefenderCatalog` 에 **등록하지 않는다**(미등록 = 로스터 미노출). 담당 구역 반경은 별도 필드가 아니라 소환사 `attackRange` |
-| 스폰 진입점 | `BattleBridge.CreatePatrolEntity` (소환 발화 + 디버그 메뉴 2경로) | `CreateDefenderEntity` 를 **재사용하지 않는다** — 그쪽은 `_defenderByTile` 등록과 `DefenderTile` 부착을 한다. 요청 전달은 신규 채널이 아니라 `ProjectileRequestCarrier` 와 같은 **캐리어 엔티티** 관용구(`PatrolRequestCarrier`, 수명 1프레임) |
-| ECS 컴포넌트 | 신규 4: `PatrolAnchor`(Movement) · `PatrolStep`(Effects) · `SummonerState`(Combat) · `SummonedBy`(Units) | ★**태그 조합이 계약이다.** `DefenderUnitTag`+`DefenderClassTag` 는 **붙이고**, `DefenderTile`·`AttackUnitTag` 는 **안 붙인다**. 각각의 귀결: 태그 부착 → 매치 경계 정리·힐/실드 편입·클래스 하드 타게팅 정상 / 미부착 → 배치 점유·각성치·**사직서 무한 드랍** 차단. 나중에 `DefenderTile` 을 붙이면 반복 사망 파밍이 조용히 열린다 |
-| 시뮬 시스템 | 신규 2: `Battle/Effects/PatrolFieldSystem.cs` · `Battle/Units/PatrolLifecycleSystem.cs` · 순수 함수 `Battle/Effects/PatrolAreaMath.cs` | 이동은 **기존 BFS·하강을 재사용**한다 — 박스 제약을 walkMask 마스킹으로 표현해 `AggroChaseMath.BuildChaseField` 에 넘긴다. **8-이웃 그리디 금지**(`aggro-tile-chase` 가 벽 고착으로 폐기). 수정 3: `MovementSystem`(dir 분기 + **goal 게이트**) · `ZoneApplySystem`(진영 게이트) · `AttackSystem`(소환 발화) |
-| 이벤트 큐 | **신규 채널 0** | 캐리어 엔티티 관용구라 싱글턴 배선도 CLAUDE.md 채널 목록 갱신도 불요. `DefenderDeathEventsSingleton` 은 `DefenderTile` 미부착으로 미발행 |
-| View/Pool | 기존 `SpineUnitPool` 재사용 · **전용 sync 루프 `BattleBridge.SyncPatrolViews`** | ★없으면 **뷰가 스폰만 되고 영원히 제자리에 선다.** `SyncMonoUnitViews` 의 두 루프는 `AttackUnitTag` 쿼리(적)와 `_defenderByTile` 순회(방어유닛)인데 순찰병은 **둘 다 아니다**. walk 애니는 `SpineWalkAnimation` 을 채워 활성화(타일 방어유닛은 `""`). death 애니는 도달하지 않는다 — `Kill()` 구동원이 `_defenderByTile` 기반 |
-| 체력 표시 | `UnitOverheadUiLayer`/`UnitOverheadView` 기존 폴링을 `SyncPatrolViews` 안에서 호출 | 숨기지 않는다 — 죽고 다시 나는 것이 이 유닛의 핵심 피드백 |
-| 매치 경계 정리 | `BattleBridge.DestroyBattleEntities` — 순찰병 + 요청 캐리어 | `DefenderUnitTag` 부착으로 자동 포함되나 **회귀 방지로 명시 등재**했다. 타입 기반 파괴라 태그가 빠지면 앱 수명 default world 에 잔존한다 |
-| 씬 wiring | **N/A — 신규 SerializeField 0** | 기존 `spineUnitPool`/`unitOverheadUiLayer` 를 그대로 쓴다 |
-| 외력 예외 | — | 포털·토네이도·넉백은 faction 을 보지 않아 순찰병을 박스 밖으로 민다. 계약은 *«자기주도 이동은 박스를 안 벗어난다. 외력은 벗어날 수 있고 다음 틱에 복귀 경로가 잡힌다»* — 필드 계산이 **박스 밖 시작** 입력을 다뤄야 한다 |
+| 저작 SO | `DefenderUnitData` 재사용 + 소환사 쪽 `SummonPatrolAbility` | 소환수는 `DefenderCatalog` 에 등록하지 않는다. 담당 구역 반경 = 소환사 사거리 |
+| 코어 스폰 · 사건 | `CombatPhase.SpawnPatrol` → `UnitSpawned`(2) · 디버그 = 커맨드 `DebugSummonPatrol`(24, `CoreSummonDebugMenu`) | 배치 점유·각성치·사직서 드랍 대상이 아니다(배치로 서지 않았으므로) |
+| 뷰 풀 | `CoreUnitViewPool` 그대로 | 이동하는 아군이라 걷기 모션을 쓴다 |
+| 씬 배선 | N/A — 신규 SerializeField 0 | |
+
+이력: 옛 `BattleBridge.CreatePatrolEntity` · `PatrolRequestCarrier` · `SyncPatrolViews`.
 
 ## 적 (Enemy)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/AttackUnitData.cs` (+`EnemyCatalog.cs`) | ★적 스탯 SO 이름이 **AttackUnitData** — "EnemyData" 는 없음. 신규 적은 **EnemyCatalog + AttackDeck/웨이브 pool 노출까지**. ⚠ **풀에 1종을 더하면 그 덱의 웨이브가 전부 재추첨된다** — `WavePatternGenerator` 가 `rng.NextInt(0, pool.Count)` 로 뽑아 `waveSeed` 고정이어도 웨이브 1부터 구성이 바뀐다(시드를 갱신해 새 baseline 을 diff 에 드러낼 것). 삽입은 **풀 중간에** — 맨 뒤면 `ResolveWaveEligibleIndex` 의 전방 순환이 초반 웨이브를 `pool[0]` 로 쏠리게 한다. **라이브 덱은 7종**(`Serpent·Coil·Twin·Spiral·Zig·Hook·Endless`)이고 열거의 정본은 `WaveKillBudgetPinTests`. 수량 상한은 `maxPerWave`(0=무제한) — 없으면 한 종류가 일반 웨이브 최대 24기 / 보스 호위 3~4기로 나온다. ⚠ **기존 적 에셋을 복제해서 만들지 말거나, 만들었으면 `targetFactions` 를 0 으로 되돌릴 것** — 옛 에셋에 `13` 이 명시 직렬화돼 있고 `Resolve()` 는 0(미저작)일 때만 기본값을 넣으므로, 복제본은 「의도된 좁힘」으로 읽혀 **방어 본능을 못 때린다**. 2026-08-13 에 신규 적 4종이 정확히 이걸로 태어났다(그 전에 기존 12종이 같은 사고를 겪었다). 가드는 `AuthoredTargetMaskTests.OnlySpecialEnemies_NarrowTheirTargets` — 의도적 좁힘은 heartseeker 하나뿐이다 |
-| 등급 축 | `Data/EnemyTier.cs` (`AttackUnitData.tier`) | ★**보스 특권은 `tier == Boss` 에서만 나온다**(elite-enemy-tier unit 0, 2026-08-13). 예전엔 `nightmareMechanics` 가 비어있지 않으면 보스로 쳤고 그래서 «메커닉을 가진 비보스» 가 불가능했다 — 지금은 엘리트가 그 자리다. `BossTag`(=CC·어그로 면역 + 등장 경보 + `ThreatEntry`)를 원치 않으면 tier 를 Boss 로 두지 말 것. 직렬화 계약이라 **append-only**. ★**「방어유닛 사냥」은 더 이상 보스 특권이 아니다** — `AttackUnitData.huntsDefenders` → `DefenderHunterTag`(bonus-wave-pull unit 0)로 떨어져 나왔고, 보스는 `tier == Boss` 로 그 태그를 함께 받아 무회귀다. 사냥을 원하면 그 플래그를 쓰고 tier 는 건드리지 말 것. 부착은 `CreateEnemyEntity` 본문 — `BakeNightmareMechanics` 는 메커닉이 비면 조기 반환하므로 그 안에 두면 메커닉 없는 사냥꾼이 태그를 못 받는다(`EnemyTierBakeTests` 가 고정) |
-| 스폰 진입점 | `Bridge/BattleBridge.cs` `SpawnUnit`(레인 wrapper) → `CreateEnemyEntity(unitType, worldPos)` | 웨이브 스케줄러가 `Data/AttackDeck.cs`·`WavePlanAsset.cs` 소비. ★**조립 본문은 `CreateEnemyEntity` 가 소유한다** — 웨이브 밖에서 적을 만드는 경로가 그것을 재사용하므로, 적에 컴포넌트를 추가할 땐 여기 한 곳만 고치면 전 경로가 같이 따라온다. 레인 선택·스폰지점 폴백은 wrapper 몫. **웨이브 밖 경로는 2개** — 분열 `SpawnSplitChildren` · 보너스 웨이브 `SpawnBonusUnit`(bonus-wave-pull unit 4 — 레인이 아니라 맵에 저작된 포탈 칸에서, `MapDocument.bonusSpawns`). 둘 다 `(-1, -1)` 로 불러 레인·경유점 없이 flow field 만 따른다 |
-| ECS 컴포넌트 | Units: AttackUnitTag·Health·IncomingDamage·CcEffect·DotEffect·**ShieldSlot·IncomingShield** · Movement: `PathFollowState` · Combat: AttackState·EnemyBehavior·EnemyAiState | ~~이동은 적 전용~~ — **순찰 아군이 깼다**(summon-patrol-defender, 2026-08-12). `PathFollowState`·`EnemyAiState`·`EnemyBehavior` 는 이름만 «Enemy» 이고 진영 중립이다. ★**실드 버퍼는 적 전원**(보스만이 아니다 — `boss-mamemo` unit 2, 마메모가 호위에게 실드를 준다). **쌍으로** 붙여야 한다: `IncomingShield` 드레인이 `ShieldSlot` 존재로 게이팅돼 있어 한쪽만 붙이면 부여가 영영 안 빠지고 버퍼가 무한 성장한다. 따름정리 — `DamageApplicationSystem` 의 실드 파열 감지가 **적에서도 참이 되므로** `OnShieldBreak` 를 적에 여는 것은 실행기 진영 파라미터화가 선행이다(`DcTrigger.EnemyTriggerArmed` 가 막고 `DcTriggerTests` 가 고정) |
-| 시뮬 시스템 | `Battle/Movement/MovementSystem.cs`(flow-field) · `Battle/Combat/AttackSystem.cs`·`EnemyAiStateSystem.cs` | |
-| 이벤트 큐 | `Battle/Units/EnemyKilledEventsSingleton.cs`·`GoalReachedEventsSingleton.cs` · `Battle/Effects/EnemyCcEvents.cs` | + 공유 UnitAttackVisual/DamageNumber |
-| View/Pool | `Presentation/SpineUnitPool.cs`(공유 · 값 타입 `UnitView` = Spine/스프라이트) / `QuadUnitViewPool.cs`(enemyViewPool 인스턴스) | 저체력 틴트 = SyncMonoUnitViews 내. 스프라이트 백엔드는 방어유닛 행과 같은 게이트(`AttackUnitData.spriteMotions`) |
-| 체력 표시 | 기본: `Presentation/UnitOverheadUiLayer.cs`+`UnitOverheadView.cs` / Legacy: `EnemyHitBarSpawner.cs`+`EnemyHitBarView.cs` | Unified는 매 프레임 Health read-only 폴링, Legacy 피격바는 **DamageNumberEventsSingleton 공유** drain |
-| 씬 wiring | BattleBridge SerializeField: spineUnitPool·enemyViewPool·unitOverheadUiLayer·enemyHitBarSpawner·deck | Unified/Legacy 상호배타 |
+| 저작 SO | `AttackUnitData` · 웨이브 = `AttackDeck`/`WavePlanAsset`/`WaveConceptData` | 새 적·등장 조건은 `enemy-wave-integration` 스킬 필수 |
+| 정의표 행 | `MatchDefinitionBuilder.CollectEnemies` → `EnemyDef` · 공격 = `CombatDefinitionBuilder.BuildEnemyAttack` · 웨이브 = `MatchDefinitionBuilder.ToDeckDef`/`ToPlanDef`/`ToBonusDef` | 적 목록 순서가 정의표 번호다 — 재현(modeId + seed)이 여기에 기댄다 |
+| 코어 스폰 · 사건 | `WaveScheduler` → `EnemySpawn.At` → `UnitSpawned`(2) · 웨이브 `WaveQueued`(20)/`WaveStarted`(21) · 분열 `EnemySplit` · 골 도달 `GoalReached`(5) · 감지 `Detected`(6) | 보스는 `UnitSpawned` 의 정의표 번호로 판별한다(`CoreBossWarning`) |
+| 뷰 풀 | `CoreUnitViewPool` · 히트바 `CoreEnemyHitBarSpawner`(`DamageApplied`) · 감지 표식 `CoreVfxSpawner`(`Detected`) · 스폰 예고선 `CoreSpawnAlertPresenter`(`WaveScheduler.CollectForecast` 폴링) · 보스 경보 `CoreBossWarning` | 예고선은 사건 구독이 아니라 매 프레임 읽기다 — 예고는 「아직 안 일어난 일」이라 사건이 없다 |
+| 뷰 순서 | `ViewOrder.Unit` · 히트바 `ViewOrder.Damage` · 경보 `ViewOrder.Overhead` | |
+| 소멸 회수 | `UnitDestroyed`(3)(처치·유출 모두) | |
+| 씬 배선 | `BattleDriver` 의 덱·플랜·보너스 필드 · `CoreSpawnAlertPresenter` · `CoreBossWarning` | |
+
+이력: 옛 `BattleBridge.SpawnUnit`/`QueueDueWaves` · `SyncMonoUnitViews` · `SpawnAlertPresenter`.
 
 ## 투사체 (Projectile)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/ProjectileData.cs`(탄 1발) + `Data/ProjectilePatternData.cs`(발사 명세) | 궤적(MovementKind) × 페이로드(PayloadKind) 2축. flightMode 가 이 2축으로 번역됨(`ResolveProjectileAxes`). **패턴 SO 는 "누구를·몇 발·어떤 간격" 만 소유하고 탄의 성질을 복제하지 않는다** — 새 효과는 `ProjectileData` 에 추가 |
-| 스폰 진입점 | `Battle/Combat/AttackSystem.cs` 가 `ProjectileSpawnRequest` stage → `BattleBridge.DrainProjectileSpawnRequests`→`SpawnProjectile` | ★2단계 — ECS 는 request 만, 엔티티+뷰 생성은 Bridge. **stage 지점은 4곳**: RESOLVE(기본 공격·dc 니들) / 폭탄 발사 성사 / 캐스트 사건 드레인 / **`ProjectileEmitterSystem`(발사 명세)** — 전부 `ProjectileRequestCarrier` 캐리어를 공유한다(drain 이 스폰 후 파괴) |
-| ECS 컴포넌트 (Combat) | `Battle/Combat/Projectile/` ProjectileState·ProjectileTag·ProjectileSpawnRequest + `Projectile/Emission/` EmitterInstance·PatternSlot | 페이로드별 조건부: PathHitRecord 버퍼(PathHit — 대상당 1회 스윕, drain 이 부착). Emission 버퍼 2개는 **패턴 host 전용**(패턴 없는 유닛엔 미부착) |
-| 시뮬 시스템 | `ProjectileMoveSystem.cs`(궤적) · `ProjectileHitSystem.cs`(페이로드 — IncomingDamage/IncomingHeal 기입) · `Projectile/Emission/ProjectileEmitterSystem.cs`(발사 스케줄→요청) | emitter 는 개별 MovementKind 가 아니라 **바인딩 클래스**(`MovementBinding.Of` → Entity/Cell/Direction)로 분기 — 새 이동 수학이 기존 바인딩이면 emitter 무변경 |
-| 이벤트 큐 | `Battle/Combat/Projectile/ProjectileHitEventsSingleton.cs` | drain = `DrainProjectileHitEvents` → PlayHit |
-| View/Pool | `Presentation/ProjectileViewPool.cs` | 매 프레임 `SyncTransforms`; muzzle/cast VFX 도 이 풀 (PlayHit/PlayCast, UnitAttackVisualEvents drain) |
-| 씬 wiring | BattleBridge `_projectileViewPool` | |
+| 저작 SO | `ProjectileData` · 발사 명세 `ProjectilePatternData` | 착탄 효과(부여·스택)는 탄 SO |
+| 정의표 행 | `CombatDefinitionBuilder.ToDef` → `ProjectileDef` · `PatternDef` | 선정 규칙 열거 번호 어긋남(12 중 11 오독) 선례 — `CombatDefinitionBuilder.ToCoreSelection` 핀 테스트 |
+| 코어 스폰 · 사건 | `BattleWorld.SpawnProjectile` → `ProjectileSpawned`(10) · `ProjectileHit`(12) · `ProjectileDespawned`(11) · 착탄 예고 = `ProjectileSpawned` 의 비행 시간·반경 | 즉발 폭발도 탄 파이프라인을 탈 수 있다 — 판정 원점의 몸은 사건이 실어 온다(제약 13) |
+| 뷰 풀 | `CoreProjectileViewPool` · 총구·착탄 VFX `CoreVfxSpawner` · 착탄 예고 링 `CoreMapOverlay.ShowTelegraph` | |
+| 뷰 순서 | `ViewOrder.Projectile` · VFX `ViewOrder.Effect` | 유닛 뷰가 선 뒤라야 총구 앵커를 묻는다 |
+| 소멸 회수 | `ProjectileDespawned`(11) | |
+| 씬 배선 | `CoreProjectileViewPool` · `MatchViewAssets` | |
 
-## 거점 — 골 타워·본능·적 마음 (battle-structures, 2026-08-10 현행화)
+이력: 옛 `ProjectileSystem` · `ProjectileHitEventsSingleton` · `ProjectileViewPool`.
 
-| 정거장 | 앵커 | 확인 포인트 |
-|---|---|---|
-| 데이터 SO | 방어 마음(골 타워): `Data/AttackDeck.cs` `goalStabilityMax`(HP)+`goals[]`(셀) · 본능·적 마음: `Data/StructureData.cs` + `Data/MapGrid/MapDocument.cs` `structures[]`(셀×편×SO) | **HP 소스가 스폰 소스로 갈린다** — goals[]=덱, structures[]=SO. 진영은 (편×종류) 파생(`StructurePlacements.DeriveFaction`) — 거점 아닌 비트가 나올 수 없다. 저작 규칙(모드·겹침·(Defender,Core) 금지·중립 금지·아군사격)은 `StructureAuthoringRules` 가 단일 소유 — 페인터와 `MapDocument.OnValidate` 가 같은 함수 호출 |
-| 스폰 진입점 | `Bridge/BattleBridge.cs` `SpawnStructureEntities`(StartBattle) | 판 시작 1회 — 요청 큐 없음. `_resolvedMapDoc`(빌드가 보관, teardown/fallback 에서 null)에서 SO 스탯을 읽는다. `(Defender, Core)` 는 스폰에서도 거부(골 두 벌 최후 방어선) |
-| ECS 컴포넌트 (Units) | `StructureTag`(cell+faction — 전 거점) + FactionTag(`DefenderCore`/`EnemyCore`/`*Instinct`)·Health·IncomingDamage·LocalTransform · 방어 마음은 `GoalTowerTag` 추가(패배 판정용) · 본능은 `BlockingHazardCellsBuffer` 3×3 + (공격 저작 시) AttackState·출력·ProjectileRef | 체력은 **거점 단위**(공유 풀 아님 — 계약 7). CC·모디파이어 버퍼 미부여(계약 8). ★**버퍼 보유 = 다중셀 점유 선언** — `ObstacleLifetimeSystem` 이 `BlockingHazard` 컴포넌트가 아니라 버퍼로 blockedCells 를 만든다(리뷰 C-1 정정) |
-| 시뮬 시스템 | 전용 시스템 **0** — 피해는 표준 경로(`DamageApplicationSystem`→DeadTag→`UnitLifecycleSystem` 일반 사망 루프), 본능 공격은 `AttackSystem` 통합 루프(계약 10), 통행은 `ObstacleLifetimeSystem`+`FlowFieldRebuildSystem` 기존 소비 | 마음은 공격·이동 없음(AttackState/PathFollowState 미부여). 거점은 **거리순 일반 후보**(타입 우선순위 없음, 계약 4 폐기) |
-| 타겟 후보 진입 | 양쪽 다 **저작 마스크**다 — 적: `EnemyTargetFilter.factionMask`+`EnemyTargetDefaults`(unit 1) · 방어: `DefenderUnitData.targetFactions`+`DefenderTargetDefaults`(unit 8, 기본 `AnyEnemy`) | `AttackSystem` 후보 쿼리(FactionTag+Health+LocalTransform)는 **거점을 이미 담고 있다** — 막던 것은 마스크 리터럴이었다. 아군 타게팅(`targetAllies`)은 `DefenderUnit` **단독** — 넓히면 `IncomingHeal` 버퍼 없는 거점이 후보에 들어 ECB playback 에서 던진다 |
-| 광역 피해자 진입 | `ProjectileHitSystem` TileAoe — 피해자 풀 **한 벌** + `FactionTag` 진영 비트 필터(`AnyDefender`/`AnyEnemy`) | ★진영 대칭(unit 9). `GoalTowerTag` 특례 은퇴 — 거점은 `StructureTag`+진영 비트로 걸리고 미래의 방어 본능도 코드 변경 0. splash·bounce·경로 스윕은 **적 유닛 풀만**(기존 의도 유지). `BlockingHazard` 는 두 그룹 어디에도 없어 광역 피해자가 아니다 |
-| 붕괴 관측 | 브리지 `SyncGoalStability` — `_structureRegistry`(entity·cell·faction) 폴링으로 «사라진 엔티티의 셀» 특정 | **셀 단위**(ⓐ): 방어 마음 붕괴 → `_breachedCells` + 그 셀만 유출 전환(`OpenGoalCellAfterBreach`). **본능**은 연출·로그만. ★열기는 미러 갱신 **뒤**(리뷰 A-M1 — 제출값 순서). 붕괴 프레임 미러=0, 다음 프레임부터 생존 골 최저 |
-| 승패 축 | 같은 순회가 적 마음 잔여도 모은다 → `_enemyCoreCurrent`. 판정은 `CheckEnemyCoreDestroyed`(Update 에서 Sync **다음**) · 만료 비교는 `CheckTimer` | ★**모드 분기 없음**(계약 15). 축 활성 = 「저작된 상한 > 0」 — `_timerDuration`/`StressLimit`/`_goalStabilityMax` 와 같은 형태. 만료 판정 `_goalStability >= _enemyCoreCurrent` **한 줄**이 침략(적 잔여 0 → 항상 승리 = 기존 동치)과 공성을 통합. 두 마음 HP 는 저작으로 맞추고 `MapDocumentPool.OnValidate` 가 어긋남을 경고. 읽기 창구 `EnemyCoreCurrent/Max` |
-| 이벤트 큐 | **N/A** — 붕괴 감지는 등록부 폴링. `GoalCollapsedEventsSingleton` 은 생산자 0 존치(페이로드가 골 인덱스 기준이라 거점 체계와 불일치 — 후속에서 재정의) | |
-| View/Pool | 게이지: `SyncGoalOverheadGauges` 가 등록부 순회(defender 색 = 진영 파생) + HUD 바 `SyncGoalStabilityBars`(가장 위험한 골 미러) · 프랍: 골=`theme.goalStructureProp`, 거점=SO `viewPrefab` 을 브리지 Instantiate(Pickup 선례, `ClearStructureViews` 로 teardown) · 붕괴 원샷 `VfxSpawner.SpawnGoalCollapse` | Pool N/A(맵 수명) |
-| 배치·통행 배제 | 맵 빌드 시 `CloseCellLayers` — 본능 footprint 3×3 만(`HostileInstinctPlacementPadding` 은 instinct-content 에서 **0 으로 폐지** — 사용자 결정 2026-08-12. 술어·분기는 잔존) · 연결성: `MapConnectivity`+페인터 BFS 가 본능 footprint 를 벽으로(마음은 비차단, 계약 12) | 공성 모드는 파생 — **파생 스폰 = 마음의 하단·상단 2셀**(`StructurePlacements.SiegeSpawnOffsets`, 순서 = 레인 번호 0·1 — siege-lane-spawn unit 0. `ToGeneratedMap` 투영 1곳, 소비처는 «셀 좌표 목록»만 보므로 무변경). 공성 `spawnRoutes` 는 저작 길이 = 파생 스폰 수일 때 채택(unit 1). ⚠(패딩>0 이던 시절의 함정, 기록 보존) 배제 여유 ≥ 본능 사거리면 **본능이 아무도 못 쏜다** — 패딩을 되살리면 이 검산부터. 마음은 본체 1칸만 닫혀 **인접 배치로 공성**이 성립한다 |
-| 씬 wiring | 신규 SerializeField 0 — 기존 게이지/VFX 배선 재사용 | |
-
-## 해저드 — Zone/Blocking (방어 유닛 HazardCast 능력)
+## 거점 — 골 타워 · 본능 · 적 마음 (Structure)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/HazardSO.cs`(Zone) / `Battle/Effects/BlockingHazardSO.cs` | visualPrefab·lifetime·파괴 VFX |
-| 스폰 진입점 | `Battle/Effects/HazardCastSystem.cs` → HazardSpawnRequests 큐 → `BattleBridge.DrainHazardSpawnRequests` | staged-request drain (투사체와 동형) |
-| ECS 컴포넌트 (Effects) | `Battle/Effects/` Hazard·HazardEffect·BlockingHazard·BlockingHazardCellsBuffer (`EffectSpawner.cs`) | |
-| 시뮬 시스템 | `HazardLifetimeSystem.cs`·`ZoneApplySystem.cs`·`DotApplySystem.cs`·`CcApplySystem.cs` | |
-| 이벤트 큐 | HazardSpawnRequests·HazardDestroyed(Blocking 파괴)·HazardRuntime Singleton + **CastEvents**(Effects→Combat) | ★HazardRuntimeEvents 는 **텔레메트리 로깅 전용** — VFX 트리거 아님. ★CastEvents 는 해저드 스폰과 무관 — 캐스트 성사를 **그 host 의 공격 사건**으로 Combat 에 넘기는 채널(캐스터는 `attackRange 0` 이라 RESOLVE 에 못 간다). `HazardCastSystem [UpdateBefore(AttackSystem)]` 로 같은 프레임 소비 |
-| View | Zone: `Presentation/HazardVisualLifetime.cs`(self-destroy) / Blocking: `Battle/Effects/BlockingHazardPresenter.cs`(엔티티 추적) | 계열별 뷰 백엔드 다름 |
-| 씬 wiring | BattleBridge (EffectSpawner·vfxSpawner 경유) | |
+| 저작 SO | 스테이지 프리팹의 마커(`StructureMarker`·`GoalMarker`) + `Data/Structures/*` | 스테이지 프리팹이 곧 정본(bake 없음) |
+| 정의표 행 | `CombatDefinitionBuilder.FillStructures` → `StructureDef` · 마음 = `MatchDefinitionBuilder.ToHeartConfig` → `HeartDef` | |
+| 코어 스폰 · 사건 | `BattleWorld.SpawnStructure` → `UnitSpawned`(2) · 마음 `HeartChanged`(29)/`HeartCollapsed`(30) | |
+| 뷰 풀 | `CoreStructurePropLayer` · 마음 게이지 = `CoreScoreHud`/`HeartHudConfig` | ⚠ `HeartCollapsed` 의 붕괴 연출 구독자는 **없다**(8c 발견 · `bridge-methods` 「미실현」) |
+| 소멸 회수 | `UnitDestroyed`(3) | |
+| 씬 배선 | 스테이지 프리팹(`BattleDriver` 가 `MapStagePool` 에서 고른다) | |
 
-## ~~목표지점 — 안정도 골 (goal-stability)~~ — 은퇴 (2026-08-10)
+이력: 옛 `BattleBridge` 골 드레인 · `GoalCollapsedEventsSingleton` · `PlayCoreBurst`.
 
-이 아키타입의 잠자는 경로(`GoalPoint`/`SpawnGoalEntities`/`goalMaxStability` — 전 맵 미저작이라 런타임에 한 번도 태어나지 않았다)는 **battle-structures unit 0 이 걷어냈다.** «엔티티 존재 = 그 셀의 골이 살아있다» 라는 원설계는 위 **거점(battle-structures)** 아키타입의 셀 단위 붕괴(ⓐ)로 승계됐다. 설계 이력은 `docs/spec/goal-stability/`(문서 보존 — battle-structures 의 근거).
-
-## 스킬 해저드 — Tornado/Meteor/Portal (플레이어 스킬 탭)
+## 존 해저드 · 길막 (Zone / Blocking hazard)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/SkillData.cs` | SkillEffectType 분기 |
-| 스폰 진입점 | `BattleBridge.CastSkillAtTile` → ApplyTornado/ApplyMeteor/ApplyPortal | ★Mono 주도 — ECS request 왕복 없음 |
-| ECS 캐리어 (Effects) | `Battle/Effects/` TornadoField·MeteorPending·PortalLink (`EffectSpawner.cs`) | |
-| 시뮬 consumer | `Battle/Movement/MovementSystem.cs`(pull·텔레포트) · `Battle/Combat/MeteorResolutionSystem.cs` | 캐리어=Effects, 데미지 쓰기=Combat 의도적 분리 |
-| 이벤트 큐 | `Battle/Combat/MeteorBurstEventsSingleton.cs` (Meteor 전용) | Tornado/Portal 은 큐 없음 — 캐스트타임 즉시 시각 |
-| View | `Presentation/VfxSpawner.cs` (SpawnTornado/SpawnMeteorFall/SpawnPortal/SpawnMeteorBurst) + `MeteorFall.cs` | 경고링은 BattleBridge 인라인 쿼드 |
-| 씬 wiring | BattleBridge.vfxSpawner + VfxSpawner 프리팹 슬롯 | |
+| 저작 SO | `HazardSO` · `BlockingHazardSO`(8c 에 `Data/Authoring/` 으로 이사) · 캐스트 능력 `HazardCastAbility` | 길막 프리팹 2 에 `BlockingHazardPresenter` 가 붙어 있다(새 층은 부르지 않는다 — Missing Script 방지로 남긴 것) |
+| 정의표 행 | `BoardEffectDefinitionBuilder.ToHazardDefs` → `HazardDef` · `BoardEffectDefinitionBuilder.ToBlockingHazardDefs` → `BlockingHazardDef` | 모양 = `BoardEffectDefinitionBuilder.ToCoreShape` · 원소 = `BoardEffectDefinitionBuilder.ToCoreDotElement` |
+| 코어 스폰 · 사건 | 존 = `BattleWorld.SpawnHazard` → `HazardSpawned`(44)/`HazardDestroyed`(45) · 길막 = `BlockerSpawn` → `UnitSpawned`(2, 길막 종류) · 디버그 커맨드 17·18(`CoreHazardDebugMenu`) | 길막은 **유닛**이다(부술 수 있는 벽) — 그래서 스폰·소멸이 유닛 사건이다 |
+| 뷰 풀 | `CoreHazardViewPool`(장판 그림 + 길막 프리팹 `Instantiate` · 스폰/파괴 VFX) | 스폰 VFX 는 SO 의 것이다(프리젠터에 안 넘겨 죽은 저작이 됐던 선례) |
+| 뷰 순서 | `ViewOrder.Board` | 바닥은 유닛보다 먼저 선다 |
+| 소멸 회수 | `HazardDestroyed`(45) · 길막 `UnitDestroyed`(3) · `MatchStarted` | |
+| 씬 배선 | `BattleDriver._hazards` · `MatchViewAssets` · `CoreHazardViewPool` | |
 
-## 스킬 아군 장판 — 공격폭증/속사 (active-ally-zone)
+이력: 옛 `EffectSpawner` · `HazardRuntimeEventsSingleton` · `BattleBridge` 길막 비주얼 맵.
 
-| 정거장 | 앵커 | 확인 포인트 |
-|---|---|---|
-| 데이터 SO | `Data/SkillData.cs` (range/magnitude/durationSec) | 정본은 **DcSkills 시트** — 에셋만 고치면 런타임 갱신이 덮는다 |
-| 스폰 진입점 | `BattleBridge.CastSkillAtTile` → `SpawnAllyBuffZone` | Mono 주도. 대상 0기여도 성공(카운트는 로그용) |
-| ECS 캐리어 (Effects) | `Battle/Effects/AllyBuffField.cs` (`EffectSpawner.SpawnAllyBuffField`) | 중심=셀(int2), `StackId=3` |
-| 시뮬 consumer | `Battle/Effects/AllyBuffFieldSystem.cs` | 매 프레임 재발행(ZoneApplySystem 관용구). duration = `AllyBuffApplySec` 고정 |
-| 이벤트 큐 | `StatModifierApplyEventsSingleton` (기존) | 신규 큐 없음 |
-| 수명/정리 | `Battle/Effects/EffectTickSystem.cs` + `BattleBridge.DestroyBattleEntities` | 만료 파괴 + 매치 경계 정리 |
-| View | **N/A** — 바닥 타일 점등은 은퇴(2026-09-03, active-ally-zone 계약 5). 장판은 수명 동안 뷰를 갖지 않는다 | 조준 원은 시전 전까지 `TilemapMapView.SetAreaRange` 링(`RangeDisplayOwner.SkillAim`). 회귀 핀 `ActiveAllyZoneTest.ZoneCast_PaintsNoBoardTiles` |
-| 씬 wiring | N/A — `allyZoneColor` 은퇴 | 유닛별 신호는 미구현(StatusFx 후속) |
-
-## 픽업 — 레드불 (season-gimmick-overwork, 시즌 기믹)
+## 장 캐리어 — 회오리 · 포탈 · 아군 버프 장 (Field)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/Gimmick/OverworkGimmickData.cs` (스폰 주기·수명·동시상한·효과 수치) | 시즌 SO `SeasonData.gimmick` 로 활성. gimmick=null=전면 비활성 |
-| 스폰 진입점 | `Battle/Effects/PickupSpawnSystem.cs` (Effects 내부 ECB) | ★staged-request 아님 — 순수 ECS 스폰. `OverworkGimmickConfig`+`PickupSpawnState` self-gate |
-| ECS 컴포넌트 (Effects) | `Battle/Effects/` Pickup(cell·kind·remainingLife) + PickupSpawnState 싱글턴(후보 셀 Walk∪Place·rng·cadence, **BattleBridge 소유**) | 후보 셀은 `BuildPickupSpawnState`(FlowField 동형 lifecycle)가 `_generatedMap` 에서 구축 |
-| 시뮬 시스템 | `PickupSpawnSystem`(스폰+만료) · `PickupConsumeSystem`(co-location 소비) · `LastRunSystem`(지연 crash) | Consume/LastRun 은 telemetry 로그 위해 non-Burst |
-| 이벤트 큐 | N/A — 신규 채널 0. 라스트런 효과는 기존 `StatModifierApplyEvents` 재사용(AS 버프 + MaxHealthMul 컷) | |
-| View | `Battle/Effects/PickupPresenter.cs`(절차적 플레이스홀더) + `BattleBridge.ReconcilePickupViews` poll-reconcile(엔티티↔GameObject) | ★이벤트 아님 — 매 프레임 poll. 정식 아트/소비 VFX 후속 |
-| 씬 wiring | BattleBridge.pickupViewPrefab(옵션)·pickupViewHeight + SeasonRegistry.defaultSeason=season_overwork | 상태 아이콘은 unit-buff-debuff-aura 오라에 위임 |
+| 저작 SO | 카드·스킬 SO(`SkillData` · `DreamcatcherCard`) | |
+| 정의표 행 | `CardDefinitionBuilder.Fill` · 스킬 = `BindingDefinitionBuilder` → `HazardDef` 공유 | |
+| 코어 스폰 · 사건 | `BattleWorld.SpawnField` → `FieldSpawned`(46)/`FieldDespawned`(47) | 사건이 출구(`SiteTarget`)·반경 칸·지속을 싣는다 |
+| 뷰 풀 | `CoreFieldPresenter`(반경 = `CoreDrawRadius.AreaTiles`) | 뷰는 반경을 재지 않는다 |
+| 뷰 순서 | `ViewOrder.Effect` | |
+| 소멸 회수 | `FieldDespawned`(47) · `MatchEnded`/`MatchStarted` | |
+| 씬 배선 | `CoreFieldPresenter` | |
 
-## 사직서 → 메테오 — 집에 가도 되나요 (season-gimmick-clockout, 시즌 기믹)
+이력: 옛 `TornadoField`/`PortalLink`/`AllyBuffField` 캐리어 + 브리지 `CastSkillAtTile`/`CastPortal` 이 그렸다.
 
-| 정거장 | 앵커 | 확인 포인트 |
-|---|---|---|
-| 데이터 SO | `Data/Gimmick/ClockOutGimmickData.cs` (사직서 임계·메테오 수치) | `BattleConfig.gimmickPool` 배정(GameManager). 픽업과 달리 **death-스폰·비소비** |
-| 스폰 진입점 | `Battle/Effects/ResignationDropSystem.cs` — **death-트리거**: defender 사망 시(원인 불문) 배치 타일에 Resignation 스폰 | 주기 스폰 아님. `ClockOutGimmickConfig` self-gate. UnitLifecycle 파괴 직전 관찰(UpdateAfter Damage/Health, UpdateBefore Lifecycle) |
-| ECS 컴포넌트 (Effects) | `Resignation(cell)` | 사직서는 유닛이 안 줍는다 — 전역 임계로만 소멸 |
-| 시뮬 시스템 | `ResignationDropSystem`(DeadTag defender → 사직서 스폰) · `ResignationThresholdSystem`(사직서 ≥ threshold 소모 → barrage 요청) | 사망 = 기존 death 경로(DeadTag→UnitLifecycle→DefenderDeathEvent) 그대로. 강제 퇴근/코스트 환급은 unit 8 재설계로 폐기 |
-| 이벤트 큐 | **신규 1**: `MeteorBarrageRequestsSingleton` (Effects→Bridge). 메테오 자체는 기존 `ProjectileSpawnRequest`(SkyFall×TileAoe) 재사용 | 메테오 cast = `BattleBridge.SpawnProjectile(...,Entity.Null)`(bridge-cast, targetFaction=Enemy) |
-| View | `Battle/Effects/ResignationPresenter.cs`(절차적 흰 종이) + `BattleBridge.ReconcileResignationViews` poll-reconcile. 메테오 뷰는 기존 투사체 파이프라인 | ★poll-reconcile(Pickup 동형). 정식 아트/VFX 후속 |
-| 씬 wiring | BattleBridge.resignationViewPrefab(옵션)·resignationViewHeight + `BattleConfig.gimmickPool` 에 `Gimmick_ClockOut` 등록 | — |
-
-## 힐 (Heal)
+## 효과 타일 (Effect tile)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | N/A — 전용 SO 없음. `Data/AttackOutput.cs` 의 AttackOutputKind.Heal + 유닛 스탯 | |
-| 스폰 진입점 | `Battle/Combat/AttackSystem.cs`·`ProjectileHitSystem.cs` → IncomingHeal 버퍼 append | 캐리어 엔티티 없음 |
-| ECS 컴포넌트 (Units) | IncomingHeal 버퍼 — 배치 시 사전 부착 (`BattleBridge`) | ECB 구조변경 없이 append 하기 위함 |
-| 시뮬 시스템 | `Battle/Units/DamageApplicationSystem.cs` | pulse>0 만 이벤트 — RegenPerSec 는 VFX 스팸 방지로 의도적 제외 |
-| 이벤트 큐 | `Battle/Units/HealAppliedEventsSingleton.cs` | drain → `VfxSpawner.SpawnHealApplied` |
-| View | VfxSpawner one-shot (healAppliedPrefab, 풀 없음) | |
-| 씬 wiring | VfxSpawner.healAppliedPrefab 슬롯 | |
+| 저작 SO | `EffectTileData` · 시즌 맵 테마(`effectTiles`·`effectTileCount`) | |
+| 정의표 행 | `BoardEffectDefinitionBuilder.FillEffectTiles` → `EffectTileDef` | 스테이지 `suppressEffectTiles` 존중 |
+| 코어 스폰 · 사건 | `PlacementService.ArmedEffectTiles`(판 시작에 뽑고 판 내내 불변) · 적용은 배치 활성화 엣지 · 퇴근 회수 | 판정은 앵커 칸 하나 |
+| 뷰 풀 | ⚠ **없다** — 규칙은 돌지만 판 위에 어느 칸인지 그리지 않는다(8c 발견 · `rule-holders` T15 「미실현」) | |
+| 씬 배선 | N/A — 뷰가 없다 | |
 
-## VFX (one-shot)
+이력: 옛 `TilemapMapView.SetEffectTile`(미러) ↔ `BattleBridge._effectTilesByCell`(소유).
 
-| 정거장 | 앵커 | 확인 포인트 |
-|---|---|---|
-| 프리팹 소스 | `Presentation/VfxSpawner.cs` SerializeField 슬롯 (SO 아님) | 슬롯 null 이면 LogError — 코드 폴백 없음 |
-| 트리거 | ★혼합 — 큐 drain(MeteorBurst·HealApplied) + BattleBridge 직접 호출(배치링·캐스트타임 시각) | 단일 큐 아님. 새 VFX 는 어느 경로인지 먼저 결정 |
-| 공격 히트/캐스트 VFX | `Presentation/ProjectileViewPool.cs` PlayHit/PlayCast (UnitAttackVisualEvents drain) | ★VfxSpawner 를 거치지 않음 |
-| View | 프리팹 내부 Shuriken PS / `MeteorFall.cs` | 풀링 없음, 타이머 Destroy |
-| 씬 wiring | BattleBridge.vfxSpawner + 슬롯별 프리팹 할당 | |
-
-## 본 부착 VFX — 무기 궤적 (spine-weapon-trail)
-
-one-shot VFX 와 달리 **유닛의 자식으로 붙어 수명을 함께하고, Spine 본을 따라간다.**
-스포너도 큐도 새로 만들지 않는다 — 유닛 SO 가 리그 프리팹을 들고, 뷰가 공격 사건에 재생을 건다.
-새 "본 부착" 계열(꼬리·오라 트레일 등)은 이 표를 기준으로 삼는다.
-
-> 실제로 켜고·바꾸고·새 호스트에 붙이는 **레시피와 증상→원인 표**는
-> [`weapon-trail-authoring.md`](weapon-trail-authoring.md).
+## 픽업 — 레드불 / 사직서 (Pickup · Resignation)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/ISpineUnitVisualData.cs` — `SpineWeaponTrailPrefab` / `…EndNormalized` | ★디펜더·적 **공용** 인터페이스. 범위는 타입이 아니라 **프리팹 할당**이 정한다 |
-| 룩 SO | `_Project/VFX/WeaponTrailPreset_*.asset` (벤더 `HS_SwordTrailPreset` 복사본 7종) | 벤더 프리셋 직접 참조 불가 — sortingOrder/recalcOnAwake/startActive 3개를 반드시 덮어야 한다 |
-| 프리팹 소스 | `_Project/VFX/WeaponTrail_Slash.prefab`(base) + 룩별 **Prefab Variant** | 리그 = 빈 Animator + BoneFollower + `HS_SwordMeshTrail` + `WeaponTrailRig` + Point A/B. Animator 빠지면 상시 방출 |
-| ECS | **N/A — 시뮬 무관.** 궤적은 판정에 기여하지 않는다 | |
-| 트리거 | 기존 `UnitAttackVisualEvents` drain → `SpineUnitView.PlayAttack` | **신규 큐 0** |
-| View | `Presentation/WeaponTrailRig.cs` — `Bind(SkeletonRenderer)` / `Play(sec)` | 호스트는 이 둘만 안다. `Bind(null)` = 본 없는 호스트(구조물) 경로 |
-| Pool | **N/A — 유닛당 1개, 유닛 수명과 동일** | 생성 메시 레이어는 **씬 루트** 오브젝트(부모 없음) |
-| 정렬 | `BoardSortOrder.WeaponTrailOrder` + 프리셋 layer sortingOrder | ★실제 적용값은 **프리셋**(HS 가 매 LateUpdate 되쓴다). 파티클은 리그가 소유하고 호스트 스윕이 `IsChildOf` 로 제외 |
-| 씬 wiring | **N/A — 씬 오브젝트 신설 없음** | 프리팹 참조는 유닛 SO 가 들고 있다 |
+| 저작 SO | 시즌 기믹 SO · 뷰 = `PickupViewConfig` | 기믹이 뽑힌 판에서만 산다(기본 모드는 기믹 0) |
+| 정의표 행 | `MatchDefinitionBuilder.ToGimmickDefs` → `GimmickDef` | |
+| 코어 스폰 · 사건 | `GimmickHost` → `BattleWorld.SpawnPickup` → `PickupSpawned`(48)/`PickupTaken`(49)/`PickupExpired`(52) · 사직서 `BattleWorld.DropResignation` → `ResignationDropped`(50)/`ResignationThreshold`(51)/`ResignationConsumed`(53) · 디버그 커맨드 19~21(`CoreGimmickDebugMenu`) | 픽업 판정은 「칸 반폭 + 내 몸」 자(제약 13) |
+| 뷰 풀 | `CorePickupViewPool`(+`CorePickupPresenter`) · `CoreResignationViewPool`(+`CoreResignationPresenter`) | |
+| 뷰 순서 | `ViewOrder.Board` | |
+| 소멸 회수 | `PickupTaken`·`PickupExpired`·`ResignationConsumed` · `MatchStarted` | |
+| 씬 배선 | 두 풀 컴포넌트 · `PickupViewConfig` | |
 
-## 데미지 넘버
+이력: 옛 `ReconcilePickupViews`·`ReconcileResignationViews` 폴링.
 
-| 정거장 | 앵커 | 확인 포인트 |
-|---|---|---|
-| 데이터 | `Presentation/DamageNumberStyle.cs` (Spawner 직렬화 번들, SO 아님) | |
-| 트리거 | `Battle/Units/DamageNumberEventsSingleton.cs` → `BattleBridge.DrainDamageNumberEvents` | 같은 drain 이 EnemyHitBar 도 구동 |
-| Spawner/Pool/View | `Presentation/DamageNumberSpawner.cs` / `DamageNumberPool.cs` / `DamageNumberView.cs` | plain C# Queue 풀 |
-| 씬 wiring | BattleBridge.damageNumberSpawner | |
-
-## 예고 오버레이 (스폰 라인 — 폴링 구동 월드 오버레이)
-
-이벤트가 아니라 **이미 확정된 다음 스폰 시각을 읽어** 그리는 계열이라 큐/풀/프리팹이 전부 없다.
-(2026-07-26 정정: 초기 구현은 "다음 웨이브 예측"이었으나 `spawn-point-alert/3` 에서 **큐잉된
-웨이브의 사실**로 바뀌었다 — 예측 로직·캐시가 사라졌다.)
-다른 아키타입과 트리거 성격이 다르므로 새 예고류는 이 표를 기준으로 삼는다.
+## 드림캐쳐 카드 — 부착 · 시전 (Card)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 | `Presentation/SpawnAlertPresenter.cs` SerializeField (SO 아님) | 색·폭·타이밍 전부 인스펙터. 프리팹/SO 소스 없음 |
-| ECS | N/A — 시뮬 무관 순수 Mono | 예고는 시뮬을 바꾸지 않는다 |
-| 트리거 | ★큐 아님 — `BattleBridge.TryGetSpawnAlertForecast` **read-only 폴링** | NextWaveDock 과 같은 폴링 계열. 이벤트 drain 아님 |
-| 예보 산식 | `Data/WavePatternGenerator.FirstSpawnTimesPerLane` (순수) — **`BattleBridge.QueueWave` 가 큐잉 시점에 1회 호출** | 실스폰 엔트리와 **같은 인자**로 호출(+`EffectiveSpawnIndex`·`DeckIndexStride` 공유)가 정확도 보증. 창은 `waveSpawnLeadInSec`(wave-pattern 11)가 만든다 |
-| 경로 소스 | `BattleBridge.TryGetSpawnPathSim` (goal flow field 추적) | 유닛 이동과 같은 필드 → 표시 루트 = 실제 루트 |
-| View | `Presentation/SpawnAlertPresenter.cs` — lane 당 LineRenderer 3 + SpriteRenderer 1 | 풀 없음(lane 수만큼 생성 후 재사용). 텍스처 절차 생성 |
-| 정렬 | `BoardSortOrder.SpawnAlertOrder = -9` (−9~−6) | ★바닥 데칼 대역. 유닛(양수) 아래 — 양수로 두면 유닛을 덮는다.<br>⚠ **대역이 좁아졌다**(distance-based-range unit 5·7, 2026-08-31): `RangeRingOrder = -8` · `RangeTargetMarkOrder = -7` 이 들어와 **−6 하나만 남았다.** 새 바닥 오버레이는 그 자리를 쓰거나 대역 재설계가 필요하다 |
-| 씬 wiring | `SpawnAlertPresenter` GameObject + `bridge` 참조 | |
+| 저작 SO | `DreamcatcherCard` · `DreamcatcherCardCatalog` · 드림스톤 | 문안은 `DreamcatcherCardText`(로비·새 층 공유) |
+| 정의표 행 | `CardDefinitionBuilder.Fill` → `CardDef` · 덱 = `CoreDeckComposition.Compose`(확정 덱 + 판 시드 액티브 롤) | 52장 자동 증언 = `CardProbe`(7e) |
+| 코어 스폰 · 사건 | `HandDeck.TryAttach`/`HandDeck.TryCast` → `CardAttached`(60)/`CardDetached`(61)/`CardCast`(62) · 규칙 = `BindingRegistry` → `BindingAttached`(57)/`TriggerFired`(56)/`SkillVisual`(59) | 트랜잭션 = ① 적용 → ② 차감 → ③ 순환 |
+| 뷰 풀 | 손패 `CoreHandView`·`CoreCardDragSlot`·`CoreCardFocusPresenter` · 각성 항아리 `CoreAwakeningGaugeView` · 선택 패널 `CoreSelectionPanel` · 부착 범위 링 `CoreMapOverlay.ShowAttachRange` · 표식·오라 `CoreStatusFxSpawner`·`CoreDcAuraVisualPool` · 발동 임팩트·빔 `CoreVfxSpawner`·`CoreBeamPresenter` | 부착 범위 링은 사건 구독자가 아니다 — 손패 드래그가 오버레이에 민다 |
+| 뷰 순서 | `ViewOrder.Hand` · 표식 `ViewOrder.Status` · 오버헤드 카드 줄 `ViewOrder.Overhead` | 카드 사건 한 건이 몸에 붙는 것을 먼저 세운 뒤 손패가 창을 다시 읽는다 |
+| 소멸 회수 | `CardDetached`(61) · 숙주 `UnitDestroyed` → `HandDeck.Recover` | |
+| 씬 배선 | `BattleDriver._cards`(dev 덱 — 비우면 프로필 경로) · 손패 캔버스 · `CoreSelectionPanel._defenderCatalog` | |
 
-### 파생 — 사거리 표기(링·채움·대상 마크) · distance-based-range unit 5·7
+이력: 옛 `DreamcatcherHandController` · `DreamcatcherHandView` · `DcInspectController` · `DcIconStripSpawner`.
 
-같은 「폴링 구동 월드 오버레이」 계열이고 트리거만 다르다(배치 세션이 앵커를 먹인다).
-**새 아키타입이 아니다** — 다른 점만 적는다.
+## 상태 표식 · 오라 (Status FX)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 | `TileSetData` 의 `placementRangeRingMaterial`·`rangeFillAlphaUnderRing`·`rangeRingAlpha`·`rangeInvalidDesaturate`·`rangeTargetMarkColor` | ⚠ 알파류는 **실기기 튜닝 대상**이라 tileSet 에 명시 저작한다(키가 없으면 C# 기본값 상속 → 인스펙터 여는 순간 조용히 박힌다) |
-| 트리거 | `BattleBridge.SetPlacementRange` (배치 세션 폴링) | 마크는 **페인트 뒤**에 갱신한다 — 뷰의 `SetPlacementRange` 가 내부 `ClearPlacementRange` 로 마크를 회수한다 |
-| 모양 | `Shaders/PlacementRangeRing.shader` (SDF) | ⚠ `_HalfExtent`·`_Range` 는 저작이 아니라 **판정 입력의 복사본**이다. 인스펙터에서 만지지 말 것 |
-| View | `TilemapMapView` — 링 1개(상주) + 마크 풀(렌더러당 머티리얼 인스턴스) | `MaterialPropertyBlock` 금지(일반 uniform 이라 무시될 수 있고 그러면 전 마크가 같은 모양) |
-| 정렬 | `RangeRingOrder = -8` · `RangeTargetMarkOrder = -7` | ⚠ **유닛 위로 올리지 않는다.** 세계에 그린 도형이 스프라이트를 관통하면 UI 로 읽힌다 — 끊김은 채움이 흡수한다 |
-| 씬 wiring | **없음**(런타임 생성, grid 자식) | 머티리얼 참조 1개만 tileSet 에 |
-| 좌표 | ⚠ 대상 위치는 **반드시 `BoardSpace.ToView`** 를 지난다 | `LocalTransform.Position` 은 sim 좌표다. 안 지나면 스테이지마다 최대 1.95칸 어긋나고 **StreetDay 에서는 0.56칸이라 「발밑」으로 읽혀 검증이 통과한다** |
+| 저작 SO | `StatusFxRegistry` · `StackModifierSO` · `DcVisualConfig` | |
+| 정의표 행 | 스택 규칙 = `BattleDriver._stackModifiers` → `StackRuleDef` | |
+| 코어 사건 | `ModifierApplied`(34)/`ModifierRevoked`(35) · `StackChanged`(36)/`StackThreshold`(37) · `CcApplied`(38)/`CcCleared`(39) · `DotApplied`(40)/`DotCleared`(42) · `ShieldGranted`(41)/`ShieldBroken`(15) · `AggroAcquired`(7)/`AggroReleased`(54) · `LastRunEnded`(55) | 한 몸에 상태가 여럿일 때 무엇이 이겨 보이나는 데이터(6c) |
+| 뷰 풀 | `CoreStatusFxSpawner`(+`CoreStatusFxView`) · `CoreDcAuraVisualPool` | |
+| 뷰 순서 | `ViewOrder.Status` | 유닛 뒤 — 같은 틱에 태어난 유닛의 앵커가 선 뒤 |
+| 소멸 회수 | 각 `…Revoked`/`…Cleared` 짝 · 숙주 `UnitDestroyed`/`UnitSlain` · `MatchStarted` | |
+| 씬 배선 | 두 컴포넌트 | |
 
-## 맵 스테이지/프랍 (map-diorama-stage, 2026-08-19 전면 교체)
+이력: 옛 `ReconcileStatusFx` 폴링 · `StatModifierApplyEventsSingleton`.
 
-절차 산포 프랍·바닥 타일 페인팅 체계는 은퇴했다(`BackgroundPropPlacer`/`TilemapPropScatter`/`BoardVisualPlan` 계열/`PaintGround`). 맵 = **디오라마 스테이지 프리팹**이 정본이자 비주얼이다.
+## 도약 — 보스 도약 · 궁극기 강습 (Leap)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 저작(프리팹) | `Assets/_Project/Art/Theme/{theme}/MapStage_*.prefab`(unit 12 — `Prefabs/Maps` 은퇴) — 루트 `Core/MapStage/MapStage.cs` + 프랍에 `PropFootprint`/`SpawnMarker`/`GoalMarker`/`RouteMarker`/`PlacementBlockZone` | 역할 컴포넌트 없는 프랍 = 순수 장식. 기즈모가 차지 셀 실시간 표시. 절차 조립 예시 = `Editor/MapStageDuelGenerator.cs` |
-| 풀 | `Data/MapStage/MapStagePool.cs` → `Data/Maps/MapStagePool.asset` (프리팹+덱+플랜 짝) | 인덱스 선정 의미는 구 문서 풀과 동일(dev 슬롯 시드 불가시). `MapStage` 인스펙터 "Dev 엔트리 등록" 버튼 |
-| 논리 파생 | `Core/MapStage/MapStageScanner.cs`(스캔) → `Data/MapStage/DioramaMapBuilder.cs`(Validate+Assemble, 순수) → `GeneratedMap` | tiles 합성: 열림=Walk/차단=Deco. placeMask 직접 조립(기본 `Ground\|Path\|Air`, BlockZone 차감). 연결성 실패 = 하드 실패(폴백 리니어 은퇴) |
-| ECS | N/A — 프랍은 배틀 런타임 무관, footprint 는 빌드 시 GeneratedMap 으로만 반영 | 스테이지 인스턴스 수명 = `TeardownGeneratedMap` |
-| View | 스테이지 인스턴스 그 자체(`BattleBridge._stageInstance`) + 오버레이 전용 `Core/TilemapMapView.cs`(격자 = `AlignGridTo` 단일 writer) | 골 균열/붕괴·튜토리얼 앵커 = `GoalMarker`/`SpawnMarker` 뷰 훅 (브리지 마커 등록부 경유) |
-| 씬 wiring | BattleBridge `mapPool` → `MapStagePool.asset` | 효과 타일 억제 = `MapStage.suppressEffectTiles`(e2e 픽스처 계측 보호) |
+| 저작 SO | 보스·궁극기 능력 SO · 뷰 = `LeapVisualConfig` | |
+| 정의표 행 | `BindingDefinitionBuilder`(궁극기 fireCap 1) | |
+| 코어 사건 | `CombatPhase` 도약 단계 → `LeapAscend`(18)/`LeapDescend`(19) · 순간이동 `Blinked`(8) | 판정(착지 슬램 · 순간이동)은 코어가 이미 끝냈다 — 뷰는 비행만 |
+| 뷰 풀 | `CoreLeapPresenter`(`CoreLeapPresenter.TryGetFlightOverride` 로 유닛 뷰 위치를 덮어쓴다) | ⚠ 궁극기 **착지 예고 칸**은 그리지 않는다(8c 발견 · T16 「미실현」) |
+| 뷰 순서 | `ViewOrder.Leap` — 유닛 동기보다 **먼저**(X3 · 1프레임 팝 방지) | |
+| 씬 배선 | `CoreLeapPresenter` · `LeapVisualConfig` | |
 
----
+이력: 옛 `BossLeapVisualEventsSingleton`·`UltimateLeapVisualEventsSingleton` · `BattleBridge.RunBossLeap`.
+
+## 보너스 웨이브 포탈 (Bonus portal)
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 저작 SO | `BonusWaveData` | |
+| 정의표 행 | `MatchDefinitionBuilder.ToBonusDef` → `BonusWaveDef` | |
+| 코어 사건 | `WaveScheduler` → `BonusOffered`(22)/`BonusPulled`(23) | 온보딩 판은 당김 억제(`WaveScheduler.BonusPullSuppressed`) |
+| 뷰 풀 | `CoreBonusPortalPresenter`(`CoreBonusPortalPresenter._portalPrefab`) · 당김 UI `CoreNextWaveDock` | 8a 실현(초판 배정 「unit 6 의 보너스 뷰」는 실체가 없었다) |
+| 뷰 순서 | `ViewOrder.Board` | |
+| 소멸 회수 | `MatchStarted` · `CoreBonusPortalPresenter.Clear` | |
+| 씬 배선 | `CoreBonusPortalPresenter` | |
+
+이력: 옛 `BattleBridge.OpenBonusPortals`.
+
+## VFX 원샷 · 빔 · 피해 숫자
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 저작 SO | 유닛 SO 의 VFX 프리팹 칸 · `DcVisualConfig` · `DamageNumberStyle` | 벤더 VFX 는 `Assets/_Project` 사본을 쓴다(리포에 없는 팩 선례) |
+| 코어 사건 | `AttackResolved`(9) · `ProjectileHit`(12) · `HealApplied`(14) · `Placed`(25)/`DefenderActivated`(28) · `SkillVisual`(59) · `TriggerFired`(56) · `DamageApplied`(13) | 빔은 고속 틱 공격 사건을 TTL 세션으로 뭉친 **뷰의 개념**이다 |
+| 뷰 풀 | `CoreVfxSpawner` · `CoreBeamPresenter` · `CoreDamageNumberSpawner` | 무기 궤적은 유닛 뷰가 붙인다(`CoreSpriteUnitView`) |
+| 뷰 순서 | `ViewOrder.Effect` · 숫자 `ViewOrder.Damage` | |
+| 소멸 회수 | 원샷은 자기 수명(파티클 길이 상한) · 빔은 `UnitDestroyed`/`UnitSlain` · `MatchStarted` | 자기소멸 없는 벤더 VFX 가 판에 쌓인 선례 — 수명 상한 필수 |
+| 씬 배선 | 세 컴포넌트 | |
+
+이력: 옛 `VfxSpawner` · `BeamPresenter` · `DamageNumberSpawner`(드레인 구동).
+
+## 맵 오버레이 — 격자 · 배치 가이드 · 사거리 · 예고 (Overlay)
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 저작 SO | 타일 세트(`CoreMapOverlay._tileSet`) · 스테이지 프리팹 | |
+| 정의표 행 | `MatchDefinitionBuilder.BuildMap` → `MapSnapshot` | |
+| 코어 읽기 | `PlacementService`(칸의 상태) · `MapRuntime` | 사건 구독이 아니라 **입력이 민다** — 드래그 중에만 그린다 |
+| 뷰 | `CoreMapOverlay`(`ShowPlacement`·`PaintRange`·`ShowAimRing`·`ShowTelegraph`·`ShowBriefing`) · 평면 `CoreBoardPlane` · 판 경계 `CorePhaseFeed` | 도달 판정은 `AttackReach.InReach` **호출만**(제약 13) — 뷰가 자를 새로 만들지 않는다 |
+| 씬 배선 | `CoreMapOverlay` · `CoreBoardPlane` | |
+
+이력: 옛 `TilemapMapView`(1,608줄).
+
+## 맵 스테이지 · 프랍 (Stage)
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 저작 | `MapStage` 프리팹(`Art/Theme/<맵>/`) · 풀 `MapStagePool` · 볼륨 프로필은 프리팹 옆(8c 이사) | bake 없음 — 프리팹이 정본(`map-stage-authoring.md`) |
+| 정의표 행 | `MatchDefinitionBuilder.BuildMap`(마커 스캔 → 칸·레인·거점) | |
+| 생성 | `BattleDriver.Begin` → 스테이지 `Instantiate` · 회수 `BattleDriver.TeardownStage` | |
+| 뷰 | 마커 프랍 `MarkerPropInstaller` · 거점 `CoreStructurePropLayer` | |
+| 씬 배선 | `BattleDriver._mapPool` · `MarkerPropInstaller.style` | |
 
 ## 유지 규칙
 
-- 갱신 트리거는 **구조 변경만**: 새 아키타입, 정거장 추가/제거(새 큐·새 pool), 앵커 파일 이동/개명. 수치·필드·시스템 내부 로직 변경은 대상 아님.
-- 강제 지점: feature 종료 handoff 작성 시 구조 변경 여부 확인(CLAUDE.md 워크플로우 5번) + spec 작성 시점 대조 중 어긋남 발견 시 즉시 수정.
-- 이 문서에 동작 설명·이벤트 필드·코드 흐름 산문을 추가하지 않는다.
+- 이 표의 심볼이 코드에서 사라지면 같은 커밋에서 표를 고친다. unit 9 의 옛 전투 삭제 뒤에는 「모든 심볼이 남아 있다」를 grep 으로 다시 확인한다.
+- 새 사건 종류를 열면 `CoreEventKind` 번호와 트레이스 정거장(`CoreTrace`)을 같이 연다(추가 제약 「로깅은 첫 축」).
+- 「⚠ 없다」로 적힌 정거장(효과 타일 그림 · 착지 예고 · 붕괴 연출)은 8c 가 찾은 옛 기능의 공백이다. 처분이 정해지면 이 표를 고친다.
