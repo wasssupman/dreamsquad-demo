@@ -103,8 +103,8 @@ namespace Wassup.BattleCoreUnity
 
         /// <summary>
         /// 이 판의 덱. **모드가 덱을 골랐으면 그것**, 비었으면 호출자의 덱이다. 툴팁의 「비우면 맵
-        /// 풀이 짝지은 덱」 중 맵 풀 짝은 아직 배선 전이라 그 자리를 호출자 덱이 채운다 — 맵 풀
-        /// 로테이션(`mapPool`·`fixedMapSeed`)의 귀속은 `docs/spec/battle-core-rebuild/` 가 정한다.
+        /// 풀이 짝지은 덱」은 호출자가 채운다 — 드라이버가 `TrySelectEncounter` 로 고른 엔트리의 덱(풀 덱)을
+        /// 넘기고, 엔트리에 덱이 없으면 드라이버 덱이다(unit 8b 에서 배선 — 맵·덱·플랜은 같은 인덱스로 잠긴다).
         /// ⚠ 드라이버도 적 목록을 모을 때 **같은 함수**를 지나야 한다(적 인덱스가 갈린다).
         /// </summary>
         public static AttackDeck ResolveDeck(MatchModeData mode, AttackDeck fallback)
