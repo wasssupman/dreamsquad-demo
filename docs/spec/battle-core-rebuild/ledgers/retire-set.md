@@ -81,7 +81,8 @@ Assets/_Project/Scripts/Presentation/IngameCharacterTest.cs
 Assets/_Project/Scripts/UI/MenuPopup.cs
 
 # 3c. 옛 뷰 중 `Unity.Entities` 를 쓰는 잎 7(unit 9 재측정 2026-09-25 — 8c 의 Retire.Check 가 Entities dll 을 참조해 못 잡았다).
-#     남는 코드의 사용처는 서로끼리뿐 · 자산 참조는 옛 `BattleScene.unity` 뿐 · 새 층은 `Core*` 후계를 쓴다.
+#     남는 코드의 사용처는 서로끼리뿐 · 자산 참조는 옛 `BattleScene.unity` 2건(`StatusFxSpawner`·`EnemyHitBarSpawner`)뿐 · 새 층은 `Core*` 후계를 쓴다.
+#     검사 자체도 고쳤다: `Retire.Check.csproj` Exclude 에 `Unity.Entities*`(Entities.Graphics·Hybrid 포함)·`Unity.Transforms*`·`Unity.Serialization*` dll — 리드 결정 ① 2026-09-25.
 #     증거: 가지치기 export 를 Entities·Transforms·Serialization dll 없이 빌드 → 오류 56 이 이 7 파일에만 · 지우면 0.
 Assets/_Project/Scripts/Presentation/BeamPresenter.cs
 Assets/_Project/Scripts/Presentation/DcAuraVisualPool.cs
