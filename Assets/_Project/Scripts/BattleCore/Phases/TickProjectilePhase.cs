@@ -864,7 +864,7 @@ namespace Wassup.BattleCore
                 for (int i = 0; i < units.Count; i++)
                 {
                     var u = units[i];
-                    if (u == direct || !u.IsTargetable() || !IsLegal(u, p)) continue;
+                    if (u == direct || !u.IsTargetable() || !IsAreaLegal(u, p)) continue;
                     float dx = u.Position.x - p.Position.x;
                     float dz = u.Position.z - p.Position.z;
                     float reach = p.SplashRadius + u.HitRadius * tileSize;
@@ -905,7 +905,7 @@ namespace Wassup.BattleCore
             for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
-                if (!u.IsTargetable() || !IsLegal(u, p)) continue;
+                if (!u.IsTargetable() || !IsAreaLegal(u, p)) continue;
                 // 제약 13 — **착탄 지점** 진입점. 원점에 주인이 있으면 그 몸, 없으면 칸 반폭.
                 float dx = (u.Position.x - p.Impact.x) / tileSize;
                 float dz = (u.Position.z - p.Impact.z) / tileSize;
@@ -945,7 +945,7 @@ namespace Wassup.BattleCore
             for (int i = 0; i < units.Count && p.PierceRemaining > 0; i++)
             {
                 var u = units[i];
-                if (!u.IsTargetable() || !IsLegal(u, p)) continue;
+                if (!u.IsTargetable() || !IsAreaLegal(u, p)) continue;
                 float reach = p.HitThreshold + u.HitRadius * tileSize;
                 if (!SweepHitMath.SegmentHits(p.PrevPos.xz, p.Position.xz, u.Position.xz, reach)) continue;
                 if (!PathHits.CanHit(p.HitRecords, u.Id, p.Elapsed, p.RehitCooldown, out int slot)) continue;
@@ -1058,6 +1058,16 @@ namespace Wassup.BattleCore
         }
 
         /// <summary>
+        /// **광역 피해자**인가 — 스플래시·칸 광역·경로 스윕·튕김/재조준 후보. 직격 대상이 아닌 전부다.
+        /// ⚠ **길막(방벽)은 어느 쪽 광역에도 안 맞는다**(unit 9c · 옛 `ProjectileHitSystem` 의 광역 풀은
+        /// 진영 파생 그룹 `AnyDefender`/`AnyEnemy`·`OpponentUnitsOf` 라 방벽 비트가 없었다). 적의 공격
+        /// 마스크는 방벽을 품지만(부술 수 있는 벽 — `TargetDefaults.EnemyMask`) 그것은 **겨눠서 치는**
+        /// 권리다 — 직격은 `IsLegal` 그대로라 방벽을 겨눈 탄은 맞는다(안 그러면 길막이 무적이 된다).
+        /// </summary>
+        private static bool IsAreaLegal(Unit u, Projectile p)
+            => u.Faction != Faction.BlockingHazard && IsLegal(u, p);
+
+        /// <summary>
         /// 한 피해자에게 **이 착탄이 내는 것 전부**를 얹는다(unit 6a2).
         ///
         /// ⚠ 피해가 0 이어도 나머지는 든다 — 순수 디버프 탄이 그 모양이다(옛 구조는 피해가
@@ -1105,6 +1115,7 @@ namespace Wassup.BattleCore
                 if (!u.IsTargetable()) continue;
                 if (u.Id == exclude) continue;
                 if (u.Id == p.Owner) continue;
+                if (u.Faction == Faction.BlockingHazard) continue;   // 광역 풀과 같은 이유(`IsAreaLegal`)
                 if (n >= _bounceCands.Length)
                 {
                     System.Array.Resize(ref _bounceCands, _bounceCands.Length * 2);

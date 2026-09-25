@@ -97,6 +97,95 @@ namespace Wassup.Tests.EditMode.Core
             Assert.Less(units[2].Health, units[2].MaxHealth, "이웃 칸도 반경 1 안이다");
         }
 
+        // ── unit 9c — 길막(방벽)은 어느 쪽 광역에도 안 맞는다 ─────────────────
+        //
+        // 옛 GoalProjectileTests::TileAoe_BlockingHazard_IsVictimOfNeitherPool. 옛 착탄의 광역 풀은 진영
+        // 파생 그룹(`AnyDefender`/`AnyEnemy` · 스플래시·스윕·튕김은 `OpponentUnitsOf`)이라 방벽 비트가
+        // 어디에도 없었다. 코어는 적의 공격 마스크(방벽 포함)를 탄이 그대로 들고 가 적 광역이 방벽을 쳤다.
+        // ⚠ **직격은 그대로 맞는다** — 적이 방벽을 겨눠 쏜 탄이 방벽을 못 부수면 길막이 무적이 된다.
+
+        private const float BarrierHealth = 80f;
+
+        private static (BattleMatch m, Unit enemy, Unit defender, Unit barrier) BarrierBoard()
+        {
+            var def = Definition(defenderDamage: 0f, defenderRange: 0.5f, enemySpeed: 0f);
+            GiveProjectile(def, MovementKind.SkyFall, PayloadKind.TileAoe, impactTileRange: 1);
+            var splash = def.Projectiles[0];
+            splash.Id = "fixture_splash";
+            splash.Movement = (int)MovementKind.HomingToEntity;
+            splash.Payload = (int)PayloadKind.SingleSplash;
+            splash.SplashRadius = 2f;
+            splash.SplashDamageMul = 1f;
+            def.Projectiles = new[] { def.Projectiles[0], splash };
+            def.Units[0].Attack.ProjectileDefIndex = -1;   // 방어유닛은 스스로 쏘지 않는다 — 탄은 테스트가 요청한다
+            def.ConfigHash = def.ComputeConfigHash();
+            var m = Match(def);
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(8, 3)));
+            var enemy = m.World.Units[m.World.Units.Count - 1];
+            m.Apply(Command.DebugSpawnDefender(0, new int2(5, 2)));
+            var defender = m.World.Units[m.World.Units.Count - 1];
+            var barrier = m.World.Spawn(UnitKind.BlockingHazard, Faction.BlockingHazard, -1,
+                                        new float3(5.5f, 0f, 1.5f), 0.5f, BarrierHealth, deploying: false, tick: 0);
+            return (m, enemy, defender, barrier);
+        }
+
+        private static ProjectileRequest AreaShot(Unit owner, int defIndex, int mask, float3 at)
+        {
+            var req = ProjectileRequest.Empty;
+            req.DefIndex = defIndex;
+            req.Movement = defIndex == 0 ? MovementKind.SkyFall : MovementKind.HomingToEntity;
+            req.Payload = defIndex == 0 ? PayloadKind.TileAoe : PayloadKind.SingleSplash;
+            req.Owner = owner.Id;
+            req.OwnerFaction = owner.Faction;
+            req.TargetMask = mask;
+            req.Origin = at;
+            req.Impact = at;
+            req.Damage = 5f;
+            return req;
+        }
+
+        [Test]
+        public void 적의_칸_광역은_길막을_치지_않고_옆의_방어유닛은_친다()
+        {
+            var (m, enemy, defender, barrier) = BarrierBoard();
+            m.World.ProjectileRequests.Add(AreaShot(enemy, 0, Wassup.BattleCore.Combat.TargetDefaults.EnemyMask,
+                                                    barrier.Position));
+            Tick(m, 10);
+            Assert.Less(defender.Health, defender.MaxHealth, "전제 — 광역이 터졌다(이웃 칸 방어유닛)");
+            Assert.AreEqual(BarrierHealth, barrier.Health, 1e-4f, "적 광역이 길막을 쳤다");
+        }
+
+        [Test]
+        public void 방어유닛의_칸_광역도_길막을_치지_않는다()
+        {
+            var (m, _, defender, barrier) = BarrierBoard();
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(6, 1)));
+            var near = m.World.Units[m.World.Units.Count - 1];
+            m.World.ProjectileRequests.Add(AreaShot(defender, 0, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask,
+                                                    barrier.Position));
+            Tick(m, 10);
+            Assert.Less(near.Health, near.MaxHealth, "전제 — 광역이 터졌다(이웃 칸 적)");
+            Assert.AreEqual(BarrierHealth, barrier.Health, 1e-4f, "방어 광역이 길막을 쳤다");
+        }
+
+        [Test]
+        public void 적_탄의_스플래시는_길막을_치지_않지만_길막을_겨눈_직격은_맞는다()
+        {
+            var (m, enemy, defender, barrier) = BarrierBoard();
+            var toDefender = AreaShot(enemy, 1, Wassup.BattleCore.Combat.TargetDefaults.EnemyMask, enemy.Position);
+            toDefender.Target = defender.Id;
+            m.World.ProjectileRequests.Add(toDefender);
+            Tick(m, 60);
+            Assert.Less(defender.Health, defender.MaxHealth, "전제 — 직격이 닿았다");
+            Assert.AreEqual(BarrierHealth, barrier.Health, 1e-4f, "스플래시가 길막을 쳤다");
+
+            var toBarrier = AreaShot(enemy, 1, Wassup.BattleCore.Combat.TargetDefaults.EnemyMask, enemy.Position);
+            toBarrier.Target = barrier.Id;
+            m.World.ProjectileRequests.Add(toBarrier);
+            Tick(m, 60);
+            Assert.Less(barrier.Health, BarrierHealth, "길막을 겨눈 직격까지 막으면 길막이 무적이 된다");
+        }
+
         [Test]
         public void 경로_스윕은_관통_예산까지_때린다()
         {
