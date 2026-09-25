@@ -36,10 +36,21 @@
 | 로비 로드아웃 온보딩(4스텝 차단 오버레이 · 배웅 안내) | 제거 | 사용자 결정 ④ 「둘 다」 |
 | 완료 플래그 게이트(미완주 계정은 참가 신청 생략) | 제거 → 첫 판부터 참가 | 결정 ④ 의 귀결(플레이어 규칙 변화, 사용자 확인됨) |
 
+## 고친 것 (구현 2026-09-25 — spec 과 다른 점)
+
+- **로비 참가 게이트의 「계정 첫 판」 조건은 남았다.** 게이트는 둘이었다 — 안내 미완주 판 · 계정 첫 판(`IsFirstMatch` = `matchesPlayed == 0`). 뒤의 것은 안내가 아니라 서버 `complete` 500 우회(`tutorial-offline-match`)라 존치(리드 판단). 그래서 바뀐 규칙은 「**미완주 계정도 두 번째 판부터 참가 신청이 나간다**」이고, 새 계정의 **첫 판**은 여전히 참가를 생략한다. 테스트도 그 문장이다(`LobbyEntryAfterDecision4Tests`).
+- **옛 소비자가 남는 필드·창은 `*.OldBattle.cs` 부분 파일로 뗐다**(8c 4번 묶음 관용). `PlayerProfile.firstRunTutorialDone`(옛 `FirstRunTutorialController:719`·`GameManager:363`) · `DcInspectPanelView.ActionRect`(옛 컨트롤러). 배웅 플래그 `firstRunLobbyOutroDone` 은 소비자가 로비 안내뿐이라 바로 지웠다.
+- **퇴역 집합으로 간 것(unit 9)**: `FirstRunTutorialConfig`(.cs · .asset) · `TutorialGuidanceStyle_Default` · `WavePlan_FirstRunTutorial` · `UI/Tutorial/`(컨트롤러 · 안내 뷰 · 스타일) · `UI/Outgame/Tutorial/`(딤 오버레이 · 탭 존 · 딤 레이아웃) · 부분 파일 2. 옛 `BattleScene` 이 부르므로 지우면 옛 씬이 깨진다.
+- **바로 지운 자산**: `WavePlan_Tutorial` · `Deck_Tutorial` — 참조 0(스테이지는 `map-diorama-stage` unit 12 에서 이미 은퇴). `enemy-wave-integration` 스킬의 튜토리얼 플랜 정거장·로스터 교습 계약을 같은 커밋에서 은퇴 표기했다(그 계약을 강제하던 테스트는 이미 없었다).
+- **씬 오브젝트 수는 인벤토리와 다르다.** 로비는 「8」이 아니라 **5**(`TutorialTools` · 그 자식 `Dim`·`Guidance` · 개발 트레이 `TutorialResetButton` · 그 `Label`) + 배선 1(`lobbyTutorial`). 새 씬은 2(`FirstRunGuide`·`FirstRunGuideOverlay`) + 드라이버 배선 2. 개발 트레이는 레이아웃 그룹이 없어 RESET 버튼 자리가 비어 보인다(dev 전용 · 규칙 무관).
+- **인벤토리 밖에서 찾은 안내 전용 조각**: `CoreNextWaveDock.PullButtonRect` · `CoreMapOverlay` 브리핑 가이드(B1 전용) · `CoreDeckComposition.PinFront` · `LobbyKeyringDrag.DragStarted`(구독자 0) · `GimmickRevealConfig.tutorialHoldFallbackSec`(소비자 0) · `OutgameMenuController` 의 `restoreLobby` 인자(안내 챕터 C 전용). 전부 지웠다.
+- 커맨드 26 은 마지막 번호라 지워도 다른 번호가 안 밀린다. `CommandKind` 에는 append-only 계약이 없다(spec·주석 탐색 — append-only 는 `MatchModeData`·`goalKind`·`GamePhase`·트레이스 채널뿐). `MatchEntryKind.Onboarding = 2` 는 번호를 비워 두었다.
+- 장부: `rule-holders` G11·G12·D5 → 삭제 · `rules` X6 → 제거(총계 필수 105 · 제거 17) · `bridge-methods` 1·27·128·204 → 삭제(새 주인이 안내였다).
+
 ## 완료 기준
 
-- [ ] 살아남는 코드(옛 씬 경로·`retire-set` 밖)에서 `grep -rni 'tutorial\|온보딩\|FirstRun\|Onboarding'` = 0(주석 이력 줄 제외 — 있으면 「결정 ④로 제거」 한 줄로 정리).
-- [ ] `OutgameScene`·`BattleCoreScene` 에 튜토리얼 오브젝트·배선 0 · 씬 diff 는 삭제만.
-- [ ] 새 계정 첫 판 참가 신청 테스트 초록 · 옛 프로필 JSON 호환 테스트 초록.
-- [ ] 헤드리스 3종 · 골든 무변(`Verify`) · `check_ledgers.py` 3종 exit 0 · `Retire.Check` 0 · EditMode 선행 2 외 빨강 0 · PlayMode 코어 초록(온보딩 3건 삭제만큼 줄어든다) · 옛 부분집합 38/38(리로드 직후·코어 lane 앞) · CLI 63/63.
-- [ ] `core-reviewer` APPROVE → 플레이 4차에 합류(로비에 차단 오버레이가 없고, 새 씬에 안내가 없다).
+- [x] 살아남는 코드(옛 씬 경로·`retire-set` 밖)에서 `grep -rni 'tutorial\|온보딩\|FirstRun\|Onboarding'` = 0(주석 이력 줄 제외 — 있으면 「결정 ④로 제거」 한 줄로 정리). — **○** 남은 4줄: 살아 있는 첫 판 우회의 spec 이름 2(`OutgameMenuController.cs:166` · `FirstMatchTournamentBypassTests.cs:7`) + 호환 테스트의 JSON 키 2(`LobbyEntryAfterDecision4Tests` — 지운 키를 적어야 증언이 된다).
+- [x] `OutgameScene`·`BattleCoreScene` 에 튜토리얼 오브젝트·배선 0 · 씬 diff 는 삭제만. — **○** 로비 삭제 412줄(오브젝트 5 + 배선 1) · 새 씬 삭제 124줄(오브젝트 2 + 배선 2) · 추가 0줄.
+- [x] 새 계정 첫 판 참가 신청 테스트 초록 · 옛 프로필 JSON 호환 테스트 초록. — **○(문장 정정)** 「미완주 계정도 첫 판 뒤 참가」 + 「옛 프로필 JSON 호환」 2건 초록(`LobbyEntryAfterDecision4Tests`, EditMode Assets). 새 계정 **첫 판**은 서버 500 우회로 여전히 생략(위 「고친 것」).
+- [x] 헤드리스 3종 · 골든 무변(`Verify`) · `check_ledgers.py` 3종 exit 0 · `Retire.Check` 0 · EditMode 선행 2 외 빨강 0 · PlayMode 코어 초록(온보딩 3건 삭제만큼 줄어든다) · 옛 부분집합 38/38(리로드 직후·코어 lane 앞) · CLI 63/63. — **○** export `eff6833cc`: build 0 · test 680 · Check 0 · `--retire-prune` 뒤 `Retire.Check` 0 · `check_ledgers.py` 기본·`--owners`·`--retire-assets` exit 0 · 골든 Verify 11건 일치 · EditMode 코어+Assets 1003/1005(선행 2) · PlayMode 코어 91/91(93 − 온보딩 3 + 새 계정 1) · 옛 부분집합 38/38(리로드 직후 · 코어 lane 앞) · CLI 63/63. 커밋 6개 각각 export 전체 컴파일 = 기준선과 같은 오류 3(가지치기 전 한 어셈블리의 `SimEntityId` 모호성, 기존).
+- [ ] `core-reviewer` APPROVE → 플레이 4차에 합류(로비에 차단 오버레이가 없고, 새 씬에 안내가 없다). — **보류**(리드 몫).
