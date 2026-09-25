@@ -1,6 +1,6 @@
 # 9c — 옛 규칙 복원 5건
 
-상태: **구현 2026-09-25** — `27297a0cb` · `125d002b0` · `356596355` · `ea73d1ddd` · 행 5 `0cbb0cd31`(리드 추가 2026-09-25). core-reviewer · 플레이 4차 대기.
+상태: **구현 2026-09-25** — `27297a0cb` · `125d002b0` · `356596355` · `ea73d1ddd` · 행 5 `0cbb0cd31`(리드 추가 2026-09-25). core-reviewer **APPROVE**(2026-09-25 — 행 1~4 MEDIUM 1 = 행 5 로 해소 · LOW 1 `ClassFilter` Role 미설정 함정(옛과 같은 함정, 후속 후보) · 행 5 부록 finding 0). 플레이 4차 대기.
 
 ## 목적
 
@@ -29,4 +29,6 @@ unit 9 의 옛 테스트 이식이 드러낸 「옛 규칙 vs 코어」 차이 6
 - [x] 건마다 빨강 확인 → 수정 → 초록(헤드리스): 1 `null` · 2 `True` · 3 `2.0` · 4 `75`(2건, 방어 쪽은 원래 초록) · 5 빨강 4(마음·본능 `195` · 튕김·재조준이 거점 id 를 고름) → 초록, 대조 1 은 원래 초록.
 - [x] 행 1~4(`ea73d1ddd`): 헤드리스 882/884 · EditMode 2502(선행 2) · PlayMode.Core 95/95 · `PresetBarPopupLayerTest` 2/2 · 골든 11 일치.
 - [x] 행 5(`0cbb0cd31`): 헤드리스 클린 export build 0 · test **887/889**(건너뜀 2 = 표현 2건) · Check 0 · `check_ledgers.py` 0 · EditMode 3 어셈블리 **2507** 중 실패 2(선행 bomb_man·boomerang 문안) · PlayMode.Core **95/95** · 골든 Verify **11 일치** — 재굽기 없음.
-- [ ] core-reviewer · 사용자 플레이 4차.
+- [x] core-reviewer APPROVE(행 1~5) · [ ] 사용자 플레이 4차.
+
+리드 재검증 2026-09-25 — HEAD `d3f8d026c` 클린 export: build 0 · test 887/889(Ignore 2 = 표현 2건) · Check 0 · 장부 기본 통과 · 골든 파일 diff 0. Unity: EditMode 3 어셈블리 2505/2507(선행 2) · PlayMode 코어 95/95 · 골든 Verify 11 일치(행 1~4 뒤 · 행 5 뒤 각 1회 — 코퍼스가 다섯 경로를 구조적으로 안 탄다: bounce·classFilter·taunt·blocker·splash 저작 0). 리드 판단: 스윕 피격 순서 `SimEntityId` 순 유지(동률 결정론 선례).
