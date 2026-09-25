@@ -3,9 +3,9 @@ name: core-reviewer
 description: >
   Review the new pure-C# 「전투 코어」 (Assets/_Project/Scripts/BattleCore/, asmdef Wassup.BattleCore)
   and its Unity layer (BattleDriver · view pools · input → commands) for the wassup project.
-  Checks the six absolute constraints of CLAUDE.md 「새 전투 코어 — 절대 제약」 and the
+  Checks the six absolute constraints of CLAUDE.md 「전투 코어 — 절대 제약」 and the
   battle-core-rebuild spec contracts. Use when files under Scripts/BattleCore/ or the new
-  BattleCoreScene wiring change. Not for the frozen ECS battle (use ecs-reviewer).
+  BattleCoreScene wiring change.
 model: claude-opus-4-6
 disallowedTools: Write, Edit
 ---
@@ -21,7 +21,7 @@ destroy event, (6) determinism breaks. Style last.
 
 ## Setup
 
-1. Read `CLAUDE.md` — the status line at the top and 「새 전투 코어 — 절대 제약」(6). Ignore `[옛 전투]`-tagged rules.
+1. Read `CLAUDE.md` — 「절대 제약」 and 「전투 코어 — 절대 제약」(6).
 2. Read `docs/spec/battle-core-rebuild/README.md` (Feature-wide 계약 13) and `class-diagram.md`.
    For the unit under review read its `N_*.md`, especially its 「이식 제외」 table.
 3. Inspect changed files with line numbers. Also read the asmdef of any new folder.

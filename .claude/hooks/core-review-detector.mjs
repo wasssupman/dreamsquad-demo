@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * ECS Review Detector — project-level UserPromptSubmit hook (wassup)
+ * Core Review Detector — project-level UserPromptSubmit hook (wassup)
  *
- * When a review is requested AND ECS battle simulation files have changed,
- * injects additionalContext to trigger the two-track-review skill.
+ * When a review is requested AND 전투 코어 files have changed,
+ * injects additionalContext pointing at the core-reviewer agent.
+ * (옛 ECS 분기는 battle-core-rebuild unit 9 에서 옛 전투와 함께 제거 — 구 ecs-review-detector.mjs.)
  *
  * Conditions (both must be true):
  *   1. User message contains a review keyword
- *   2. git diff shows ECS-related files changed
+ *   2. git diff shows 전투 코어 files changed
  */
 
 import { execSync } from 'child_process';
@@ -28,14 +29,7 @@ function readStdin() {
 // Note: \b word boundary doesn't work with Korean (non-ASCII) chars — use plain alternation
 const REVIEW_RE = /(리뷰|검토|투트랙|\breview\b|\bcode[\s-]?review\b|\btwo[\s-]?track\b|\bdual[\s-]?review\b)/i;
 
-// ── ECS file patterns ─────────────────────────────────────────────────────
-const ECS_PATH_FRAGMENTS = [
-  'Assets/_Project/Scripts/Battle/',
-  'BattleBridge.cs',
-];
-
 // ── 전투 코어(battle-core-rebuild) file patterns ──────────────────────────
-// unit 0 항목 5 — 새 코어 경로는 ecs-reviewer 가 아니라 core-reviewer 로 간다.
 const CORE_PATH_FRAGMENTS = [
   'Assets/_Project/Scripts/BattleCore/',
   'Assets/_Project/Scripts/BattleCoreUnity/',
@@ -62,22 +56,6 @@ function sanitize(text) {
     .replace(/https?:\/\/[^\s)>\]]+/g, '');
 }
 
-function getEcsChangedFiles(cwd) {
-  const files = new Set();
-  const run = (cmd) => {
-    try {
-      return execSync(cmd, { cwd, timeout: 4000, stdio: ['pipe', 'pipe', 'pipe'] })
-        .toString().trim().split('\n').filter(Boolean);
-    } catch { return []; }
-  };
-
-  // unstaged + staged + last commit (covers "review after commit" pattern)
-  [...run('git diff --name-only'), ...run('git diff --name-only --cached'), ...run('git diff --name-only HEAD~1..HEAD')]
-    .forEach(f => files.add(f));
-
-  return [...files].filter(f => ECS_PATH_FRAGMENTS.some(p => f.includes(p)));
-}
-
 function getCoreChangedFiles(cwd) {
   const files = new Set();
   const run = (cmd) => {
@@ -98,26 +76,10 @@ function createCoreContext(coreFiles) {
 다음 전투 코어(battle-core-rebuild) 파일이 변경되었습니다:
 ${fileList}
 
-리뷰는 core-reviewer 에이전트로 진행하세요 (ecs-reviewer 아님 — 새 코어에는 ECS 제약이 적용되지 않는다):
-  Agent: core-reviewer — CLAUDE.md 「새 전투 코어 — 절대 제약」 6항 · spec 계약 13 · 장부 정합
+리뷰는 core-reviewer 에이전트로 진행하세요:
+  Agent: core-reviewer — CLAUDE.md 「전투 코어 — 절대 제약」 6항 · spec 계약 13 · 장부 정합
   병행: code-reviewer — spec 준수 · 일반 코드 품질
 </core-review-context>`;
-}
-
-function createContext(ecsFiles) {
-  const fileList = ecsFiles.map(f => `  - ${f}`).join('\n');
-  return `<ecs-review-context>
-[ECS 변경 감지됨]
-다음 ECS 배틀 시뮬레이션 파일이 변경되었습니다:
-${fileList}
-
-두 가지 리뷰가 권장됩니다:
-  Track A: code-reviewer  — spec 준수, lsp 타입 검사, 일반 코드 품질
-  Track B: ecs-reviewer   — ECS 경계/컨텍스트, NativeQueue lifecycle, Burst 호환성
-
-투트랙 리뷰를 진행하려면 two-track-review 스킬을 사용하세요:
-  Skill: two-track-review
-</ecs-review-context>`;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────
@@ -145,20 +107,16 @@ async function main() {
       return;
     }
 
-    // Condition 2: ECS files and/or 전투 코어 files changed
+    // Condition 2: 전투 코어 files changed
     const cwd = data.cwd || data.directory || process.cwd();
-    const ecsFiles = getEcsChangedFiles(cwd);
     const coreFiles = getCoreChangedFiles(cwd);
-    if (ecsFiles.length === 0 && coreFiles.length === 0) {
+    if (coreFiles.length === 0) {
       process.stdout.write(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
     }
 
-    // Conditions met — inject context (both blocks when both changed)
-    const ctx = [
-      ecsFiles.length ? createContext(ecsFiles) : '',
-      coreFiles.length ? createCoreContext(coreFiles) : '',
-    ].filter(Boolean).join('\n');
+    // Conditions met — inject context
+    const ctx = createCoreContext(coreFiles);
     process.stdout.write(JSON.stringify({
       continue: true,
       hookSpecificOutput: {
