@@ -93,6 +93,11 @@ namespace Wassup.BattleCore.Trigger
         public int StackId;
         public int ProjectileMovement;
         public int ProjectilePayload;
+        /// <summary>
+        /// unified-effect-layer unit 2 — 칸 결합 탄의 **착탄 예고**(사용자 결정 U1 — 효과 파라미터 · 기본 꺼짐).
+        /// 저작 칸은 unit 5 에서 열린다 — 그 전엔 빌더가 안 채워 늘 false(라이브 무변).
+        /// </summary>
+        public bool Telegraph;
 
         // ── 소유·수명 ──
         /// <summary>발동 횟수 상한. 0 = 무제한. **수명과 다른 축**이다(정정 5).</summary>
@@ -120,17 +125,17 @@ namespace Wassup.BattleCore.Trigger
         public bool HasEffect => Effect != null || CoreEffect != null;
 
         /// <summary>
-        /// 이번 발동의 params. 사건 스냅샷(자리·몸·층)은 호출부가 넘긴다 — **드레인 시점에 다시 읽지 않는다**.
+        /// 이번 발동의 params. 사건 스냅샷(층)은 호출부가 넘긴다 — **드레인 시점에 다시 읽지 않는다**.
+        /// 사건의 자리·몸은 여기가 아니라 원점(`SkillTarget.Origin` — unified-effect-layer unit 2)으로 간다.
         /// `patternIndex` 는 정의표 줄 번호다(코어에는 host 버퍼가 없다 — 슬롯은 바인딩이 든다).
         /// </summary>
-        public SkillParams ToParams(byte targetLayers, Unity.Mathematics.float3 eventPosition,
-                                    float eventBodyRadius)
+        public SkillParams ToParams(byte targetLayers)
             => new SkillParams(
                 Magnitude, Duration, TileRange, Period, DataIndex,
                 CcKind, Speed, HitThreshold, SlamDamage, SlamTileRange, StackId, VisualScale,
                 PatternDefIndex, StatKind, StackKind, ProjectileMovement, ProjectilePayload,
-                targetLayers, eventPosition, HazardDefIndex,
-                ShieldTargetCount, ShieldIncludesSelf, ShieldFilter, ConeCosSq, eventBodyRadius);
+                targetLayers, HazardDefIndex,
+                ShieldTargetCount, ShieldIncludesSelf, ShieldFilter, ConeCosSq, Telegraph);
 
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
@@ -169,6 +174,8 @@ namespace Wassup.BattleCore.Trigger
             MatchDefinition.Put(sb, "slam", SlamDamage.ToString("R", inv) + "," + SlamTileRange.ToString(inv));
             MatchDefinition.Put(sb, "stackId", StackId, inv);
             MatchDefinition.Put(sb, "projAxes", ProjectileMovement.ToString(inv) + "," + ProjectilePayload.ToString(inv));
+            // unified-effect-layer unit 2 — 기본값이면 안 쓴다(unit 1 까지의 규칙 줄 해시 무변).
+            if (Telegraph) MatchDefinition.Put(sb, "telegraph", 1, inv);
             MatchDefinition.Put(sb, "fireCap", FireCap, inv);
             MatchDefinition.Put(sb, "lifetime", (int)Lifetime, inv);
             MatchDefinition.Put(sb, "lifetimeSec", LifetimeSeconds, inv);

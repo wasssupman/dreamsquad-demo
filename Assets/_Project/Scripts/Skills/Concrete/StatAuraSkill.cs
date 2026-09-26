@@ -50,7 +50,7 @@ namespace Wassup.Skills.Concrete
             // 아무 일도 안 한 것이 저작의 결과다.
             if (a.PercentDelta == 0f || a.Ttl <= 0f) return;
 
-            var hostPos = ctx.Position(caster.Unit);
+            var hostPos = target.Origin.LaunchSite;   // 몸에서 나오는 것 — 발동 주체의 자리
             var buf = new SkillEntityId[MaxTargets];
             // ⚠ 후보 게이트가 진영에 따라 다르다. 상대 오라만 통행 층을 본다 —
             // 「내가 못 때리는 층」을 감속시킬 수는 없기 때문이다(도발과 같은 판단).

@@ -26,7 +26,7 @@ namespace Wassup.Skills.Concrete
                 Kind = SimIntentKind.SpawnProjectile,
                 Target = target.Unit,
                 Source = caster.Unit,          // owner — 위협 귀속이 시전자에게 간다
-                Position = ctx.Position(caster.Unit),
+                Position = target.Origin.LaunchSite,   // 발사 자리 — 발동 주체
                 // 방향 바인딩 궤적만 쓴다. 발사 시점의 값이라 재계산하지 않는다.
                 DirectionXZ = target.DirectionXZ,
                 Amount = p.Magnitude,
@@ -41,6 +41,8 @@ namespace Wassup.Skills.Concrete
                 // unified-effect-layer unit 1 — 칸 결합 탄(타격 운석)의 낙하 시간. 대상·방향 결합은 안 읽는다.
                 // 라이브 저작은 전부 0 이다(빌더가 칸 결합 × 이 효과를 아직 거절한다 — unit 5).
                 Duration = p.Duration,
+                // unit 2 — 착탄 예고(U1 — 효과 파라미터 · 기본 꺼짐). 칸 결합 탄만 읽는다(`IntentApplier.SpawnProjectile`).
+                Telegraph = p.Telegraph,
             });
         }
     }

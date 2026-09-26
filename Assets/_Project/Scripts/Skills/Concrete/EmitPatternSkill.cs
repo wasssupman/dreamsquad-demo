@@ -61,7 +61,7 @@ namespace Wassup.Skills.Concrete
             // 내보낸다 — 이 축이 없애려던 바로 그 증상이다.
             if (!ctx.Has(caster.Unit, UnitPredicate.HasPosition)) return;
 
-            var origin = ctx.Position(caster.Unit);
+            var origin = target.Origin.LaunchSite;   // 발사 자리 — 발동 주체
             var hostXZ = new float2(origin.x, origin.z);
 
             bool hasAim = ctx.TryFacing(caster.Unit, out float2 aim)

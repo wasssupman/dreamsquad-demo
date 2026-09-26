@@ -92,7 +92,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(1, new float3(6.9f, 0, 6.9f), Faction.DefenderUnit);
 
-            new AreaSleepSkill().Execute(caster, SkillTarget.None, Sleep(3, 1, 1.5f), ctx);
+            new AreaSleepSkill().Execute(caster, ctx.SelfEvent(caster.Unit), Sleep(3, 1, 1.5f), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count,
                 "사각 모서리(원 밖)의 대상은 광역에 걸리지 않아야 한다");
@@ -131,7 +131,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(1, new float3(6.5f, 0, 6.5f), Faction.DefenderUnit);
 
-            new AreaSleepSkill().Execute(caster, SkillTarget.None, Sleep(3, 1, 1.5f), ctx);
+            new AreaSleepSkill().Execute(caster, ctx.SelfEvent(caster.Unit), Sleep(3, 1, 1.5f), ctx);
 
             Assert.AreEqual(1, ctx.SimIntents.Count, "N=1 의 대각 인접은 원 안이다");
         }

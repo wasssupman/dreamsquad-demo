@@ -27,7 +27,7 @@ namespace Wassup.Skills.Concrete
                 Target = target.Unit,        // 계측용 — 드레인은 자리로만 깐다
                 // 감지자가 대상 칸의 **중심 좌표**를 실어 온다. 칸↔좌표 왕복은 정확하고
                 // (`CellToWorldCenter` ↔ `WorldToCell`), 이벤트가 좌표 축 하나만 갖는다.
-                Cell = ctx.CellOfPosition(p.EventPosition),
+                Cell = ctx.CellOfPosition(target.Origin.EffectSite),
                 DataIndex = p.HazardDataIndex,
                 Selector = p.Selector,       // 장판 / 길막
                 TargetTraversalLayers = p.TargetTraversalLayers,

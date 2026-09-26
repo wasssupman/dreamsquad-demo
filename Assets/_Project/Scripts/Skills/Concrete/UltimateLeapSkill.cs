@@ -54,7 +54,7 @@ namespace Wassup.Skills.Concrete
                 Kind = SimIntentKind.PlayVisual,
                 Selector = (int)SkillVisualKind.UltimateAscend,
                 Source = caster.Unit,
-                Position = ctx.Position(caster.Unit),
+                Position = target.Origin.LaunchSite,   // 발사 자리 — 이탈 연출
                 DataIndex = SkillParams.NoDataIndex,
             });
         }

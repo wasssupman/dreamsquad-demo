@@ -38,7 +38,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit);
             ctx.Add(3, new float3(0f, 0f, 2f), Faction.EnemyUnit);
 
-            new AreaTauntSkill().Execute(caster, default, P(3, 4f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(3, 4f), ctx);
 
             Assert.AreEqual(2, TauntCount(ctx));
             Assert.AreEqual(4f, ctx.SimIntents[0].Duration, 1e-4f);
@@ -53,7 +53,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.DefenderUnit);
 
-            new AreaTauntSkill().Execute(caster, default, P(3, 4f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(3, 4f), ctx);
 
             Assert.AreEqual(0, TauntCount(ctx));
         }
@@ -64,7 +64,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(9f, 0f, 0f), Faction.EnemyUnit);
 
-            new AreaTauntSkill().Execute(caster, default, P(2, 4f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(2, 4f), ctx);
 
             Assert.AreEqual(0, TauntCount(ctx));
         }
@@ -78,7 +78,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(1.5f, 0f, 1.5f), Faction.EnemyUnit);
 
-            new AreaTauntSkill().Execute(caster, default, P(2, 4f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(2, 4f), ctx);
 
             Assert.AreEqual(1, TauntCount(ctx));
         }
@@ -90,7 +90,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(2f, 0f, 2f), Faction.EnemyUnit);
 
-            new AreaTauntSkill().Execute(caster, default, P(2, 4f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(2, 4f), ctx);
 
             Assert.AreEqual(0, TauntCount(ctx));
         }
@@ -109,7 +109,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(3, new float3(3.6f, 0f, 0f), Faction.EnemyUnit);   // 3.5 밖
             var bastion = CasterRef.OfUnit(new SkillEntityId(1), Faction.DefenderUnit, bodyRadius: 1.5f);
 
-            new AreaTauntSkill().Execute(bastion, default, P(2, 4f), ctx);
+            new AreaTauntSkill().Execute(bastion, ctx.SelfEvent(bastion.Unit), P(2, 4f), ctx);
 
             Assert.AreEqual(1, TauntCount(ctx),
                 "3.4 는 안(2 + 1.5) · 3.6 은 밖이어야 한다 — 0 이면 원점 항이 다시 칸 상수다");
@@ -126,7 +126,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(3.4f, 0f, 0f), Faction.EnemyUnit);
             var thin = CasterRef.OfUnit(new SkillEntityId(1), Faction.DefenderUnit, bodyRadius: 0.5f);
 
-            new AreaTauntSkill().Execute(thin, default, P(2, 4f), ctx);
+            new AreaTauntSkill().Execute(thin, ctx.SelfEvent(thin.Unit), P(2, 4f), ctx);
 
             Assert.AreEqual(0, TauntCount(ctx), "폭1 이면 2.5 까지다 — 3.4 는 밖");
         }
@@ -139,7 +139,7 @@ namespace Wassup.Tests.EditMode
             ctx.Units[1].AttackTraversalLayers = 0x01;
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit, u => u.TraversalLayers = 0x02);
 
-            new AreaTauntSkill().Execute(caster, default, P(3, 4f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(3, 4f), ctx);
 
             Assert.AreEqual(0, TauntCount(ctx));
         }
@@ -151,7 +151,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit, u => u.Dead = true);
             ctx.Add(3, new float3(1f, 0f, 1f), Faction.EnemyUnit, u => u.InUltimateLeap = true);
 
-            new AreaTauntSkill().Execute(caster, default, P(3, 4f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(3, 4f), ctx);
 
             Assert.AreEqual(0, TauntCount(ctx));
         }
@@ -163,7 +163,7 @@ namespace Wassup.Tests.EditMode
             ctx.Units[1].HasAggroCapacity = false;
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit);
 
-            new AreaTauntSkill().Execute(caster, default, P(3, 4f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(3, 4f), ctx);
 
             Assert.AreEqual(0, TauntCount(ctx));
         }
@@ -174,8 +174,8 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit);
 
-            new AreaTauntSkill().Execute(caster, default, P(3, 0f), ctx);
-            new AreaTauntSkill().Execute(caster, default, P(0, 4f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(3, 0f), ctx);
+            new AreaTauntSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(0, 4f), ctx);
 
             Assert.AreEqual(0, TauntCount(ctx));
         }

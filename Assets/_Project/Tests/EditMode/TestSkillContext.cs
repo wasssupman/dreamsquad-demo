@@ -67,6 +67,17 @@ namespace Wassup.Tests.EditMode
 
         private Unit Get(SkillEntityId id) => Units.TryGetValue(id.Value, out var u) ? u : null;
 
+        // unified-effect-layer unit 2 — 드레인(`TriggerDispatcher.Execute`)이 채우는 원점의 페이크. concrete 는 원점을
+        // `target.Origin` 에서만 읽으므로(H1) 테스트가 그 값을 넘겨야 한다. 자기 사건 = ① 발사 자리 = ② 효과 좌표 =
+        // 그 유닛의 자리·몸. 없는 id 는 기본값(원점 0).
+        public SkillOrigin OriginOf(SkillEntityId id)
+        {
+            var u = Get(id);
+            return u != null ? SkillOrigin.OfSubject(u.Position, u.BodyRadius) : default;
+        }
+
+        public SkillTarget SelfEvent(SkillEntityId id) => SkillTarget.At(OriginOf(id));
+
         public float3 Position(SkillEntityId id) => Get(id)?.Position ?? float3.zero;
         public int2 CellOf(SkillEntityId id) => CellOfPosition(Position(id));
         public int2 CellOfPosition(float3 w) => new int2((int)math.floor(w.x / TileSize), (int)math.floor(w.z / TileSize));

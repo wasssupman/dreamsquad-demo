@@ -25,7 +25,7 @@ namespace Wassup.Skills.Concrete
             if (!ctx.TryLandingCellNear(desired, a.MaxLandingRing, out var landing))
                 return;   // 링 상한 안에 갈 수 있는 칸이 없다
 
-            var from = ctx.Position(caster.Unit);
+            var from = target.Origin.LaunchSite;   // 발사 자리 — 연출 출발점
             var dest = ctx.CellCenter(landing);
 
             ctx.Emit(new SimIntent

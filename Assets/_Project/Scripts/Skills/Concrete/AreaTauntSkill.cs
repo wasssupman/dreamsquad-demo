@@ -32,7 +32,7 @@ namespace Wassup.Skills.Concrete
             if (!ctx.Has(caster.Unit, UnitPredicate.HasAggroCapacity)) return;
             if (!ctx.Has(caster.Unit, UnitPredicate.HasPosition)) return;
 
-            var center = ctx.Position(caster.Unit);
+            var center = target.Origin.LaunchSite;   // 몸에서 나오는 것 — 발동 주체의 자리
             var buf = new SkillEntityId[MaxTargets];
             int n = ctx.Opponents(
                 caster, center, a.Radius,

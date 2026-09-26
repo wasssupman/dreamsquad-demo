@@ -46,12 +46,12 @@ namespace Wassup.Skills.Concrete
                     Kind = SimIntentKind.PlayVisual,
                     Selector = (int)SkillVisualKind.ShieldGranted,
                     Target = caster.Unit,
-                    Position = ctx.Position(caster.Unit),
+                    Position = target.Origin.LaunchSite,
                 });
                 return;
             }
 
-            var hostPos = ctx.Position(caster.Unit);
+            var hostPos = target.Origin.LaunchSite;   // 몸에서 나오는 것 — 발동 주체의 자리
             var buf = new SkillEntityId[MaxTargets];
             // ⚠ **자기 포함이 축이다**(unit 5b). 같은 「반경 내 아군」이라도 카드 경로는
             // 자기를 빼고(위 병합 키 경고) 실드 셔틀은 넣는다(그쪽엔 겹칠 상대가 없다).

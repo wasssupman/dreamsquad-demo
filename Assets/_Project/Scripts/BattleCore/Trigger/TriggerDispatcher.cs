@@ -489,21 +489,49 @@ namespace Wassup.BattleCore.Trigger
                 return;
             }
 
+            // unified-effect-layer unit 2 — **원점 두 값을 여기서 한 번 채운다**(README 계약 1). concrete 는 `target.Origin`
+            // 만 읽는다 — 새 산출기가 아니라 감지자 스냅샷과 이 드레인이 이미 만들던 값을 한 묶음으로 넘길 뿐이다.
+            // ① 발사 자리 = 발동 주체: 판 위에 있으면 **지금** 자리(concrete 가 `ctx.Position(caster)` 로 읽던 그 값),
+            //    없으면(자기 죽음 · 퇴근 · 판 시전) 발화 시점 스냅샷.
             CasterRef caster;
+            float3 launchSite;
+            float launchBody;
             if (owner != null && !e.SubjectGone)
-                caster = CasterRef.OfUnit(CoreSkillContext.ToSkill(owner.Id), owner.Faction, owner.HitRadius);
+            {
+                launchSite = owner.Position;
+                launchBody = owner.HitRadius;
+                caster = CasterRef.OfUnit(CoreSkillContext.ToSkill(owner.Id), owner.Faction, launchBody);
+            }
             else
+            {
+                launchSite = e.SubjectPos;
+                launchBody = e.SubjectBody;
                 caster = new CasterRef(SkillEntityId.None,
                                        e.SubjectFaction != Faction.None ? e.SubjectFaction : Faction.DefenderUnit,
-                                       e.SubjectBody);
+                                       launchBody);
+            }
+
+            // ② 효과 좌표 = 사건이 실은 자리(몸은 감지자 스냅샷 — 시체 폭발이면 죽은 적) · 지정 칸(자리형 0) ·
+            //    둘 다 없으면 주인의 스냅샷(옛 `TargetPosition == 0` 폴백).
+            float3 site;
+            float siteBody;
+            if (e.HasCellAim)
+            {
+                site = _skills.CellCenter(e.CellA);
+                siteBody = 0f;
+            }
+            else
+            {
+                site = e.HasSite ? e.Site : e.SubjectPos;
+                siteBody = e.HasSite ? e.SiteBody : e.SubjectBody;
+            }
+            var origin = new SkillOrigin(launchSite, launchBody, site, siteBody, e.CellA);
 
             var targetUnit = _world.Find(e.Target);
             var target = new SkillTarget(targetUnit != null ? CoreSkillContext.ToSkill(targetUnit.Id) : SkillEntityId.None,
-                                         e.CellA, e.CellB, e.HasCellB, e.Direction);
+                                         in origin, e.CellB, e.HasCellB, e.Direction);
 
-            float3 site = e.HasSite ? e.Site : e.SubjectPos;
-            float siteBody = e.HasSite ? e.SiteBody : e.SubjectBody;
-            var prm = d.ToParams(e.TargetLayers, site, siteBody);
+            var prm = d.ToParams(e.TargetLayers);
 
             b.FireCount++;
             PublishFired(b, in e, ctx.Tick, targetUnit);

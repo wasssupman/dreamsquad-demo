@@ -130,13 +130,15 @@ namespace Wassup.Tests.EditMode.Core
 
         private static SkillParams P(float magnitude, int tileRange, int dataIndex, float duration = 0f,
                                      int movement = 0, int payload = 0, byte layers = 0,
-                                     float3 eventPosition = default, float eventBody = 0f,
                                      float speed = 0f, float hitThreshold = 0f)
             => new SkillParams(magnitude, duration, tileRange, 0, dataIndex, 0, speed, hitThreshold, 0f, 0, 0,
                                visualScale: 1f, projectileMovement: movement, projectilePayload: payload,
-                               targetTraversalLayers: layers, eventPosition: eventPosition, eventBodyRadius: eventBody);
+                               targetTraversalLayers: layers);
 
         private CasterRef Caster(Unit u) => new CasterRef(S(u), u.Faction, u.HitRadius);
+
+        // unit 2 — 드레인이 채우는 원점(`TriggerDispatcher.Execute`)의 손조립. 자기 사건 = ① = ② = 주인의 자리·몸.
+        private static SkillOrigin Self(Unit u) => SkillOrigin.OfSubject(u.Position, u.HitRadius);
 
         // ── 표 1 행 ─────────────────────────────────────────────────────────
 
@@ -145,7 +147,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             // Card_PokeNeedle — 재조준 반경 4 · Duration 은 대상 결합이 안 읽는다(0 이 아니어도 무변).
             var p = P(5f, 4, NeedleRow, duration: 0.7f, speed: 8f, hitThreshold: 0.3f, layers: 1);
-            Run(new TargetProjectileSkill(), Caster(_d), SkillTarget.OfUnit(S(_e), _m.Map.CellOf(_e.Position)), p);
+            Run(new TargetProjectileSkill(), Caster(_d), SkillTarget.OfUnit(S(_e), Self(_d)), p);
             var r = _m.World.ProjectileRequests[0];
             Assert.AreEqual(_e.Id, r.Target);
             Assert.AreEqual(4, r.RetargetTileRange);
@@ -157,7 +159,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var p = P(5f, 3, BoomerangRow, movement: (int)MovementKind.BoomerangReturn);
             Run(new TargetProjectileSkill(), Caster(_d),
-                SkillTarget.OfUnit(S(_e), _m.Map.CellOf(_e.Position), new float2(1f, 0f)), p);
+                SkillTarget.OfUnit(S(_e), Self(_d), new float2(1f, 0f)), p);
             var r = _m.World.ProjectileRequests[0];
             Assert.IsTrue(r.Target.IsNone, "방향 결합 — 임자 없음");
             Assert.AreEqual(3f * _m.Map.TileSize, r.DistanceOverride, 1e-6f);
@@ -167,8 +169,8 @@ namespace Wassup.Tests.EditMode.Core
         public void 행17_19_44_54_자기_자리_폭발은_무변()
         {
             // Card_CorneredBurst · Card_ShieldBurst · Card_TremorPlate · 브루저 · 짱쎈(적 시전자) — 몸에서 나오는 것.
-            Run(new SelfAreaBlastSkill(), Caster(_d), SkillTarget.None, P(20f, 1, MeteorRow, layers: 1));
-            Run(new SelfAreaBlastSkill(), Caster(_e), SkillTarget.None, P(20f, 2, MeteorRow));
+            Run(new SelfAreaBlastSkill(), Caster(_d), SkillTarget.At(Self(_d)), P(20f, 1, MeteorRow, layers: 1));
+            Run(new SelfAreaBlastSkill(), Caster(_e), SkillTarget.At(Self(_e)), P(20f, 2, MeteorRow));
             var r = _m.World.ProjectileRequests;
             Assert.AreEqual(MovementKind.SkyFall, r[0].Movement, "Homing 저작인데도 하늘 낙하");
             Assert.AreEqual(PayloadKind.TileAoe, r[0].Payload);
@@ -181,10 +183,10 @@ namespace Wassup.Tests.EditMode.Core
         {
             // Card_CalamityHeart · Card_Farewell(OnDeath — 시전자 없음) · Card_CorpseBurst(OnKill — 자리·몸 = 죽은 적).
             var site = _e.Position;
-            Run(new DeathSiteBlastSkill(), Caster(_d), SkillTarget.None,
-                P(15f, 1, MeteorRow, eventPosition: site, eventBody: 0.6f));
-            Run(new DeathSiteBlastSkill(), CasterRef.Player(Faction.DefenderUnit), SkillTarget.None,
-                P(15f, 1, MeteorRow, eventPosition: _d.Position, eventBody: 1f));
+            Run(new DeathSiteBlastSkill(), Caster(_d),
+                SkillTarget.At(new SkillOrigin(_d.Position, _d.HitRadius, site, 0.6f, default)), P(15f, 1, MeteorRow));
+            Run(new DeathSiteBlastSkill(), CasterRef.Player(Faction.DefenderUnit),
+                SkillTarget.At(SkillOrigin.OfSubject(_d.Position, 1f)), P(15f, 1, MeteorRow));
             Assert.AreEqual(0.6f, _m.World.ProjectileRequests[0].OriginBodyRadius, 1e-6f, "죽은 적의 몸(감지자 스냅샷)");
             Assert.AreEqual(0f, _m.World.ProjectileRequests[0].FlightTime, "즉발");
         }
@@ -193,8 +195,9 @@ namespace Wassup.Tests.EditMode.Core
         public void 행16_퇴근_운석은_무변()
         {
             // Card_SeveranceMeteor — 비워진 칸 · 몸 0 · 비행 0.8 · 예고 끔.
-            Run(new DeathSiteBlastSkill(), CasterRef.Player(Faction.DefenderUnit), SkillTarget.None,
-                P(15f, 1, MeteorRow, duration: 0.8f, eventPosition: _m.Map.CenterOf(new int2(4, 2))));
+            var vacated = _m.Map.CenterOf(new int2(4, 2));
+            Run(new DeathSiteBlastSkill(), CasterRef.Player(Faction.DefenderUnit),
+                SkillTarget.At(new SkillOrigin(vacated, 0f, vacated, 0f, default)), P(15f, 1, MeteorRow, duration: 0.8f));
             var r = _m.World.ProjectileRequests[0];
             Assert.AreEqual(0.8f, r.FlightTime, 1e-6f);
             Assert.AreEqual(0, r.TelegraphTileRange, "예고 끔(U1)");
@@ -204,7 +207,9 @@ namespace Wassup.Tests.EditMode.Core
         public void 행35_액티브_운석은_무변()
         {
             // Active_Meteor — 지정 칸 · 예고 켬 · 비행 = warningSec.
-            Run(new TileMeteorSkill(), CasterRef.Player(Faction.DefenderUnit), SkillTarget.OfCell(new int2(5, 2)), P(100f, 1, MeteorRow, duration: 1.5f));
+            var cell = new int2(5, 2);
+            Run(new TileMeteorSkill(), CasterRef.Player(Faction.DefenderUnit),
+                SkillTarget.At(SkillOrigin.AtCell(cell, _m.Map.CenterOf(cell))), P(100f, 1, MeteorRow, duration: 1.5f));
             var r = _m.World.ProjectileRequests[0];
             Assert.AreEqual(1, r.TelegraphTileRange, "예고 켬");
             Assert.AreEqual(1.5f, r.FlightTime, 1e-6f);

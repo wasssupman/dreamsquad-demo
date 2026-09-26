@@ -33,7 +33,7 @@ namespace Wassup.Tests.EditMode
         public void MissingPattern_FiresNothing()
         {
             var ctx = Ctx(PatternAimNeed.Missing, out var caster);
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 3), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 3), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count,
                 "명세가 없으면 발사도 카운터 전진도 없다");
@@ -43,7 +43,7 @@ namespace Wassup.Tests.EditMode
         public void Preaimed_FiresWithoutTouchingAim()
         {
             var ctx = Ctx(PatternAimNeed.Preaimed, out var caster);
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 3), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 3), ctx);
 
             Assert.AreEqual(1, ctx.SimIntents.Count);
             var it = ctx.SimIntents[0];
@@ -63,7 +63,7 @@ namespace Wassup.Tests.EditMode
             ctx.Units[1].HasFacing = true;
             ctx.Units[1].Facing = new float2(1f, 0f);
 
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 3), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 3), ctx);
 
             Assert.AreEqual(1, ctx.SimIntents.Count);
             Assert.AreEqual(1f, ctx.SimIntents[0].DirectionXZ.x, 1e-4f);
@@ -77,7 +77,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(0f, 0f, 5f), Faction.EnemyUnit);   // 멀다
             ctx.Add(3, new float3(2f, 0f, 0f), Faction.EnemyUnit);   // 가깝다
 
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 6), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 6), ctx);
 
             Assert.AreEqual(1, ctx.SimIntents.Count);
             Assert.AreEqual(1f, ctx.SimIntents[0].DirectionXZ.x, 1e-4f, "최근접(+X)으로 겨눈다");
@@ -87,7 +87,7 @@ namespace Wassup.Tests.EditMode
         public void NeedsAim_NoFacing_NoCandidate_FiresNothing()
         {
             var ctx = Ctx(PatternAimNeed.NeedsAim, out var caster);
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 3), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 3), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count,
                 "조준도 후보도 없으면 사건을 없던 것으로 한다 — 방향 (0,0) 탄을 내보내지 않는다");
@@ -102,7 +102,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(PatternAimNeed.NeedsAim, out var caster);
             ctx.Add(2, new float3(3f, 0f, 3f), Faction.EnemyUnit);
 
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 3), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 3), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count,
                 "조준 후보를 보는 자와 탄이 닿는 자는 같은 자여야 한다");
@@ -116,7 +116,7 @@ namespace Wassup.Tests.EditMode
             ctx.Units[1].AttackTraversalLayers = 0x01;                 // 지상만 때린다
             ctx.Add(2, new float3(2f, 0f, 0f), Faction.EnemyUnit, u => u.TraversalLayers = 0x02);
 
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 3), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 3), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count, "못 때리는 층은 총구를 못 가져간다");
         }
@@ -127,7 +127,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(PatternAimNeed.NeedsAim, out var caster);
             ctx.Add(2, new float3(2f, 0f, 0f), Faction.EnemyUnit, u => u.Dead = true);
 
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 3), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 3), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count, "시체는 총구를 못 가져간다");
         }
@@ -141,7 +141,7 @@ namespace Wassup.Tests.EditMode
             ctx.Units[1].HasFacing = true;
             ctx.Units[1].Facing = new float2(1f, 0f);
 
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 3), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 3), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count);
         }
@@ -156,13 +156,13 @@ namespace Wassup.Tests.EditMode
 
             var ctx = Ctx(PatternAimNeed.NeedsAim, out var caster);
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit);   // 코앞 +X
-            skill.Execute(caster, default, P(PatternIdx, 6), ctx);
+            skill.Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 6), ctx);
             Assert.AreEqual(1f, ctx.SimIntents[0].DirectionXZ.x, 1e-4f, "1차: +X");
 
             // 2차 — 그 적이 사라지고 먼 +Z 하나만 남았다.
             var ctx2 = Ctx(PatternAimNeed.NeedsAim, out var caster2);
             ctx2.Add(3, new float3(0f, 0f, 4f), Faction.EnemyUnit);
-            skill.Execute(caster2, default, P(PatternIdx, 6), ctx2);
+            skill.Execute(caster2, ctx2.SelfEvent(caster2.Unit), P(PatternIdx, 6), ctx2);
 
             Assert.AreEqual(1, ctx2.SimIntents.Count);
             Assert.AreEqual(1f, ctx2.SimIntents[0].DirectionXZ.y, 1e-4f,
@@ -178,7 +178,7 @@ namespace Wassup.Tests.EditMode
             ctx.Units[1].Facing = float2.zero;
             ctx.Add(2, new float3(0f, 0f, 2f), Faction.EnemyUnit);
 
-            new EmitPatternSkill().Execute(caster, default, P(PatternIdx, 3), ctx);
+            new EmitPatternSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(PatternIdx, 3), ctx);
 
             Assert.AreEqual(1, ctx.SimIntents.Count);
             Assert.AreEqual(1f, ctx.SimIntents[0].DirectionXZ.y, 1e-4f);

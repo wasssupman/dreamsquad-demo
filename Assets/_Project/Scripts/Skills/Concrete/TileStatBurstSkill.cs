@@ -20,10 +20,10 @@ namespace Wassup.Skills.Concrete
         {
             if (p.Magnitude == 1f || p.Duration <= 0f || p.TileRange < 0) return;
 
-            var center = ctx.CellCenter(target.CellA);
+            var center = target.Origin.EffectSite;   // 지정 칸의 중심(효과 좌표 — 드레인이 채운다)
             var buf = new SkillEntityId[MaxTargets];
             int n = ctx.Opponents(caster, center, p.TileRange,
-                // unit 23a — **칸 조준**이라 자리형이 맞다. 원점이 시전자가 아니라 `target.CellA` 다.
+                // unit 23a — **칸 조준**이라 자리형이 맞다. 원점이 시전자가 아니라 지정 칸(`Origin.EffectSite`)이다.
                 CandidateFilter.ExcludeDead, RangeMetric.CellArea, buf);
 
             for (int i = 0; i < n; i++)

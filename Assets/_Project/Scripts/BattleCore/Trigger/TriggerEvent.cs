@@ -59,6 +59,12 @@ namespace Wassup.BattleCore.Trigger
         public byte TargetLayers;
 
         // 칸 조준(액티브 — 7b).
+        /// <summary>
+        /// unified-effect-layer unit 2 — 이 사건의 효과 좌표가 **지정 칸**이다(액티브 시전). 드레인이 원점 ②를
+        /// `CellA` 의 중심 · 몸 0(자리형)으로 채운다. `HasSite` 에 싣지 않는 이유: 그 짝은 `TriggerFired` 의 대상 자리로
+        /// 사건에 나가 트레이스가 바뀐다 — 칸 조준은 오늘 그 사건에 자리를 안 싣는다. 대기열 스냅샷이라 트레이스 비기록.
+        /// </summary>
+        public bool HasCellAim;
         public int2 CellA;
         public int2 CellB;
         public bool HasCellB;

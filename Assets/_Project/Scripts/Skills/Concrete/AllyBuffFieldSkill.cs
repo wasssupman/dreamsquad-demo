@@ -26,7 +26,7 @@ namespace Wassup.Skills.Concrete
                 Kind = SimIntentKind.SpawnFieldCarrier,
                 Selector = (int)SkillFieldKind.AllyBuff,
                 Selector2 = p.StatSelector,
-                Cell = target.CellA,
+                Cell = target.Origin.EffectCell,   // 지정 칸(효과 좌표 — 원점)
                 TileRange = p.TileRange,
                 Amount = p.Magnitude,
                 Duration = p.Duration,

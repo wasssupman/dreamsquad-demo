@@ -18,8 +18,9 @@ namespace Wassup.Tests.EditMode
             => new SkillParams(damage, 0, tiles, 0, SkillParams.NoDataIndex, 0, 0, 0, 0, 0, 0,
                                coneCosSq: coneCosSq);
 
-        private static SkillTarget Aim(float2 dir)
-            => new SkillTarget(SkillEntityId.None, int2.zero, int2.zero, false, dir);
+        // unified-effect-layer unit 2 — 브레스는 **발사 자리**(①)에서 편다. 드레인이 채우는 원점을 페이크가 만든다.
+        private static SkillTarget Aim(TestSkillContext ctx, CasterRef caster, float2 dir)
+            => new SkillTarget(SkillEntityId.None, ctx.OriginOf(caster.Unit), int2.zero, false, dir);
 
         // 정면은 맞고 등 뒤는 안 맞는다. ⚠ 이 대칭이 깨지는 것이 콘 판정의 대표 사고다 —
         // 제곱 비교라 부호 가드가 없으면 **등 뒤에 대칭 콘**이 생긴다.
@@ -32,7 +33,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(3f, 0, 5f), Faction.EnemyUnit);   // 등 뒤(−X)
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new ConeBreathSkill().Execute(caster, Aim(new float2(1f, 0f)),
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
                 P(30f, 5, HalfAngle50CosSq), ctx);
 
             var hits = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage)
@@ -49,7 +50,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(1, new float3(5f, 0, 7f), Faction.EnemyUnit);   // 정확히 옆(90°)
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new ConeBreathSkill().Execute(caster, Aim(new float2(1f, 0f)),
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
                 P(30f, 5, HalfAngle50CosSq), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage).Count);
@@ -65,7 +66,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(1, new float3(7f, 0, 5f), Faction.EnemyUnit);
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new ConeBreathSkill().Execute(caster, Aim(float2.zero),
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, float2.zero),
                 P(30f, 5, HalfAngle50CosSq), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count, "축이 없으면 임의 방향을 지어내지 않는다");
@@ -81,7 +82,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(7f, 0, 5.1f), Faction.EnemyUnit);   // 같은 편은 안 맞는다
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
 
-            new ConeBreathSkill().Execute(caster, Aim(new float2(1f, 0f)),
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
                 P(30f, 5, HalfAngle50CosSq), ctx);
 
             var hits = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage)
@@ -98,7 +99,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(1, new float3(7f, 0, 5f), Faction.EnemyUnit);
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new ConeBreathSkill().Execute(caster, Aim(new float2(1f, 0f)),
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
                 P(0f, 5, HalfAngle50CosSq), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count);
@@ -119,7 +120,7 @@ namespace Wassup.Tests.EditMode
                     u => u.TraversalLayers = 0x01);                // 지상
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new ConeBreathSkill().Execute(caster, Aim(new float2(1f, 0f)),
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
                 P(30f, 5, HalfAngle50CosSq), ctx);
 
             var hits = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage)
@@ -138,7 +139,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(1, new float3(5f, 0, 5f), Faction.EnemyUnit);     // 같은 자리 같은 편
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
 
-            new ConeBreathSkill().Execute(caster, Aim(new float2(1f, 0f)),
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
                 P(30f, 5, HalfAngle50CosSq), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage).Count,

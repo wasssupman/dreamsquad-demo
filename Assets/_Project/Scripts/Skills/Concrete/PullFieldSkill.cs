@@ -22,7 +22,7 @@ namespace Wassup.Skills.Concrete
             {
                 Kind = SimIntentKind.SpawnFieldCarrier,
                 Selector = (int)SkillFieldKind.Pull,
-                Cell = target.CellA,
+                Cell = target.Origin.EffectCell,   // 지정 칸(효과 좌표 — 원점)
                 TileRange = p.TileRange,
                 Amount = p.Magnitude,     // 당김 속도(월드 단위/초)
                 Duration = p.Duration,
@@ -32,7 +32,7 @@ namespace Wassup.Skills.Concrete
 
     // skill-layer-migration unit 7c — **포탈.** 입구에 닿은 적을 출구로 보낸다.
     //
-    // ⚠ **액티브 중 유일하게 칸을 둘 받는다.** 그 축(`CellA`/`CellB`)은 토대가 미리
+    // ⚠ **액티브 중 유일하게 칸을 둘 받는다.** 그 축(입구 `Origin.EffectCell` / 출구 `CellB`)은 토대가 미리
     // 깔아 둔 것이고, 안 깔았으면 이 가족이 못 들어왔다.
     //
     // ⚠ **입구 == 출구 거절은 여기 없다.** 그건 두 번 탭하는 입력의 규칙이라 호출자
@@ -50,7 +50,7 @@ namespace Wassup.Skills.Concrete
             {
                 Kind = SimIntentKind.SpawnFieldCarrier,
                 Selector = (int)SkillFieldKind.Portal,
-                Cell = target.CellA,      // 입구
+                Cell = target.Origin.EffectCell,   // 입구(효과 좌표 — 원점)
                 Cell2 = target.CellB,     // 출구
                 Duration = p.Duration,
             });

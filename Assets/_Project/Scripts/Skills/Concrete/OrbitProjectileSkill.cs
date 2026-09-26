@@ -29,7 +29,7 @@ namespace Wassup.Skills.Concrete
             if (radius <= 0f || p.Duration <= 0f || p.Speed <= 0f) return;
 
             int count = math.clamp(p.Period > 0 ? p.Period : 1, 1, MaxOrbs);
-            var center = ctx.Position(caster.Unit);
+            var center = target.Origin.LaunchSite;   // 궤도 중심 = 발동 주체
 
             for (int i = 0; i < count; i++)
             {

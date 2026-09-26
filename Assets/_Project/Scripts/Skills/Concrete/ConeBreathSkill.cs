@@ -34,7 +34,7 @@ namespace Wassup.Skills.Concrete
             if (math.lengthsq(dir) < 1e-6f) return;
             dir = math.normalize(dir);
 
-            var hostPos = ctx.Position(caster.Unit);
+            var hostPos = target.Origin.LaunchSite;   // 발사 자리 — 브레스는 여기서 편다
             float rangeWorld = p.TileRange * ctx.TileSize;
 
             // 레거시 필터 넷 중 셋이 여기로 접힌다:

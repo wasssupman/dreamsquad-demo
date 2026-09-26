@@ -27,7 +27,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(1, new float3(6.5f, 0, 5.5f), Faction.EnemyUnit);
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
 
-            new GrantShieldSkill().Execute(caster, SkillTarget.None, P(60f, 0), ctx);
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(60f, 0), ctx);
 
             var grants = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield);
             Assert.AreEqual(1, grants.Count);
@@ -54,7 +54,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(6.5f, 0, 6.5f), Faction.DefenderUnit);   // 반대편
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
 
-            new GrantShieldSkill().Execute(caster, SkillTarget.None, P(60f, 3), ctx);
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(60f, 3), ctx);
 
             var grants = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield);
             Assert.AreEqual(1, grants.Count);
@@ -72,7 +72,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(4.5f, 0, 5.5f), Faction.EnemyUnit);
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
 
-            new GrantShieldSkill().Execute(caster, SkillTarget.None, P(60f, 3), ctx);
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(60f, 3), ctx);
 
             var vfx = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.PlayVisual);
             Assert.AreEqual(2, vfx.Count, "대상 수만큼");
@@ -92,7 +92,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(4.5f, 0, 5.5f), Faction.EnemyUnit);
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
 
-            new GrantShieldSkill().Execute(caster, SkillTarget.None, P(60f, 3), ctx);
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(60f, 3), ctx);
 
             var grants = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield);
             Assert.AreEqual(1, grants.Count, "만충인 대상은 건너뛴다");
@@ -108,8 +108,8 @@ namespace Wassup.Tests.EditMode
             ctx.Add(100, new float3(5.5f, 0, 5.5f), Faction.EnemyUnit);
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
 
-            new GrantShieldSkill().Execute(caster, SkillTarget.None, P(0f, 0), ctx);
-            new GrantShieldSkill().Execute(caster, SkillTarget.None, P(-1f, 3), ctx);
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(0f, 0), ctx);
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(-1f, 3), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count);
         }
@@ -133,7 +133,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(3, new float3(5.5f, 0, 6.5f), Faction.DefenderUnit, u => u.EffectiveHpRatio = 0.5f);  // 차하
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new GrantShieldSkill().Execute(caster, SkillTarget.None,
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit),
                 Shuttle(40f, 3, count: 2, SkillShieldFilter.MostHurt, includesSelf: false), ctx);
 
             var got = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield)
@@ -154,7 +154,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(4.5f, 0, 5.5f), Faction.DefenderUnit, u => u.EffectiveHpRatio = 0.8f);
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new GrantShieldSkill().Execute(caster, SkillTarget.None,
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit),
                 Shuttle(40f, 3, count: 2, SkillShieldFilter.MostHurt, includesSelf: true), ctx);
 
             var got = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield)
@@ -177,7 +177,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(4.5f, 0, 5.5f), Faction.DefenderUnit, u => u.EffectiveHpRatio = 0.4f);
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new GrantShieldSkill().Execute(caster, SkillTarget.None,
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit),
                 Shuttle(40f, 3, count: 1, SkillShieldFilter.MostHurt, includesSelf: false), ctx);
 
             var got = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield)
@@ -195,7 +195,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(4.5f, 0, 5.5f), Faction.DefenderUnit);
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new GrantShieldSkill().Execute(caster, SkillTarget.None, P(40f, 3), ctx);
+            new GrantShieldSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(40f, 3), ctx);
 
             var got = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield)
                                     .ConvertAll(i => i.Target.Value);

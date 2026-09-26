@@ -199,5 +199,58 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsEmpty(hits, "전투 코어가 표기 전용 도형 보정항을 읽는다 — 판정은 `SkillMath.ReachFrom*` "
                                  + "진입점만 통한다(제약 13): " + string.Join(", ", hits));
         }
+
+        // unified-effect-layer unit 2 — **concrete 는 원점을 `target.Origin` 한 곳에서만 읽는다**(H1 · README 계약 1).
+        // 옛 세 갈래(`ctx.Position(caster.Unit)` · `target.CellA` · `p.EventPosition`/`EventBodyRadius`)가 되살아나면
+        // 같은 효과가 출처마다 다른 자리를 원점으로 삼는다 — 산출은 드레인 한 곳인데 읽기가 다시 흩어진다.
+        // ⚠ 후보 거리(`ctx.Position(candidate)`)는 원점 읽기가 아니다 — 시전자 자리만 막는다.
+        private static readonly string[] OldOriginReads =
+        {
+            @"\bctx\s*\.\s*Position\s*\(\s*caster\s*\.\s*Unit\s*\)",
+            @"\.\s*CellA\b",
+            @"\bEventPosition\b",
+            @"\bEventBodyRadius\b",
+        };
+
+        [Test]
+        public void concrete_는_원점을_Origin_에서만_읽는다()
+        {
+            string concreteDir = Path.Combine(CoreGoldenStore.RepoRoot, "Assets/_Project/Scripts/Skills/Concrete");
+            var files = Directory.GetFiles(concreteDir, "*.cs", SearchOption.AllDirectories);
+            Assert.IsNotEmpty(files, "concrete 폴더를 못 찾았다 — 아래 스캔이 vacuous 통과한다");
+
+            var hits = new List<string>();
+            int originReaders = 0;
+            foreach (var path in files)
+            {
+                string code = CodeOnly(path);
+                if (code.Contains("target.Origin.")) originReaders++;
+                foreach (var pattern in OldOriginReads)
+                    if (Regex.IsMatch(code, pattern)) hits.Add(Path.GetFileName(path) + " ← " + pattern);
+            }
+            // 존재 단언 짝 — 이름이 바뀌면 금지 스캔만 초록으로 남는다.
+            Assert.Greater(originReaders, 0, "`target.Origin.` 을 읽는 concrete 가 없다 — 이름이 바뀌었다면 이 스캔을 같이 갱신하라");
+            Assert.IsEmpty(hits, "concrete 가 원점을 옛 갈래로 읽는다 — `target.Origin` 만 읽는다: " + string.Join(", ", hits));
+        }
+
+        [Test]
+        public void 옛_사건_자리_필드는_참조가_없고_원점은_드레인_한_곳에서_채운다()
+        {
+            string scripts = Path.Combine(CoreGoldenStore.RepoRoot, "Assets/_Project/Scripts");
+            var hits = new List<string>();
+            var fillers = new List<string>();
+            foreach (var sub in new[] { "Skills", "BattleCore", "BattleCoreUnity" })
+            {
+                foreach (var path in Directory.GetFiles(Path.Combine(scripts, sub), "*.cs", SearchOption.AllDirectories))
+                {
+                    string code = CodeOnly(path);
+                    if (Regex.IsMatch(code, @"\bEventPosition\b|\bEventBodyRadius\b")) hits.Add(Path.GetFileName(path));
+                    if (sub != "Skills" && Regex.IsMatch(code, @"new\s+SkillOrigin\s*\(")) fillers.Add(Path.GetFileName(path));
+                }
+            }
+            Assert.IsEmpty(hits, "옛 사건 자리 필드가 되살아났다 — 원점은 `SkillOrigin` 이 나른다: " + string.Join(", ", hits));
+            CollectionAssert.AreEqual(new[] { "TriggerDispatcher.cs" }, fillers,
+                "원점을 채우는 곳은 드레인 하나다(`TriggerDispatcher.Execute`) — 늘면 원점 산출이 다시 갈라진다");
+        }
 }
 }

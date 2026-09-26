@@ -131,7 +131,7 @@ namespace Wassup.BattleCore.Trigger
                 Seam = Seam.Immediate, Kind = TriggerKind.None,
                 Subject = SimEntityId.Match, SubjectFaction = Faction.DefenderUnit,
                 Target = SimEntityId.None,
-                CellA = cellA, CellB = cellB, HasCellB = hasCellB,
+                HasCellAim = true, CellA = cellA, CellB = cellB, HasCellB = hasCellB,
             };
 
         /// <summary>이 적에 표식이 이미 붙었나 — 카드 표식 규칙이 붙어 있는가(옛 `_bountyMarked` 등록부의 후계).</summary>

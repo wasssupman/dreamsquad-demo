@@ -30,7 +30,7 @@ namespace Wassup.Skills
         // 있고 루프 불변) — 조회로 되돌리면 후보마다 lookup 이 되고 fallback 0 위험이 되살아난다.
         //
         // 0 = 판 위에 몸이 없다(플레이어 시전). 「자리에 떨어지는 것」의 0 과는 **다른 축**이다 —
-        // 그쪽은 `SkillParams.EventBodyRadius` 가 말한다.
+        // 그쪽은 `SkillOrigin.EffectBody` 가 말한다(unified-effect-layer unit 2).
         public readonly float BodyRadius;
 
         public CasterRef(SkillEntityId unit, Faction faction, float bodyRadius = 0f)

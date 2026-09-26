@@ -42,7 +42,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.DefenderUnit);
             ctx.Add(3, new float3(1f, 0f, 1f), Faction.EnemyUnit);
 
-            new AllyStatAuraSkill().Execute(caster, default, P(30f, 3, 6f, SkillStatKind.DamageMul), ctx);
+            new AllyStatAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(30f, 3, 6f, SkillStatKind.DamageMul), ctx);
 
             var m = Mods(ctx);
             // 가디언은 자기도 받는다 → 자기 + 아군 = 2
@@ -57,7 +57,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.DefenderUnit);
             ctx.Add(3, new float3(1f, 0f, 1f), Faction.EnemyUnit);
 
-            new OpponentStatAuraSkill().Execute(caster, default, P(-90f, 3, 1.5f, SkillStatKind.MoveSpeedMul), ctx);
+            new OpponentStatAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(-90f, 3, 1.5f, SkillStatKind.MoveSpeedMul), ctx);
 
             var m = Mods(ctx);
             Assert.AreEqual(1, m.Count);
@@ -72,12 +72,12 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.DefenderUnit);
 
-            new AllyStatAuraSkill().Execute(caster, default, P(30f, 3, 6f, SkillStatKind.DamageMul), ctx);
+            new AllyStatAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(30f, 3, 6f, SkillStatKind.DamageMul), ctx);
             bool guardianSelf = Mods(ctx).Exists(it => it.Target.Value == 1);
 
             var ctx2 = Ctx(out var caster2);
             ctx2.Add(2, new float3(1f, 0f, 0f), Faction.DefenderUnit);
-            new AllySpeedAuraSkill().Execute(caster2, default, P(20f, 3, 6f, SkillStatKind.MoveSpeedMul), ctx2);
+            new AllySpeedAuraSkill().Execute(caster2, ctx2.SelfEvent(caster2.Unit), P(20f, 3, 6f, SkillStatKind.MoveSpeedMul), ctx2);
             bool whipSelf = Mods(ctx2).Exists(it => it.Target.Value == 1);
 
             Assert.IsTrue(guardianSelf, "가디언은 자기도 버프한다(레거시 arm 의 명시 결정)");
@@ -92,7 +92,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit);
 
-            new OpponentStatAuraSkill().Execute(caster, default, P(-50f, 3, 2f, SkillStatKind.AttackSpeedMul), ctx);
+            new OpponentStatAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(-50f, 3, 2f, SkillStatKind.AttackSpeedMul), ctx);
 
             Assert.AreEqual((int)SkillStatKind.AttackSpeedMul, Mods(ctx)[0].Selector);
         }
@@ -105,7 +105,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.DefenderUnit);
 
-            new AllySpeedAuraSkill().Execute(caster, default, P(20f, 3, 6f, SkillStatKind.DamageMul), ctx);
+            new AllySpeedAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(20f, 3, 6f, SkillStatKind.DamageMul), ctx);
 
             Assert.AreEqual((int)SkillStatKind.MoveSpeedMul, Mods(ctx)[0].Selector,
                 "저작이 무엇이든 채찍은 이동속도다");
@@ -119,11 +119,11 @@ namespace Wassup.Tests.EditMode
             // 출처는 병합 키의 일부다 — 하나로 묶으면 채찍과 배치 오라가 서로를 덮는다.
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.DefenderUnit);
-            new AllySpeedAuraSkill().Execute(caster, default, P(20f, 3, 6f, SkillStatKind.MoveSpeedMul), ctx);
+            new AllySpeedAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(20f, 3, 6f, SkillStatKind.MoveSpeedMul), ctx);
 
             var ctx2 = Ctx(out var caster2);
             ctx2.Add(2, new float3(1f, 0f, 0f), Faction.DefenderUnit);
-            new AllyStatAuraSkill().Execute(caster2, default, P(30f, 3, 6f, SkillStatKind.DamageMul), ctx2);
+            new AllyStatAuraSkill().Execute(caster2, ctx2.SelfEvent(caster2.Unit), P(30f, 3, 6f, SkillStatKind.DamageMul), ctx2);
 
             Assert.AreEqual(SkillModifierOrigin.Boss, Mods(ctx)[0].Origin);
             Assert.AreEqual(SkillModifierOrigin.OnPlace, Mods(ctx2)[0].Origin);
@@ -139,7 +139,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit);
 
-            new OpponentStatAuraSkill().Execute(caster, default, P(-90f, 3, 1.5f, SkillStatKind.MoveSpeedMul), ctx);
+            new OpponentStatAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(-90f, 3, 1.5f, SkillStatKind.MoveSpeedMul), ctx);
 
             Assert.AreEqual(0.1f, Mods(ctx)[0].Amount, 1e-4f, "-90% → ×0.1");
         }
@@ -150,8 +150,8 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit);
 
-            new OpponentStatAuraSkill().Execute(caster, default, P(0f, 3, 2f, SkillStatKind.MoveSpeedMul), ctx);
-            new OpponentStatAuraSkill().Execute(caster, default, P(-50f, 3, 0f, SkillStatKind.MoveSpeedMul), ctx);
+            new OpponentStatAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(0f, 3, 2f, SkillStatKind.MoveSpeedMul), ctx);
+            new OpponentStatAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(-50f, 3, 0f, SkillStatKind.MoveSpeedMul), ctx);
 
             Assert.AreEqual(0, Mods(ctx).Count);
         }
@@ -164,7 +164,7 @@ namespace Wassup.Tests.EditMode
             ctx.Units[1].AttackTraversalLayers = 0x01;
             ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit, u => u.TraversalLayers = 0x02);
 
-            new OpponentStatAuraSkill().Execute(caster, default, P(-90f, 3, 1.5f, SkillStatKind.MoveSpeedMul), ctx);
+            new OpponentStatAuraSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(-90f, 3, 1.5f, SkillStatKind.MoveSpeedMul), ctx);
 
             Assert.AreEqual(0, Mods(ctx).Count);
         }

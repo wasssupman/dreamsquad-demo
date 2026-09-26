@@ -39,7 +39,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(7.5f, 0, 5.5f), Faction.DefenderUnit);   // 2칸
             ctx.Add(3, new float3(8.5f, 0, 5.5f), Faction.DefenderUnit);   // 3칸
 
-            new AreaSleepSkill().Execute(caster, SkillTarget.None, P(2, 5, 1.5f), ctx);
+            new AreaSleepSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(2, 5, 1.5f), ctx);
 
             Assert.AreEqual(2, ctx.SimIntents.Count, "cap 만큼만 재운다");
             CollectionAssert.AreEquivalent(
@@ -60,7 +60,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(1, new float3(6.5f, 0, 5.5f), Faction.DefenderUnit);   // 1칸 — 내가 때린다
             ctx.Add(2, new float3(8.5f, 0, 5.5f), Faction.DefenderUnit);   // 3칸 — 사거리 밖
 
-            new AreaSleepSkill().Execute(caster, SkillTarget.None, P(1, 5, 1.5f), ctx);
+            new AreaSleepSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(1, 5, 1.5f), ctx);
 
             Assert.AreEqual(1, ctx.SimIntents.Count);
             Assert.AreEqual(2, ctx.SimIntents[0].Target.Value,
@@ -74,7 +74,7 @@ namespace Wassup.Tests.EditMode
             var ctx = Ctx(out var caster, attackRange: 1f, targetCount: 1f);
             ctx.Add(1, new float3(8.5f, 0, 5.5f), Faction.DefenderUnit);   // 3칸
 
-            new AreaSleepSkill().Execute(caster, SkillTarget.None, P(1, 5, 1.5f), ctx);
+            new AreaSleepSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(1, 5, 1.5f), ctx);
 
             Assert.AreEqual(1, ctx.SimIntents.Count, "사거리 밖이면 건너뛰지 않는다");
             Assert.AreEqual(1, ctx.SimIntents[0].Target.Value);
@@ -88,7 +88,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(6.5f, 0, 6.5f), Faction.DefenderUnit, u => u.Pending = true);
             ctx.Add(3, new float3(7.5f, 0, 5.5f), Faction.DefenderUnit);
 
-            new AreaSleepSkill().Execute(caster, SkillTarget.None, P(5, 5, 1.5f), ctx);
+            new AreaSleepSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(5, 5, 1.5f), ctx);
 
             Assert.AreEqual(1, ctx.SimIntents.Count, "시체·배치중은 cap 자리를 차지하면 안 된다");
             Assert.AreEqual(3, ctx.SimIntents[0].Target.Value);
@@ -104,7 +104,7 @@ namespace Wassup.Tests.EditMode
             ctx.Add(2, new float3(6.5f, 0, 6.5f), Faction.DefenderUnit);    // 같은 편 — 안 재운다
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
-            new AreaSleepSkill().Execute(caster, SkillTarget.None, P(5, 5, 1.5f), ctx);
+            new AreaSleepSkill().Execute(caster, ctx.SelfEvent(caster.Unit), P(5, 5, 1.5f), ctx);
 
             Assert.AreEqual(1, ctx.SimIntents.Count);
             Assert.AreEqual(1, ctx.SimIntents[0].Target.Value,
@@ -118,9 +118,9 @@ namespace Wassup.Tests.EditMode
             ctx.Add(1, new float3(6.5f, 0, 5.5f), Faction.DefenderUnit);
 
             var skill = new AreaSleepSkill();
-            skill.Execute(caster, SkillTarget.None, P(0, 5, 1.5f), ctx);   // 인원 0
-            skill.Execute(caster, SkillTarget.None, P(1, 0, 1.5f), ctx);   // 반경 0
-            skill.Execute(caster, SkillTarget.None, P(1, 5, 0f), ctx);     // 지속 0
+            skill.Execute(caster, ctx.SelfEvent(caster.Unit), P(0, 5, 1.5f), ctx);   // 인원 0
+            skill.Execute(caster, ctx.SelfEvent(caster.Unit), P(1, 0, 1.5f), ctx);   // 반경 0
+            skill.Execute(caster, ctx.SelfEvent(caster.Unit), P(1, 5, 0f), ctx);     // 지속 0
 
             Assert.AreEqual(0, ctx.SimIntents.Count, "저작이 degenerate 면 조용히 소모한다");
         }

@@ -29,7 +29,7 @@ namespace Wassup.Skills.Concrete
             var a = new AreaSleepParams(p);
             if (a.SleepCount < 1 || a.Radius < 1 || a.Duration <= 0f) return;
 
-            var hostPos = ctx.Position(caster.Unit);
+            var hostPos = target.Origin.LaunchSite;   // 몸에서 나오는 것 — 발동 주체의 자리
 
             // **전 범위**가 후보다. 제외는 「내가 지금 때릴 대상」뿐이고 그건 아래
             // rank 로 뺀다.

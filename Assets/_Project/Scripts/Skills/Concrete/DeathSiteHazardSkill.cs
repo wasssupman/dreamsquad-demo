@@ -28,7 +28,7 @@ namespace Wassup.Skills.Concrete
             {
                 Kind = SimIntentKind.SpawnZoneCarrier,
                 Source = caster.Unit,
-                Cell = ctx.CellOfPosition(p.EventPosition),   // 죽은 자리
+                Cell = ctx.CellOfPosition(target.Origin.EffectSite),   // 죽은 자리(효과 좌표)
                 DataIndex = p.HazardDataIndex,
                 TargetTraversalLayers = p.TargetTraversalLayers,
             });

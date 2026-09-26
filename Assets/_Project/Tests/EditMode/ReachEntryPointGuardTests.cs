@@ -78,7 +78,7 @@ namespace Wassup.Tests.EditMode
 
     // distance-based-range unit 23b — **「0 이 «자리형» 인지 «안 실었다» 인지」를 고정한다.**
     //
-    // ★ `EventBodyRadius`/`originBodyRadius` 의 0 은 **두 뜻을 겸직**한다: 「이 자리는 칸이다」와
+    // ★ `EffectBody`(옛 `EventBodyRadius` — unified-effect-layer unit 2 에서 `SkillOrigin` 으로)/`originBodyRadius` 의 0 은 **두 뜻을 겸직**한다: 「이 자리는 칸이다」와
     // 「생산자가 안 실었다」. 겸직 자체는 종전 동작과 같아 안전하지만, **배선 누락이 의도된
     // 자리형으로 위장돼 조용히 산다** — 그게 이 spec 이 반복해 당한 fail-open 모양이라
     // (unit 22 · unit 23 초판), 생산자를 **이름으로** 고정한다.
@@ -138,10 +138,10 @@ namespace Wassup.Tests.EditMode
         public void SelfSiteBlasts_CarryTheirOwnerBody_ThroughTheIntentBoundary()
         {
             Assert.IsTrue(Read("Skills", "Concrete", "SelfAreaBlastSkill.cs")
-                    .Contains("OriginBodyRadius = caster.BodyRadius"),
+                    .Contains("OriginBodyRadius = target.Origin.LaunchBody"),
                 "자폭이 시전자 몸을 intent 경계 너머로 안 보낸다");
             Assert.IsTrue(Read("Skills", "Concrete", "DeathSiteBlastSkill.cs")
-                    .Contains("OriginBodyRadius = p.EventBodyRadius"),
+                    .Contains("OriginBodyRadius = target.Origin.EffectBody"),
                 "사망/시체 폭발이 «자리의 주인» 의 몸을 안 보낸다 — caster 것을 쓰면 시체폭발이 틀린다");
         }
 

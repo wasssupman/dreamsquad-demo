@@ -336,13 +336,14 @@ namespace Wassup.Tests.EditMode.Core
         // ── 4. 비주얼 공유 ──────────────────────────────────────────────────
 
         [Test]
-        [Ignore("unit 1 에서 applier 쪽은 풀렸다 — 칸 결합 갈래가 `i.Telegraph` 로 `TelegraphTileRange` 를 채운다(`IntentApplier.SpawnProjectile`). " +
-                "남은 막힘은 **입력 형**이다: 예고 플래그(U1 — 효과 파라미터)가 `BindingDef` → `SkillParams` 에 칸이 없어 " +
-                "`TargetProjectileSkill` 이 실을 값이 없다(`Skills/SkillParams.cs` — Duration 은 있고 Telegraph 는 없다). " +
-                "unit 1 은 `Wassup.Skills` 입력 형을 안 바꾼다 — SkillParams 칸 신설 결정 후 해제.")]
         public void 타격_운석에도_착탄_예고가_뜬다()
         {
-            var h = RunOnHit(Definition(), attacks: 1);
+            // unified-effect-layer unit 2 에서 해제 — 예고는 효과 파라미터다(U1 · 기본 꺼짐). 이 픽스처가 켠다:
+            // `BindingDef.Telegraph` → `SkillParams.Telegraph` → `TargetProjectileSkill` 이 의도에 싣고 → 칸 결합 갈래가
+            // `TelegraphTileRange` 를 채운다. 저작 칸(빌더)은 unit 5 — 그 전 라이브는 늘 꺼짐(`두_경로의_예고와_…` 가 박제).
+            var rule = OnHitMeteorRule();
+            rule.Telegraph = true;
+            var h = RunOnHit(Definition(), rule: rule, attacks: 1);
             Assert.AreEqual(N, h.Spawned.Find(e => e.B == h.D.Id).AreaTiles);
         }
 
