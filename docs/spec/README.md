@@ -119,6 +119,13 @@ code + git history        구현 상세
 
 ### 전투 코어 전환 — 남은 것 (`battle-core-rebuild` — **spec 완료 2026-09-25**, 머지 `fecb0fef3`)
 
+#### 시트 ↔ 저작 ↔ 코어 정합 감사(2026-09-26, 읽기 전용) — 후속 후보
+- **효과 자산화(하드 케이스 「유닛 배치 스킬 A = 드림캐쳐 AA 가 시전」)**: `DcMechanic` 이 값 struct 라 같은 효과가 유닛 능력·카드에 값으로 복사된다(한 번 정의 실패). 효과를 참조 가능한 SO(`SkillEffectData`)로 승격해 트리거 행이 참조만 갖게 + 발사 명세 대상 선정 `AllInRange` 추가 + `EffectWitness` 로 「A 발동 == AA 발동」 증언. 시트도 효과 탭 하나로 유닛 스킬·카드·악몽을 함께 밸런싱(아래 8 해소).
+- (c) 거짓 문안: 액티브 카드 「비용 N」이 `SkillData.cost`(2~4)를 쓰는데 차감은 `AwakeningConfig.CostFor`(20) — `DreamcatcherCardText.cs:549` · 은퇴한 유출 허용치 문구 `:149-151`(`Card_IncubusPact`) · `tileRange`/`magnitude` 한 열 다의미(BountyMark %·SelfStatBuff 중첩·스윕 사거리) · `SkillMath.cs:28-33` 반올림 주석 stale.
+- (a) 죽은 컬럼: `Defenders.aggroRange`(SO 필드 은퇴) · `Enemies.aggroAttackDamage/Cooldown/Range`(코어 소비 0, 이식 제외) · `DcSkills.cost`(문안만).
+- (b) 시트 밖 저작: 방어유닛 `UnitSkillAbility.mechanics` · 적 `nightmareMechanics` · 능력 SO(실드·폭탄·다연발·장판) 전부 SO 손저작 전용 · 카드 게이트/원뿔/구슬 3 필드(CorneredBurst·ExecutionStrike·FlameSpinner) · 적중 CC·적 tier/detectionRange/stabilityDamage/웨이브 한도.
+- 판정: 배치 스킬 통합이 시트를 깬 것은 아니다(유닛 시트에 배치 스킬 열은 원래 없었고 카드 메커닉 탭은 코어가 그대로 읽는다). 어긋남은 다른 은퇴 작업의 잔재 + 통합된 스킬 어휘를 시트가 한 번도 다룬 적 없는 커버리지 공백. 실제 구글 시트 헤더는 미확인.
+
 인계: `docs/spec/battle-core-rebuild/11_handoff_summary.md`. 분류는 사용자 방향(그 README 결정 ⑩ — 서버 권위 실시간 서버 예정 · 커맨드 = 서버 로직 키워드 · UI/에셋은 데모 · CI 시기상조)을 따른다. 상세는 옮기지 않았다 — 출처를 연다. 약칭: `BCR` = `docs/spec/battle-core-rebuild/`.
 
 **(가) 서버 권위 spec 을 열 때 자연 해소** — 따로 고치지 말고 그 spec 의 입력으로.
