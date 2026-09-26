@@ -81,7 +81,7 @@ namespace Wassup.BattleCoreUnity.View
                 case CoreEventKind.ProjectileSpawned: SpawnFromEvent(e); break;
 
                 // 모든 소멸은 소멸 사건을 낸다(계약 7) — 매 프레임 생존 폴링이 없는 이유다.
-                case CoreEventKind.ProjectileDespawned: Despawn(e.A); break;
+                case CoreEventKind.ProjectileDespawned: DropPending(e.A); Despawn(e.A); break;
 
                 case CoreEventKind.ProjectileHit: PlayHitFromEvent(e); break;
             }
@@ -90,10 +90,28 @@ namespace Wassup.BattleCoreUnity.View
         private ProjectileData DataOf(int defIndex)
             => _driver != null ? _driver.ViewAssets.Projectile(defIndex) : null;
 
+        // unified-effect-layer unit 4 — 탄 정의 줄은 **사건이 나른다**(`e.DefIndex`). 월드 탄을 되찾지 않는다(계약 4·7).
+        //
+        // ⚠ **그리는 조건은 오늘 그대로다 — 「배달 묶음이 끝났을 때 그 탄이 살아 있다」.** 옛 되묻기는 드라이버가
+        // 한 프레임의 틱들을 다 돈 뒤 배달할 때 탄을 찾았으므로, 같은 묶음 안에서 소멸한 탄(비행 0 인 자리 폭발 ·
+        // 한 프레임 안에 끝난 짧은 비행)은 그림이 없었다. 그 조건을 **사건만으로** 옮긴다: 생성 사건은 보류해 두고,
+        // 같은 묶음에 소멸 사건이 오면 버린다 · 남은 것만 `LateUpdate` 에서 세운다(배달은 드라이버 `Update` 끝).
+        // 「비행 시간 &gt; 0」으로 가르지 않는 이유: 직선·호밍 탄은 비행 시간 0 인 채 거리로 산다(`TickProjectilePhase.ResolveFlightTime`).
+        private struct PendingSpawn
+        {
+            public SimEntityId id;
+            public ProjectileData data;
+            public float3 position;
+            public float initialDrop;
+            public bool hasLaunchAnchor;
+            public Vector3 launchAnchor;
+        }
+
+        private readonly List<PendingSpawn> _pendingSpawns = new();
+
         private void SpawnFromEvent(CoreEvent e)
         {
-            var proj = _driver != null ? _driver.Match?.World.FindProjectile(e.A) : null;
-            var data = DataOf(proj != null ? proj.DefIndex : -1);
+            var data = DataOf(e.DefIndex);
             if (data == null || data.projectilePrefab == null) return;
 
             var movement = (MovementKind)e.Arg;
@@ -104,13 +122,34 @@ namespace Wassup.BattleCoreUnity.View
             float initialDrop = fallsFromSky ? data.dropHeight : 0f;
 
             // 발사 앵커는 **쏜 유닛의 손**이다. 하늘에서 내려오는 탄은 유닛 발사가 아니라
-            // 착탄 칸에서 내려오므로 앵커를 적용하지 않는다.
+            // 착탄 칸에서 내려오므로 앵커를 적용하지 않는다. 앵커는 배달 시점에 읽는다(옛 순서 그대로).
             bool hasLaunchAnchor = false;
             Vector3 launchAnchor = default;
             if (!fallsFromSky && _units != null && !e.B.IsNone)
                 hasLaunchAnchor = _units.TryResolveProjectileLaunchAnchor(e.B, out launchAnchor);
 
-            Spawn(e.A, data, e.SiteFired.Pos, initialDrop, hasLaunchAnchor, launchAnchor);
+            _pendingSpawns.Add(new PendingSpawn
+            {
+                id = e.A, data = data, position = e.SiteFired.Pos, initialDrop = initialDrop,
+                hasLaunchAnchor = hasLaunchAnchor, launchAnchor = launchAnchor,
+            });
+        }
+
+        private void DropPending(SimEntityId id)
+        {
+            for (int i = _pendingSpawns.Count - 1; i >= 0; i--)
+                if (_pendingSpawns[i].id == id) _pendingSpawns.RemoveAt(i);
+        }
+
+        // 발행 순서대로 세운다 — 시각 난수(`_visualRng`) 소비 순서가 옛 배달 순서와 같다.
+        private void FlushPendingSpawns()
+        {
+            for (int i = 0; i < _pendingSpawns.Count; i++)
+            {
+                var s = _pendingSpawns[i];
+                Spawn(s.id, s.data, s.position, s.initialDrop, s.hasLaunchAnchor, s.launchAnchor);
+            }
+            _pendingSpawns.Clear();
         }
 
         // unit 6c — 탄 정의 줄을 **사건이 나른다**(`DefIndex` — 착탄 뒤 그 탄은 곧 소멸한다). 5a 는 탄 개체를
@@ -168,6 +207,8 @@ namespace Wassup.BattleCoreUnity.View
         // 매 프레임 동기. 위치는 **코어 읽기 모델**에서 바로 읽는다 — 중개 스냅샷이 없다.
         private void LateUpdate()
         {
+            // 보류한 생성은 **동기보다 먼저** — 옛 배달이 세운 첫 프레임에 곧바로 동기되던 순서 그대로다.
+            FlushPendingSpawns();
             if (_driver == null || !_driver.Running) return;
             var live = _driver.Projectiles;
             for (int i = 0; i < live.Count; i++)
@@ -575,6 +616,7 @@ namespace Wassup.BattleCoreUnity.View
 
         public void DespawnAll()
         {
+            _pendingSpawns.Clear();
             foreach (var (_, state) in _active)
                 ReturnToPool(state.view, state.prefab);
             _active.Clear();

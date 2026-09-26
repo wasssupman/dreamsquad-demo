@@ -158,6 +158,8 @@ namespace Wassup.BattleCore
                 b = e.B.Value,
                 i = e.Arg,
                 f = e.Amount,
+                // `DefIndex` 는 싣지 않는다 — 뷰 전용 필드라 미기록(unified-effect-layer 계약 7). 채널 여섯 칸이 포맷이고,
+                // 탄 사건의 정의 줄(unit 4)도 규칙을 증언하지 않는다 — 골든 무변.
             });
         }
 

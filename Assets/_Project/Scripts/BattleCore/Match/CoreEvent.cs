@@ -329,6 +329,7 @@ namespace Wassup.BattleCore
         ///
         /// ⚠ 종류에 따라 **가리키는 표가 다르다**(적이면 `Enemies`, 방어유닛이면 `Units`) —
         /// `Faction` 과 짝으로 읽는다. 거점은 -1 이다(그 표는 스탯을 다르게 센다).
+        /// 탄 사건(`ProjectileSpawned`·`ProjectileHit`)은 **탄 정의표**(`Projectiles`) 줄이다.
         /// 트레이스에는 실리지 않는다 — 채널 여섯 칸(tick·channel·a·b·i·f)이 포맷이고,
         /// 이 값은 규칙을 증언하지 않는다(`b` 로 그 개체를 찾으면 나오는 파생값이다).
         /// </summary>
@@ -502,12 +503,16 @@ namespace Wassup.BattleCore
         /// </summary>
         /// ⚠ unit 7a — `AreaTiles` = **착탄 예고 반경(칸)**(0 = 예고 없음). 예고 표식 뷰(6c 보류)가 그 반경으로
         /// 칠한다 — 반경 없이 칠하면 뷰가 규칙을 지어낸다. 트레이스에는 안 실린다(채널 여섯 칸) — 골든 무변.
+        /// unified-effect-layer unit 4 — `DefIndex` = **탄 정의표 줄**(`Projectiles`). 탄 뷰가 비행 프리팹을 고르는 키다 —
+        /// 사건에 없으면 뷰가 월드 탄을 되찾아야 하고, 같은 틱에 착탄·소멸한 탄은 찾을 것이 없다(계약 7 · H6).
+        /// 뷰 전용 필드라 트레이스에는 안 실린다 — 골든 무변.
         public static CoreEvent ProjectileSpawned(int tick, Combat.Projectile.Projectile p)
             => new CoreEvent(CoreEventKind.ProjectileSpawned, tick,
                              p.Id, p.Owner,
                              new Site(p.Position, p.OriginBodyRadius),
                              new Site(p.Impact, 0f),
                              p.OwnerFaction, (int)p.Movement, p.Damage,
+                             p.DefIndex,
                              areaTiles: p.TelegraphTileRange);
 
         public static CoreEvent ProjectileDespawned(int tick, Combat.Projectile.Projectile p)

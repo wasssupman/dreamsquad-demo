@@ -112,7 +112,7 @@ namespace Wassup.Tests.EditMode.Core
             public List<Unit> Near = new List<Unit>();
             public Unit Far;
             public List<CoreEvent> Spawned = new List<CoreEvent>();
-            public List<int> SpawnedDefIndex = new List<int>();          // 뷰가 낙하 프리팹을 고르는 키 — 배달 시점의 월드 탄(`CoreProjectileViewPool.cs:95-96`) · 없으면 -1
+            public List<CoreEvent> Despawned;   // 탄 뷰는 같은 배달 묶음에 소멸 사건이 온 탄을 안 세운다(unit 4)
             public List<CoreEvent> ProjHits;
             public List<CoreEvent> Damage;
             public List<CoreEvent> Attacks;
@@ -136,12 +136,8 @@ namespace Wassup.Tests.EditMode.Core
             o.Far = Spawn(o.M, farEnemy, FarCell);
 
             var m = o.M;
-            m.Bus.Subscribe(CoreEventKind.ProjectileSpawned, 0, e =>
-            {
-                o.Spawned.Add(e);
-                var p = m.World.FindProjectile(e.A);
-                o.SpawnedDefIndex.Add(p != null ? p.DefIndex : -1);
-            });
+            m.Bus.Subscribe(CoreEventKind.ProjectileSpawned, 0, e => o.Spawned.Add(e));
+            o.Despawned = CoreCombatFixtures.Listen(m, CoreEventKind.ProjectileDespawned);
             o.ProjHits = CoreCombatFixtures.Listen(m, CoreEventKind.ProjectileHit);
             o.Damage = CoreCombatFixtures.Listen(m, CoreEventKind.DamageApplied);
             o.Attacks = CoreCombatFixtures.Listen(m, CoreEventKind.AttackResolved);
@@ -350,7 +346,7 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         public void 착탄_그림_키는_두_경로에서_같다_탄_줄과_운석_폭발()
         {
-            // 착탄 VFX = `ProjectileHit.DefIndex`(`CoreProjectileViewPool.cs:120`) · 운석 폭발 = TileAoe && AreaTiles > 0
+            // 착탄 VFX = `ProjectileHit.DefIndex`(`CoreProjectileViewPool.PlayHitFromEvent`) · 운석 폭발 = TileAoe && AreaTiles > 0
             // (`CoreVfxSpawner.cs:285`). 둘 다 사건 값이라 탄이 이미 사라졌어도 선다.
             var a = RunActive(Definition());
             var h = RunOnHit(Definition(), attacks: 1);
@@ -363,27 +359,36 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsTrue(hh.Payload == PayloadKind.TileAoe && hh.AreaTiles > 0, "타격 — 운석 폭발 그림 조건");
         }
 
+        // unified-effect-layer unit 4 에서 해제 — 탄 뷰는 **사건만으로** 그린다: 비행 프리팹 키 = `ProjectileSpawned.DefIndex`,
+        // 그리는 조건 = 「같은 배달 묶음(드라이버 한 프레임 = 틱 여럿)에 소멸 사건이 안 왔다」(`CoreProjectileViewPool` 보류 생성).
+        // 월드 탄을 되찾지 않는다. 타격 운석은 unit 1 뒤 낙하 시간 = 바인딩 Duration 이라 예고를 저작하면 그림이 선다.
         [Test]
-        [Ignore("현 구조로 성립하지 않는다 — 떨어지는 운석 그림은 뷰가 `ProjectileSpawned` 를 받을 때 **월드의 탄**을 찾아 " +
-                "그 DefIndex 로 프리팹을 고른다(`CoreProjectileViewPool.cs:95-97`). 사건은 틱 끝에 배달되는데(`EventBus.cs:72-76` 적재 → Flush) " +
-                "타격 운석은 비행 시간 0(unit 1 뒤로는 저작 Duration 이 그 값이다 — 이 픽스처 · 라이브 전부 0) → " +
-                "같은 틱에 착탄·소멸해 뷰가 찾을 탄이 없다. 현행은 `현행_타격_운석은_…` 이 박제한다. " +
-                "해제 = `unified-effect-layer` unit 4.")]
         public void 타격_운석도_떨어지는_운석_그림이_뜬다()
         {
-            var h = RunOnHit(Definition(), attacks: 1);
-            Assert.AreEqual(0, h.SpawnedDefIndex[h.Spawned.FindIndex(e => e.B == h.D.Id)]);
+            var rule = OnHitMeteorRule();
+            rule.Duration = WarningSec;
+            var h = RunOnHit(Definition(), rule: rule, attacks: 1);
+            var hs = h.Spawned.Find(e => e.B == h.D.Id);
+            Assert.AreEqual(0, hs.DefIndex, "사건이 탄 정의 줄(운석)을 나른다 — 뷰가 비행 프리팹을 고르는 키");
+            Assert.IsFalse(h.Despawned.Exists(e => e.A == hs.A && e.Tick == hs.Tick),
+                "생성 틱에 소멸하지 않는다 → 배달 묶음 끝에 살아 있다 → 낙하 그림");
         }
 
         [Test]
-        public void 현행_타격_운석은_즉발이라_뷰가_떨어지는_탄을_못_찾는다_액티브는_찾는다()
+        public void 즉발_운석은_사건이_탄_줄을_나르지만_같은_틱에_소멸해_낙하_그림_없이_착탄_연출만_액티브는_산다()
         {
-            // 관측자는 뷰와 같은 방식으로 키를 뽑는다 — 사건 배달 시점에 `World.FindProjectile(e.A).DefIndex`.
+            // 라이브 그림 무변(unit 4) — 비행 0 × 프리팹 있는 탄(`census.md` 표 1 ★ · 자리 폭발 카드 6장)과 같은 모양.
+            // 키는 사건에 있어도 소멸이 같은 묶음에 오므로 뷰는 비행 그림을 안 세운다(오늘과 같다) · 착탄 연출은 `ProjectileHit`.
             var a = RunActive(Definition());
             var h = RunOnHit(Definition(), attacks: 1);
-            Assert.AreEqual(0, a.SpawnedDefIndex[0], "액티브 — 예고 0.5초 동안 탄이 살아 있다 → 낙하 그림");
-            Assert.AreEqual(-1, h.SpawnedDefIndex[h.Spawned.FindIndex(e => e.B == h.D.Id)],
-                "⚠ 타격 운석 — 배달 시점에 탄이 이미 없다 → 떨어지는 그림 없이 착탄 VFX 만");
+            var aS = a.Spawned[0];
+            var hs = h.Spawned.Find(e => e.B == h.D.Id);
+            Assert.AreEqual(0, aS.DefIndex);
+            Assert.AreEqual(0, hs.DefIndex);
+            Assert.IsFalse(a.Despawned.Exists(e => e.A == aS.A && e.Tick == aS.Tick), "액티브 — 예고 0.5초 동안 산다 → 낙하 그림");
+            Assert.IsTrue(h.Despawned.Exists(e => e.A == hs.A && e.Tick == hs.Tick),
+                "타격 운석(Duration 0) — 생성 틱에 소멸 → 낙하 그림 없음");
+            Assert.IsTrue(h.ProjHits.Exists(e => e.A == hs.A && e.Tick == hs.Tick), "착탄 연출은 같은 틱 착탄 사건이 나른다");
         }
 
         // ── 5. 저작 경로 — 빌더가 만들 수 있는 모양의 재현 ────────────────

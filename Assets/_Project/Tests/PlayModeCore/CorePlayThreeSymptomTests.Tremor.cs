@@ -37,13 +37,26 @@ namespace Wassup.Tests.PlayMode.Core
             var binding = driver.Find(host).Bindings[driver.Find(host).Bindings.Count - 1];
 
             var hits = new List<CoreEvent>();
-            System.Action<CoreEvent> probe = e => { if (e.Kind == CoreEventKind.ProjectileHit) hits.Add(e); };
+            var spawned = new List<CoreEvent>();
+            System.Action<CoreEvent> probe = e =>
+            {
+                if (e.Kind == CoreEventKind.ProjectileHit) hits.Add(e);
+                if (e.Kind == CoreEventKind.ProjectileSpawned) spawned.Add(e);
+            };
             driver.Subscribe(ViewOrder.Trace, probe);
             try
             {
                 Assert.IsTrue(driver.Apply(Command.DebugFireBinding(host, binding.InstanceId)).Accepted, "강제 발동");
-                for (int i = 0; i < 30 && hits.Count == 0; i++) yield return null;
+                // unified-effect-layer unit 4 — 라이브 그림 무변: 비행 0 자리 폭발은 **비행 그림이 안 선다**(착탄 연출만).
+                // 탄 뷰는 사건만으로 그리고, 같은 배달 묶음에 소멸한 탄은 세우지 않는다(`CoreProjectileViewPool` 보류 생성).
+                bool flightView = false;
+                for (int i = 0; i < 30 && hits.Count == 0; i++)
+                {
+                    yield return null;
+                    foreach (var s in spawned) if (ViewOf(pool, s.A) != null) flightView = true;
+                }
                 Assert.Greater(hits.Count, 0, "진동갑주 착탄 사건이 안 났다");
+                Assert.IsFalse(flightView, "비행 0 자리 폭발에 비행 그림이 섰다 — 오늘 그림과 다르다");
                 yield return null;
                 var hitPrefab = driver.ViewAssets.Projectile(hits[0].DefIndex).hitPrefab;
                 Assert.IsNotNull(hitPrefab, "착탄 연출 프리팹이 저작돼 있지 않다");

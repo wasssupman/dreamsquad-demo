@@ -348,6 +348,36 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
+        public void 생성_사건은_요청의_탄_정의_줄을_나른다_결합_셋_모두()
+        {
+            // unified-effect-layer unit 4 — 탄 뷰는 이 값으로 비행 프리팹을 고른다(월드 탄을 되찾지 않는다 · H6).
+            // 줄 0 = 칸(SkyFall) · 1 = 개체(Homing) · 2 = 방향(DirectionalLinear) — 줄 번호가 서로 달라 우연 일치가 없다.
+            var (m, enemy, defender, _) = BarrierBoard();
+            var spawned = Listen(m, CoreEventKind.ProjectileSpawned);
+
+            var cell = AreaShot(defender, 0, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, enemy.Position);
+            var entity = AreaShot(defender, 1, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
+            entity.Target = enemy.Id;
+            entity.Impact = enemy.Position;
+            var dir = AreaShot(defender, 2, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
+            dir.Movement = MovementKind.DirectionalLinear;
+            dir.Payload = PayloadKind.PathHit;
+            dir.Direction = new float2(1f, 0f);
+            m.World.ProjectileRequests.Add(cell);
+            m.World.ProjectileRequests.Add(entity);
+            m.World.ProjectileRequests.Add(dir);
+            Tick(m, 1);
+
+            Assert.AreEqual(3, spawned.Count);
+            Assert.AreEqual(BindingClass.Cell, MovementBinding.Of((MovementKind)spawned[0].Arg));
+            Assert.AreEqual(BindingClass.Entity, MovementBinding.Of((MovementKind)spawned[1].Arg));
+            Assert.AreEqual(BindingClass.Direction, MovementBinding.Of((MovementKind)spawned[2].Arg));
+            Assert.AreEqual(cell.DefIndex, spawned[0].DefIndex, "칸");
+            Assert.AreEqual(entity.DefIndex, spawned[1].DefIndex, "개체");
+            Assert.AreEqual(dir.DefIndex, spawned[2].DefIndex, "방향");
+        }
+
+        [Test]
         public void 자리형_탄은_원점_몸을_안_싣는다()
         {
             // 일반 공격의 탄은 **자리에 떨어지는 것**이다 — 던져서 도달한 좌표이지
