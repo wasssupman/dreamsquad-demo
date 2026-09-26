@@ -5,7 +5,7 @@
 
 ## 변경 대상
 - 이 폴더 `census.md` — 표 3개:
-  1. **라이브 조합**: `Assets/_Project/Data/**` 의 (출처 · 에셋 · 트리거 · 효과 · 탄 궤적 결합 · 발사 명세 전원 손잡이) — 실측 41쌍. 각 행 = unit 1~5 의 **무변 단언 행**. 캐논 폭격(`Ability_SkyStrike_Cannon` → `Pattern_Cannon_Strike` 전원 손잡이 → `Projectile_CannonStrike` `SkyFallOnTarget`) 처럼 궤적 결합에 기대는 분기를 표시.
+  1. **라이브 조합**: `Assets/_Project/Data/**` 의 (출처 · 에셋 · 트리거 · 효과 · 탄 궤적 결합 · 발사 명세 전원 손잡이) — 실측 42쌍(초안 41 · `census.md` 로 정정). 각 행 = unit 1~5 의 **무변 단언 행**. 캐논 폭격(`Ability_SkyStrike_Cannon` → `Pattern_Cannon_Strike` 전원 손잡이 → `Projectile_CannonStrike` `SkyFallOnTarget`) 처럼 궤적 결합에 기대는 분기를 표시.
   2. **concrete × 원점 읽기**: `Scripts/Skills/Concrete/` 29개 × (발사 자리를 어디서 · 효과 좌표를 어디서 · 원점 항 · `Source`) — 후보 거리 계산(수면·실드·브레스·발사 명세 후보)은 「원점 읽기 아님」으로 구분.
   3. **출처 × 거절 규칙**: `CardDefinitionBuilder` · `BindingDefinitionBuilder`(유닛 능력 · 악몽) · 기믹 · 액티브의 거절 분기 × (사유가 「원점 불가」 / 「수명상 영영 안 터짐」 / 「출처 관례」).
 - `docs/reference/battle-core-architecture.md` — 트리거/효과 절에 계약 1~5 를 **예정** 표기로(확정은 unit 6).

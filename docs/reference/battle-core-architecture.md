@@ -192,6 +192,12 @@ flowchart LR
 - **의도 어휘**(24 + 메타 2): 피해·회복(DealDamage · Heal) / 상태(ApplyStatModifier · ApplyStack · ApplyCc · ApplyDot · ClearCc · GrantShield) / 표적(Taunt · CreditThreat · ScaleKillReward) / 이동(Blink · BeginUltimateLeap) / 생성(SpawnProjectile · EmitPattern · SpawnOrbitProjectile · SpawnZoneCarrier · SpawnFieldCarrier) / 진행형 개시(BeginDreamCocoon · StartLethalTimer · GrantCharge · DelaySelfAttack) / 관측(Report · PlayVisual) / 자원(GainCost · ReduceSkillCooldown).
 - **컨텍스트 질의**: 자리(위치·셀·셀 중심·타일 크기·바라보는 방향) · 정체(진영·체력·실효 스탯·술어 8종·통행층·실드) · 후보(Opponents/Allies + 필터 7) · 격자 판단(밀집 셀·착지 셀) · 발사 명세 조준 필요 여부.
 - **진행형 상태**는 스킬이 아니라 개체의 상태다(도약 비행 · 수면 완주 감시 · 시한부 · 궤도 탄) — 스킬은 개시와 수치까지.
+- **예정(unified-effect-layer)** — 통합 효과 층 계약. 확정은 그 spec unit 6(`docs/spec/unified-effect-layer/README.md` 계약 1~5 · 전수 표 `census.md`):
+  1. **원점은 두 값** — 발사 자리(발동 주체 = 사건 주체, 없으면 스냅샷) · 효과 좌표(조준 대상의 자리 또는 사건이 실은 자리 + 선택적 대상 엔티티). 효과는 출처를 모른다.
+  2. **원점 항은 효과의 형이 정한다**(제약 13) — 몸형 = 원점 주인의 몸(감지자 스냅샷) · 자리형 = 0(칸 반폭). 키 = (트리거 × 효과 형).
+  3. **호밍 여부는 탄 궤적의 성질** — 발사 요청 조립은 궤적 결합 종류(대상 · 칸 · 방향)로만 갈린다.
+  4. **귀속·발사 자리 = 발동 주체 · 수명 = 발동 주체 ∧ 바인딩을 든 자.** 출처(`BindingOrigin`)는 수명·표기 꼬리표.
+  5. **저작 검증은 하나** — 출처(카드 · 유닛 능력 · 악몽)는 검증 입력이 아니다.
 
 ### 1.12 경제 · 자원
 

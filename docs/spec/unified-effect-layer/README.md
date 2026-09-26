@@ -26,7 +26,7 @@ H4 를 이 spec 에서 뺀 이유: 효과 값의 정본은 시트다(`DcSheetApp
 3. **호밍 여부는 탄 궤적의 성질** — 요청 조립은 궤적 결합 종류로만 갈린다.
 4. **귀속·발사 자리 = 발동 주체 · 수명 = 발동 주체 ∧ 바인딩을 든 자**(U2 · U3). 출처(`BindingOrigin`)는 수명·표기 꼬리표.
 5. **검증은 하나** — 출처는 검증 입력이 아니다.
-6. **라이브 동작 무변.** 증거 = 라이브 조합 표(`Data/**` 의 트리거 × 효과 실측 41쌍 — unit 0)의 행별 무변 단언 · 빌더 스냅샷(굽힌 `BindingDef` 필드 동치) · `EffectWitness` · 골든 11(합성이라 보조).
+6. **라이브 동작 무변.** 증거 = 라이브 조합 표(`Data/**` 의 트리거 × 효과 실측 42쌍 — unit 0 `census.md`)의 행별 무변 단언 · 빌더 스냅샷(굽힌 `BindingDef` 필드 동치) · `EffectWitness` · 골든 11(합성이라 보조).
 7. **판정 자는 하나**(제약 13) · **enum append-only** · 새 사건 필드는 트레이스에 싣거나 「뷰 전용이라 미기록」을 명시.
 
 ## 사용자 결정 (2026-09-26)
@@ -39,7 +39,7 @@ H4 를 이 spec 에서 뺀 이유: 효과 값의 정본은 시트다(`DcSheetApp
 
 | # | 구분 | 문서 | 메우는 구멍 |
 |---|---|---|---|
-| 0 | 문서 | `0_census_and_contract.md` | 전수 표(라이브 조합 41쌍 · concrete 원점 읽기 · 출처별 거절 규칙) |
+| 0 | 문서 | `0_census_and_contract.md` | 전수 표(`census.md` — 라이브 조합 42쌍 · concrete 원점 읽기 · 출처별 거절 규칙) |
 | 1 | 코어 | `1_single_spawn_branch.md` | H2 (Skills 형 무변) |
 | 2 | 코어+Skills | `2_origin_convergence.md` | H1 |
 | 3 | 코어 | `3_burst_slot_subject.md` | H3 |
@@ -67,5 +67,6 @@ H4 를 이 spec 에서 뺀 이유: 효과 값의 정본은 시트다(`DcSheetApp
 
 ## 후속 후보
 
-- **효과 정체(H4) + 시트 Effects 탭** — 한 spec 으로. 효과 SO 참조 · 소유자 탭(UnitSkills · Dreamcatcher · Nightmares) 열 스키마 통일 · 임포터 → 출처 꼬리표 · 죽은 컬럼 4 정리(`docs/spec/README.md` 「시트 ↔ 저작 ↔ 코어 정합 감사」) · 새 주체 축·예고 체크의 시트 열. 대상 수: 카드 52 · 유닛 능력 26 · 악몽 저작 6.
+- **효과 정체(H4) + 시트 Effects 탭** — 한 spec 으로. 효과 SO 참조 · 소유자 탭(UnitSkills · Dreamcatcher · Nightmares) 열 스키마 통일 · 임포터 → 출처 꼬리표 · 죽은 컬럼 4 정리(`docs/spec/README.md` 「시트 ↔ 저작 ↔ 코어 정합 감사」) · 새 주체 축·예고 체크의 시트 열. 대상 수: 카드 52 · 유닛 능력 18(`UnitSkillAbility` 17 + 실드 캐스트 1 — 능력 에셋 26 중 규칙 레일을 타는 것) · 악몽 저작 6.
 - 「범위 안 전부」를 발사 명세 선정 규칙으로 승격(지금은 전원 손잡이로 충분).
+- **브레스 콘 사거리 인라인 자**(unit 0 발견 3) — `SkillCone.IsInCone` 의 거리 컷(`Skills/SkillCone.cs:46`)에 원점·대상 몸 항이 없다(후보 질의만 정본). 라이브 = 드래곤. 고치면 도달이 넓어지는 규칙 변경이라 계약 6(라이브 무변) 밖 — 제약 13 확인 · 사용자 결정.

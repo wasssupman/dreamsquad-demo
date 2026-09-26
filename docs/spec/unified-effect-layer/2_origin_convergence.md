@@ -6,7 +6,7 @@ concrete 가 원점을 `target.CellA` · `p.EventPosition`/`EventBodyRadius` · 
 ## 변경 대상 (unit 0 표 2 로 확정 — 원점을 읽는 concrete 21/29)
 - `Scripts/Skills/` 입력 형 — `SkillParams`/`SkillTarget` 의 원점 필드를 한 묶음으로(이름·배치는 구현 판단). 액티브 커맨드의 지정 칸(`CellA`)도 드레인/커맨드 경로가 같은 필드에 채운다.
 - `Scripts/BattleCore/Trigger/TriggerDispatcher.cs` · `CoreSkillContext.cs` · 커맨드 시전 경로 — 채우는 곳.
-- 원점을 읽는 concrete 21개.
+- 원점을 읽는 concrete 21개(`census.md` 표 2 ○). 그중 `CastHazardSkill` 은 레지스트리 미등록 죽은 파일 — 같이 고치거나 지운다(지우면 `SkillRoutingTests` 확인).
 - 형을 쓰는 다른 어셈블리: `Wassup.Tests.EditMode`(`Tests/EditMode/TestSkillContext.cs` 가 `ISkillContext` 구현 · `MetaSkillsTests` · `StatAuraSkillTests` · `AllySpeedAuraSkillTests` 위치 인자 생성 · `ReachEntryPointGuardTests` 의 `EventBodyRadius`) · `Wassup.Runtime` `DcSkillRouting.cs`.
 
 ## 구현

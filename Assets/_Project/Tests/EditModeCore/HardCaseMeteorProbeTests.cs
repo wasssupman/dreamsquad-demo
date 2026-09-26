@@ -24,6 +24,9 @@ namespace Wassup.Tests.EditMode.Core
     // `현행_` = 지금 동작의 박제 — 코어가 고쳐지면 빨개지는 것이 정상이고, 그때 짝 `[Ignore]` 를 푼다.
     //
     // ⚠ 여기 수치는 게임 값이 아니라 픽스처다.
+    //
+    // `unified-effect-layer` 완료 기준 — 이 파일의 `[Ignore]` 해제가 그 spec 의 완료 기준이다(`docs/spec/unified-effect-layer/`).
+    //   반경·예고 → unit 1(발사 요청 조립 한 갈래) · 낙하 그림 → unit 4(탄 그림은 사건만으로).
     [TestFixture]
     public class HardCaseMeteorProbeTests
     {
@@ -261,7 +264,7 @@ namespace Wassup.Tests.EditMode.Core
                 "`req.RetargetTileRange = … i.TileRange`). 착탄 반경(`req.ImpactTileRange`)은 그 갈래에서 안 채워져 " +
                 "탄 정의로 떨어진다(`TickProjectilePhase.cs:459` `req.ImpactTileRange > 0 ? … : d.ImpactTileRange`). " +
                 "액티브 갈래(`IntentApplier.cs:280`)는 바인딩 반경을 착탄 반경으로 쓴다 — 같은 탄 줄로 N 이 다른 두 운석을 못 만든다. " +
-                "현행은 `현행_타격_운석의_반경은_…` 이 박제한다.")]
+                "현행은 `현행_타격_운석의_반경은_…` 이 박제한다. 해제 = `unified-effect-layer` unit 1.")]
         public void 타격_운석의_반경은_바인딩_TileRange_다()
         {
             var o = RunOnHit(Definition(defImpactTiles: 0), rule: OnHitMeteorRule(tiles: N));
@@ -330,7 +333,7 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         [Ignore("현 구조로 성립하지 않는다 — 착탄 예고(6c)는 `ProjectileSpawned.AreaTiles`(= `p.TelegraphTileRange`)가 > 0 일 때만 " +
                 "뜬다(`CoreVfxSpawner.cs:265`). 그 값은 자리 갈래에서 `i.Telegraph` 로만 채워지고(`IntentApplier.cs:286`) " +
-                "대상 갈래(`IntentApplier.cs:258-272`)와 `TargetProjectileSkill`(Telegraph·Duration 을 안 싣는다)에는 칸이 없다.")]
+                "대상 갈래(`IntentApplier.cs:258-272`)와 `TargetProjectileSkill`(Telegraph·Duration 을 안 싣는다)에는 칸이 없다. 해제 = `unified-effect-layer` unit 1.")]
         public void 타격_운석에도_착탄_예고가_뜬다()
         {
             var h = RunOnHit(Definition(), attacks: 1);
@@ -357,7 +360,8 @@ namespace Wassup.Tests.EditMode.Core
         [Ignore("현 구조로 성립하지 않는다 — 떨어지는 운석 그림은 뷰가 `ProjectileSpawned` 를 받을 때 **월드의 탄**을 찾아 " +
                 "그 DefIndex 로 프리팹을 고른다(`CoreProjectileViewPool.cs:95-97`). 사건은 틱 끝에 배달되는데(`EventBus.cs:72-76` 적재 → Flush) " +
                 "타격 운석은 비행 시간 0(대상 갈래가 `req.FlightTime` 을 안 채움 `IntentApplier.cs:258-272` · " +
-                "`TargetProjectileSkill` 이 Duration 을 안 실음) → 같은 틱에 착탄·소멸해 뷰가 찾을 탄이 없다. 현행은 `현행_타격_운석은_…` 이 박제한다.")]
+                "`TargetProjectileSkill` 이 Duration 을 안 실음) → 같은 틱에 착탄·소멸해 뷰가 찾을 탄이 없다. 현행은 `현행_타격_운석은_…` 이 박제한다. " +
+                "해제 = `unified-effect-layer` unit 4.")]
         public void 타격_운석도_떨어지는_운석_그림이_뜬다()
         {
             var h = RunOnHit(Definition(), attacks: 1);

@@ -6,6 +6,8 @@
 ## 변경 대상
 - `Scripts/BattleCore/Trigger/IntentApplier.cs` `SpawnProjectile`.
 - 자리형 concrete 셋(`TileMeteorSkill` · `SelfAreaBlastSkill` · `DeathSiteBlastSkill`) — 의도에 궤적을 명시(`ProjectileMovement = SkyFall` · `ProjectilePayload = TileAoe`). 오늘 applier 가 「대상 없으면 하늘 낙하」로 강제하던 것을 옮긴다.
+- `Scripts/BattleCore/Trigger/ResignationBarrage.cs` — 퇴근 기믹 임계 운석도 같은 강제에 기댄다(unit 0 `census.md` 표 1 #68). 의도에 궤적을 명시한다.
+  ⚠ 강제에 기대는 탄은 전부 저작 궤적이 **Homing** 이다(`Projectile_Meteor` · `Projectile_BruiserShock` · `Projectile_JjangssenQuake`) — 명시가 빠진 호출부는 「의도 명시 > 탄 정의」에서 대상 결합으로 새어 조용히 불발한다.
 - `TargetProjectileSkill` — `Duration` 과 예고 플래그(U1)를 싣는다. 라이브 저작 전부 0/꺼짐 → 무변. (`SimIntent` 는 이미 두 필드를 갖는다 — Skills 형 무변.)
 
 ## 구현

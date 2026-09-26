@@ -24,6 +24,10 @@ namespace Wassup.Tests.EditMode.Core
     // 빨개지는 것이 정상이고, 그때 짝이 되는 `[Ignore]` 를 풀면 된다.
     //
     // ⚠ 여기 수치는 게임 값이 아니라 픽스처다.
+    //
+    // `unified-effect-layer` 완료 기준 — 이 파일의 `[Ignore]` 해제가 그 spec 의 완료 기준이다(`docs/spec/unified-effect-layer/`).
+    //   AA 두 건 → unit 3(버스트 슬롯이 발동 주체를 든다). U3(킬은 탄이 나간 유닛 몫)로 `…귀속은_H` 는 `…귀속은_U` 로,
+    //   `…귀속만_다르고…` 는 「귀속까지 같다」로 **이름·단언을 unit 3 에서 고친다**(여기서는 사유 문자열만 갱신).
     [TestFixture]
     public class HardCaseUnifiedSkillProbeTests
     {
@@ -211,7 +215,8 @@ namespace Wassup.Tests.EditMode.Core
                 "`IntentApplier.cs:301-306` 가 슬롯을 `_binding.Emitters`(= H 의 바인딩)에 넣고, " +
                 "`CombatPhase.cs:975-979` StepEmitters 가 그 슬롯을 소유 유닛 `u`(= H)로 전진시켜 " +
                 "스코프 원점(`CombatPhase.cs:1026,1040`)·탄 원점·Owner(FanOut `CombatPhase.cs:1158,1163` · 단일 선택 `:1093,1098`) 가 전부 H 가 된다. " +
-                "시전자(U)는 `EmitPatternSkill` 의 조준 후보 판정에만 쓰인다. 현행은 `현행_AA_…` 가 박제한다.")]
+                "시전자(U)는 `EmitPatternSkill` 의 조준 후보 판정에만 쓰인다. 현행은 `현행_AA_…` 가 박제한다. " +
+                "해제 = `unified-effect-layer` unit 3(이름·단언은 U3 로 `…귀속은_U` 로 고친다).")]
         public void AA_새로_배치된_U_자리에서_N칸_안_적_각각에게_100_귀속은_H()
         {
             var o = RunAA(out _);
@@ -264,7 +269,8 @@ namespace Wassup.Tests.EditMode.Core
 
         [Test]
         [Ignore("현 구조로 성립하지 않는다 — AA 의 버스트가 H 자리에서 나가 대상 집합이 갈린다(케이스 2 의 사유와 같다: " +
-                "`IntentApplier.cs:301-306` · `CombatPhase.cs:975-979`). 탄 수·피해 합은 배치(적 배치)에 따라 우연히만 같다.")]
+                "`IntentApplier.cs:301-306` · `CombatPhase.cs:975-979`). 탄 수·피해 합은 배치(적 배치)에 따라 우연히만 같다. " +
+                "해제 = `unified-effect-layer` unit 3(이름·단언은 U3 로 「귀속까지 같다」로 고친다).")]
         public void A_와_AA_는_귀속만_다르고_탄_수_대상_집합_피해_합이_같다()
         {
             var a = RunA();
