@@ -20,3 +20,5 @@ concrete 가 원점을 `target.CellA` · `p.EventPosition`/`EventBodyRadius` · 
 - `core-reviewer` APPROVE.
 
 - 구현 2026-09-26 · `19db40d8d` — 헤드리스 926/3 skip · Unity EditMode 3 어셈블리 2532 중 실패 = 선행 2(bomb_man·boomerang)뿐 · 골든 11 일치. 리뷰 = 묶음 A(unit 2+3).
+
+- 묶음 A(unit 2+3) core-reviewer APPROVE(발견 0) 2026-09-26.

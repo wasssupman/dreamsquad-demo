@@ -16,3 +16,5 @@
 - 탐침 둘을 U3 에 맞게 이름·단언 수정 후 해제 초록(`…귀속은_U` · 「A 와 AA 는 탄 수·대상 집합·피해 합·귀속이 같다」) · 짝 `현행_…` 뒤집거나 삭제.
 - 새 테스트: 버스트 도중 발동 주체 퇴근 → 남은 발 없음 · 호스트 사망 → 남은 발 없음 · AA 탄 킬 → 발동 주체의 OnKill 발화 · 호스트 OnKill 무발화 · **캐논 폭격 탄 수 = 반경 안 적 수**(회귀 고정).
 - 헤드리스 · 골든 11 · EditMode Core · PlayMode Core(배치 스킬 씬) · `core-reviewer` APPROVE.
+
+- 구현 2026-09-26 · `c547ad38a` — 헤드리스 931/1 skip · EditMode 3 어셈블리 2535 중 선행 2만 · 골든 11 · PlayMode Core 97/97 · 묶음 A core-reviewer APPROVE(발견 0).
