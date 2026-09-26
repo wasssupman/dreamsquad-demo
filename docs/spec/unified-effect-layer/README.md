@@ -47,7 +47,7 @@ H4 를 이 spec 에서 뺀 이유: 효과 값의 정본은 시트다(`DcSheetApp
 | 5 | Unity | `5_single_validator.md` | H5 · 비산 인라인 자 정본화 |
 | 6 | 인계 | `6_handoff_summary.md` | 종료 · 구조 문서 「예정」→확정 · 파이프라인 맵 확인 |
 
-**lane 공통 규칙**: `Wassup.Skills` 를 건드리는 unit(2 · 필요 시 1)은 **Unity 컴파일을 먼저** 끝낸 뒤 헤드리스를 돈다 — 헤드리스 csproj 가 `Wassup.Skills.dll` 을 워크트리 `Library/ScriptAssemblies` 에서 받기 때문(클린 export 여도 Skills 는 옛 dll). `core-reviewer` 는 코어 unit 마다.
+**lane 공통 규칙**: `Wassup.Skills` 를 건드리는 unit(2 · 필요 시 1)은 **Unity 컴파일을 먼저** 끝낸 뒤 헤드리스를 돈다 — 헤드리스 csproj 가 `Wassup.Skills.dll` 을 워크트리 `Library/ScriptAssemblies` 에서 받기 때문(클린 export 여도 Skills 는 옛 dll). `core-reviewer` 는 묶음으로(사용자 지시 2026-09-26): unit 1 단독(완료) · **묶음 A = unit 2 + 3**(트리거→효과 경로) · **묶음 B = unit 4 + 5**(표시 + 저작 검증). 각 unit 의 「`core-reviewer` APPROVE」 완료 기준은 소속 묶음 리뷰로 채운다. lane(Unity 컴파일 · 헤드리스 · EditMode · 골든)은 unit 마다 돈다.
 
 ## 파이프라인 커버리지 (투사체 아키타입 · `docs/reference/object-pipeline-map.md`)
 
