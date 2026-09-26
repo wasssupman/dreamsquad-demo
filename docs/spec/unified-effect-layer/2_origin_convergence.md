@@ -18,3 +18,5 @@ concrete 가 원점을 `target.CellA` · `p.EventPosition`/`EventBodyRadius` · 
 - EditMode 3 어셈블리 전부(선행 2 외 0) · 골든 11 · unit 0 표 1 전 행 무변 · `EffectWitness`.
 - 소스 단언(`CoreArchitectureTests` 계열, 스캔 경로에 `Scripts/Skills/Concrete` 명시): concrete 가 `ctx.Position(caster.Unit)` 을 **효과 좌표로** 쓰지 않는다 · `EventPosition` 류 옛 필드 참조 0.
 - `core-reviewer` APPROVE.
+
+- 구현 2026-09-26 · `19db40d8d` — 헤드리스 926/3 skip · Unity EditMode 3 어셈블리 2532 중 실패 = 선행 2(bomb_man·boomerang)뿐 · 골든 11 일치. 리뷰 = 묶음 A(unit 2+3).
