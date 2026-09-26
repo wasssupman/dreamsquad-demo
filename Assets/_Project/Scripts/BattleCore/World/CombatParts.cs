@@ -150,6 +150,13 @@ namespace Wassup.BattleCore
 
         /// <summary>버스트가 진행 중인가. 인스턴스의 수명이 아니라 **상태**다.</summary>
         public bool Active;
+
+        /// <summary>
+        /// 규칙이 연 버스트의 **발동 주체**(= 의도 `Source` · unified-effect-layer 계약 4). 발사 자리 · 스코프 ·
+        /// 귀속 · 진영 · 층이 전부 이 유닛에서 나온다 — 슬롯을 든 자(바인딩 소유자)는 수명만 잇는다.
+        /// 자기 사건이면 둘이 같다. 평타 연발 슬롯(`AttackState.PatternSlots`)은 읽지 않는다(사수 = 슬롯 주인).
+        /// </summary>
+        public SimEntityId Subject = SimEntityId.None;
     }
 
     // ── 공격 상태 ────────────────────────────────────────────────────────────

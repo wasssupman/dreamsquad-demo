@@ -26,8 +26,8 @@ namespace Wassup.Tests.EditMode.Core
     // ⚠ 여기 수치는 게임 값이 아니라 픽스처다.
     //
     // `unified-effect-layer` 완료 기준 — 이 파일의 `[Ignore]` 해제가 그 spec 의 완료 기준이다(`docs/spec/unified-effect-layer/`).
-    //   AA 두 건 → unit 3(버스트 슬롯이 발동 주체를 든다). U3(킬은 탄이 나간 유닛 몫)로 `…귀속은_H` 는 `…귀속은_U` 로,
-    //   `…귀속만_다르고…` 는 「귀속까지 같다」로 **이름·단언을 unit 3 에서 고친다**(여기서는 사유 문자열만 갱신).
+    //   AA 두 건 → unit 3(버스트 슬롯이 발동 주체를 든다) 에서 해제. U3(킬은 탄이 나간 유닛 몫)로 귀속은 H 가 아니라 U 다 —
+    //   A 와 AA 는 탄 수 · 대상 집합 · 피해 합 · 귀속(= 쏜 유닛)까지 같고, 다른 것은 수명(호스트 H)뿐이다.
     [TestFixture]
     public class HardCaseUnifiedSkillProbeTests
     {
@@ -45,7 +45,9 @@ namespace Wassup.Tests.EditMode.Core
         // ── 정의표 ──────────────────────────────────────────────────────────
 
         /// <summary>효과 한 벌 = 탄 줄 0 + 발사 명세 줄 0. 바인딩은 이 둘을 **index 로** 가리킨다.</summary>
-        private static MatchDefinition Definition(bool fanOut = true, int shots = 1)
+        private static MatchDefinition Definition(bool fanOut = true, int shots = 1, float interval = 0f,
+                                                  MovementKind movement = MovementKind.HomingToEntity,
+                                                  float enemyHealth = 1000f)
         {
             var def = CoreMatchFixtures.Definition();
             def.Units[0].Cost = 0;
@@ -54,12 +56,12 @@ namespace Wassup.Tests.EditMode.Core
             for (int i = 0; i < def.Enemies.Length; i++)
             {
                 def.Enemies[i].MoveSpeed = 0f;
-                def.Enemies[i].Health = 1000f;
+                def.Enemies[i].Health = enemyHealth;
             }
 
             var missile = ProjectileDef.Default();
             missile.Id = "probe_homing_missile";
-            missile.Movement = (int)MovementKind.HomingToEntity;   // 대상 바인딩 = 융단폭격(FanOut)의 전제
+            missile.Movement = (int)movement;   // 대상 바인딩 = 융단폭격(FanOut)의 전제
             missile.Payload = (int)PayloadKind.SingleSplash;
             missile.SplashDamageMul = 0f;                           // 직격만 — 피해 합이 발수 × 100 이 되게
             missile.SplashRadius = 0f;
@@ -68,7 +70,8 @@ namespace Wassup.Tests.EditMode.Core
             def.Projectiles = new[] { missile };
 
             var shotRows = new PatternShotDef[shots];
-            for (int i = 0; i < shots; i++) shotRows[i] = new PatternShotDef { DirectionT = 0.5f };
+            for (int i = 0; i < shots; i++)
+                shotRows[i] = new PatternShotDef { DirectionT = 0.5f, IntervalAfterPreviousSec = i > 0 ? interval : 0f };
             def.Patterns = new[]
             {
                 new PatternDef
@@ -177,9 +180,9 @@ namespace Wassup.Tests.EditMode.Core
             return o;
         }
 
-        private static Obs RunAA(out int cardRow)
+        private static Obs RunAA(out int cardRow, MatchDefinition def = null, int ticks = Ticks)
         {
-            var def = Definition();
+            def = def ?? Definition();
             cardRow = Add(def, CardRow())[0];
             def.ConfigHash = def.ComputeConfigHash();
             var o = Arena(def, InCells);
@@ -188,7 +191,7 @@ namespace Wassup.Tests.EditMode.Core
             o.Spawned = CoreCombatFixtures.Listen(o.M, CoreEventKind.ProjectileSpawned);
             o.Hits = CoreCombatFixtures.Listen(o.M, CoreEventKind.DamageApplied);
             o.Caster = Place(o.M, PlaceCell);
-            CoreCombatFixtures.Tick(o.M, Ticks);
+            CoreCombatFixtures.Tick(o.M, ticks);
             return o;
         }
 
@@ -211,36 +214,17 @@ namespace Wassup.Tests.EditMode.Core
         // ── 2. AA 단독 ──────────────────────────────────────────────────────
 
         [Test]
-        [Ignore("현 구조로 표현 불가 — 발사 명세 버스트는 «바인딩 소유자» 자리에서 쏜다. " +
-                "`IntentApplier.cs:301-306` 가 슬롯을 `_binding.Emitters`(= H 의 바인딩)에 넣고, " +
-                "`CombatPhase.cs:975-979` StepEmitters 가 그 슬롯을 소유 유닛 `u`(= H)로 전진시켜 " +
-                "스코프 원점(`CombatPhase.cs:1026,1040`)·탄 원점·Owner(FanOut `CombatPhase.cs:1158,1163` · 단일 선택 `:1093,1098`) 가 전부 H 가 된다. " +
-                "시전자(U)는 `EmitPatternSkill` 의 조준 후보 판정에만 쓰인다. 현행은 `현행_AA_…` 가 박제한다. " +
-                "해제 = `unified-effect-layer` unit 3(이름·단언은 U3 로 `…귀속은_U` 로 고친다).")]
-        public void AA_새로_배치된_U_자리에서_N칸_안_적_각각에게_100_귀속은_H()
+        public void AA_새로_배치된_U_자리에서_N칸_안_적_각각에게_100_귀속은_U()
         {
             var o = RunAA(out _);
-            var fromHost = o.SpawnedBy(o.Host.Id);
-            Assert.AreEqual(InCells.Length, fromHost.Count, "U 자리 N 안 적 수 = 탄 수(귀속 H)");
-            foreach (var s in fromHost)
+            var fromU = o.SpawnedBy(o.Caster.Id);
+            Assert.AreEqual(InCells.Length, fromU.Count, "U 자리 N 안 적 수 = 탄 수(귀속 U)");
+            Assert.AreEqual(0, o.SpawnedBy(o.Host.Id).Count, "H 가 쏜 탄은 0 — H 는 수명만 잇는다");
+            foreach (var s in fromU)
                 Assert.AreEqual(o.Caster.Position.x, s.SiteFired.Pos.x, 1e-4f, "탄은 U 자리에서 난다");
             foreach (var e in o.In) Assert.AreEqual(Hit, o.DamageTo(e), 1e-3f);
-            Assert.AreEqual(0f, o.DamageTo(o.Out));
-            Assert.IsTrue(o.Hits.TrueForAll(h => h.A == o.Host.Id), "귀속 = H");
-        }
-
-        [Test]
-        public void 현행_AA_는_U_배치에_발화하지만_버스트가_H_자리에서_H_스코프로_나간다()
-        {
-            var o = RunAA(out _);
-            // 발화 자체는 선다 — Any × PlacedDefender 가 U 의 배치를 듣고, 조준 판정(EmitPatternSkill)은 U 기준이라 통과한다.
-            var fromHost = o.SpawnedBy(o.Host.Id);
-            Assert.AreEqual(0, o.SpawnedBy(o.Caster.Id).Count, "U 가 쏜 탄은 0(귀속 H — 이건 의도와 같다)");
-            Assert.AreEqual(1, fromHost.Count, "H 스코프(10,4) 안의 적은 OutCell 하나뿐 → 1 발");
-            Assert.AreEqual(o.Host.Position.x, fromHost[0].SiteFired.Pos.x, 1e-4f, "⚠ 탄 원점 = H 자리(U 자리가 아니다)");
-            Assert.AreEqual(Hit, o.DamageTo(o.Out), 1e-3f, "⚠ U 에서 4칸 떨어진 적이 맞았다");
-            foreach (var e in o.In) Assert.AreEqual(0f, o.DamageTo(e), "⚠ U 옆의 적은 무피해");
-            Assert.IsTrue(o.Hits.TrueForAll(h => h.A == o.Host.Id), "귀속 = H(우연히 결정과 맞다 — 슬롯 소유자가 H 라서)");
+            Assert.AreEqual(0f, o.DamageTo(o.Out), "H 옆(U 에서 4칸) 적은 무피해");
+            Assert.IsTrue(o.Hits.TrueForAll(h => h.A == o.Caster.Id), "귀속 = U(U3 — 탄이 나간 유닛 몫)");
         }
 
         [Test]
@@ -268,27 +252,16 @@ namespace Wassup.Tests.EditMode.Core
         // ── 3. 동치 증언 ────────────────────────────────────────────────────
 
         [Test]
-        [Ignore("현 구조로 성립하지 않는다 — AA 의 버스트가 H 자리에서 나가 대상 집합이 갈린다(케이스 2 의 사유와 같다: " +
-                "`IntentApplier.cs:301-306` · `CombatPhase.cs:975-979`). 탄 수·피해 합은 배치(적 배치)에 따라 우연히만 같다. " +
-                "해제 = `unified-effect-layer` unit 3(이름·단언은 U3 로 「귀속까지 같다」로 고친다).")]
-        public void A_와_AA_는_귀속만_다르고_탄_수_대상_집합_피해_합이_같다()
+        public void A_와_AA_는_탄_수_대상_집합_피해_합_귀속이_같다()
         {
             var a = RunA();
             var aa = RunAA(out _);
-            Assert.AreEqual(a.SpawnedBy(a.Caster.Id).Count, aa.SpawnedBy(aa.Host.Id).Count, "탄 수");
+            Assert.AreEqual(a.SpawnedBy(a.Caster.Id).Count, aa.SpawnedBy(aa.Caster.Id).Count, "탄 수");
+            Assert.AreEqual(a.Spawned.Count, aa.Spawned.Count, "탄 총수(다른 주인의 탄 없음)");
             CollectionAssert.AreEquivalent(Cells(a, a.Victims()), Cells(aa, aa.Victims()), "대상 집합(칸)");
             Assert.AreEqual(a.Total(), aa.Total(), 1e-3f, "피해 합");
-            Assert.IsTrue(a.Hits.TrueForAll(h => h.A == a.Caster.Id));
-            Assert.IsTrue(aa.Hits.TrueForAll(h => h.A == aa.Host.Id));
-        }
-
-        [Test]
-        public void 현행_A_와_AA_의_대상_집합이_다르다()
-        {
-            var a = RunA();
-            var aa = RunAA(out _);
-            CollectionAssert.AreNotEquivalent(Cells(a, a.Victims()), Cells(aa, aa.Victims()),
-                "⚠ 같은 효과 정의인데 A 는 U 옆 둘을, AA 는 H 옆 하나를 때린다");
+            Assert.IsTrue(a.Hits.TrueForAll(h => h.A == a.Caster.Id), "A 귀속 = 쏜 유닛");
+            Assert.IsTrue(aa.Hits.TrueForAll(h => h.A == aa.Caster.Id), "AA 귀속 = 쏜 유닛(U) — H 가 아니다");
         }
 
         // 두 판의 SimEntityId 는 발급 순서가 달라(H 가 하나 더 있다) 칸으로 비교한다.
@@ -355,6 +328,95 @@ namespace Wassup.Tests.EditMode.Core
             o.Caster = Place(o.M, PlaceCell);
             CoreCombatFixtures.Tick(o.M, Ticks);
             foreach (var e in o.In) Assert.AreEqual(Hit, o.DamageTo(e), 1e-3f, "Magnitude 0 이어도 100 — 피해의 정본은 PatternDef");
+        }
+
+        // ── 6. 버스트 수명 = 발동 주체 ∧ 바인딩을 든 자(U2) · 킬 귀속(U3) · 캐논 회귀 ─────────
+
+        private const int BurstShots = 4;
+        private const float BurstInterval = 0.5f;   // 30 틱 — 첫 발 뒤 개입할 여유
+
+        private static MatchDefinition BurstDefinition() => Definition(fanOut: false, shots: BurstShots, interval: BurstInterval);
+
+        /// <summary>첫 탄이 나갈 때까지만 돌린다(배치 모션 길이를 가정하지 않는다).</summary>
+        private static void TickUntilFirstShot(Obs o)
+        {
+            for (int t = 0; t < Ticks && o.Spawned.Count == 0; t++) o.M.Tick();
+            Assert.AreEqual(1, o.Spawned.Count, "버스트 첫 발");
+        }
+
+        [Test]
+        public void AA_버스트는_끝까지_가면_발수_전부가_나간다_대조군()
+        {
+            var o = RunAA(out _, BurstDefinition(), ticks: Ticks * 3);
+            Assert.AreEqual(BurstShots, o.SpawnedBy(o.Caster.Id).Count, "개입 없으면 저작 발수 전부");
+        }
+
+        [Test]
+        public void AA_버스트_도중_발동_주체가_퇴근하면_남은_발이_없다()
+        {
+            var o = RunAA(out _, BurstDefinition(), ticks: 0);
+            TickUntilFirstShot(o);
+            // ⚠ `Unit` 은 풀링된다 — 소멸 뒤 참조는 다른 개체일 수 있어 id 를 먼저 잡는다.
+            SimEntityId u = o.Caster.Id, h = o.Host.Id;
+            Assert.AreEqual(RejectReason.None, o.M.Apply(Command.Retire(u)).Reason, "퇴근");
+            CoreCombatFixtures.Tick(o.M, Ticks * 3);
+            Assert.IsNull(o.M.World.Find(u), "U 가 판에서 사라졌다");
+            Assert.IsNotNull(o.M.World.Find(h), "H(바인딩을 든 자)는 살아 있다");
+            Assert.AreEqual(1, o.Spawned.Count, "남은 발 없음(U2) — H 가 대신 쏘지도 않는다");
+        }
+
+        [Test]
+        public void AA_버스트_도중_호스트가_죽으면_남은_발이_없다()
+        {
+            var o = RunAA(out _, BurstDefinition(), ticks: 0);
+            TickUntilFirstShot(o);
+            SimEntityId u = o.Caster.Id, h = o.Host.Id;   // 풀링 — id 를 먼저 잡는다
+            o.M.Intents.Apply(new SimIntent
+            {
+                Kind = SimIntentKind.DealDamage, Target = CoreSkillContext.ToSkill(h),
+                Source = CoreSkillContext.ToSkill(o.Out.Id), Amount = 99999f,
+            });
+            CoreCombatFixtures.Tick(o.M, Ticks * 3);
+            Assert.IsNull(o.M.World.Find(h), "H 가 판에서 사라졌다");
+            Assert.IsNotNull(o.M.World.Find(u), "U(발동 주체)는 살아 있다");
+            Assert.AreEqual(1, o.Spawned.Count, "남은 발 없음 — 바인딩째 멈춘다(오늘 그대로)");
+        }
+
+        [Test]
+        public void AA_탄_킬은_발동_주체의_OnKill_을_울리고_호스트의_OnKill_은_울리지_않는다()
+        {
+            var def = Definition(enemyHealth: Hit * 0.5f);
+            var onKill = new ProbeSkill();
+            var casters = new List<int>();
+            onKill.OnExecute = (c, t, p, ctx) => casters.Add(c.Unit.Value);
+            GiveUnit(def, 0, Probe(TriggerKind.OnKill, onKill));   // U · H 가 같은 유닛 줄 — 둘 다 OnKill 을 든다
+            var o = RunAA(out _, def, ticks: 0);
+            // ⚠ `Unit` 은 풀링된다 — 처치 뒤 참조는 다른 개체일 수 있어 id 를 먼저 잡는다.
+            var inIds = o.In.ConvertAll(e => e.Id);
+            int u = CoreSkillContext.ToSkill(o.Caster.Id).Value;
+            int h = CoreSkillContext.ToSkill(o.Host.Id).Value;
+            CoreCombatFixtures.Tick(o.M, Ticks);
+            foreach (var id in inIds) Assert.IsNull(o.M.World.Find(id), $"N 안 적 {id} 처치");
+            Assert.AreEqual(InCells.Length, casters.FindAll(c => c == u).Count, "킬마다 U 의 OnKill(U3)");
+            Assert.AreEqual(0, casters.FindAll(c => c == h).Count, "H 의 OnKill 은 무발화");
+        }
+
+        [Test]
+        public void 캐논_폭격_대상_낙하_전원_손잡이_탄_수는_반경_안_적_수다()
+        {
+            // 회귀 고정 — 라이브 캐논(배치 스킬 · 자기 사건)의 1:1 융단폭격(FanOut · SkyFallOnEntity = 대상 결합).
+            var five = new[] { new int2(7, 2), new int2(6, 4), new int2(5, 2), new int2(6, 1), new int2(7, 3) };
+            var def = Definition(movement: MovementKind.SkyFallOnEntity);
+            GiveUnit(def, 0, UnitSkillRow());
+            var o = Arena(def, five);
+            o.Spawned = CoreCombatFixtures.Listen(o.M, CoreEventKind.ProjectileSpawned);
+            o.Hits = CoreCombatFixtures.Listen(o.M, CoreEventKind.DamageApplied);
+            o.Caster = Place(o.M, PlaceCell);
+            CoreCombatFixtures.Tick(o.M, Ticks);
+            Assert.AreEqual(five.Length, o.SpawnedBy(o.Caster.Id).Count, "탄 수 = 반경 안 적 수");
+            Assert.AreEqual(o.Spawned.Count, o.SpawnedBy(o.Caster.Id).Count, "다른 주인의 탄 없음");
+            foreach (var e in o.In) Assert.AreEqual(Hit, o.DamageTo(e), 1e-3f, $"반경 안 적 {e.Id}");
+            Assert.AreEqual(0f, o.DamageTo(o.Out), "반경 밖 무피해");
         }
     }
 }

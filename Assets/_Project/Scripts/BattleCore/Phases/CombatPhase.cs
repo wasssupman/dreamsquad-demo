@@ -972,11 +972,26 @@ namespace Wassup.BattleCore
 
                 // unit 7a — **규칙이 연 버스트**(배치 스킬 · 보스 주기 발사). 같은 전진기를 탄다 — 옛 전투도
                 // 평타 연발과 스킬 발사가 한 `ProjectileEmitterSystem` 을 지났다(같은 틱에 나간다).
+                // 순회는 슬롯을 든 자(`u`) 순이고 **쏘는 것은 발동 주체**다(unified-effect-layer 계약 4 · U3) —
+                // 자기 사건이면 둘이 같다. 수명 = 발동 주체 ∧ 바인딩을 든 자: 든 자가 사라지면 바인딩째 멈추고,
+                // 발동 주체가 사라지면 여기서 슬롯을 닫는다(U2 — 남은 발 없음).
                 var bindings = u.Bindings;
                 for (int b = 0; b < bindings.Count; b++)
                 {
                     var emitters = bindings[b].Emitters;
-                    for (int s = 0; s < emitters.Count; s++) AdvanceSlot(ctx, u, atk, emitters[s], tileSize);
+                    for (int s = 0; s < emitters.Count; s++)
+                    {
+                        var slot = emitters[s];
+                        if (!slot.Active) continue;
+                        var shooter = ctx.World.Find(slot.Subject);
+                        if (shooter == null)
+                        {
+                            slot.FireCountBase = slot.Instance.Runtime.FireCount;   // durable 카운터는 이어 센다
+                            slot.Active = false;
+                            continue;
+                        }
+                        AdvanceSlot(ctx, shooter, shooter.Attack, slot, tileSize);
+                    }
                 }
             }
         }

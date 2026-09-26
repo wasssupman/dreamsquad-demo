@@ -345,6 +345,8 @@ namespace Wassup.BattleCore.Trigger
             Combat.Emission.PatternShotRandomizer.Apply(inst.Directions, inst.Intervals, pd.RandomizeShotsPerTrigger,
                                                         pd.RandomIntervalMinSec, pd.RandomIntervalMaxSec, inst.Seed);
             slot.PatternDefIndex = pat;
+            // 슬롯은 바인딩을 든 자의 목록에 들지만(수명) **쏘는 것은 발동 주체**다(귀속 · 자리 · 스코프 — U3).
+            slot.Subject = host.Id;
             slot.FireCountBase = _binding.PatternFireCountBase;
             Combat.Emission.EmitterTick.Begin(ref inst.Runtime, shots, slot.FireCountBase);
             _binding.PatternFireCountBase += shots;
