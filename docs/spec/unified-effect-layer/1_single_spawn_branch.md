@@ -22,3 +22,5 @@
 - 탐침 `타격_운석의_반경은_바인딩_TileRange_다` · `타격_운석에도_착탄_예고가_뜬다`(예고 켠 픽스처) 해제 초록 · 짝 `현행_…` 목표형으로 뒤집거나 삭제.
 - unit 0 표 1 의 `SpawnProjectile` 경유 행마다 무변 단언(요청 필드 동치 테스트).
 - 헤드리스(클린 export) · 골든 11(Unity) · EditMode Core(선행 외 0) · `EffectWitness` · `core-reviewer` APPROVE.
+
+- 완료 2026-09-26 · `c14630663` · `2d7aa12fc` — 헤드리스 923/4 skip · Unity EditMode Core 934/0 fail(골든 11 포함) · Unity 층 Check 2 오류 0 · core-reviewer APPROVE. 예고 플래그(U1)는 `SkillParams` 칸이 필요해 unit 2 로 이월.
