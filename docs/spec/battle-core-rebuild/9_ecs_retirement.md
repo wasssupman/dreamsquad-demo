@@ -111,3 +111,5 @@ N/A — 새 정거장이 없다. 지우는 정거장은 8c 가 맵에서 이미 
 구현 2026-09-25 — `66e122ec6`~`9a8756016` + 훅 삭제(마지막 커밋). 옛 규칙 변경 0(규칙이 다른 4건은 `[Ignore]` 로 기록만).
 
 리드 재검증 2026-09-25 — HEAD `2c298b3b1`(= `d2f70a7a8` + Check csproj 의 Entities·Transforms dll 참조 제거 — `60c09db21` 에서 빠진 spec 변경 대상 :56~57): 클린 export build 0 · test 876/880(Ignore 4) · Check 0(Entities 참조 없이) · manifest entities 0 · 장부 3종 exit 0 · 옛 폴더 4 부재 · asmdef 에 Entities/Burst/Transforms 0 · 골든 파일 diff 0. Unity: 도메인 Entities 어셈블리 0 · 로비 콜드 스타트 fps 60 · EditMode 3 어셈블리 2496/2498(선행 2) · PlayMode 코어 95/95 · 아웃게임 `PresetBarPopupLayerTest` 2/2 · 골든 Verify 11 일치. 남은 것 = 옛 규칙 차이 4건 사용자 결정 · 플레이 4차 · main 머지(→ `core.hooksPath` unset) · Android QA 빌드.
+
+9d 리드 재검증 2026-09-26(HEAD `2f13fa90a`): core-reviewer **APPROVE**(finding 0 · LOW 1 = 무참조 6 파일 후속). 클린 export build 0 · test 894/894 · Check 0 · Retire.Check(전체 트리) 0 · 코어·골든 diff 0. Unity: 콘솔 에러 0 · Missing Script 0 · EditMode 3 어셈블리 2495/2497(선행 2 — 총계 −15 = 삭제 테스트) · PlayMode 코어 97/97(단, 첫 실행에서 `CoreShapeGuideTests` 1건 빨강 — 사용자 플레이가 `dev_forceMapIndex` 를 0→3 으로 바꿔 픽스처 지형이 사라진 **머신 상태** 문제, 0 으로 단독 3/3 초록 확인 뒤 3 복원) · 골든 Verify 11 일치.
