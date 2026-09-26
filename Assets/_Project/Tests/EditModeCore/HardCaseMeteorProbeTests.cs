@@ -259,24 +259,15 @@ namespace Wassup.Tests.EditMode.Core
             foreach (var e in o.Near) Assert.AreEqual(3 * OnHitHit, o.MeteorDamageTo(e, OnHitHit), 1e-3f);
         }
 
+        // unified-effect-layer unit 1 해제 — 요청 조립이 궤적 결합 종류 하나로 갈린다. 칸 결합이면 대상이 있어도
+        // 바인딩 반경이 **착탄 반경**이다(옛 대상 갈래는 그것을 재조준 반경으로 썼다 — 짝 `현행_…` 은 삭제).
         [Test]
-        [Ignore("현 구조로 성립하지 않는다 — 대상 조준 갈래는 바인딩 반경을 **재조준 반경**으로 쓴다(`IntentApplier.cs:271` " +
-                "`req.RetargetTileRange = … i.TileRange`). 착탄 반경(`req.ImpactTileRange`)은 그 갈래에서 안 채워져 " +
-                "탄 정의로 떨어진다(`TickProjectilePhase.cs:459` `req.ImpactTileRange > 0 ? … : d.ImpactTileRange`). " +
-                "액티브 갈래(`IntentApplier.cs:280`)는 바인딩 반경을 착탄 반경으로 쓴다 — 같은 탄 줄로 N 이 다른 두 운석을 못 만든다. " +
-                "현행은 `현행_타격_운석의_반경은_…` 이 박제한다. 해제 = `unified-effect-layer` unit 1.")]
         public void 타격_운석의_반경은_바인딩_TileRange_다()
         {
             var o = RunOnHit(Definition(defImpactTiles: 0), rule: OnHitMeteorRule(tiles: N));
+            Assert.AreEqual(3 * OnHitHit, o.MeteorDamageTo(o.E, OnHitHit), 1e-3f, "E 자신");
             foreach (var e in o.Near) Assert.AreEqual(3 * OnHitHit, o.MeteorDamageTo(e, OnHitHit), 1e-3f, "바인딩 N = 1 이 착탄 반경");
-        }
-
-        [Test]
-        public void 현행_타격_운석의_반경은_바인딩이_아니라_탄_정의에서_온다()
-        {
-            var o = RunOnHit(Definition(defImpactTiles: 0), rule: OnHitMeteorRule(tiles: N));
-            Assert.AreEqual(3 * OnHitHit, o.MeteorDamageTo(o.E, OnHitHit), 1e-3f, "E 자신만 — 반경 0 + 0.5 + 0.25");
-            foreach (var e in o.Near) Assert.AreEqual(0f, o.MeteorDamageTo(e, OnHitHit), "⚠ 바인딩 N = 1 인데 주변은 무피해");
+            Assert.AreEqual(0f, o.MeteorDamageTo(o.Far, OnHitHit), "N 밖 무피해");
         }
 
         // ── 3. 로직 동치 ────────────────────────────────────────────────────
@@ -310,30 +301,45 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
-        public void 현행_두_경로의_발사_요청_조립이_갈린다_예고와_비행시간()
+        public void 두_경로의_예고와_비행시간은_효과_파라미터가_정한다_저작_0_이면_즉발()
         {
-            // 착탄은 하나지만 요청 조립은 `IntentApplier.SpawnProjectile` 의 두 갈래(대상 유효 `:258` / 자리 `:276`)다.
+            // unified-effect-layer unit 1 — 요청 조립은 한 갈래(궤적 결합 종류)다. 예고·비행 시간의 차이는 **갈래가 아니라
+            // 효과 파라미터**에서 온다: 액티브는 Duration(예고) + Telegraph 를 싣고, 이 픽스처의 타격 운석은 둘 다 0/꺼짐이다.
             var a = RunActive(Definition());
             var h = RunOnHit(Definition(), attacks: 1);
             var hs = h.Spawned.Find(e => e.B == h.D.Id);
             Assert.AreEqual(N, a.Spawned[0].AreaTiles, "액티브 = 착탄 예고 링(`TileMeteorSkill` 의 Telegraph)");
-            Assert.AreEqual(0, hs.AreaTiles, "⚠ 타격 운석 = 예고 없음(대상 갈래는 TelegraphTileRange 를 안 채운다)");
+            Assert.AreEqual(0, hs.AreaTiles, "타격 운석 = 예고 꺼짐(U1 기본값)");
 
-            // 비행 시간: 액티브 = 바인딩 Duration(예고), 타격 = 0(대상 갈래는 FlightTime 을 안 채운다 → SkyFall 0 = 첫 틱 착탄).
+            // 비행 시간: 액티브 = 바인딩 Duration(예고), 타격 = 바인딩 Duration 0 → SkyFall 0 = 첫 틱 착탄.
             int spawnTick = hs.Tick;
             var hit = h.ProjHits.Find(e => e.A == hs.A);
-            Assert.LessOrEqual(hit.Tick - spawnTick, 1, "⚠ 타격 운석은 즉시 떨어진다");
+            Assert.LessOrEqual(hit.Tick - spawnTick, 1, "저작 0 — 타격 운석은 즉시 떨어진다");
             int aSpawn = a.Spawned[0].Tick;
             var aHit = a.ProjHits.Find(e => e.A == a.Spawned[0].A);
             Assert.GreaterOrEqual(aHit.Tick - aSpawn, 29, "액티브는 0.5초 예고 뒤");
         }
 
+        [Test]
+        public void 타격_운석의_낙하_시간은_바인딩_Duration_이다()
+        {
+            // unit 1 — 칸 결합 탄의 `FlightTime` = 의도 Duration(`TargetProjectileSkill` 이 SkillParams.Duration 을 싣는다).
+            var rule = OnHitMeteorRule();
+            rule.Duration = WarningSec;
+            var h = RunOnHit(Definition(), rule: rule, attacks: 1);
+            var hs = h.Spawned.Find(e => e.B == h.D.Id);
+            CoreCombatFixtures.Tick(h.M, 40);
+            var hit = h.ProjHits.Find(e => e.A == hs.A);
+            Assert.GreaterOrEqual(hit.Tick - hs.Tick, 29, "0.5초 낙하 뒤 착탄");
+        }
+
         // ── 4. 비주얼 공유 ──────────────────────────────────────────────────
 
         [Test]
-        [Ignore("현 구조로 성립하지 않는다 — 착탄 예고(6c)는 `ProjectileSpawned.AreaTiles`(= `p.TelegraphTileRange`)가 > 0 일 때만 " +
-                "뜬다(`CoreVfxSpawner.cs:265`). 그 값은 자리 갈래에서 `i.Telegraph` 로만 채워지고(`IntentApplier.cs:286`) " +
-                "대상 갈래(`IntentApplier.cs:258-272`)와 `TargetProjectileSkill`(Telegraph·Duration 을 안 싣는다)에는 칸이 없다. 해제 = `unified-effect-layer` unit 1.")]
+        [Ignore("unit 1 에서 applier 쪽은 풀렸다 — 칸 결합 갈래가 `i.Telegraph` 로 `TelegraphTileRange` 를 채운다(`IntentApplier.SpawnProjectile`). " +
+                "남은 막힘은 **입력 형**이다: 예고 플래그(U1 — 효과 파라미터)가 `BindingDef` → `SkillParams` 에 칸이 없어 " +
+                "`TargetProjectileSkill` 이 실을 값이 없다(`Skills/SkillParams.cs` — Duration 은 있고 Telegraph 는 없다). " +
+                "unit 1 은 `Wassup.Skills` 입력 형을 안 바꾼다 — SkillParams 칸 신설 결정 후 해제.")]
         public void 타격_운석에도_착탄_예고가_뜬다()
         {
             var h = RunOnHit(Definition(), attacks: 1);
@@ -359,8 +365,8 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         [Ignore("현 구조로 성립하지 않는다 — 떨어지는 운석 그림은 뷰가 `ProjectileSpawned` 를 받을 때 **월드의 탄**을 찾아 " +
                 "그 DefIndex 로 프리팹을 고른다(`CoreProjectileViewPool.cs:95-97`). 사건은 틱 끝에 배달되는데(`EventBus.cs:72-76` 적재 → Flush) " +
-                "타격 운석은 비행 시간 0(대상 갈래가 `req.FlightTime` 을 안 채움 `IntentApplier.cs:258-272` · " +
-                "`TargetProjectileSkill` 이 Duration 을 안 실음) → 같은 틱에 착탄·소멸해 뷰가 찾을 탄이 없다. 현행은 `현행_타격_운석은_…` 이 박제한다. " +
+                "타격 운석은 비행 시간 0(unit 1 뒤로는 저작 Duration 이 그 값이다 — 이 픽스처 · 라이브 전부 0) → " +
+                "같은 틱에 착탄·소멸해 뷰가 찾을 탄이 없다. 현행은 `현행_타격_운석은_…` 이 박제한다. " +
                 "해제 = `unified-effect-layer` unit 4.")]
         public void 타격_운석도_떨어지는_운석_그림이_뜬다()
         {
@@ -384,8 +390,9 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         public void 액티브는_탄_정의의_궤적을_무시하고_언제나_하늘_낙하_칸_광역이다_같은_SO_공유_가능()
         {
-            // 빌더가 받아 주는 타격 탄은 엔티티 바인딩뿐이다(아래). 그 SO 를 액티브가 가리켜도 자리 갈래가 궤적을 덮는다
-            // (`IntentApplier.cs:277-278`) — 두 저작이 **같은 ProjectileData SO** 를 가리키는 것 자체는 된다.
+            // 빌더가 받아 주는 타격 탄은 엔티티 바인딩뿐이다(아래). 그 SO 를 액티브가 가리켜도 `TileMeteorSkill` 이 의도에
+            // SkyFall × TileAoe 를 **명시**해 탄 정의를 덮는다(unit 1 — 궤적 = 의도 명시 > 탄 정의 · 옛 applier 강제는 은퇴)
+            // — 두 저작이 **같은 ProjectileData SO** 를 가리키는 것 자체는 된다.
             var def = Definition(movement: MovementKind.SkyFallOnEntity, payload: PayloadKind.SingleSplash, splashRadius: 1.5f);
             var a = RunActive(def);
             Assert.AreEqual(MovementKind.SkyFall, (MovementKind)a.Spawned[0].Arg);

@@ -113,6 +113,18 @@ namespace Wassup.Skills
         Portal = 2,
     }
 
+    // unified-effect-layer unit 1 — **자리형 concrete 가 쓰는 궤적 토큰**(코어 `MovementKind` · `PayloadKind` 의 부분 미러).
+    // `SimIntent.ProjectileMovement/Payload` 는 여전히 불투명 토큰이다 — 도메인은 이 값을 **해석하지 않고** 실어 보낼 뿐이다.
+    // 자리형 셋(운석 · 자폭 · 죽은 자리 폭발)이 「하늘에서 칸에 떨어져 칸 광역」을 **선언**해야 하는 이유: 옛 applier 가
+    // 「대상 없으면 이 궤적」으로 강제하던 것이 걷혔고(궤적 = 의도 명시 > 탄 정의), 그들의 탄 저작은 Homing 이다.
+    // ⚠ **0 = 저작 없음(탄 정의를 쓴다)** 이라 코어의 `HomingToEntity = 0` · `SingleSplash = 0` 은 여기서 표현하지 않는다.
+    // 값 일치는 `CoreSkillEnumPinTests` 가 못박는다(어셈블리가 갈려 컴파일러가 못 잡는다).
+    public static class SkillProjectileAxis
+    {
+        public const int SkyFall = 2;    // 코어 `MovementKind.SkyFall`
+        public const int TileAoe = 1;    // 코어 `PayloadKind.TileAoe`
+    }
+
     public enum MetaIntentKind : byte
     {
         None = 0,
@@ -158,7 +170,7 @@ namespace Wassup.Skills
         // 발사 명세 슬롯 index. `DataIndex` 와 **겸직시키지 않는다** — 그쪽은 전역
         // 에셋 표를 가리키고 이쪽은 host 자기 버퍼(`PatternSlot`)의 자리다. −1 = 없음.
         public int PatternIndex;
-        // 저작 탄 궤적 축(불투명). `SpawnProjectile` 전용 — 0 = 어댑터 기본(자리 폭발).
+        // 저작 탄 궤적 축(불투명). `SpawnProjectile` 전용 — 0 = 탄 정의의 궤적(unified-effect-layer unit 1 · 자리 강제는 은퇴).
         public int ProjectileMovement;
         public int ProjectilePayload;
         // 탄 속도. `Duration`(비행 시간)과 **다른 축**이다 — 하나는 «얼마나 빨리»,

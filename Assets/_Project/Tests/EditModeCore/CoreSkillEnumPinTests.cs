@@ -61,6 +61,16 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
+        public void 자리형_궤적_토큰은_코어_궤적_페이로드와_값이_같다()
+        {
+            // unified-effect-layer unit 1 — 자리형 concrete 가 의도에 명시하는 궤적(부분 미러). 갈리면 운석이 조용히 다른 궤적을 탄다.
+            Assert.AreEqual((int)Wassup.BattleCore.Combat.Projectile.MovementKind.SkyFall, SkillProjectileAxis.SkyFall);
+            Assert.AreEqual((int)Wassup.BattleCore.Combat.Projectile.PayloadKind.TileAoe, SkillProjectileAxis.TileAoe);
+            Assert.AreNotEqual(0, SkillProjectileAxis.SkyFall, "0 = 저작 없음(탄 정의) — 명시로 못 쓴다");
+            Assert.AreNotEqual(0, SkillProjectileAxis.TileAoe);
+        }
+
+        [Test]
         public void 출처_꼬리표는_미러한_값만_고정한다()
         {
             // 부분 미러다(스킬이 실제로 쓰는 것만) — 나머지는 도메인 밖에서 나온다.

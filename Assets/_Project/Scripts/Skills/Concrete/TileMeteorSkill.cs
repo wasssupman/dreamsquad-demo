@@ -25,6 +25,8 @@ namespace Wassup.Skills.Concrete
                 Source = caster.Unit,          // 무효 — 플레이어 시전이라 귀속할 유닛이 없다
                 Target = SkillEntityId.None,   // 대상이 아니라 **칸**을 때린다
                 Position = ctx.CellCenter(target.CellA),
+                ProjectileMovement = SkillProjectileAxis.SkyFall,   // unified-effect-layer unit 1 — 칸에 떨어진다(탄 저작은 Homing — 명시가 빠지면 불발)
+                ProjectilePayload = SkillProjectileAxis.TileAoe,
                 Amount = p.Magnitude,
                 TileRange = p.TileRange,
                 DataIndex = p.DataIndex,

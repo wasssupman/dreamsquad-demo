@@ -38,6 +38,9 @@ namespace Wassup.Skills.Concrete
                 TargetTraversalLayers = p.TargetTraversalLayers,
                 ProjectileMovement = p.ProjectileMovement,
                 ProjectilePayload = p.ProjectilePayload,
+                // unified-effect-layer unit 1 — 칸 결합 탄(타격 운석)의 낙하 시간. 대상·방향 결합은 안 읽는다.
+                // 라이브 저작은 전부 0 이다(빌더가 칸 결합 × 이 효과를 아직 거절한다 — unit 5).
+                Duration = p.Duration,
             });
         }
     }

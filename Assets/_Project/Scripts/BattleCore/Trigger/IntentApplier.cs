@@ -255,35 +255,57 @@ namespace Wassup.BattleCore.Trigger
             req.TargetLayers = i.TargetTraversalLayers;
             req.Damage = i.Amount;
 
+            // unified-effect-layer unit 1 — **갈래는 궤적 결합 종류 하나다**(H2). 궤적 = 의도 명시 > 탄 정의.
+            // ⚠ 옛 자리 갈래는 「대상 없으면 SkyFall × TileAoe」를 **강제**했다. 그 강제는 걷혔다 — 자리형 concrete
+            // (`TileMeteorSkill` · `SelfAreaBlastSkill` · `DeathSiteBlastSkill`)와 `ResignationBarrage` 가 의도에 궤적을
+            // **명시**한다. 그들의 탄 저작(`Projectile_Meteor` · `_BruiserShock` · `_JjangssenQuake`)은 Homing 이라
+            // 명시가 빠지면 대상 결합으로 새어 아래 「대상 없음」 경고로 떨어진다(조용한 오발사 대신).
+            Unit victim = null;
             if (i.Target.IsValid)
             {
-                // 대상 조준 탄(비수·부메랑 — 카드). 궤적 축이 저작에서 왔으면 그것, 아니면 탄 정의.
-                var victim = U(i.Target);
-                if (victim == null) return;
-                req.Movement = i.ProjectileMovement != 0 ? (MovementKind)i.ProjectileMovement : (MovementKind)pd.Movement;
-                req.Payload = i.ProjectilePayload != 0 ? (PayloadKind)i.ProjectilePayload : (PayloadKind)pd.Payload;
-                bool directional = Combat.Projectile.MovementBinding.Of(req.Movement) == Combat.Projectile.BindingClass.Direction;
-                req.Target = directional ? SimEntityId.None : victim.Id;
-                req.Origin = i.Position;
-                req.Impact = victim.Position;
-                req.Direction = directional ? i.DirectionXZ : math.normalizesafe((victim.Position - i.Position).xz);
-                req.DistanceOverride = directional ? i.TileRange * TileSize : 0f;
-                req.RetargetTileRange = directional ? 0 : i.TileRange;
-                // 탄 피해는 **flat** 이다 — 시전자 공격력 배율이 안 붙는다(C5 · dc-trigger 계약 7).
+                victim = U(i.Target);
+                if (victim == null) return;   // 조준 대상이 이미 없다(옛 대상 갈래 그대로)
             }
-            else
+            req.Movement = i.ProjectileMovement != 0 ? (MovementKind)i.ProjectileMovement : (MovementKind)pd.Movement;
+            req.Payload = i.ProjectilePayload != 0 ? (PayloadKind)i.ProjectilePayload : (PayloadKind)pd.Payload;
+            req.Origin = i.Position;   // 발사 자리 = 의도 좌표(오늘 그대로)
+            // 탄 피해는 **flat** 이다 — 시전자 공격력 배율이 안 붙는다(C5 · dc-trigger 계약 7).
+
+            switch (Combat.Projectile.MovementBinding.Of(req.Movement))
             {
-                // 자리를 때리는 폭발(자폭 · 시체 폭발 · 퇴근 운석 · 메테오) = 하늘 낙하 × 칸 광역.
-                req.Movement = MovementKind.SkyFall;
-                req.Payload = PayloadKind.TileAoe;
-                req.Origin = i.Position;
-                req.Impact = i.Position;
-                req.ImpactTileRange = i.TileRange;
-                // 제약 13 — **원점의 몸이 경계 너머까지 실린다**(0 = 자리에 떨어지는 것).
-                req.OriginBodyRadius = i.OriginBodyRadius;
-                req.FlightTime = i.Duration;
-                // 착탄 예고 반경은 **이 스킬의 판단**이다(6c 이월 — 탄 정의표에 옮길 저작이 없다).
-                req.TelegraphTileRange = i.Telegraph ? i.TileRange : 0;
+                case Combat.Projectile.BindingClass.Entity:
+                    // 대상 추적(비수). `TileRange` = 재조준 반경.
+                    if (victim == null)
+                    {
+                        Warn($"[Intent] 대상 결합 탄({req.Movement})인데 조준 대상이 없다 — 요청을 버린다(자리형이면 의도가 궤적을 명시해야 한다).");
+                        return;
+                    }
+                    req.Target = victim.Id;
+                    req.Impact = victim.Position;
+                    req.Direction = math.normalizesafe((victim.Position - i.Position).xz);
+                    req.RetargetTileRange = i.TileRange;
+                    break;
+
+                case Combat.Projectile.BindingClass.Cell:
+                    // 칸에 떨어지는 것(운석 · 자폭 · 시체 폭발 · 퇴근 운석). 착탄 = 대상의 **현재** 좌표 · 없으면 의도 좌표.
+                    // 반경 · 비행(= 예고) 시간 · 예고는 **효과 파라미터**(의도)에서 — 탄 정의가 아니다.
+                    req.Impact = victim != null ? victim.Position : i.Position;
+                    req.ImpactTileRange = i.TileRange;
+                    // 제약 13 — **원점의 몸이 경계 너머까지 실린다**(0 = 자리에 떨어지는 것).
+                    // ⚠ 대상 좌표를 쓴 칸 탄은 **자리형**이다 — 그 좌표를 «지정»한 것은 귀속이지 기하가 아니다.
+                    // 맞은 적의 몸은 「대상의 몸」 항으로만 붙는다(원점 항이 아니다 · 탐침 `HardCaseMeteorProbeTests`).
+                    req.OriginBodyRadius = victim != null ? 0f : i.OriginBodyRadius;
+                    req.FlightTime = i.Duration;
+                    // 착탄 예고 반경은 **이 효과의 판단**이다(U1 — 효과마다 켜고 끈다 · 탄 정의표에 옮길 저작이 없다).
+                    req.TelegraphTileRange = i.Telegraph ? i.TileRange : 0;
+                    break;
+
+                default:
+                    // 방향(부메랑). `TileRange` = 비행 사거리(칸). 조준 대상은 방향을 정할 뿐 임자가 아니다.
+                    req.Impact = victim != null ? victim.Position : i.Position;
+                    req.Direction = i.DirectionXZ;
+                    req.DistanceOverride = i.TileRange * TileSize;
+                    break;
             }
             _world.ProjectileRequests.Add(req);
         }

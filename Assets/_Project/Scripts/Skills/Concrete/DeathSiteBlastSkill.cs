@@ -34,6 +34,8 @@ namespace Wassup.Skills.Concrete
                 Source = caster.Unit,          // owner — 킬 귀속
                 Target = SkillEntityId.None,   // 대상이 아니라 **자리**를 때린다
                 Position = p.EventPosition,
+                ProjectileMovement = SkillProjectileAxis.SkyFall,   // unified-effect-layer unit 1 — 칸에 떨어진다(탄 저작은 Homing — 명시가 빠지면 불발)
+                ProjectilePayload = SkillProjectileAxis.TileAoe,
                 // unit 23b — 자리의 «주인» 의 몸. `caster` 것이 아니다 — 시체폭발(OnKill)은
                 // 시전자가 킬러이고 폭심은 죽은 «적» 이라 둘이 갈린다.
                 // 퇴근 운석(OnRetire)은 감지자가 0 을 실어 자리형으로 남는다.

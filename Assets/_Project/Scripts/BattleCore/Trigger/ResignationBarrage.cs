@@ -80,6 +80,10 @@ namespace Wassup.BattleCore.Trigger
                         Kind = SimIntentKind.SpawnProjectile,
                         Source = SkillEntityId.None,
                         Target = SkillEntityId.None,                 // 칸을 때린다
+                        // unified-effect-layer unit 1 — 궤적을 **명시**한다. 탄 저작(`Projectile_Meteor`)은 Homing 이라
+                        // 명시가 빠지면 「의도 명시 > 탄 정의」에서 대상 결합으로 새어 조용히 불발한다(옛 applier 강제가 걷혔다).
+                        ProjectileMovement = (int)Combat.Projectile.MovementKind.SkyFall,
+                        ProjectilePayload = (int)Combat.Projectile.PayloadKind.TileAoe,
                         Position = _map.CenterOf(cell),
                         Amount = co.MeteorDamage,
                         TileRange = co.MeteorTileRange,

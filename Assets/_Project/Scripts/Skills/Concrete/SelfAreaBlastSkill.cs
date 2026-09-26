@@ -24,6 +24,8 @@ namespace Wassup.Skills.Concrete
                 Source = caster.Unit,          // owner — 킬 귀속(위 계약)
                 Target = SkillEntityId.None,   // 대상이 아니라 **자리**를 때린다
                 Position = ctx.Position(caster.Unit),
+                ProjectileMovement = SkillProjectileAxis.SkyFall,   // unified-effect-layer unit 1 — 칸에 떨어진다(탄 저작은 Homing — 명시가 빠지면 불발)
+                ProjectilePayload = SkillProjectileAxis.TileAoe,
                 // unit 23b — **자기 몸이 터진다.** 폭심의 주인이 시전자이므로 그 몸이 붙는다.
                 OriginBodyRadius = caster.BodyRadius,
                 Amount = a.Damage,
