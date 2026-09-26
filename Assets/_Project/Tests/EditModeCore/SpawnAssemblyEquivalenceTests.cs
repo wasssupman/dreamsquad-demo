@@ -233,6 +233,8 @@ namespace Wassup.Tests.EditMode.Core
                 var old = new SimIntent
                 {
                     Kind = SimIntentKind.SpawnProjectile,
+                    Source = SkillEntityId.None,
+                    Target = SkillEntityId.None,   // ⚠ default 는 «무효»가 아니다 — 명시한다
                     Position = reqs[k].Impact,
                     Amount = co.MeteorDamage,
                     TileRange = co.MeteorTileRange,
@@ -249,6 +251,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             // 옛 applier 강제가 걷힌 뒤의 그물 — Homing 저작 탄 × 대상 없음 = 조용한 오발사가 아니라 경고.
             _m.Intents.Apply(new SimIntent { Kind = SimIntentKind.SpawnProjectile, Position = _e.Position,
+                                             Source = SkillEntityId.None, Target = SkillEntityId.None,
                                              Amount = 1f, TileRange = 1, DataIndex = MeteorRow });
             Assert.AreEqual(0, _m.World.ProjectileRequests.Count);
             Assert.IsTrue(_said.Exists(s => s.Contains("조준 대상이 없다")));
