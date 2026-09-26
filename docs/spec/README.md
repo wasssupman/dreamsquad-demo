@@ -119,6 +119,8 @@ code + git history        구현 상세
 
 ### 전투 코어 전환 — 남은 것 (`battle-core-rebuild` — **spec 완료 2026-09-25**, 머지 `fecb0fef3`)
 
+**후속 spec 「통합 효과 층」 출발점 = `battle-core-rebuild/12_next_unified_effect_layer_guide.md`** (결정 ⑪ · 탐침 보류 5건 = 완료 기준 · 코드 지도 · 작업 단위 0~6).
+
 #### 시트 ↔ 저작 ↔ 코어 정합 감사(2026-09-26, 읽기 전용) — 후속 후보
 - **효과 자산화(하드 케이스 「유닛 배치 스킬 A = 드림캐쳐 AA 가 시전」)**: `DcMechanic` 이 값 struct 라 같은 효과가 유닛 능력·카드에 값으로 복사된다(한 번 정의 실패). 효과를 참조 가능한 SO(`SkillEffectData`)로 승격해 트리거 행이 참조만 갖게 + 발사 명세 대상 선정 `AllInRange` 추가 + `EffectWitness` 로 「A 발동 == AA 발동」 증언. 시트도 효과 탭 하나로 유닛 스킬·카드·악몽을 함께 밸런싱(아래 8 해소).
 - **하드 케이스 탐침(2026-09-26, `06441f875` `HardCaseUnifiedSkillProbeTests` 7 ○ · 2 Ignore)**: A(유닛 배치 → N 안 모든 적에게 호밍 1발씩 100) ○ — 발사 명세 「전원 손잡이(FanOutToAllCandidates)」 + 호밍 탄. AA(호스트 생존 동안 신규 배치 유닛이 A 시전) × — 배치 상속 바인딩(Subject.Any·PlacedDefender·Lifetime.Owner)은 발화·해제까지 되지만 **발사 명세 버스트 슬롯이 바인딩 소유자(호스트) 목록에 들어가 호스트 자리에서 쏜다**(`IntentApplier.cs:301-306` · `CombatPhase.cs:975-979`; 원점·Owner 가 H). 저작 경로도 `CardDefinitionBuilder.cs:261` 이 카드의 OnPlace 를 거절. 효과 자산화 spec 계약에 추가할 것: ① 버스트 원점 = **발동 시전자(사건 주체)**, 귀속만 바인딩 소유자 ② 카드 경로에 OnPlace + Subject.Any 허용 ③ 「A 발동 == AA 발동」 증언(대상 집합 동치).

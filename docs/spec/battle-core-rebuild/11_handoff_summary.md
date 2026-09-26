@@ -56,3 +56,5 @@
 - 9d 잔여 정리는 별도 진행 중이다(README 작업 표 행 예약).
 - 헤드리스 csproj 4 의 `UnityScriptAssemblies` 기본값이 아직 워크트리(`wassup-core`)를 가리킨다. 워크트리 정리 전에 main 워크트리로 옮겨야 한다(10 구현 5).
 - 푸시는 사용자 승인 대기(main 이 origin 보다 254 커밋 앞).
+
+**후속 spec 출발점**: [`12_next_unified_effect_layer_guide.md`](12_next_unified_effect_layer_guide.md) — 결정 ⑩·⑪ · 하드 케이스 2건의 실측(탐침 테스트 2 파일, 보류 5건 = 완료 기준) · 코드 지도(손댈 곳/금지) · 권장 작업 단위 · 운용 함정. **다음 세션은 이 문서와 README 「조각 E 사용자 결정」부터 읽는다.**
