@@ -12,7 +12,7 @@ namespace Wassup.Tests.EditModeAssets
 {
     // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄)을 굽는 한 경로의 증언.
     //
-    // ① 두 경로 동치(이전 뒤): 새 칸을 비운 사본(옛 칸 경로)과 라이브(새 소유 줄 경로)의 굽기가 값으로 같다(알려진 깃발 둘 제외).
+    // ① (은퇴 — 4-정리 ①) 두 경로 동치: 옛 칸을 읽는 경로가 사라졌다. 이전의 값 보존 증거 = 굽기 스냅샷 둘(`eacbae0ce` · 깃발 3 만 변화).
     // ② 검증 질문 ① — 같은 효과 에셋을 두 소유자(방어유닛 배치 · 카드 「남의 배치」)가 참조하면 **같은 효과 줄**을 가리킨다.
     // ③ 하드 케이스 3 신설 — 방어유닛이 짱쎈의 도약 효과를 **같은 id 로** 소유한다(자리 문제는 범위 밖 — 코어 탐침의 `[Ignore]` 그대로).
     public class BindingSpecBakeTests
@@ -64,93 +64,6 @@ namespace Wassup.Tests.EditModeAssets
             var o = ScriptableObject.CreateInstance<T>();
             _made.Add(o);
             return o;
-        }
-
-        private static string BakeHosts(List<DefenderUnitData> units, List<AttackUnitData> enemies, List<string> paths)
-        {
-            var def = new MatchDefinition { Units = new UnitDef[units.Count], Enemies = new EnemyDef[enemies.Count] };
-            for (int i = 0; i < units.Count; i++) def.Units[i] = MatchDefinitionBuilder.ToUnitDef(units[i]);
-            UnityEngine.TestTools.LogAssert.ignoreFailingMessages = true;
-            try
-            {
-                BindingDefinitionBuilder.Fill(def, units, enemies.ToArray(), new List<ProjectileData>(), new List<ProjectilePatternData>(),
-                                              System.Array.Empty<HazardSO>(), new MatchViewAssets());
-            }
-            finally { UnityEngine.TestTools.LogAssert.ignoreFailingMessages = false; }
-            var sb = new StringBuilder();
-            for (int i = 0; i < units.Count; i++) Host(sb, CardProbe.CanonicalHostRulesText(def, false, i), paths[i]);
-            for (int i = 0; i < enemies.Count; i++) Host(sb, CardProbe.CanonicalHostRulesText(def, true, i), paths[units.Count + i]);
-            return sb.ToString();
-        }
-
-        private static void Host(StringBuilder sb, string body, string path)
-        {
-            if (body.Length == 0) return;
-            sb.Append("[host ").Append(path).Append("]\n").Append(body);
-        }
-
-        private static string BakeCards(List<DreamcatcherCard> cards)
-        {
-            UnityEngine.TestTools.LogAssert.ignoreFailingMessages = true;
-            try { return CardBakeSnapshotTests.Bake(cards); }
-            finally { UnityEngine.TestTools.LogAssert.ignoreFailingMessages = false; }
-        }
-
-        // 두 굽기 텍스트의 차이 — 규칙 머리줄은 번호만 본다(라벨 = 해시 밖). 차이 줄마다 「그 줄이 속한 옛 규칙 라벨 · 옛 값 → 새 값」.
-        private static List<string> Diffs(string before, string after)
-        {
-            var a = before.Split('\n');
-            var b = after.Split('\n');
-            var diffs = new List<string>();
-            string rule = "?";
-            for (int i = 0; i < System.Math.Max(a.Length, b.Length); i++)
-            {
-                string x = i < a.Length ? a[i] : "<끝>";
-                string y = i < b.Length ? b[i] : "<끝>";
-                if (x.StartsWith("[rule ")) { rule = x; x = RuleHead(x); y = RuleHead(y); }
-                if (x != y) diffs.Add($"{rule} :: `{x}` → `{y}`");
-            }
-            return diffs;
-        }
-
-        private static string RuleHead(string line)
-        {
-            int close = line.IndexOf(']');
-            return close > 0 ? line.Substring(0, close + 1) : line;
-        }
-
-        [Test]
-        public void 옛_칸_경로와_새_소유_줄_경로의_굽기가_값으로_같다()
-        {
-            // 이전 뒤(2933243c2) — 라이브 에셋은 옛 칸과 새 소유 줄을 **둘 다** 든다. 새 칸을 비운 사본은 옛 경로로, 라이브는 새 경로로
-            // 굽힌다. 두 경로 동치 = 이전이 값을 잃지 않았다는 증거. 옛 칸을 읽는 경로가 사라지는 4-정리에서 이 테스트도 은퇴한다
-            // (그 뒤의 증거 = 굽기 스냅샷 둘 — 이전 커밋 `eacbae0ce` 에서 새 경로로 다시 굳혔다).
-            var units = AssetsByPath<DefenderUnitData>("t:DefenderUnitData");
-            var enemies = AssetsByPath<AttackUnitData>("t:AttackUnitData");
-            var cards = CardEffectWitnessTests.Cards();
-            var paths = new List<string>();
-            foreach (var u in units) paths.Add(AssetDatabase.GetAssetPath(u));
-            foreach (var e in enemies) paths.Add(AssetDatabase.GetAssetPath(e));
-
-            int migrated = 0;
-            var unitsOld = new List<DefenderUnitData>();
-            var enemiesOld = new List<AttackUnitData>();
-            var cardsOld = new List<DreamcatcherCard>();
-            foreach (var u in units) { if (u.bindings != null && u.bindings.Length > 0) migrated++; var c = Clone(u); c.bindings = null; unitsOld.Add(c); }
-            foreach (var e in enemies) { if (e.bindings != null && e.bindings.Length > 0) migrated++; var c = Clone(e); c.bindings = null; enemiesOld.Add(c); }
-            foreach (var k in cards) { if (k.bindings != null && k.bindings.Length > 0) migrated++; var c = Clone(k); c.bindings = null; cardsOld.Add(c); }
-            Assert.Greater(migrated, 0, "새 소유 줄을 든 에셋이 없다 — 이전 전이면 이 테스트는 공허하다");
-
-            var hostDiffs = Diffs(BakeHosts(unitsOld, enemiesOld, paths), BakeHosts(units, enemies, paths));
-            var diffs = new List<string>(hostDiffs);
-            diffs.AddRange(Diffs(BakeCards(cardsOld), BakeCards(cards)));
-            // 알려진 해시 변화(이전 dry-run 깃발 · `eacbae0ce` 에서 스냅샷에 흡수):
-            //   · 실드 캐스트 줄은 옛 전용 굽기가 반각을 안 구워 (0,0) 이었다 — 일반 경로는 (0,1).
-            //   · U15 — 유닛 · 적 소유 자리 폭발(SelfTileAoe)의 착탄 연출 배율 0 → 그 탄의 배율(카드와 같게). 유닛·적 쪽에서만 난다.
-            var unexpected = diffs.FindAll(d => !(d.Contains("실드 캐스트") && d.Contains("coneSinCos=0,0") && d.Contains("coneSinCos=0,1"))
-                                                && !(hostDiffs.Contains(d) && d.Contains("`visualScale=0` → `visualScale=")));
-            foreach (var d in diffs) TestContext.WriteLine(d);
-            Assert.IsEmpty(unexpected, "새 소유 줄 굽기가 옛 칸 굽기와 갈렸다:\n" + string.Join("\n", unexpected));
         }
 
         [Test]
