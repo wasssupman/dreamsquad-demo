@@ -117,6 +117,13 @@ namespace Wassup.BattleCore
             => b.EffectIndex >= 0 ? Effects[b.EffectIndex] : Trigger.EffectDef.Default();
 
         /// <summary>
+        /// skill-data-table unit 2(U16) — 그 규칙 줄이 **카드 보유 줄**인가. 카드 발동 연출(카드 펄스 · 발동 임팩트)은 「카드를 썼다」의
+        /// 표시라 이 줄에서만 난다 — 효과·숙주가 아니라 **그 줄을 누가 가졌나**(`BindingOrigin.Card`)로 가른다. 런타임 조립 줄(-1)·표 밖은 거짓.
+        /// </summary>
+        public bool IsCardRow(int row)
+            => row >= 0 && row < Bindings.Length && Bindings[row].Origin == Trigger.BindingOrigin.Card;
+
+        /// <summary>
         /// unit 7b — **판 호스트가 판 시작에 드는 규칙 줄**(드림스톤 — 판 진입 장비의 스탯 상속). 비면 한 줄도 안 쓴다.
         /// 카드가 아니다(손패·각성과 무관) — 그 판에 들고 들어온 플레이어 장비라 모드가 아니라 반입이 정한다
         /// (`CostRateMultiplier` 와 같은 축).

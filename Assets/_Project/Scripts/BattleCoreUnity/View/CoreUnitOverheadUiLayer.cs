@@ -102,10 +102,8 @@ namespace Wassup.BattleCoreUnity.View
                     break;
                 case CoreEventKind.TriggerFired:
                 {
-                    // 카드 규칙이 발동했다 — 그 숙주의 카드 줄을 튕긴다. 유닛 저작 스킬(배치 스킬 등)은 카드 줄이 아니다.
-                    var def = _driver.Definition;
-                    int row = e.DefIndex;
-                    if (row < 0 || row >= def.Bindings.Length || def.Bindings[row].Origin != Wassup.BattleCore.Trigger.BindingOrigin.Card) break;
+                    // 카드 규칙이 발동했다 — 그 숙주의 카드 줄을 튕긴다. 유닛 저작 스킬(배치 스킬 등)은 카드 보유 줄이 아니다(U16).
+                    if (!_driver.Definition.IsCardRow(e.DefIndex)) break;
                     if (_active.TryGetValue(e.A.Value, out var view) && view != null) view.PulseCards();
                     break;
                 }

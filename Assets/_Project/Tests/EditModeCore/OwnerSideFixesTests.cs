@@ -11,6 +11,7 @@ namespace Wassup.Tests.EditMode.Core
     // skill-data-table unit 2 — **소유자 쪽 결손.** 스킬은 소유자를 묻지 않고, 소유자마다 달라야 하는 값은 그 값의 담당자가 든다.
     //   · 주체 없는 시전(판 시전 · 판 주기 · 표식)의 진영 = 규칙 인스턴스의 시전 진영(`Binding.CastFaction` — 붙인 쪽이 채운다)
     //   · 표식의 정체 = 효과(`CardBindings.IsMarked` 가 출처 꼬리표를 묻지 않는다)
+    //   · 카드 발동 연출(카드 펄스 · 발동 임팩트)의 게이트 = 그 줄이 카드 보유 줄인가(`MatchDefinition.IsCardRow` · U16)
     //   · 「부착 즉시 첫 발동」은 카드 행 부착 경로 한정(`BindingRegistry.ArmFirstFireOnAttach`) — 유닛 저작 · 온천 위상은 그대로
     // ⚠ 여기 수치는 게임 값이 아니라 픽스처다.
     [TestFixture]
@@ -137,6 +138,37 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreNotEqual(BindingOrigin.Card, mark.Rule.Origin, "픽스처 전제 — 카드 출처가 아닌 표식 줄");
             CoreTriggerFixtures.AttachRuntime(m, enemy, mark);
             Assert.IsTrue(CardBindings.IsMarked(enemy), "표식 효과를 든 규칙 = 표식(출처 무관)");
+        }
+
+        // ── 카드 발동 연출 = 카드 보유 줄만(U16) ────────────────────────────
+
+        [Test]
+        public void 카드_발동_연출의_게이트는_카드_보유_줄에서만_참이다()
+        {
+            // 뷰(`CoreVfxSpawner.OnTriggerFired` · `CoreUnitOverheadUiLayer`)는 발동 사건의 줄 번호를 이 함수에 묻는다.
+            var def = CoreMatchFixtures.Definition();
+            var innate = CoreTriggerFixtures.Rule(TriggerKind.PeriodicTimer, EffectKind.SelfStatBuff);
+            innate.Rule.PeriodSeconds = BattleMatch.Dt;
+            innate.Effect.Magnitude = 1.1f;
+            CoreTriggerFixtures.GiveUnit(def, 0, innate);
+            var carded = CardRule(TriggerKind.PeriodicTimer, EffectKind.SelfStatBuff);
+            carded.Rule.PeriodSeconds = BattleMatch.Dt;
+            carded.Effect.Magnitude = 1.1f;
+            int c = AddAttachCard(def, "same_effect", 1, carded);
+            var m = CardBattle(def);
+            var host = Defender(m, new int2(3, 1));
+            Assert.AreEqual(RejectReason.None, m.Apply(Command.AttachCard(EntryOf(m, c), host.Id)).Reason);
+            var fired = CoreCombatFixtures.Listen(m, CoreEventKind.TriggerFired);
+
+            m.Tick();
+
+            int innateRow = def.Units[0].Bindings[0], cardRow = def.Cards[c].Bindings[0];
+            Assert.IsTrue(fired.Exists(e => e.DefIndex == innateRow), "유닛 저작 줄도 발동했다");
+            Assert.IsTrue(fired.Exists(e => e.DefIndex == cardRow), "카드 줄도 발동했다");
+            foreach (var e in fired)
+                Assert.AreEqual(e.DefIndex == cardRow, m.Definition.IsCardRow(e.DefIndex), $"같은 효과 · 같은 숙주 — 줄 {e.DefIndex} 는 보유로만 갈린다");
+            Assert.IsFalse(m.Definition.IsCardRow(-1), "런타임 조립 줄");
+            Assert.IsFalse(m.Definition.IsCardRow(def.Bindings.Length), "표 밖");
         }
     }
 }

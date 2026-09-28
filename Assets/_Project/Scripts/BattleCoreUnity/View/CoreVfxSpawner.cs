@@ -429,16 +429,14 @@ namespace Wassup.BattleCoreUnity.View
 
         // 카드 규칙 발동 → 숙주 몸 펀치 + 흰 플래시 + 흡수 임팩트(옛 `DrainDcTriggerFiredEvents`). 같은 틱 같은 숙주 다발은 1회,
         // 숙주당 최소 간격(`DcVisualConfig`) 안의 연타는 월드 임팩트를 건너뛴다. 카메라 킥·흡수음은 **뺀다**(주기 발동 연타에 멀미·소음 —
-        // 옛 결정). 유닛 저작 스킬(배치 스킬 등)은 카드가 아니다 — 규칙 줄의 출처로 가른다.
+        // 옛 결정). 유닛 저작 스킬(배치 스킬 등)은 카드가 아니다 — 그 줄이 카드 보유 줄인가로 가른다(U16 · `MatchDefinition.IsCardRow`).
         private void OnTriggerFired(CoreEvent e)
         {
             if ((Wassup.BattleCore.Trigger.EffectKind)(int)e.Amount == Wassup.BattleCore.Trigger.EffectKind.AreaBreath
                 && e.AttackShape.kind == Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind)
                 SpawnAreaBreath(e);
             var def = _driver != null ? _driver.Definition : null;
-            int row = e.DefIndex;
-            if (def == null || row < 0 || row >= def.Bindings.Length
-                || def.Bindings[row].Origin != Wassup.BattleCore.Trigger.BindingOrigin.Card) return;
+            if (def == null || !def.IsCardRow(e.DefIndex)) return;
             if (!e.A.IsEntity || _units == null) return;
             if (_procTick != e.Tick) { _procTick = e.Tick; _procThisTick.Clear(); }
             if (!_procThisTick.Add(e.A.Value)) return;
