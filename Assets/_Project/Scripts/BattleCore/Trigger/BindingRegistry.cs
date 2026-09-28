@@ -222,14 +222,24 @@ namespace Wassup.BattleCore.Trigger
                 if (r < 0 || r >= _def.Bindings.Length) { Warn($"[Binding] 카드 규칙 줄 {r} 이 표 밖이다 — 건너뛴다."); continue; }
                 var b = Attach(host, in _def.Bindings[r], r, tick, castFaction);
                 if (b == null) continue;
-                // **카드의 주기 규칙은 붙는 순간 첫 발동한다**(사용자 결정 2026-08-16 — 옛 `elapsed = periodSeconds`).
-                // 카드는 전투 중에 붙는다 — 붙이자마자 주기만큼 아무 일도 없으면 「안 붙었다」로 읽힌다. 유닛 저작
-                // 스킬(스폰과 함께 시작)은 이 줄을 안 탄다.
-                if (b.Def.Trigger == TriggerKind.PeriodicTimer) b.Elapsed = b.Def.PeriodSeconds;
+                ArmFirstFireOnAttach(b);
                 // 호접몽 완주 버프의 칸 판별자 = 그 규칙의 `InstanceId`(옛 `_dcStackCounter++` — 붙일 때마다 새 칸).
                 if (b.Effect.Kind == EffectKind.DreamCocoon) b.Def.StackId = b.InstanceId;
                 into.Add(b);
             }
+        }
+
+        /// <summary>
+        /// 「부착 즉시 첫 발동」 — **카드 행 부착 경로 한정** 규칙(사용자 결정 2026-08-16 — 옛 `elapsed = periodSeconds`). 카드는
+        /// 전투 중에 붙는다 — 붙이자마자 주기만큼 아무 일도 없으면 「안 붙었다」로 읽힌다. 그래서 주기 규칙은 다음 주기 seam 에서
+        /// 곧바로 한 번 난다(숙주가 같은 틱에 놓였어도 — 카드는 숙주의 스폰이 아니라 **부착**이 시작이다).
+        /// ⚠ 공용 `Attach` 로 옮기지 않는다: 유닛 저작 규칙은 스폰과 함께 시작하고(`Unit` 에 스폰 틱 칸이 없어 「스폰 뒤 부여」를
+        /// 가를 수 없다), 온천 열기(`GimmickBindings.AttachUnitRow`)는 부착 틱을 한 틱만 쳐 주는 **위상 보정**이라 즉시 발동이 되면
+        /// 옛 위상이 깨진다.
+        /// </summary>
+        private static void ArmFirstFireOnAttach(Binding b)
+        {
+            if (b.Def.Trigger == TriggerKind.PeriodicTimer) b.Elapsed = b.Def.PeriodSeconds;
         }
 
         /// <summary>

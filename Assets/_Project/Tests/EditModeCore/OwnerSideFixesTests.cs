@@ -10,6 +10,7 @@ namespace Wassup.Tests.EditMode.Core
 {
     // skill-data-table unit 2 — **소유자 쪽 결손.** 스킬은 소유자를 묻지 않고, 소유자마다 달라야 하는 값은 그 값의 담당자가 든다.
     //   · 주체 없는 시전(판 시전 · 판 주기 · 표식)의 진영 = 규칙 인스턴스의 시전 진영(`Binding.CastFaction` — 붙인 쪽이 채운다)
+    //   · 「부착 즉시 첫 발동」은 카드 행 부착 경로 한정(`BindingRegistry.ArmFirstFireOnAttach`) — 유닛 저작 · 온천 위상은 그대로
     // ⚠ 여기 수치는 게임 값이 아니라 픽스처다.
     [TestFixture]
     public class OwnerSideFixesTests
@@ -58,6 +59,63 @@ namespace Wassup.Tests.EditMode.Core
 
             CollectionAssert.AreEqual(new[] { BattleMatch.PlayerFaction, Faction.EnemyUnit }, seen,
                                       "감지자가 진영을 손으로 박지 않는다 — 붙인 쪽이 정한 값이 시전자 진영이다");
+        }
+
+        // ── 부착 즉시 첫 발동(카드 행 부착 경로 한정) ─────────────────────────
+
+        private static RuleRow Periodic(CoreTriggerFixtures.ProbeSkill probe, bool card)
+        {
+            var r = card ? CardProbe(TriggerKind.PeriodicTimer, probe) : CoreTriggerFixtures.Probe(TriggerKind.PeriodicTimer, probe);
+            r.Rule.PeriodSeconds = 1f;
+            if (card) r.Effect.Kind = EffectKind.SelfOrbitProjectile;   // 숙주 모델과 무관한 payload(부착 판정 통과용)
+            return r;
+        }
+
+        [Test]
+        public void 같은_틱에_놓고_붙인_카드의_주기는_부착으로_시작하고_유닛_저작_주기는_스폰으로_시작한다()
+        {
+            var def = CoreMatchFixtures.Definition();
+            def.Units[0].Cost = 0;
+            var innate = new CoreTriggerFixtures.ProbeSkill();
+            var carded = new CoreTriggerFixtures.ProbeSkill();
+            CoreTriggerFixtures.GiveUnit(def, 0, Periodic(innate, card: false));
+            int c = AddAttachCard(def, "spinner", 1, Periodic(carded, card: true));
+            var m = CardBattle(def);
+
+            Assert.AreEqual(RejectReason.None, m.Apply(Command.PlaceDefender(0, new int2(3, 1))).Reason, "배치");
+            var host = CoreMatchFixtures.PlacedDefender(m);
+            Assert.AreEqual(RejectReason.None, m.Apply(Command.AttachCard(EntryOf(m, c), host)).Reason, "같은 틱 부착");
+
+            m.Tick();
+            Assert.AreEqual(1, carded.Count, "카드 = 부착 즉시 첫 발동");
+            Assert.AreEqual(0, innate.Count, "유닛 저작 = 스폰부터 한 주기");
+            CoreCombatFixtures.Tick(m, 30);
+            Assert.AreEqual(1, carded.Count);
+            Assert.AreEqual(0, innate.Count);
+            CoreCombatFixtures.Tick(m, 60);
+            Assert.AreEqual(2, carded.Count, "그 뒤는 주기 그대로");
+            Assert.AreEqual(1, innate.Count);
+        }
+
+        [Test]
+        public void 온천_열기_위상은_같은_숙주에_카드_주기가_붙어도_그대로다()
+        {
+            var def = CoreGimmickFixtures.With(CoreCombatFixtures.Definition(defenderDamage: 0f), CoreGimmickFixtures.Onsen());
+            var carded = new CoreTriggerFixtures.ProbeSkill();
+            int c = AddAttachCard(def, "spinner", 1, Periodic(carded, card: true));
+            var m = CardBattle(def);
+            var heat = new List<CoreEvent>();
+            m.Bus.Subscribe(CoreEventKind.GimmickTriggered, 0, e => { if (e.Arg == (int)GimmickKind.Onsen) heat.Add(e); });
+
+            var withCard = Defender(m, new int2(2, 1));
+            var control = Defender(m, new int2(4, 1));
+            Assert.AreEqual(RejectReason.None, m.Apply(Command.AttachCard(EntryOf(m, c), withCard.Id)).Reason);
+            CoreCombatFixtures.Tick(m, 120);
+
+            Assert.Greater(carded.Count, 0, "카드 주기는 돈다");
+            int first = heat.Find(e => e.A == withCard.Id).Tick;
+            Assert.AreEqual(heat.Find(e => e.A == control.Id).Tick, first, "카드가 붙은 숙주의 열기 위상 = 카드 없는 숙주");
+            Assert.Greater(first, 1, "열기는 부착 즉시 발동이 아니다(위상 보정 한 틱만)");
         }
     }
 }
