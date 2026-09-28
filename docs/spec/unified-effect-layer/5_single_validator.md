@@ -4,7 +4,7 @@
 저작 검증을 출처별 블랙리스트에서 **출처가 입력이 아닌 한 함수**로(계약 5). 같은 (트리거 × 주체 × 효과 × 탄 결합)은 카드·유닛 능력·악몽이 같은 답을 받는다. 같이 착탄 비산 인라인 자를 정본으로(제약 13).
 
 ## 변경 대상 (unit 0 표 3 으로 확정)
-- 신설 `Scripts/BattleCoreUnity/EffectComboRule.cs`(가칭) — 순수 함수. 거절 사유 셋: 「원점을 못 낸다」 · 「효과가 그 원점 형을 못 받는다」 · 「붙는 순간 이미 지난 자기 사건(영영 안 터짐)」.
+- 신설 `Scripts/BattleCore/Trigger/EffectComboRule.cs` — 순수 함수(코어 · `SkillRouting` 옆 — 입력이 전부 코어 어휘라 헤드리스 표 테스트 `Tests/EditModeCore/EffectComboRuleTests.cs` 가 돈다 · 리드 승인 2026-09-28. 초안 위치 `BattleCoreUnity/` 은 정정). 거절 사유 셋: 「원점을 못 낸다」 · 「효과가 그 원점 형을 못 받는다」 · 「붙는 순간 이미 지난 자기 사건(영영 안 터짐)」.
 - `CardDefinitionBuilder.cs` · `BindingDefinitionBuilder.cs` — 각자의 거절 분기 → 위 함수. 「출처 관례」 사유였던 거절이 풀리는 조합은 라이브 0 이어야 한다(표 1 — 실측 0). 한쪽 빌더에만 있고 다른 쪽엔 **검증이 없는** 분기(카드 ProjectileToTarget 탄 결합 · GrantShield 트리거×반경 · AreaTaunt 가디언 — 표 3)도 한 함수로 모은다.
 - `Scripts/Data/Dreamcatcher/DcMechanic.cs` — 트리거에 **주체 축**(`Self` 기본 · 「남의 배치」) append · 효과에 **예고 체크**(U1) append. 코어엔 축이 이미 있다(`BindingSubject.Any` + `BindingSubjectFilter.PlacedDefender`) — 코어 쪽 「저작 노출 없음」 주석 갱신 · `CoreTriggerEnumPinTests` 에 새 값 핀. 시트 열은 후속(H4+시트).
 - `TickProjectilePhase.cs` 착탄 비산 → `SkillMath.ReachFromImpact`(자리형). `SplashRadius` 는 월드 단위라 칸 단위로 변환(÷ 칸 크기)해 넘긴다. 비산 저작 탄(`Projectile_CannonBall`) 참조 0 — 커밋 전 재확인.
