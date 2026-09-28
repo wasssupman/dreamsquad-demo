@@ -69,6 +69,16 @@ namespace Wassup.Tests.EditModeAssets
         {
             var units = AssetsByPath<DefenderUnitData>("t:DefenderUnitData");
             var enemies = AssetsByPath<AttackUnitData>("t:AttackUnitData");
+            return Bake(units, enemies, CardEffectWitnessTests.Cards(), AssetDatabase.GetAssetPath);
+        }
+
+        /// <summary>
+        /// 에셋 목록을 받아 굽는다 — skill-data-table unit 5 의 시트 왕복 테스트가 **메모리 사본**(경로 없음)을 넣는다. `pathOf` = 머리줄에 쓸 경로
+        /// (사본이면 원본 경로). 목록 순서 = 머리줄 순서(원본은 경로 순).
+        /// </summary>
+        public static string Bake(List<DefenderUnitData> units, List<AttackUnitData> enemies, List<DreamcatcherCard> cards,
+                                  System.Func<Object, string> pathOf)
+        {
             Assert.IsNotEmpty(units, "방어유닛 에셋이 없다");
             Assert.IsNotEmpty(enemies, "적 에셋이 없다");
 
@@ -81,8 +91,8 @@ namespace Wassup.Tests.EditModeAssets
             {
                 BindingDefinitionBuilder.Fill(def, units, enemies.ToArray(), projectiles, patterns,
                                               System.Array.Empty<HazardSO>(), new MatchViewAssets());
-                for (int i = 0; i < units.Count; i++) AppendHost(sb, def, false, i, AssetDatabase.GetAssetPath(units[i]));
-                for (int i = 0; i < enemies.Count; i++) AppendHost(sb, def, true, i, AssetDatabase.GetAssetPath(enemies[i]));
+                for (int i = 0; i < units.Count; i++) AppendHost(sb, def, false, i, pathOf(units[i]));
+                for (int i = 0; i < enemies.Count; i++) AppendHost(sb, def, true, i, pathOf(enemies[i]));
                 // 규칙이 가리키는 탄·패턴 자산(정의표 탄 표는 `CombatDefinitionBuilder` 가 굳힌다 — 여기선 어느 자산인가만).
                 for (int i = 0; i < projectiles.Count; i++) sb.Append("[projectile ").Append(i).Append("] ").Append(projectiles[i] != null ? projectiles[i].name : "null").Append('\n');
                 for (int i = 0; i < patterns.Count; i++) sb.Append("[pattern ").Append(i).Append("] ").Append(patterns[i] != null ? patterns[i].name : "null").Append('\n');
@@ -91,7 +101,6 @@ namespace Wassup.Tests.EditModeAssets
             }
 
             // 카드 굽기 로그 — 카드 줄은 `card_bake_snapshot.txt`, 여기는 거절·경고 문구만.
-            var cards = CardEffectWitnessTests.Cards();
             using (var tap = new LogTap())
             {
                 CardBakeSnapshotTests.Bake(cards);
@@ -101,6 +110,8 @@ namespace Wassup.Tests.EditModeAssets
             return sb.ToString();
         }
 
+        public static List<T> LiveAssets<T>() where T : Object => AssetsByPath<T>("t:" + typeof(T).Name);
+
         private static void AppendHost(StringBuilder sb, MatchDefinition def, bool enemy, int row, string path)
         {
             string body = CardProbe.CanonicalHostRulesText(def, enemy, row);
@@ -108,7 +119,7 @@ namespace Wassup.Tests.EditModeAssets
             sb.Append(enemy ? "[enemy " : "[unit ").Append(path).Append("]\n").Append(body);
         }
 
-        private static string FirstDiff(string expected, string actual)
+        public static string FirstDiff(string expected, string actual)
         {
             var a = expected.Split('\n');
             var b = actual.Split('\n');

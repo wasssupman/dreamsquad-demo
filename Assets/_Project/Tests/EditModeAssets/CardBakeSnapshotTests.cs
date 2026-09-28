@@ -41,14 +41,14 @@ namespace Wassup.Tests.EditModeAssets
             return Header + CardProbe.CanonicalDeckText(def);
         }
 
-        private static string Committed()
+        public static string Committed()
         {
             Assert.IsTrue(File.Exists(SnapshotPath), "스냅샷 파일이 없다 — 메뉴로 한 번 굽는다: " + SnapshotPath);
             return File.ReadAllText(SnapshotPath).Replace("\r\n", "\n");
         }
 
         // 첫 차이의 줄 + 그 줄이 속한 카드. 전문 비교 실패 메시지는 읽을 수 없다.
-        private static string FirstDiff(string expected, string actual)
+        public static string FirstDiff(string expected, string actual)
         {
             var a = expected.Split('\n');
             var b = actual.Split('\n');
