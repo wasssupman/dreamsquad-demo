@@ -151,8 +151,9 @@ namespace Wassup.BattleCoreUnity
                     { Error($"{label}: 피해({v.damage})가 있는데 장판 '{e.hazard.name}' 에 DoT 하위 효과가 없다 — 건너뛴다."); continue; }
                     fx.Damage = v.damage;
                 }
-                // 옛 두 빌더의 소유자별 인코딩(보존 — U15 정합은 사용자 결정 대기): 카드 자리 폭발만 탄 연출 배율을 싣는다.
-                if (kind == EffectKind.SelfTileAoe && o.IsCard) fx.VisualScale = e.projectile.visualScale;
+                // U15(연출은 효과 기준 · 2026-09-29 결정) — 자리 폭발의 착탄 연출 배율 = 그 효과의 탄 배율, **누가 들든 같다**.
+                // 옛 굽기는 카드만 실었다(유닛 · 적 = 0 → 뷰가 1 로 읽음). 라이브 유닛·적 자리 폭발 탄은 배율 1 이라 화면 무변 · 해시만 바뀐다.
+                if (kind == EffectKind.SelfTileAoe) fx.VisualScale = e.projectile.visualScale;
                 if (kind == EffectKind.SelfStatBuff)
                 {
                     // 효과 값은 % 다(소유자 무관) → 배율.

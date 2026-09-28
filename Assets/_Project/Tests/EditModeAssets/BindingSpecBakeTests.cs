@@ -157,10 +157,14 @@ namespace Wassup.Tests.EditModeAssets
             string hostsAfter = BakeHosts(unitClones, enemyClones, paths);
             string cardsAfter = BakeCards(cardClones);
 
-            var diffs = Diffs(hostsBefore, hostsAfter);
+            var hostDiffs = Diffs(hostsBefore, hostsAfter);
+            var diffs = new List<string>(hostDiffs);
             diffs.AddRange(Diffs(cardsBefore, cardsAfter));
-            // 알려진 해시 변화(dry-run 깃발): 실드 캐스트 줄은 옛 전용 굽기가 반각을 안 구워 (0,0) 이었다 — 일반 경로는 (0,1).
-            var unexpected = diffs.FindAll(d => !(d.Contains("실드 캐스트") && d.Contains("coneSinCos=0,0") && d.Contains("coneSinCos=0,1")));
+            // 알려진 해시 변화(dry-run 깃발 — 이전 커밋 끝 격리 재베이크로 흡수):
+            //   · 실드 캐스트 줄은 옛 전용 굽기가 반각을 안 구워 (0,0) 이었다 — 일반 경로는 (0,1).
+            //   · U15 — 유닛 · 적 소유 자리 폭발(SelfTileAoe)의 착탄 연출 배율 0 → 그 탄의 배율(카드와 같게). 유닛·적 쪽에서만 난다.
+            var unexpected = diffs.FindAll(d => !(d.Contains("실드 캐스트") && d.Contains("coneSinCos=0,0") && d.Contains("coneSinCos=0,1"))
+                                                && !(hostDiffs.Contains(d) && d.Contains("`visualScale=0` → `visualScale=")));
             foreach (var d in diffs) TestContext.WriteLine(d);
             Assert.IsEmpty(unexpected, "새 형식 굽기가 옛 굽기와 갈렸다:\n" + string.Join("\n", unexpected));
         }

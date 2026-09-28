@@ -232,6 +232,8 @@ namespace Wassup.BattleCoreUnity
             float moved = MovedDamage(in p, r.Notes);
             r.Values = EffectSlots.FromLegacy(ToLegacyPayload(in p), cardOwner, moved, r.Notes);
             if (r.OldLabel != r.NewLabel) r.Notes.Add($"라벨 변화(해시 밖): 「{r.OldLabel}」 → 「{r.NewLabel}」");
+            if (!cardOwner && p.kind == EffectKind.SelfTileAoe && p.projectile != null)
+                r.Notes.Add($"U15 — 해시 변화: 착탄 연출 배율 0 → 탄 '{p.projectile.name}' 배율 {Num(p.projectile.visualScale)}(카드와 같게 · 배율 1 이면 화면 무변)");
             if (p.splitUnit != null) r.Notes.Add("splitUnit 참조는 분열 전용 — 이 종류에선 버림");
             if (!cardOwner && (p.kind == EffectKind.SelfBuffLethal || p.kind == EffectKind.DreamCocoon
                                || p.kind == EffectKind.BountyMark || p.kind == EffectKind.PlacementAura))

@@ -3,7 +3,7 @@
 > 생성: `python3 tools/skill-data-table/dry_run.py` — 에셋 YAML 위에서 `LegacyBindingMigration` 과 같은 규칙을 돌렸다(에셋 0).
 > 정본 = Unity 메뉴 `Wassup/BattleCore/Skill Data Table/이전 dry-run (표만 쓴다)` → `dry_run_table.md`. 둘이 다르면 Unity 쪽이 맞다.
 
-소유자 77 · 효과 줄 69(카드 40 · 유닛 18 · 적 11 · **병합 0** — U13) · 깃발 달린 줄 1
+소유자 77 · 효과 줄 69(카드 40 · 유닛 18 · 적 11 · **병합 0** — U13) · 깃발 달린 줄 3
 
 **왕복 검사**(이전 뒤 굽기가 싣는 겸직 칸 magnitude · tileRange · duration + 피해 = 라이브 굽기 스냅샷): 대조 56 줄 · 불일치 0 · 스냅샷에 없는 줄 0 (카드 %·배율 인코딩 5종 · 강공 · 인수인계(손패 선언)는 굽기가 값을 접어 대조 밖 — `BindingSpecBakeTests` 가 Unity 에서 전 칸을 잰다)
 
@@ -415,7 +415,7 @@
 
 | slot | 옛 자리 | effect_id | kind | 소유 줄(trigger · 값) | 효과 값 | 깃발 · 메모 |
 |---|---|---|---|---|---|---|
-| 0 | UnitSkillAbility 'Ability_MeleeBurst_Bruiser'.mechanics[0] | `melee_burst_bruiser` | SelfTileAoe | OnPlace | damage 70 · radius_tiles 2 · projectile_id bruiser_shock |  |
+| 0 | UnitSkillAbility 'Ability_MeleeBurst_Bruiser'.mechanics[0] | `melee_burst_bruiser` | SelfTileAoe | OnPlace | damage 70 · radius_tiles 2 · projectile_id bruiser_shock | U15 — 해시 변화: 착탄 연출 배율 0 → 탄 'Projectile_BruiserShock' 배율 1(카드와 같게 · 배율 1 이면 화면 무변) |
 
 ## unit `busters` — Assets/_Project/Data/Defenders/Defender_Busters.asset
 
@@ -514,7 +514,7 @@
 
 | slot | 옛 자리 | effect_id | kind | 소유 줄(trigger · 값) | 효과 값 | 깃발 · 메모 |
 |---|---|---|---|---|---|---|
-| 0 | mechanics[0] | `boss_jjangssen_0` | SelfTileAoe | HealthThreshold · fraction 0.2 | damage 60 · radius_tiles 2 · projectile_id jjangssen_quake |  |
+| 0 | mechanics[0] | `boss_jjangssen_0` | SelfTileAoe | HealthThreshold · fraction 0.2 | damage 60 · radius_tiles 2 · projectile_id jjangssen_quake | U15 — 해시 변화: 착탄 연출 배율 0 → 탄 'Projectile_JjangssenQuake' 배율 1(카드와 같게 · 배율 1 이면 화면 무변) |
 | 1 | mechanics[1] | `boss_jjangssen_1` | SelfBlink | HealthThreshold · fraction 0.5 | damage 50 · radius_tiles 1 · density_radius_tiles 2 · landing_ring_tiles 6 · projectile_id jjangssen_leap |  |
 | 2 | mechanics[2] | `boss_jjangssen_2` | SelfBlink | HealthThreshold · fraction 0.9 | damage 50 · radius_tiles 1 · density_radius_tiles 2 · landing_ring_tiles 6 · projectile_id jjangssen_leap |  |
 | 3 | mechanics[3] | `boss_jjangssen_3` | UltimateLeap | HealthThreshold · fraction 0.8 · fire_cap 1 | damage 100 · radius_tiles 2 · flight_sec 2 · density_radius_tiles 2 · landing_ring_tiles 6 · projectile_id jjangssen_leap |  |

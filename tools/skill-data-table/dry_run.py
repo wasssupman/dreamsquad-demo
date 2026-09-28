@@ -221,6 +221,16 @@ def from_legacy(p, card_owner, notes):
     return v
 
 
+def u15(p, notes):
+    # U15(2026-09-29) — 유닛·적 소유 자리 폭발도 착탄 연출 배율 = 그 탄의 배율(옛 굽기는 카드만 실었다).
+    if EFFECT[f(p, "kind")] != "SelfTileAoe":
+        return
+    pr = ref(p.get("projectile"))
+    if pr:
+        vs = float(f(pr["data"], "visualScale", 1))
+        notes.append(f"U15 — 해시 변화: 착탄 연출 배율 0 → 탄 '{pr['data']['m_Name']}' 배율 {num(vs)}(카드와 같게 · 배율 1 이면 화면 무변)")
+
+
 def to_legacy(v):
     kind = v["kind"]
     if kind not in SLOTS:
@@ -376,6 +386,7 @@ def plan():
         for i, m_ in enumerate(mech):
             notes = []
             v = from_legacy(m_["payload"], False, notes)
+            u15(m_["payload"], notes)
             v["_id"] = unique(f"{aid}_{i}" if len(mech) > 1 else aid, notes)
             lab = f"{name} mechanic {i}"
             fc = 1 if v["kind"] == "UltimateLeap" else 0
@@ -421,6 +432,7 @@ def plan():
                 continue
             notes = []
             v = from_legacy(p, False, notes)
+            u15(p, notes)
             v["_id"] = unique(f"{base}_{slot}", notes)
             fc = 1 if v["kind"] == "UltimateLeap" else 0
             row(o["rows"], slot, f"mechanics[{i}]", trig(m_.get("trigger")), fc, v, refs_of(p), notes,
