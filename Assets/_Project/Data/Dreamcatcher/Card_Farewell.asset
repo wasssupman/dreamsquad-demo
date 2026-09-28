@@ -28,6 +28,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 2
       magnitude: 500
@@ -42,11 +43,13 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 0
       slamTileRange: 0
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
@@ -55,3 +58,18 @@ MonoBehaviour:
   leakAllowanceCost: 0
   attachType: 0
   attachValue: 
+  bindings:
+  - trigger:
+      kind: 3
+      period: 0
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: 4418a4de9ede34d0ca08a0cf3e3f49bd, type: 2}
+  hostKinds: 1
+  cooldownSec: 0
+  needsTwoTiles: 0

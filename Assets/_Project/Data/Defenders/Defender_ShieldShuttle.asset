@@ -65,6 +65,29 @@ MonoBehaviour:
   abilities:
   - {fileID: 11400000, guid: 8a9b0c1d2e3f44a5b6c7d8e9f0a1b2c3, type: 2}
   - {fileID: 11400000, guid: 527f7e823e20464fb745d8c418a0e4e1, type: 2}
+  bindings:
+  - trigger:
+      kind: 9
+      period: 0
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: b93a82fc555714bf8817ac0ecbb9a19a, type: 2}
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 4
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: cfb7e134b3f024e21a93d3a39c9395e3, type: 2}
   rarity: 2
   portrait: {fileID: 21300000, guid: 6418d1fd7f1c44234af1bd185238dfe6, type: 3}
   aggroCapacity: 2

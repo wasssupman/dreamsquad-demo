@@ -32,6 +32,10 @@ MonoBehaviour:
   bodySize: 3
   impactSocketHeight: 0.8
   attackTargetCount: 3
+  attackShape:
+    kind: 0
+    angleDeg: 360
+    width: 0
   projectile: {fileID: 0}
   hitDelaySec: 0.25
   aggroAttackDamage: 0
@@ -81,6 +85,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 2
       magnitude: 60
@@ -95,11 +100,13 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 0
       slamTileRange: 0
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
   - trigger:
       kind: 5
       period: 0
@@ -108,6 +115,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 6
       magnitude: 2
@@ -122,11 +130,13 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 50
       slamTileRange: 1
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
   - trigger:
       kind: 5
       period: 0
@@ -135,6 +145,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 6
       magnitude: 2
@@ -149,11 +160,13 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 50
       slamTileRange: 1
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
   - trigger:
       kind: 5
       period: 0
@@ -162,6 +175,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 18
       magnitude: 2
@@ -176,16 +190,67 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 100
       slamTileRange: 2
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
+  bindings:
+  - trigger:
+      kind: 5
+      period: 0
+      periodSeconds: 0
+      fraction: 0.2
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: 2a6832eca597a4be1b23aafa5b6d55d3, type: 2}
+  - trigger:
+      kind: 5
+      period: 0
+      periodSeconds: 0
+      fraction: 0.5
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: 0656cdb51846c4bcd8967c44adc2f463, type: 2}
+  - trigger:
+      kind: 5
+      period: 0
+      periodSeconds: 0
+      fraction: 0.9
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: 24847c50e024f4e99a3e31ba3641e1b2, type: 2}
+  - trigger:
+      kind: 5
+      period: 0
+      periodSeconds: 0
+      fraction: 0.8
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 1
+    effect: {fileID: 11400000, guid: c62d5666922224bc89726365ad113e19, type: 2}
+  splitUnit: {fileID: 0}
+  splitCount: 0
   weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 5
   waypointPathIndex: -1
   flightLift: 0
-  idleVariants: []
+  idleBreaks: []
+  idleBreakInterval: {x: 1, y: 3}
   tier: 2
   detectionRange: -1
+  spriteMotions: {fileID: 0}

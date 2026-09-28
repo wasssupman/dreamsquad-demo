@@ -30,3 +30,7 @@ MonoBehaviour:
   leakAllowanceCost: 0
   attachType: 0
   attachValue: 
+  bindings: []
+  hostKinds: 1
+  cooldownSec: 0
+  needsTwoTiles: 0

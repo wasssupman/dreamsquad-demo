@@ -29,12 +29,17 @@ MonoBehaviour:
   attackCooldown: 2
   hitDelaySec: 0.3
   attackTargetCount: 2
+  attackShape:
+    kind: 0
+    angleDeg: 360
+    width: 0
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 6fa13ca4169ea45da96dbc3495b7b178, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: e780cb046cc9b4fe7918b8b176bf881b, type: 3}
   attackSfxClip: {fileID: 8300000, guid: e8962da3f1ead45c6a177491b461d564, type: 3}
   attackVfxScale: 1
   attackVfxFacesTarget: 0
+  attackVfxAtAttacker: 0
   attackVfxEulerOffset: {x: 0, y: 0, z: 0}
   beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 0}
@@ -58,6 +63,18 @@ MonoBehaviour:
   targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 86441b083f5a4d34972fbeac95fb81a9, type: 2}
+  bindings:
+  - trigger:
+      kind: 9
+      period: 0
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: cd76c8d944d2346c7bfee4c8e343cf6d, type: 2}
   rarity: 0
   portrait: {fileID: 21300000, guid: 5252f483a55504711b15a587f9e6ee8d, type: 3}
   aggroCapacity: 2
@@ -154,4 +171,6 @@ MonoBehaviour:
   moveSpeed: 1.5
   walkAnimation: 
   outgameScaleMul: 1
-  idleVariants: []
+  idleBreaks: []
+  idleBreakInterval: {x: 1, y: 3}
+  spriteMotions: {fileID: 0}

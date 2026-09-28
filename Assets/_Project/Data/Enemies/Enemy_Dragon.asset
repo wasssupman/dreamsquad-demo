@@ -32,6 +32,10 @@ MonoBehaviour:
   bodySize: 1
   impactSocketHeight: 0
   attackTargetCount: 1
+  attackShape:
+    kind: 0
+    angleDeg: 360
+    width: 0
   projectile: {fileID: 11400000, guid: 11cc44871bf54e0c80823bfb65d23086, type: 2}
   hitDelaySec: 0.3
   aggroAttackDamage: 0
@@ -76,6 +80,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 21
       magnitude: 50
@@ -96,11 +101,28 @@ MonoBehaviour:
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 50
+      telegraph: 0
+  bindings:
+  - trigger:
+      kind: 1
+      period: 3
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: d180403697bf5478a96f286202f78b22, type: 2}
+  splitUnit: {fileID: 0}
+  splitCount: 0
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 2
   waypointPathIndex: -1
   flightLift: 1.4
-  idleVariants: []
+  idleBreaks: []
+  idleBreakInterval: {x: 1, y: 3}
   tier: 1
   detectionRange: 3
+  spriteMotions: {fileID: 0}

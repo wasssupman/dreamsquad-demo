@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 927092c2058148fd9a20d1b5b886823a, type: 3}
+  m_Name: Effect_gaesagi
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.EffectData
+  id: gaesagi
+  deprecated: 0
+  values:
+    kind: 17
+    magnitudeMode: 0
+    basisStat: 0
+    ratio: 0
+    damage: 100
+    shield: 0
+    percent: 0
+    mul: 0
+    count: 0
+    radiusTiles: 0
+    rangeTiles: 0
+    durationSec: 0
+    flightSec: 0
+    tickSec: 0
+    stackCap: 0
+    speed: 0
+    coneHalfDeg: 0
+    densityRadiusTiles: 0
+    landingRingTiles: 0
+    ccKind: 3
+    stackKind: 1
+    buffStat: 0
+    shieldFilter: 0
+    includesSelf: 0
+    telegraph: 0
+  projectile: {fileID: 0}
+  pattern: {fileID: 11400000, guid: ed07e78cc3ebb478396eb0fd3a50f0b3, type: 2}
+  hazard: {fileID: 0}
+  auraPrefab: {fileID: 0}
+  auraScale: 0
+  stackModifier: {fileID: 0}

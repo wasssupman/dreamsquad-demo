@@ -16,34 +16,34 @@ MonoBehaviour:
   role: 1
   placementLayers: 1
   traversalLayers: 0
+  footprintWidth: 2
+  footprintHeight: 2
   displayName: "\uD3ED\uD0C4\uB9E8"
   visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uBC94\uC704 \uD3ED\uD0C4 \uD22C\uCC99\n\uBC30\uCE58
     \uC2A4\uD0AC: \uAC00\uAE4C\uC6B4 \uC801 \uBC29\uD5A5\uC73C\uB85C \uC2DC\uD55C
     \uD3ED\uD0C4 \uC124\uCE58\n\uD2B9\uC218 \uC2A4\uD0AC: \uC5C6\uC74C"
   health: 500
-  footprintWidth: 2
-  footprintHeight: 2
   attackRange: 5
+  impactSocketHeight: 0
   attackCooldown: 2.8
   hitDelaySec: 0
   attackTargetCount: 1
+  attackShape:
+    kind: 0
+    angleDeg: 360
+    width: 0
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef105, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: 58fbe264ba47e4c55a146440bd96dd02, type: 3}
   attackSfxClip: {fileID: 0}
   attackVfxScale: 1
   attackVfxFacesTarget: 0
+  attackVfxAtAttacker: 0
   attackVfxEulerOffset: {x: 0, y: 0, z: 0}
   beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 11400000, guid: d1f7a3c95e8b42a6bc09f4d7e21a6b83, type: 2}
   outputs: []
-  onPlaceEffect: 0
-  onPlaceRange: 0
-  onPlaceMagnitude: 0
-  onPlaceDuration: 0
-  onPlaceStackKind: 0
-  onPlaceTickInterval: 0
   onPlaceShakeStrength: 0
   onPlaceShakeDuration: 0
   cost: 4
@@ -57,6 +57,18 @@ MonoBehaviour:
   abilities:
   - {fileID: 11400000, guid: 5d6e7f8a9b0c41d2e3f4a5b6c7d8e9f0, type: 2}
   - {fileID: 11400000, guid: 41ce6c8e0ffd349dc92eef02492393b6, type: 2}
+  bindings:
+  - trigger:
+      kind: 9
+      period: 0
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: e2a372f2e36cf448aa85154a8cc29530, type: 2}
   rarity: 2
   portrait: {fileID: 21300000, guid: 90031e552493a49b49e2cf3a71db5fd6, type: 3}
   aggroCapacity: 0
@@ -94,9 +106,6 @@ MonoBehaviour:
   sleepOnHitSec: 0
   knockupOnHitSec: 0
   knockupVisualHeight: 1.2
-  onPlacePushDistance: 0
-  onPlacePushDuration: 0
-  onPlacePushRadius: 0
   castAnchorBone: WEAPON
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   awakeningReward: 3
@@ -105,4 +114,6 @@ MonoBehaviour:
   moveSpeed: 1.5
   walkAnimation: 
   outgameScaleMul: 1
-  idleVariants: []
+  idleBreaks: []
+  idleBreakInterval: {x: 1, y: 3}
+  spriteMotions: {fileID: 0}

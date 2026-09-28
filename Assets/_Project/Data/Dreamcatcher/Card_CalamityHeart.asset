@@ -28,6 +28,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 4
       magnitude: 100
@@ -42,11 +43,13 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 0
       slamTileRange: 0
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
   - trigger:
       kind: 1
       period: 3
@@ -55,6 +58,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 13
       magnitude: 2
@@ -69,11 +73,13 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 0
       slamTileRange: 0
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
   - trigger:
       kind: 3
       period: 0
@@ -82,6 +88,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 2
       magnitude: 400
@@ -96,11 +103,13 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 0
       slamTileRange: 0
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
@@ -111,3 +120,40 @@ MonoBehaviour:
   leakAllowanceCost: 0
   attachType: 0
   attachValue: 
+  bindings:
+  - trigger:
+      kind: 0
+      period: 0
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: 1f63b7ee0fd7e480aac3491861a3c628, type: 2}
+  - trigger:
+      kind: 1
+      period: 3
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: 4fd867664c4f1441cbdac13f4d5270ce, type: 2}
+  - trigger:
+      kind: 3
+      period: 0
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: e669ddf3e2e78427dab0f660fb04196e, type: 2}
+  hostKinds: 1
+  cooldownSec: 0
+  needsTwoTiles: 0

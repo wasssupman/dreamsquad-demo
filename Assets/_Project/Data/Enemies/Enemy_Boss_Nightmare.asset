@@ -32,6 +32,10 @@ MonoBehaviour:
   bodySize: 3
   impactSocketHeight: 0.8
   attackTargetCount: 1
+  attackShape:
+    kind: 0
+    angleDeg: 360
+    width: 0
   projectile: {fileID: 0}
   hitDelaySec: 0.3
   aggroAttackDamage: 0
@@ -79,6 +83,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 17
       magnitude: 0
@@ -93,11 +98,13 @@ MonoBehaviour:
       pattern: {fileID: 11400000, guid: 6d2a89f314b74c05a9e37b1c8f4d6205, type: 2}
       slamDamage: 0
       slamTileRange: 0
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
   - trigger:
       kind: 4
       period: 0
@@ -106,6 +113,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 9
       magnitude: 20
@@ -120,11 +128,13 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 0
       slamTileRange: 0
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
   - trigger:
       kind: 4
       period: 0
@@ -133,6 +143,7 @@ MonoBehaviour:
       gate: 0
       gateSubject: 0
       gateValue: 0
+      subject: 0
     payload:
       kind: 17
       magnitude: 0
@@ -147,16 +158,56 @@ MonoBehaviour:
       pattern: {fileID: 11400000, guid: 2c9d64a7e83b41f5ab16c05d729e8f31, type: 2}
       slamDamage: 0
       slamTileRange: 0
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 0
       hazard: {fileID: 0}
       coneHalfAngleDeg: 0
+      telegraph: 0
+  bindings:
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 10
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: bcbadfa911e6a450c8c05e27a8af8ecb, type: 2}
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 0.5
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: d719f40546da0454eb00ab84a35391b8, type: 2}
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 0.1
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: 6329be163ba1641f49567b531dadac23, type: 2}
+  splitUnit: {fileID: 0}
+  splitCount: 0
   weaponTrailPrefab: {fileID: 980198975920828844, guid: bf5392c35fff74f68a45724df10f60a4, type: 3}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 5
   waypointPathIndex: -1
   flightLift: 0
-  idleVariants: []
+  idleBreaks: []
+  idleBreakInterval: {x: 1, y: 3}
   tier: 2
   detectionRange: -1
+  spriteMotions: {fileID: 0}
