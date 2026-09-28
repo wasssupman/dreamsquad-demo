@@ -5,7 +5,6 @@ using NUnit.Framework;
 using UnityEngine;
 using Wassup.Data;
 using Wassup.Data.StatImport;
-using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode.UnitStatImport
 {
@@ -319,60 +318,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.AreEqual(2, so.attackMods[0].count);
         }
 
-        // -------- DcMechanics tab: disabled (skill-data-table unit 4) --------
-
-        private DreamcatcherCard NewMechanicCard(string id, ProjectileData projectile)
-        {
-            // skill-data-table unit 4 — 카드 규칙은 소유 줄(`bindings`)이다. 시트 DcMechanics 탭은 그 어느 것도 못 건드린다.
-            var so = NewCard(id);
-            TestBindings.Attach(so, new[]
-            {
-                new DcMechanic
-                {
-                    trigger = new TriggerSpec { kind = TriggerKind.AttackN, period = 5 },
-                    payload = new DcPayloadSpec
-                    {
-                        kind = EffectKind.ProjectileToTarget, magnitude = 20, projectile = projectile,
-                    },
-                },
-            });
-            return so;
-        }
-
-        // skill-data-table unit 4 — 옛 mechanics 겹쳐쓰기 차단. 시트 줄이 와도 값·참조·구조 어느 것도 바뀌지 않고, 버린 줄 수가 로그에 남는다.
-        [Test]
-        public void Mechanics_RowsAreIgnored_CardUntouched()
-        {
-            var projectile = ScriptableObject.CreateInstance<ProjectileData>();
-            var so = NewMechanicCard("poke_needle", projectile);
-            var effect = so.bindings[0].effect;
-            var log = new StringBuilder();
-
-            var payload = new DcSheetPayload
-            {
-                mechanics = new[]
-                {
-                    new DcMechanicDto
-                    {
-                        cardId = "poke_needle", slot = 0, triggerPeriod = 4, magnitude = 25,
-                        triggerKind = TriggerKind.HealthThreshold, payloadKind = EffectKind.SelfStatBuff,
-                    },
-                },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["poke_needle"] = so }, log: log);
-
-            Assert.AreEqual(5, so.bindings[0].trigger.period, "mechanics overlay must stay disabled");
-            Assert.AreEqual(TriggerKind.AttackN, so.bindings[0].trigger.kind);
-            Assert.AreSame(effect, so.bindings[0].effect, "소유 줄의 효과 참조 무변");
-            Assert.AreEqual(20f, effect.values.damage);
-            Assert.AreEqual(EffectKind.ProjectileToTarget, effect.values.kind);
-            Assert.AreSame(projectile, effect.projectile);
-            StringAssert.Contains("[dc-mechanics] 1 row(s) ignored", log.ToString());
-            Object.DestroyImmediate(effect);
-            Object.DestroyImmediate(projectile);
-            Object.DestroyImmediate(so);
-        }
-
+        // skill-data-table unit 5 — 옛 DcMechanics 탭(카드 메커닉 값 overlay)은 은퇴했다. 카드 규칙은 이 코어가 아니라
+        // `SkillSheet`(탭 Skills · SkillOwners)가 다룬다 — `SkillSheetImportTests`.
 
         // ---- unit 6 (review fixes) — edge cases from the two-track review ----
 

@@ -1948,6 +1948,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: aee631d1aa88aa847a311bbf02546792, type: 2}
   - {fileID: 11400000, guid: 58eb9d4db7ed0364fbdcf8139fa49763, type: 2}
   awakeningConfig: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
+  defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
+  enemyCatalog: {fileID: 11400000, guid: ca927a27b6a4ef84caa86ed656d3421d, type: 2}
   baseUrl: https://dev-api-somnia.cashroyale.games/demo/google/sheet
 --- !u!114 &247752176
 MonoBehaviour:

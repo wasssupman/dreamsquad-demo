@@ -9,23 +9,22 @@ using Wassup.Data.StatImport;
 namespace Wassup.Core
 {
     // runtime-stat-refresh unit 3 — dreamcatcher counterpart of
-    // UnitStatRuntimeRefresher. Fetches the 6 DC tabs and applies them to the
+    // UnitStatRuntimeRefresher. Fetches the DC tabs (+ skill tabs) and applies them to the
     // catalog / active-card / config SO instances IN MEMORY (no asset writes —
     // editor-only API). Values hold for the app session; a restart reverts.
     // dev/QA-only; scene-local component, not a singleton.
-    // skill-data-table unit 4 — DcMechanics 탭은 받아도 `DcSheetApplier` 가 버린다(옛 mechanics 겹쳐쓰기 차단 ·
-    // 로그인 자동 import 도 이 경로다). 탭 목록은 계약 고정이라 그대로 두고, 차단 지점은 적용 코어 한 곳이다.
+    // skill-data-table unit 5 — 옛 DcMechanics 탭은 은퇴 · 새 두 탭 `Skills` · `SkillOwners`(`DcSheetTabs`)를 같은 fetch 로 받아
+    // `SkillSheet` 하나가 효과 에셋 값과 카드 · 방어유닛 · 적의 소유 줄을 메모리에서 고친다(로그인 자동 import 도 이 경로다).
     public class DcSheetRuntimeRefresher : MonoBehaviour, IRuntimeRefresher
     {
-        // DC tab names are contract-fixed (dreamcatcher-sheet-sync 0_json_schema).
-        private static readonly string[] Tabs =
-            { "DcCards", "DcCardEffects", "DcMechanics", "DcAttackMods", "DcSkills", "DcConfig" };
-
         [SerializeField] private DreamcatcherCardCatalog cardCatalog;
         // Active cards are not in the deck catalog (per-match awakening cards). Wire
         // them explicitly so their DcCards rows + wrapped skills refresh too.
         [SerializeField] private DreamcatcherCard[] activeCards;
         [SerializeField] private AwakeningConfig awakeningConfig;
+        // skill-data-table unit 5 — `SkillOwners` 의 방어유닛 · 적 소유자(스탯 refresher 와 같은 카탈로그).
+        [SerializeField] private DefenderCatalog defenderCatalog;
+        [SerializeField] private EnemyCatalog enemyCatalog;
         [SerializeField] private string baseUrl = "https://dev-api-somnia.cashroyale.games/demo/google/sheet";
 
         public bool RequestInFlight { get; private set; }
@@ -39,14 +38,19 @@ namespace Wassup.Core
             }
             RequestInFlight = true;
 
-            var urls = new string[Tabs.Length];
-            for (int i = 0; i < Tabs.Length; i++)
-                urls[i] = SheetEnvelopeParser.BuildSheetUrl(baseUrl, Tabs[i]);
+            var tabs = DcSheetTabs.Default();
+            var urls = new string[tabs.Length];
+            for (int i = 0; i < tabs.Length; i++)
+                urls[i] = SheetEnvelopeParser.BuildSheetUrl(baseUrl, tabs[i]);
 
             SheetFetcher.FetchAll(urls, results =>
             {
                 string result;
-                try { result = ApplyBodies(results, Tabs, cardCatalog, activeCards, awakeningConfig); }
+                try
+                {
+                    result = ApplyBodies(results, tabs, cardCatalog, activeCards, awakeningConfig,
+                        defenderCatalog != null ? defenderCatalog.units : null, enemyCatalog != null ? enemyCatalog.units : null);
+                }
                 catch (Exception e) { result = $"Refresh failed: {e}"; }
                 finally { RequestInFlight = false; }
                 onDone?.Invoke(result);
@@ -59,20 +63,26 @@ namespace Wassup.Core
         // null save callback (in-memory only).
         internal static string ApplyBodies(SheetFetcher.Result[] r, string[] tabs,
             DreamcatcherCardCatalog cardCatalog, DreamcatcherCard[] activeCards,
-            AwakeningConfig awakeningConfig)
+            AwakeningConfig awakeningConfig,
+            DefenderUnitData[] defenders = null, AttackUnitData[] enemies = null)
         {
             var log = new StringBuilder();
             var payload = new DcSheetPayload
             {
-                cards = SheetEnvelopeParser.ParseSheetLogged<DcCardDto>(r[0].body, r[0].transportError, tabs[0], log),
-                cardEffects = SheetEnvelopeParser.ParseSheetLogged<DcCardEffectDto>(r[1].body, r[1].transportError, tabs[1], log),
-                mechanics = SheetEnvelopeParser.ParseSheetLogged<DcMechanicDto>(r[2].body, r[2].transportError, tabs[2], log),
-                attackMods = SheetEnvelopeParser.ParseSheetLogged<DcAttackModDto>(r[3].body, r[3].transportError, tabs[3], log),
-                skills = SheetEnvelopeParser.ParseSheetLogged<DcSkillDto>(r[4].body, r[4].transportError, tabs[4], log),
-                configs = SheetEnvelopeParser.ParseSheetLogged<DcConfigDto>(r[5].body, r[5].transportError, tabs[5], log),
+                cards = Parse<DcCardDto>(r, tabs, DcSheetTabs.CardsAt, log),
+                cardEffects = Parse<DcCardEffectDto>(r, tabs, DcSheetTabs.CardEffectsAt, log),
+                attackMods = Parse<DcAttackModDto>(r, tabs, DcSheetTabs.AttackModsAt, log),
+                skills = Parse<DcSkillDto>(r, tabs, DcSheetTabs.ActiveSkillsAt, log),
+                configs = Parse<DcConfigDto>(r, tabs, DcSheetTabs.ConfigAt, log),
             };
-            if (payload.cards == null && payload.cardEffects == null && payload.mechanics == null
-                && payload.attackMods == null && payload.skills == null && payload.configs == null)
+            var skillPayload = new SkillSheetPayload
+            {
+                skills = Parse<SkillRowDto>(r, tabs, DcSheetTabs.SkillsAt, log),
+                owners = Parse<SkillOwnerRowDto>(r, tabs, DcSheetTabs.SkillOwnersAt, log),
+            };
+            bool dcNone = payload.cards == null && payload.cardEffects == null && payload.attackMods == null
+                          && payload.skills == null && payload.configs == null;
+            if (dcNone && skillPayload.skills == null && skillPayload.owners == null)
                 return log.ToString();
 
             var allCards = ((cardCatalog != null ? cardCatalog.cards : null) ?? Array.Empty<DreamcatcherCard>())
@@ -91,7 +101,17 @@ namespace Wassup.Core
                 configsById[rule.id] = rule;
 
             // in-memory only: no save callback.
-            return DcSheetApplier.Apply(payload, cardsById, skillsById, configsById, null, log);
+            string result = DcSheetApplier.Apply(payload, cardsById, skillsById, configsById, null, log);
+
+            // skill-data-table unit 5 — 새 두 탭. 효과 · 탄 · 패턴 · 장판은 이 소유자들이 닿는 것만 안다(`SkillSheetIndex.FromOwners`).
+            var skillLog = new StringBuilder();
+            var index = SkillSheetIndex.FromOwners(allCards, defenders, enemies, skillLog);
+            return result + SkillSheet.Import(skillPayload, index, apply: true, onApplied: null, skillLog);
         }
+
+        private static T[] Parse<T>(SheetFetcher.Result[] r, string[] tabs, int at, StringBuilder log)
+            => at < r.Length && at < tabs.Length
+                ? SheetEnvelopeParser.ParseSheetLogged<T>(r[at].body, r[at].transportError, tabs[at], log)
+                : null;
     }
 }

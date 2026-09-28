@@ -2,6 +2,7 @@ using System.IO;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using Wassup.Editor.UnitStatImport;
+using Wassup.Data.StatImport;
 
 namespace Wassup.Tests.EditMode.UnitStatImport
 {
@@ -35,7 +36,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         [Test]
         public void Export_UnrestrictedCards_OmitAttachRequireColumns()
         {
-            var tabs = new[] { "DcCards", "DcCardEffects", "DcMechanics", "DcAttackMods", "DcSkills", "DcConfig" };
+            var tabs = DcSheetTabs.Default();
 
             DcSheetExporter.ExportToFolder(_dir, tabs, DcFolder, SkillFolder);
 
@@ -60,13 +61,19 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         [Test]
         public void PushPayload_UnrestrictedCards_SeedsAttachHeadersWithoutDataRow()
         {
-            var tabs = new[] { "DcCards", "DcCardEffects", "DcMechanics", "DcAttackMods", "DcSkills", "DcConfig" };
+            var tabs = DcSheetTabs.Default();
             string json = SheetPushPayload.BuildCombinedJson(
                 "Defenders", "Enemies", DefenderFolder, EnemyFolder,
                 tabs, DcFolder, SkillFolder,
                 "CostConfig", ConfigFolder);
 
-            var rows = (JArray)JObject.Parse(json)["DcCards"];
+            // skill-data-table unit 5 — push 바디 = 새 탭 계약(DcMechanics 없음 · Skills · SkillOwners 있음).
+            var root = JObject.Parse(json);
+            Assert.IsNull(root["DcMechanics"], "은퇴한 DcMechanics 탭을 push 하면 안 된다");
+            Assert.Greater(((JArray)root["Skills"]).Count, 0, "Skills 탭(효과 줄)이 push 바디에 있다");
+            Assert.Greater(((JArray)root["SkillOwners"]).Count, 0, "SkillOwners 탭(소유 줄)이 push 바디에 있다");
+
+            var rows = (JArray)root["DcCards"];
             int seedCount = 0;
             int cardCount = 0;
             foreach (JObject row in rows)

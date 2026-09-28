@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Wassup.Core
 {
     // runtime-stat-refresh unit 6 — composite refresher so one lobby button pulls
-    // every sheet tab (Defenders/Enemies + the 6 DC tabs). Children run
+    // every sheet tab (Defenders/Enemies + the DC tabs incl. Skills/SkillOwners — `DcSheetTabs`). Children run
     // concurrently (they are independent) and the join counter needs no lock:
     // their callbacks land on the main thread — same shape as SheetFetcher.FetchAll.
     // Implements IRuntimeRefresher itself, so StatRefreshButtonView drives it like

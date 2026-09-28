@@ -59,7 +59,7 @@ namespace Wassup.Tests.EditMode
         }
 
         // ── unit 2: 비수 폴백 반경이 에셋·bake 에 살아 있는지 ──────────────
-        // 시트 DcMechanics 의 tileRange 셀이 명시적 0 이면 로그인 import 가 SO 를
+        // 시트 Skills 탭의 range_tiles 셀이 명시적 0 이면 로그인 import 가 효과 에셋을
         // 되돌린다(blank 만 keep) → 폴백이 조용히 죽는다. 이 테스트가 그 회귀를 잡는다.
         [Test]
         public void PokeNeedle_HasPositiveFallbackRange()
@@ -75,7 +75,7 @@ namespace Wassup.Tests.EditMode
                 found = true;
                 Assert.Greater(m.payload.tileRange, 0,
                     "폴백 탐색 반경이 0 이면 host 타겟이 없는 유닛에서 니들이 영영 안 나간다. "
-                    + "시트 DcMechanics/poke_needle 의 tileRange 셀도 함께 확인할 것");
+                    + "시트 Skills 탭에서 poke_needle 이 가리키는 효과 줄의 range_tiles 셀도 함께 확인할 것");
             }
             Assert.IsTrue(found, "ProjectileToTarget 메커닉이 없다");
         }

@@ -5,7 +5,7 @@ using Wassup.Data.StatImport;
 
 namespace Wassup.Editor.UnitStatImport
 {
-    // sheet-export-push unit 2 — 유닛 2탭 + DC 6탭 + CostConfig 1탭을 하나의 push 바디
+    // sheet-export-push unit 2 — 유닛 2탭 + DC 탭(`DcSheetTabs` — skill-data-table unit 5 부터 Skills · SkillOwners 포함 7탭) + CostConfig 1탭을 하나의 push 바디
     // ({ "<탭명>": [rows], ... })로 병합한다. 검증된 exporter 를 임시 폴더에 그대로
     // 돌린 뒤 산출 JSON 을 다시 읽어 탭명 키로 합친다 — DcSheetExporter.ExportCombinedFile
     // 이 이미 쓰는 패턴(수집 로직 중복 0, 기존 exporter 미변경). null 필드 생략(blank=keep)·
@@ -41,7 +41,7 @@ namespace Wassup.Editor.UnitStatImport
                 // 키만 운반하면 기존 Apps Script 가 헤더를 만든 뒤 key 결측으로 행을
                 // 건너뛴다. 따라서 서버 재배포·가짜 카드·None 노이즈 없이 첫 Push 에서
                 // DcCards 오른쪽에 두 컬럼이 생긴다.
-                var dcCardRows = (JArray)root[dcTabs[0].Trim()];
+                var dcCardRows = (JArray)root[dcTabs[DcSheetTabs.CardsAt].Trim()];
                 dcCardRows.Add(new JObject
                 {
                     [nameof(DcCardDto.attachType)] = "",

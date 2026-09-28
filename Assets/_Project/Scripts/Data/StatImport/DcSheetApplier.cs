@@ -12,8 +12,8 @@ namespace Wassup.Data.StatImport
     //  - sheet-SoT tabs (DcCardEffects/DcAttackMods, pure scalars): a cardId that
     //    appears in the tab gets its array REBUILT from its rows (slot-ordered);
     //    absent cards keep their arrays; length changes are reported.
-    //  - DcMechanics tab: **disabled** (skill-data-table unit 4 — rows are ignored and
-    //    reported; the old value overlay is retired, new sheet format = unit 5).
+    //  - 카드 규칙(소유 줄)은 이 코어 밖이다 — skill-data-table unit 5 의 `SkillSheet`(탭 `Skills` · `SkillOwners`).
+    //    옛 DcMechanics 탭은 은퇴했다.
     public static class DcSheetApplier
     {
         public static string Apply(DcSheetPayload payload,
@@ -31,7 +31,6 @@ namespace Wassup.Data.StatImport
 
             RebuildEffects(payload?.cardEffects, cardsById, onApplied, log, c);
             RebuildAttackMods(payload?.attackMods, cardsById, onApplied, log, c);
-            IgnoreMechanics(payload?.mechanics, log, c);
 
             log.Insert(0, $"Matched {c.matched}, unmatched {c.unmatched}, fields applied {c.fieldsApplied}, arrays rebuilt {c.rebuilt}, skipped {c.skipped}.\n");
             return log.ToString();
@@ -175,18 +174,6 @@ namespace Wassup.Data.StatImport
                 c.rebuilt++; c.matched++;
                 onApplied?.Invoke(so);
             }
-        }
-
-        // -------- DcMechanics 탭: 차단 --------
-
-        // skill-data-table unit 4 — 옛 mechanics 겹쳐쓰기는 **끊었다**. 저작 형식이 효과 SO + 소유 줄로 바뀌는 중이라
-        // (unit 4 이전 스크립트) 옛 칸(`so.mechanics[slot].payload`)에 로비 진입마다 쓰면 이전 전후 값이 갈린다.
-        // 시트가 새 형식을 알게 되는 것은 unit 5 다 — 그때까지 이 탭의 줄은 읽기만 하고 버린다(다른 탭은 그대로).
-        private static void IgnoreMechanics(DcMechanicDto[] rows, StringBuilder log, Counters c)
-        {
-            if (rows == null || rows.Length == 0) return;
-            c.skipped += rows.Length;
-            log.AppendLine($"[dc-mechanics] {rows.Length} row(s) ignored — mechanics import is disabled (skill-data-table unit 4 · new sheet format = unit 5).");
         }
     }
 }

@@ -25,10 +25,14 @@ namespace Wassup.Editor.UnitStatImport
 
         // dreamcatcher-sheet-sync unit 3 — DC tab names are contract-fixed
         // (0_json_schema_contract.md); prefs only exist for ad-hoc experiments.
-        private const string DcSheetsPrefsKey = "Wassup.UnitStatImport.DcSheets";
-        private const string DefaultDcSheets = "DcCards,DcCardEffects,DcMechanics,DcAttackMods,DcSkills,DcConfig";
+        // skill-data-table unit 5 — 탭 계약 = `DcSheetTabs`(DcMechanics 은퇴 · Skills/SkillOwners 신설 · 7탭). 옛 6탭 목록이 남은
+        // 에디터 prefs 가 버튼을 잠그지 않게 키를 바꿨다(.v2).
+        private const string DcSheetsPrefsKey = "Wassup.UnitStatImport.DcSheets.v2";
+        private static readonly string DefaultDcSheets = string.Join(",", DcSheetTabs.Default());
         private const string DcFolder = "Assets/_Project/Data/Dreamcatcher";
         private const string SkillFolder = "Assets/_Project/Data/Skills";
+        // skill-data-table unit 5 — 효과 · 탄 · 패턴 · 장판 · 방어유닛 · 적은 폴더가 흩어져 있어 `Data` 전체를 형으로 훑는다.
+        internal const string DataRoot = "Assets/_Project/Data";
 
         // sheet-export-push unit 4 — Apps Script /exec URL. 쓰기 권한 secret 이라
         // 프로젝트에 커밋하지 않고 에디터 로컬(EditorPrefs)에만 둔다.
@@ -111,9 +115,9 @@ namespace Wassup.Editor.UnitStatImport
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Dreamcatcher", EditorStyles.boldLabel);
-            // unit 3 — six contract tabs edited as one comma list (rarely touched).
+            // unit 3 — contract tabs edited as one comma list (rarely touched).
             EditorGUI.BeginChangeCheck();
-            _dcSheets = EditorGUILayout.TextField("DC Sheets (6)", _dcSheets);
+            _dcSheets = EditorGUILayout.TextField($"DC Sheets ({DcSheetTabs.Count})", _dcSheets);
             if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(DcSheetsPrefsKey, _dcSheets);
 
             string[] dcTabs = SplitDcSheets(_dcSheets);
@@ -125,6 +129,22 @@ namespace Wassup.Editor.UnitStatImport
                     _requestInFlight = true;
                     _statusLog = "Requesting...";
                     RunDcImport(_baseUrl, dcTabs, result =>
+                    {
+                        _statusLog = result;
+                        _requestInFlight = false;
+                        Repaint();
+                    });
+                }
+            }
+            // skill-data-table unit 5 — Skills/SkillOwners 의 diff 만 본다(에셋에 안 쓴다). Import 도 쓰기 전에 같은 diff 를 로그에 먼저 쓴다.
+            using (new EditorGUI.DisabledScope(_requestInFlight
+                || string.IsNullOrWhiteSpace(_baseUrl) || dcTabs == null))
+            {
+                if (GUILayout.Button(_requestInFlight ? "..." : "Preview Skills/SkillOwners diff (쓰지 않음)"))
+                {
+                    _requestInFlight = true;
+                    _statusLog = "Requesting...";
+                    RunSkillPreview(_baseUrl, dcTabs, result =>
                     {
                         _statusLog = result;
                         _requestInFlight = false;
@@ -158,7 +178,7 @@ namespace Wassup.Editor.UnitStatImport
             if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(ScriptUrlPrefsKey, _scriptUrl);
             EditorGUILayout.LabelField("  쓰기 권한 secret — 커밋 금지", EditorStyles.miniLabel);
 
-            // 유닛 탭(Defenders/Enemies) + DC 6탭을 한 번에 시트로 push. dcTabs 는 위에서
+            // 유닛 탭(Defenders/Enemies) + DC 탭(`DcSheetTabs`)을 한 번에 시트로 push. dcTabs 는 위에서
             // 계산된 것을 재사용. URL·탭 입력이 온전할 때만 활성.
             using (new EditorGUI.DisabledScope(_requestInFlight
                 || string.IsNullOrWhiteSpace(_scriptUrl)
@@ -169,7 +189,7 @@ namespace Wassup.Editor.UnitStatImport
                 if (GUILayout.Button(_requestInFlight ? "..." : "Push to Sheet"))
                 {
                     if (EditorUtility.DisplayDialog("Push to Sheet",
-                        "유닛 2탭 + DC 6탭 + CostConfig 탭은 업서트(고아 삭제 안 함, 리포트만).\n계속할까요?",
+                        $"유닛 2탭 + DC {DcSheetTabs.Count}탭(Skills · SkillOwners 포함) + CostConfig 탭은 업서트(고아 삭제 안 함, 리포트만).\n계속할까요?",
                         "Push", "취소"))
                     {
                         StartPush(dcTabs);
@@ -217,7 +237,7 @@ namespace Wassup.Editor.UnitStatImport
         internal static string[] SplitDcSheets(string commaList)
         {
             var parts = (commaList ?? "").Split(',');
-            if (parts.Length != 6) return null;
+            if (parts.Length != DcSheetTabs.Count) return null;
             for (int i = 0; i < parts.Length; i++)
             {
                 parts[i] = parts[i].Trim();
@@ -226,7 +246,7 @@ namespace Wassup.Editor.UnitStatImport
             return parts;
         }
 
-        // unit 3 — fetch 6 tabs → parse → DcSheetApplier, shared by the window
+        // unit 3 — fetch the DC tabs → parse → DcSheetApplier (+ SkillSheet), shared by the window
         // button and headless verification (one-shot MenuItem pattern).
         internal static void RunDcImport(string baseUrl, string[] tabNames, System.Action<string> onDone)
         {
@@ -250,20 +270,21 @@ namespace Wassup.Editor.UnitStatImport
             var log = new StringBuilder();
             var payload = new DcSheetPayload
             {
-                cards = SheetEnvelopeParser.ParseSheetLogged<DcCardDto>(r[0].body, r[0].transportError, tabs[0], log),
-                cardEffects = SheetEnvelopeParser.ParseSheetLogged<DcCardEffectDto>(r[1].body, r[1].transportError, tabs[1], log),
-                mechanics = SheetEnvelopeParser.ParseSheetLogged<DcMechanicDto>(r[2].body, r[2].transportError, tabs[2], log),
-                attackMods = SheetEnvelopeParser.ParseSheetLogged<DcAttackModDto>(r[3].body, r[3].transportError, tabs[3], log),
-                skills = SheetEnvelopeParser.ParseSheetLogged<DcSkillDto>(r[4].body, r[4].transportError, tabs[4], log),
-                configs = SheetEnvelopeParser.ParseSheetLogged<DcConfigDto>(r[5].body, r[5].transportError, tabs[5], log),
+                cards = SheetEnvelopeParser.ParseSheetLogged<DcCardDto>(r[DcSheetTabs.CardsAt].body, r[DcSheetTabs.CardsAt].transportError, tabs[DcSheetTabs.CardsAt], log),
+                cardEffects = SheetEnvelopeParser.ParseSheetLogged<DcCardEffectDto>(r[DcSheetTabs.CardEffectsAt].body, r[DcSheetTabs.CardEffectsAt].transportError, tabs[DcSheetTabs.CardEffectsAt], log),
+                attackMods = SheetEnvelopeParser.ParseSheetLogged<DcAttackModDto>(r[DcSheetTabs.AttackModsAt].body, r[DcSheetTabs.AttackModsAt].transportError, tabs[DcSheetTabs.AttackModsAt], log),
+                skills = SheetEnvelopeParser.ParseSheetLogged<DcSkillDto>(r[DcSheetTabs.ActiveSkillsAt].body, r[DcSheetTabs.ActiveSkillsAt].transportError, tabs[DcSheetTabs.ActiveSkillsAt], log),
+                configs = SheetEnvelopeParser.ParseSheetLogged<DcConfigDto>(r[DcSheetTabs.ConfigAt].body, r[DcSheetTabs.ConfigAt].transportError, tabs[DcSheetTabs.ConfigAt], log),
             };
-            if (payload.cards == null && payload.cardEffects == null && payload.mechanics == null
-                && payload.attackMods == null && payload.skills == null && payload.configs == null)
+            var skillPayload = ParseSkillTabs(r, tabs, log);
+            if (payload.cards == null && payload.cardEffects == null && payload.attackMods == null
+                && payload.skills == null && payload.configs == null
+                && skillPayload.skills == null && skillPayload.owners == null)
                 return log.ToString();
 
             // review (architect #3) — surface each tab's SoT mode so "can I delete
             // this row?" never depends on remembering the spec.
-            log.AppendLine($"[mode] {tabs[1]}/{tabs[3]}: sheet-SoT (rows rebuild arrays; deleting a row deletes the effect) · {tabs[2]}: Unity-SoT (values only).");
+            log.AppendLine($"[mode] {tabs[DcSheetTabs.CardEffectsAt]}/{tabs[DcSheetTabs.AttackModsAt]}/{tabs[DcSheetTabs.SkillOwnersAt]}: sheet-SoT (rows rebuild arrays; deleting a row deletes the entry) · {tabs[DcSheetTabs.SkillsAt]}: per-id values (blank = keep; unknown ids are reported, never created).");
 
             var cardsById = UnitStatApplier.BuildIndex(
                 UnitAssetScan.Enumerate<DreamcatcherCard>(DcFolder), so => so.id, log, nameof(DreamcatcherCard));
@@ -280,11 +301,57 @@ namespace Wassup.Editor.UnitStatImport
                     log.AppendLine($"[dc-config] id '{kv.Key}' exists on two config types — DeckRuleConfig skipped.");
             }
 
-            return DcSheetApplier.Apply(payload, cardsById, skillsById, configsById, so =>
+            string result = DcSheetApplier.Apply(payload, cardsById, skillsById, configsById, SaveAsset, log);
+            var skillLog = new StringBuilder();
+            string skills = SkillSheet.Import(skillPayload, BuildSkillIndex(skillLog), apply: true, SaveAsset, skillLog);
+            // 쓰기 전 diff 가 로그 창만이 아니라 콘솔에도 남게(창을 닫아도 무엇이 바뀌었는지 찾을 수 있다).
+            Debug.Log("[SkillSheet import]\n" + skills);
+            return result + skills;
+        }
+
+        private static void SaveAsset(ScriptableObject so)
+        {
+            EditorUtility.SetDirty(so);
+            AssetDatabase.SaveAssetIfDirty(so);
+        }
+
+        private static SkillSheetPayload ParseSkillTabs(SheetFetcher.Result[] r, string[] tabs, StringBuilder log)
+            => new SkillSheetPayload
             {
-                EditorUtility.SetDirty(so);
-                AssetDatabase.SaveAssetIfDirty(so);
-            }, log);
+                skills = SheetEnvelopeParser.ParseSheetLogged<SkillRowDto>(r[DcSheetTabs.SkillsAt].body, r[DcSheetTabs.SkillsAt].transportError, tabs[DcSheetTabs.SkillsAt], log),
+                owners = SheetEnvelopeParser.ParseSheetLogged<SkillOwnerRowDto>(r[DcSheetTabs.SkillOwnersAt].body, r[DcSheetTabs.SkillOwnersAt].transportError, tabs[DcSheetTabs.SkillOwnersAt], log),
+            };
+
+        // skill-data-table unit 5 — 에디터 인덱스 = `Data` 전체 형 스캔(없는 id 는 만들지 않는다 — 보고만).
+        internal static SkillSheetIndex BuildSkillIndex(StringBuilder log)
+            => SkillSheetIndex.Build(
+                UnitAssetScan.Enumerate<EffectData>(DataRoot),
+                UnitAssetScan.Enumerate<ProjectileData>(DataRoot),
+                UnitAssetScan.Enumerate<ProjectilePatternData>(DataRoot),
+                UnitAssetScan.Enumerate<HazardSO>(DataRoot),
+                UnitAssetScan.Enumerate<DreamcatcherCard>(DataRoot),
+                UnitAssetScan.Enumerate<DefenderUnitData>(DataRoot),
+                UnitAssetScan.Enumerate<AttackUnitData>(DataRoot),
+                log);
+
+        // skill-data-table unit 5 — 미리보기: 탭을 받아 Skills/SkillOwners 만 계획 + diff(에셋 무변 · DC 탭은 적용하지 않는다).
+        internal static void RunSkillPreview(string baseUrl, string[] tabNames, System.Action<string> onDone)
+        {
+            var urls = new string[tabNames.Length];
+            for (int i = 0; i < tabNames.Length; i++)
+                urls[i] = SheetEnvelopeParser.BuildSheetUrl(baseUrl, tabNames[i]);
+            SheetFetcher.FetchAll(urls, results =>
+            {
+                string result;
+                try
+                {
+                    var log = new StringBuilder();
+                    var payload = ParseSkillTabs(results, tabNames, log);
+                    result = SkillSheet.Import(payload, BuildSkillIndex(log), apply: false, null, log);
+                }
+                catch (System.Exception e) { result = $"Preview failed: {e}"; }
+                onDone(result);
+            });
         }
 
         private void StartImport()

@@ -1,5 +1,4 @@
 using Wassup.Data;
-using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Data.StatImport
 {
@@ -52,23 +51,8 @@ namespace Wassup.Data.StatImport
         public float? percent;
     }
 
-    // Unity-SoT child row (mechanics[] value overlay; projectile ref preserved).
-    public class DcMechanicDto
-    {
-        public string cardId;
-        public int? slot;
-        public TriggerKind? triggerKind;
-        public int? triggerPeriod;
-        public EffectKind? payloadKind;
-        public float? magnitude;
-        public int? tileRange;
-        public float? duration;
-        public float? triggerPeriodSeconds; // trigger.periodSeconds — PeriodicTimer 주기 초
-        public float? triggerFraction;   // trigger.fraction — HealthThreshold 경계비율
-        public DcCcKind? ccKind;          // payload.ccKind — ApplyCcToTarget
-        public DcStackKind? stackKind;    // payload.stackKind — ApplyStackToTarget
-        public CardBuffKind? buffStat;    // payload.buffStat — SelfStatBuff 대상 스탯
-    }
+    // skill-data-table unit 5 — 옛 `DcMechanicDto`(DcMechanics 탭 · 카드 메커닉 값 overlay)는 은퇴. 카드 · 방어유닛 · 적의 규칙은
+    // 새 두 탭 `Skills` · `SkillOwners`(`SkillSheetDto.cs` · `SkillSheet`)가 맡는다.
 
     // Sheet-SoT child row (attackMods[] rebuild).
     public class DcAttackModDto
@@ -121,7 +105,6 @@ namespace Wassup.Data.StatImport
     {
         public DcCardDto[] cards;
         public DcCardEffectDto[] cardEffects;
-        public DcMechanicDto[] mechanics;
         public DcAttackModDto[] attackMods;
         public DcSkillDto[] skills;
         public DcConfigDto[] configs;
