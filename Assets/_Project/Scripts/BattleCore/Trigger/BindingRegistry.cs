@@ -93,7 +93,7 @@ namespace Wassup.BattleCore.Trigger
             var b = new Binding
             {
                 Def = def,
-                Effect = _def != null ? _def.EffectOf(in def) : def.InlineEffect(),
+                Effect = _def != null ? _def.EffectOf(in def) : EffectDef.Default(),
                 DefIndex = defIndex,
                 Owner = owner != null ? owner.Id : SimEntityId.Match,
                 InstanceId = _nextInstanceId++,

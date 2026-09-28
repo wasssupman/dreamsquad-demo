@@ -12,11 +12,11 @@ namespace Wassup.Tests.EditMode.Core
     [TestFixture]
     public class ActiveCastTests
     {
-        private static BindingDef SlowField(float mul = 0.5f, float seconds = 3f, int tiles = 1)
+        private static RuleRow SlowField(float mul = 0.5f, float seconds = 3f, int tiles = 1)
         {
             var r = CardProbe(TriggerKind.None, new TileStatBurstSkill());
-            r.StatKind = (int)SkillStatKind.MoveSpeedMul;
-            r.Magnitude = mul; r.Duration = seconds; r.TileRange = tiles;
+            r.Effect.StatKind = (int)SkillStatKind.MoveSpeedMul;
+            r.Effect.Magnitude = mul; r.Effect.Duration = seconds; r.Effect.TileRange = tiles;
             return r;
         }
 
@@ -61,7 +61,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             var portal = CardProbe(TriggerKind.None, new PortalSkill());
-            portal.Duration = 4f;
+            portal.Effect.Duration = 4f;
             int card = AddActiveCard(def, "portal", 20, 5f, portal, twoCells: true);
             var m = CardBattle(def, awakening: 50f);
             int entry = EntryOf(m, card);

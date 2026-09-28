@@ -34,6 +34,7 @@ namespace Wassup.BattleCoreUnity
                                 HazardSO[] hazards, MatchViewAssets view = null)
         {
             var rows = new List<BindingDef>(def.Bindings ?? System.Array.Empty<BindingDef>());
+            var effects = new List<EffectDef>(def.Effects ?? System.Array.Empty<EffectDef>());
             for (int i = 0; i < def.Units.Length && i < units.Count; i++)
             {
                 var d = units[i];
@@ -42,9 +43,9 @@ namespace Wassup.BattleCoreUnity
                 var mine = new List<int>();
                 var skill = d.GetAbility<UnitSkillAbility>();
                 if (skill?.mechanics != null)
-                    Bake(skill.mechanics, hostIsEnemy: false, d.name, d.aggroCapacity > 0, null,
-                         projectiles, patterns, hazards, rows, mine, mods, def.Movement.SplitMaxChildren, view);
-                BakeShieldCast(d, rows, mine);
+                    Bake(skill.mechanics, hostIsEnemy: false, d.name, def.Units[i].Id, d.aggroCapacity > 0, null,
+                         projectiles, patterns, hazards, rows, effects, mine, mods, def.Movement.SplitMaxChildren, view);
+                BakeShieldCast(d, def.Units[i].Id, rows, effects, mine);
                 if (mine.Count > 0) def.Units[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Units[i].Attack.Mods = mods.ToArray();
             }
@@ -54,55 +55,54 @@ namespace Wassup.BattleCoreUnity
                 if (e?.nightmareMechanics == null || e.nightmareMechanics.Length == 0) continue;
                 var mods = new List<AttackModDef>();
                 var mine = new List<int>();
-                Bake(e.nightmareMechanics, hostIsEnemy: true, e.name, false, e,
-                     projectiles, patterns, hazards, rows, mine, mods, def.Movement.SplitMaxChildren, view);
+                Bake(e.nightmareMechanics, hostIsEnemy: true, e.name, def.Enemies[i].Id, false, e,
+                     projectiles, patterns, hazards, rows, effects, mine, mods, def.Movement.SplitMaxChildren, view);
                 if (mine.Count > 0) def.Enemies[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Enemies[i].Attack.Mods = mods.ToArray();
             }
             def.Bindings = rows.ToArray();
-            var effects = new List<EffectDef>(def.Effects ?? System.Array.Empty<EffectDef>());
-            for (int i = 0; i < def.Units.Length; i++) MoveEffects(def, effects, def.Units[i].Bindings, def.Units[i].Id);
-            for (int i = 0; i < def.Enemies.Length; i++) MoveEffects(def, effects, def.Enemies[i].Bindings, def.Enemies[i].Id);
             def.Effects = effects.ToArray();
         }
 
         /// <summary>
-        /// skill-data-table unit 1a — 소유자가 든 규칙 줄의 효과 값을 **효과 표**로 옮긴다(두 빌더 공용). id = `{소유자}.{자리}`
-        /// (저작 경로에서 파생한 임시 id — 저작 효과 id 는 unit 4). 굽기는 오늘 저작을 그대로 두고 이 한 곳이 번역한다.
+        /// skill-data-table unit 1a·1b — 규칙 줄 하나를 싣는다(두 빌더 공용): 효과 줄을 **효과 표**에 넣고(`EffectDef.Intern` —
+        /// 같은 id · 같은 값이면 그 줄) 규칙 줄이 그 번호를 가리키게 한 뒤 소유자 목록에 단다. id = `{소유자}.{자리}`
+        /// (저작 경로에서 파생한 임시 id — 저작 효과 id 는 unit 4).
         /// </summary>
-        internal static void MoveEffects(MatchDefinition def, List<EffectDef> effects, int[] rows, string owner, string slot = "")
+        internal static void AddRow(List<BindingDef> rows, List<EffectDef> effects, List<int> mine,
+                                    BindingDef b, EffectDef fx, string id)
         {
-            if (rows == null) return;
-            for (int k = 0; k < rows.Length; k++)
-                if (rows[k] >= 0 && rows[k] < def.Bindings.Length)
-                    EffectDef.MoveInline(effects, ref def.Bindings[rows[k]], owner + "." + slot + k);
+            fx.Id = id ?? "";
+            b.EffectIndex = EffectDef.Intern(effects, in fx);
+            mine?.Add(rows.Count);
+            rows.Add(b);
         }
 
         // 실드 캐스트 능력 — 저작은 그대로, **주기 × 실드 규칙**으로 굽는다(옛 전용 상태·시스템 은퇴).
         // 첫 캐스트 = 배치 A초 뒤(누적 0 에서 A 초). 범위 = 유닛 사거리 재사용(계약 5) · **자기 포함**(셔틀엔 겹칠 상대가 없다).
-        private static void BakeShieldCast(DefenderUnitData d, List<BindingDef> rows, List<int> mine)
+        private static void BakeShieldCast(DefenderUnitData d, string ownerId, List<BindingDef> rows, List<EffectDef> effects, List<int> mine)
         {
             var a = d.GetAbility<ShieldCastAbility>();
             if (a == null || a.cooldown <= 0f || a.amount <= 0f) return;
             var b = BindingDef.Default();
+            var fx = EffectDef.Default();
             b.Label = d.name + " 실드 캐스트";
             b.Trigger = TriggerKind.PeriodicTimer;
-            b.Payload = EffectKind.GrantShield;
-            b.Skill = SkillRouting.Resolve(b.Trigger, b.Payload);
+            fx.Kind = EffectKind.GrantShield;
+            b.Skill = SkillRouting.Resolve(b.Trigger, fx.Kind);
             b.PeriodSeconds = a.cooldown;
-            b.Magnitude = a.amount;
-            b.TileRange = SkillMath.RangeToTiles(d.attackRange);
-            b.ShieldFilter = (int)ToSkillShieldFilter(a.filter);
-            b.ShieldIncludesSelf = true;
-            b.ShieldTargetCount = Mathf.Max(1, a.targetCount);
-            mine.Add(rows.Count);
-            rows.Add(b);
+            fx.Magnitude = a.amount;
+            fx.TileRange = SkillMath.RangeToTiles(d.attackRange);
+            fx.ShieldFilter = (int)ToSkillShieldFilter(a.filter);
+            fx.ShieldIncludesSelf = true;
+            fx.ShieldTargetCount = Mathf.Max(1, a.targetCount);
+            AddRow(rows, effects, mine, b, fx, ownerId + "." + mine.Count);
         }
 
-        private static void Bake(DcMechanic[] mechanics, bool hostIsEnemy, string owner, bool hostIsGuardian,
+        private static void Bake(DcMechanic[] mechanics, bool hostIsEnemy, string owner, string ownerId, bool hostIsGuardian,
                                  AttackUnitData enemyOwner,
                                  List<ProjectileData> projectiles, List<ProjectilePatternData> patterns,
-                                 HazardSO[] hazards, List<BindingDef> rows, List<int> mine, List<AttackModDef> mods,
+                                 HazardSO[] hazards, List<BindingDef> rows, List<EffectDef> effects, List<int> mine, List<AttackModDef> mods,
                                  int splitCap, MatchViewAssets view = null)
         {
             for (int i = 0; i < mechanics.Length; i++)
@@ -159,9 +159,10 @@ namespace Wassup.BattleCoreUnity
                 }
 
                 var b = BindingDef.Default();
+                var fx = EffectDef.Default();
                 b.Label = label;
                 b.Trigger = trigger;
-                b.Payload = payload;
+                fx.Kind = payload;
                 b.Skill = effect;
                 b.Period = Mathf.Clamp(m.trigger.period, 0, ushort.MaxValue);
                 b.PeriodSeconds = m.trigger.periodSeconds;
@@ -169,20 +170,20 @@ namespace Wassup.BattleCoreUnity
                 b.Gate = gate;
                 b.GateSubject = gateSubject;
                 b.GateValue = m.trigger.gateValue;
-                b.Magnitude = m.payload.magnitude;
-                b.TileRange = Mathf.Max(0, m.payload.tileRange);
-                b.Duration = Mathf.Max(0f, m.payload.duration);
+                fx.Magnitude = m.payload.magnitude;
+                fx.TileRange = Mathf.Max(0, m.payload.tileRange);
+                fx.Duration = Mathf.Max(0f, m.payload.duration);
                 // ⚠ 저작 선택자 셋은 **기본값이 진짜처럼 보이는** 함정이다(0 = 감속 · 공격력 · 없음) — 명시로 옮긴다.
-                b.CcKind = (int)ToSkillCc(m.payload.ccKind);
-                b.StackKind = (int)ToSkillStack(m.payload.stackKind);
-                b.StatKind = (int)(TryToSkillStat(m.payload.buffStat, out var stat) ? stat : SkillStatKind.DamageMul);
-                b.SlamDamage = Mathf.Max(0f, m.payload.slamDamage);
-                b.SlamTileRange = Mathf.Max(0, m.payload.slamTileRange);
-                BakeCone(ref b, m.payload.coneHalfAngleDeg);
+                fx.CcKind = (int)ToSkillCc(m.payload.ccKind);
+                fx.StackKind = (int)ToSkillStack(m.payload.stackKind);
+                fx.StatKind = (int)(TryToSkillStat(m.payload.buffStat, out var stat) ? stat : SkillStatKind.DamageMul);
+                fx.SlamDamage = Mathf.Max(0f, m.payload.slamDamage);
+                fx.SlamTileRange = Mathf.Max(0, m.payload.slamTileRange);
+                BakeCone(ref fx, m.payload.coneHalfAngleDeg);
                 b.Origin = BindingOrigin.UnitAuthored;
-                ApplyAuthoredAxes(ref b, in m);
+                ApplyAuthoredAxes(ref b, ref fx, in m);
 
-                if (!BindPayload(ref b, in m, label, projectiles, patterns, hazards)) continue;
+                if (!BindPayload(ref b, ref fx, in m, label, projectiles, patterns, hazards)) continue;
 
                 // unit 7c — 메커닉이 선언한 연출 프리팹(옛 `BakeUnitMechanics` 의 두 갈래). 규칙이 아니라 **뷰 표**이고,
                 // 규칙 줄에는 빔의 번호만 싣는다(`SkillVisual.DefIndex` — 스킬이 `HasData` 일 때만 빔을 요청한다).
@@ -192,12 +193,11 @@ namespace Wassup.BattleCoreUnity
                 //   빔이 숙주에 기본 방향으로 박혀 떠 있게 된다. 빔 쪽만 옮긴다(7c 이식 제외).
                 if (view != null && m.payload.auraPrefab != null)
                 {
-                    if (b.Payload == EffectKind.AreaDot) b.DataIndex = view.RegisterSkillVfx(m.payload.auraPrefab);
+                    if (fx.Kind == EffectKind.AreaDot) fx.DataIndex = view.RegisterSkillVfx(m.payload.auraPrefab);
                     else view.SetBindingAura(rows.Count, m.payload.auraPrefab, m.payload.auraScale);
                 }
 
-                mine.Add(rows.Count);
-                rows.Add(b);
+                AddRow(rows, effects, mine, b, fx, ownerId + "." + mine.Count);
             }
         }
 
@@ -243,7 +243,7 @@ namespace Wassup.BattleCoreUnity
         /// 두 빌더 공용 — 저작 축 둘(주체 · 예고)을 규칙 줄에 싣는다. 「남의 배치」 = `Any` + **판에 배치된 방어유닛**만
         /// (순찰 소환물·거점 제외) · 수명 = 숙주(`Owner` — 숙주가 떠나면 같이 떨어진다).
         /// </summary>
-        internal static void ApplyAuthoredAxes(ref BindingDef b, in DcMechanic m)
+        internal static void ApplyAuthoredAxes(ref BindingDef b, ref EffectDef fx, in DcMechanic m)
         {
             b.Subject = ToCoreSubject(m.trigger.subject);
             if (b.Subject == BindingSubject.Any)
@@ -251,19 +251,19 @@ namespace Wassup.BattleCoreUnity
                 b.SubjectFilter = BindingSubjectFilter.PlacedDefender;
                 b.Lifetime = BindingLifetime.Owner;
             }
-            b.Telegraph = m.payload.telegraph;
+            fx.Telegraph = m.payload.telegraph;
         }
 
         /// <summary>조합 검증 — 거절이면 사유 셋 중 하나로 짖는다.</summary>
         // unified-effect-layer unit 7 — 부채꼴 반각(도) → (sin, cos) **bake 1회**(`AttackShapeBake` 선례 — sim 은 삼각함수를
         // 부르지 않는다). 두 빌더(유닛 · 카드)가 같은 변환을 이 한 곳에서 부른다 — 사본이 갈리면 같은 저작 각도가
         // 유닛과 카드에서 다른 콘이 된다. 정의역 거절(반각 ≥ 90)은 `BindPayload` 의 몫이다.
-        internal static void BakeCone(ref BindingDef b, float halfAngleDeg)
+        internal static void BakeCone(ref EffectDef fx, float halfAngleDeg)
         {
             float rad = Mathf.Deg2Rad * Mathf.Max(0f, halfAngleDeg);
-            b.ConeHalfAngleDeg = halfAngleDeg;
-            b.ConeSinHalf = Mathf.Sin(rad);
-            b.ConeCosHalf = Mathf.Cos(rad);
+            fx.ConeHalfAngleDeg = halfAngleDeg;
+            fx.ConeSinHalf = Mathf.Sin(rad);
+            fx.ConeCosHalf = Mathf.Cos(rad);
         }
 
         internal static bool CheckCombo(in EffectCombo c, string label)
@@ -306,12 +306,12 @@ namespace Wassup.BattleCoreUnity
         /// <summary>
         /// payload 별 값 가드 + 표 참조 해석(두 빌더 공용). false = loud skip. 조합(트리거 × 효과)은 여기서 보지 않는다 — `CheckCombo` 몫.
         /// </summary>
-        internal static bool BindPayload(ref BindingDef b, in DcMechanic m, string label,
+        internal static bool BindPayload(ref BindingDef b, ref EffectDef fx, in DcMechanic m, string label,
                                          List<ProjectileData> projectiles, List<ProjectilePatternData> patterns,
                                          HazardSO[] hazards)
         {
             var p = m.payload;
-            switch (b.Payload)
+            switch (fx.Kind)
             {
                 case EffectKind.ProjectileToTarget:
                 {
@@ -321,22 +321,22 @@ namespace Wassup.BattleCoreUnity
                     if (MovementBinding.Of(mv) == BindingClass.Direction
                         && (p.projectile.hitThreshold <= 0f || p.projectile.speed <= 0f || p.tileRange <= 0))
                     { Warn($"{label}: 경로 스윕 탄의 굵기/속도/거리(tileRange) 중 0 이 있다 — 건너뛴다."); return false; }
-                    b.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
-                    b.Speed = p.projectile.speed;
-                    b.HitThreshold = p.projectile.hitThreshold;
-                    b.VisualScale = p.projectile.visualScale;
-                    b.ProjectileMovement = (int)mv;
-                    b.ProjectilePayload = (int)pl;
+                    fx.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
+                    fx.Speed = p.projectile.speed;
+                    fx.HitThreshold = p.projectile.hitThreshold;
+                    fx.VisualScale = p.projectile.visualScale;
+                    fx.ProjectileMovement = (int)mv;
+                    fx.ProjectilePayload = (int)pl;
                     return true;
                 }
                 case EffectKind.SelfOrbitProjectile:
                     if (p.projectile == null || p.magnitude <= 0f || p.duration <= 0f || p.tileRange <= 0
                         || p.projectile.speed <= 0f || p.projectile.hitThreshold <= 0f)
                     { Warn($"{label}: SelfOrbitProjectile 탄·피해·지속·반경·속도·굵기 중 빈 것이 있다 — 건너뛴다."); return false; }
-                    b.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
-                    b.VisualScale = p.projectile.visualScale;
-                    b.Speed = p.projectile.speed;
-                    b.HitThreshold = p.projectile.hitThreshold;
+                    fx.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
+                    fx.VisualScale = p.projectile.visualScale;
+                    fx.Speed = p.projectile.speed;
+                    fx.HitThreshold = p.projectile.hitThreshold;
                     b.Period = Mathf.Clamp(p.orbitCount <= 0 ? 1 : p.orbitCount, 1, 16);   // 구슬 개수(옛 슬롯 period 재사용)
                     if (b.Trigger == TriggerKind.PeriodicTimer && m.trigger.periodSeconds < p.duration) Warn($"{label}: 주기 < 지속 — 화염구가 겹쳐 쌓인다.");
                     return true;
@@ -349,36 +349,36 @@ namespace Wassup.BattleCoreUnity
                     if (p.magnitude <= 0f) Warn($"{label}: AreaBreath 피해가 0 이하 — 발동해도 아무 일이 없다.");
                     return true;
                 case EffectKind.EmitProjectilePattern:
-                    return BindPattern(ref b, p.pattern, p.tileRange, label, projectiles, patterns);
+                    return BindPattern(ref fx, p.pattern, p.tileRange, label, projectiles, patterns);
                 case EffectKind.SelfTileAoe:
                 case EffectKind.UltimateLeap:
                     // 폭발·착지 슬램이 탄 요청 하나로 표현된다 — 탄이 없으면 **피해까지** 사라진다.
                     if (p.projectile == null)
                     {
-                        Warn($"{label}: {b.Payload} 에 ProjectileData 가 없어 요청이 드롭된다 — 건너뛴다. payload.projectile 을 지정하라.");
+                        Warn($"{label}: {fx.Kind} 에 ProjectileData 가 없어 요청이 드롭된다 — 건너뛴다. payload.projectile 을 지정하라.");
                         return false;
                     }
-                    if (b.Payload == EffectKind.SelfTileAoe && p.magnitude <= 0f) { Warn($"{label}: SelfTileAoe magnitude <= 0 — 건너뛴다."); return false; }
-                    b.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
-                    b.VisualScale = 0f;   // 유닛 bake 는 탄 배율을 안 실었다(0 = 뷰가 1 로 읽는다) — 카드는 빌더가 덧씌운다
+                    if (fx.Kind == EffectKind.SelfTileAoe && p.magnitude <= 0f) { Warn($"{label}: SelfTileAoe magnitude <= 0 — 건너뛴다."); return false; }
+                    fx.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
+                    fx.VisualScale = 0f;   // 유닛 bake 는 탄 배율을 안 실었다(0 = 뷰가 1 로 읽는다) — 카드는 빌더가 덧씌운다
                     // unit 7d — 「생존당 1회」는 **`fireCap 1`** 이다(정정 5 의 짝). 옛 전투는 `fraction ≥ 0.5` 라 둘째 경계가
                     // 음수가 되어 **우연히** 1회였다 — 값 한 칸이 0.4 가 되면 조용히 2회가 된다. ⚠ **궁극기에만** 준다 —
                     // 같은 경계 트리거를 빈사폭주·진동갑주·가호가 쓰고 그쪽은 다회 발동이 사양이다.
-                    if (b.Payload == EffectKind.UltimateLeap) b.FireCap = 1;
+                    if (fx.Kind == EffectKind.UltimateLeap) b.FireCap = 1;
                     return true;
                 case EffectKind.SelfBlink:
                 case EffectKind.AllyMoveSpeedAura:
                 case EffectKind.AreaSleep:
                     // 연출용 탄(퍼프·펄스) — **선택**이다. 없으면 연출만 없다.
-                    if (p.projectile != null) b.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
-                    if (b.Payload == EffectKind.AreaSleep)
+                    if (p.projectile != null) fx.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
+                    if (fx.Kind == EffectKind.AreaSleep)
                     {
                         if (p.magnitude < 1f || p.duration <= 0f) { Warn($"{label}: AreaSleep 에 인원(>=1)·수면 초(>0)가 없다 — 매 주기 no-op. 건너뛴다."); return false; }
                         if (p.tileRange <= 0) { Warn($"{label}: AreaSleep 의 tileRange 가 0 이라 host 셀만 본다 — 건너뛴다."); return false; }
                         if (b.Trigger == TriggerKind.PeriodicTimer && p.duration >= m.trigger.periodSeconds)
                             Warn($"{label}: AreaSleep duration({p.duration}) >= periodSeconds({m.trigger.periodSeconds}) — 수면이 끊기지 않아 대상이 생존 내내 고착한다.");
                     }
-                    if (b.Payload == EffectKind.AllyMoveSpeedAura && p.duration <= m.trigger.periodSeconds)
+                    if (fx.Kind == EffectKind.AllyMoveSpeedAura && p.duration <= m.trigger.periodSeconds)
                         Warn($"{label}: AllyMoveSpeedAura duration({p.duration}) <= periodSeconds({m.trigger.periodSeconds}) — 펄스 사이에 만료(점멸)한다.");
                     return true;
                 case EffectKind.ApplyCcToTarget:
@@ -389,7 +389,7 @@ namespace Wassup.BattleCoreUnity
                     return true;
                 case EffectKind.AreaDot:
                     // 틱 간격(0 이면 magnitude 가 DPS). 빔 프리팹은 뷰의 것(7c) — 여기선 index 를 안 싣는다(무연출).
-                    b.Speed = Mathf.Max(0f, p.tickIntervalSec);
+                    fx.Speed = Mathf.Max(0f, p.tickIntervalSec);
                     return true;
                 case EffectKind.AllyStatAura:
                 case EffectKind.OpponentStatAura:
@@ -413,7 +413,7 @@ namespace Wassup.BattleCoreUnity
                 case EffectKind.SpawnHazard:
                     int h = hazards != null && p.hazard != null ? System.Array.IndexOf(hazards, p.hazard) : -1;
                     if (h < 0) { Warn($"{label}: SpawnHazard 의 장판이 이 판의 장판 표에 없다 — 건너뛴다(카드면 `WithCardHazards` 를 거쳤나)."); return false; }
-                    b.HazardDefIndex = h;
+                    fx.HazardDefIndex = h;
                     return true;
                 default:
                     return true;
@@ -421,7 +421,7 @@ namespace Wassup.BattleCoreUnity
         }
 
         // 발사 명세 — 옛 `TryBuildPatternSlot` 의 거절을 옮겼다(규칙 경로 전용 — 평타 다연발은 따로 굽는다).
-        internal static bool BindPattern(ref BindingDef b, ProjectilePatternData pattern, int tileRange, string label,
+        internal static bool BindPattern(ref EffectDef fx, ProjectilePatternData pattern, int tileRange, string label,
                                         List<ProjectileData> projectiles, List<ProjectilePatternData> patterns)
         {
             if (pattern == null || pattern.barrel == null) { Warn($"{label}: EmitProjectilePattern 에 탄(barrel) 있는 패턴이 필요하다 — 건너뛴다."); return false; }
@@ -442,7 +442,7 @@ namespace Wassup.BattleCoreUnity
             if (!pattern.TryToSpec(0, out _)) { Warn($"{label}: 발사 명세 계약 위반(발 수·각도·선정/궤적 짝) — 건너뛴다."); return false; }
             int idx = patterns.IndexOf(pattern);
             if (idx < 0) { patterns.Add(pattern); idx = patterns.Count - 1; }
-            b.PatternDefIndex = idx;
+            fx.PatternDefIndex = idx;
             CombatDefinitionBuilder.IndexOf(projectiles, pattern.barrel);   // 탄 표에 등록
             return true;
         }

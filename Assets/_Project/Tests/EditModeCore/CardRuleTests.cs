@@ -26,13 +26,13 @@ namespace Wassup.Tests.EditMode.Core
                 Kind = SimIntentKind.DealDamage, Target = S(victim.Id), Source = SkillEntityId.None, Amount = amount,
             });
 
-        private static BindingDef Blast(MatchDefinition def, TriggerKind trigger)
+        private static RuleRow Blast(MatchDefinition def, TriggerKind trigger)
         {
             var r = CardRule(trigger, EffectKind.SelfTileAoe);
-            r.Magnitude = 5f;
-            r.TileRange = 1;
-            r.Period = 1;
-            r.DataIndex = CoreTriggerFixtures.AddBlastProjectile(def);
+            r.Effect.Magnitude = 5f;
+            r.Effect.TileRange = 1;
+            r.Rule.Period = 1;
+            r.Effect.DataIndex = CoreTriggerFixtures.AddBlastProjectile(def);
             return r;
         }
 
@@ -43,9 +43,9 @@ namespace Wassup.Tests.EditMode.Core
             // 통과 못 한 피격은 카운터도 안 올린다. 공격 쪽 게이트(처형타)만 테스트가 있었다(`TriggerDispatchTests`).
             var def = CoreMatchFixtures.Definition();
             var rule = Blast(def, TriggerKind.OnDamagedN);
-            rule.Gate = GateKind.HpBelow;
-            rule.GateSubject = GateSubject.Self;
-            rule.GateValue = 0.5f;
+            rule.Rule.Gate = GateKind.HpBelow;
+            rule.Rule.GateSubject = GateSubject.Self;
+            rule.Rule.GateValue = 0.5f;
             int card = AddAttachCard(def, "fixture_cornered_burst", 1, rule);
             var m = CardBattle(def);
             var host = Defender(m, new int2(3, 1));
@@ -122,9 +122,9 @@ namespace Wassup.Tests.EditMode.Core
             // 안 나므로 각성·점수를 주지 않는다. 7b 는 「타이머가 선다」까지만 봤다(`CardAttachTests`).
             var def = CoreMatchFixtures.Definition();
             var rule = CardRule(TriggerKind.None, EffectKind.SelfBuffLethal);
-            rule.Magnitude = 1.9f;
-            rule.Duration = 0.5f;
-            rule.FireCap = 1;
+            rule.Effect.Magnitude = 1.9f;
+            rule.Effect.Duration = 0.5f;
+            rule.Rule.FireCap = 1;
             int card = AddAttachCard(def, "fixture_last_flame", 1, rule);
             var m = CardBattle(def, awakening: 50f);
             var host = Defender(m, new int2(3, 1));
@@ -132,7 +132,7 @@ namespace Wassup.Tests.EditMode.Core
             var slain = CoreMatchFixtures.Listen(m, CoreEventKind.UnitSlain);
             float gauge = m.Hand.Gauge;
 
-            CoreCombatFixtures.Tick(m, MatchClock.TicksOf(rule.Duration, BattleMatch.Dt) + 3);
+            CoreCombatFixtures.Tick(m, MatchClock.TicksOf(rule.Effect.Duration, BattleMatch.Dt) + 3);
 
             Assert.IsNull(m.World.Find(host.Id), "시간이 끝나면 죽고 사라진다");
             Assert.AreEqual(0, slain.Count, "출처 없는 죽음 — 처치 사건이 없다");

@@ -17,12 +17,12 @@ namespace Wassup.Tests.EditMode.Core
             var cards = new CardDef[12];
             var attachRule = CoreCardFixtures.CardRule(Wassup.BattleCore.Trigger.TriggerKind.OnKill,
                                                        Wassup.BattleCore.Trigger.EffectKind.SelfStatBuff);
-            attachRule.StatKind = (int)Wassup.Skills.SkillStatKind.DamageMul;
-            attachRule.Magnitude = 1f;
+            attachRule.Effect.StatKind = (int)Wassup.Skills.SkillStatKind.DamageMul;
+            attachRule.Effect.Magnitude = 1f;
             int attachRow = CoreTriggerFixtures.Add(def, attachRule)[0];
             var activeRule = CoreCardFixtures.CardProbe(Wassup.BattleCore.Trigger.TriggerKind.None,
                                                         new Wassup.Skills.Concrete.TileStatBurstSkill());
-            activeRule.Magnitude = 1f;
+            activeRule.Effect.Magnitude = 1f;
             int activeRow = CoreTriggerFixtures.Add(def, activeRule)[0];
             for (int i = 0; i < 10; i++)
             {

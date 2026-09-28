@@ -20,9 +20,9 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f, enemyDamage: 1f, enemyRange: 3f, enemyHealth: 9999f);
             var breath = Rule(TriggerKind.AttackN, EffectKind.AreaBreath);
-            breath.Period = 1; breath.Magnitude = 50f; breath.TileRange = 3;
-            breath.ConeHalfAngleDeg = 50f;
-            breath.ConeSinHalf = math.sin(math.radians(50f)); breath.ConeCosHalf = math.cos(math.radians(50f));
+            breath.Rule.Period = 1; breath.Effect.Magnitude = 50f; breath.Effect.TileRange = 3;
+            breath.Effect.ConeHalfAngleDeg = 50f;
+            breath.Effect.ConeSinHalf = math.sin(math.radians(50f)); breath.Effect.ConeCosHalf = math.cos(math.radians(50f));
             GiveEnemy(def, 0, breath);
             var m = CoreMatchFixtures.BeginBattle(def);
             var front = SpawnDefender(m, new int2(4, 2));
@@ -48,7 +48,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f);
             var lullaby = Rule(TriggerKind.PeriodicTimer, EffectKind.AreaSleep);
-            lullaby.PeriodSeconds = 0.5f; lullaby.Magnitude = 1f; lullaby.TileRange = 4; lullaby.Duration = 2f;
+            lullaby.Rule.PeriodSeconds = 0.5f; lullaby.Effect.Magnitude = 1f; lullaby.Effect.TileRange = 4; lullaby.Effect.Duration = 2f;
             GiveEnemy(def, 0, lullaby);
             var m = CoreMatchFixtures.BeginBattle(def);
             var near = SpawnDefender(m, new int2(4, 2));
@@ -65,7 +65,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreMatchFixtures.Definition();
             def.Units[0].Cost = 0;
             var onPlace = Rule(TriggerKind.OnPlace, EffectKind.GrantShield);
-            onPlace.Magnitude = 40f; onPlace.TileRange = 2;
+            onPlace.Effect.Magnitude = 40f; onPlace.Effect.TileRange = 2;
             GiveUnit(def, 0, onPlace);
             var m = CoreMatchFixtures.BeginBattle(def);
             m.Apply(Command.DebugSpawnDefender(0, new int2(5, 1)));
@@ -83,9 +83,9 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreMatchFixtures.Definition();
             def.Units[0].Cost = 0;
             var slow = Rule(TriggerKind.OnPlace, EffectKind.OpponentStatAura);
-            slow.Magnitude = -40f; slow.TileRange = 3; slow.Duration = 5f; slow.StatKind = (int)SkillStatKind.MoveSpeedMul;
+            slow.Effect.Magnitude = -40f; slow.Effect.TileRange = 3; slow.Effect.Duration = 5f; slow.Effect.StatKind = (int)SkillStatKind.MoveSpeedMul;
             var bleed = Rule(TriggerKind.OnPlace, EffectKind.AreaApplyStack);
-            bleed.Magnitude = 2f; bleed.TileRange = 3; bleed.Duration = 4f; bleed.StackKind = (int)SkillStackKind.Bleed;
+            bleed.Effect.Magnitude = 2f; bleed.Effect.TileRange = 3; bleed.Effect.Duration = 4f; bleed.Effect.StackKind = (int)SkillStackKind.Bleed;
             GiveUnit(def, 0, slow, bleed);
             var m = CoreMatchFixtures.BeginBattle(def);
             m.Apply(Command.DebugSpawnEnemy(0, new int2(6, 1)));
@@ -103,7 +103,7 @@ namespace Wassup.Tests.EditMode.Core
             int blast = AddBlastProjectile(def);
             def.Enemies[0].BodyRadius = 0.5f;
             var quake = Rule(TriggerKind.HealthThreshold, EffectKind.SelfTileAoe);
-            quake.Fraction = 0.2f; quake.Magnitude = 60f; quake.TileRange = 2; quake.DataIndex = blast;
+            quake.Rule.Fraction = 0.2f; quake.Effect.Magnitude = 60f; quake.Effect.TileRange = 2; quake.Effect.DataIndex = blast;
             GiveEnemy(def, 0, quake);
             var m = CoreMatchFixtures.BeginBattle(def);
             var e = SpawnEnemy(m, new int2(6, 2));

@@ -15,23 +15,23 @@ namespace Wassup.Tests.EditMode.Core
     public static class CoreCardFixtures
     {
         /// <summary>카드 규칙 한 줄(출처 = 카드). 실행자는 라우팅 표가 고른다.</summary>
-        public static BindingDef CardRule(TriggerKind trigger, EffectKind payload)
+        public static RuleRow CardRule(TriggerKind trigger, EffectKind payload)
         {
             var d = CoreTriggerFixtures.Rule(trigger, payload);
-            d.Origin = BindingOrigin.Card;
+            d.Rule.Origin = BindingOrigin.Card;
             return d;
         }
 
         /// <summary>실행자를 직접 주는 카드 규칙(탐침 · 코어 concrete).</summary>
-        public static BindingDef CardProbe(TriggerKind trigger, ISkill skill)
+        public static RuleRow CardProbe(TriggerKind trigger, ISkill skill)
         {
             var d = CoreTriggerFixtures.Probe(trigger, skill);
-            d.Origin = BindingOrigin.Card;
+            d.Rule.Origin = BindingOrigin.Card;
             return d;
         }
 
         /// <summary>규칙 줄을 표에 더하고 그 카드를 카드 표 끝에 붙인다. 반환 = 카드 줄.</summary>
-        public static int AddAttachCard(MatchDefinition def, string id, int cost, params BindingDef[] rules)
+        public static int AddAttachCard(MatchDefinition def, string id, int cost, params RuleRow[] rules)
         {
             var card = CardDef.Default();
             card.Id = id;
@@ -49,7 +49,7 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         /// <summary>액티브 카드 — `trigger None` 규칙 한 줄을 시전한다.</summary>
-        public static int AddActiveCard(MatchDefinition def, string id, int cost, float cooldown, BindingDef rule,
+        public static int AddActiveCard(MatchDefinition def, string id, int cost, float cooldown, RuleRow rule,
                                         bool twoCells = false)
         {
             var card = CardDef.Default();
@@ -58,7 +58,7 @@ namespace Wassup.Tests.EditMode.Core
             card.Cost = cost;
             card.CooldownSeconds = cooldown;
             card.NeedsTwoCells = twoCells;
-            rule.Origin = BindingOrigin.Card;
+            rule.Rule.Origin = BindingOrigin.Card;
             card.ActiveBinding = CoreTriggerFixtures.Add(def, rule)[0];
             return AddCard(def, card);
         }
@@ -68,12 +68,12 @@ namespace Wassup.Tests.EditMode.Core
                                        int classMask = 0, int subjectCost = 0)
         {
             var rule = CardRule(TriggerKind.OnPlace, EffectKind.SelfStatBuff);
-            rule.Subject = BindingSubject.Any;
-            rule.SubjectClassMask = classMask;
-            rule.SubjectCost = subjectCost;
-            rule.StatKind = (int)stat;
-            rule.Magnitude = mul;
-            rule.RevokeOnExpire = true;
+            rule.Rule.Subject = BindingSubject.Any;
+            rule.Rule.SubjectClassMask = classMask;
+            rule.Rule.SubjectCost = subjectCost;
+            rule.Effect.StatKind = (int)stat;
+            rule.Effect.Magnitude = mul;
+            rule.Rule.RevokeOnExpire = true;
             var card = CardDef.Default();
             card.Id = id;
             card.Kind = CardKind.Attach;

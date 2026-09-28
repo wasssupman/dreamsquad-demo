@@ -22,9 +22,9 @@ namespace Wassup.Tests.EditMode.Core
             def.Enemies[0].BodyRadius = 1f;                 // 큰 시체
             int blast = AddBlastProjectile(def);
             var rule = Rule(TriggerKind.OnKill, EffectKind.SelfTileAoe);
-            rule.Magnitude = 5f;
-            rule.TileRange = 1;
-            rule.DataIndex = blast;
+            rule.Effect.Magnitude = 5f;
+            rule.Effect.TileRange = 1;
+            rule.Effect.DataIndex = blast;
             GiveUnit(def, 0, rule);
 
             var m = CoreMatchFixtures.BeginBattle(def);
@@ -51,8 +51,8 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreMatchFixtures.Definition();
             def.Units[0].Cost = 0;
             var rule = Rule(TriggerKind.OnPlace, EffectKind.SelfStatBuff);
-            rule.Magnitude = 1.5f;
-            rule.StatKind = (int)SkillStatKind.DamageMul;
+            rule.Effect.Magnitude = 1.5f;
+            rule.Effect.StatKind = (int)SkillStatKind.DamageMul;
             GiveUnit(def, 0, rule);
 
             var m = CoreMatchFixtures.BeginBattle(def);
@@ -82,10 +82,10 @@ namespace Wassup.Tests.EditMode.Core
             var d = SpawnDefender(m, new int2(5, 2));
             var e = SpawnEnemy(m, new int2(6, 2));
             var gift = Rule(TriggerKind.OnDeath, EffectKind.SelfTileAoe);
-            gift.Magnitude = 7f;
-            gift.TileRange = 1;
-            gift.DataIndex = blast;
-            m.Bindings.Attach(d, in gift, -1, 0);          // 부착(카드의 자리 — 7b 가 이 입구를 쓴다)
+            gift.Effect.Magnitude = 7f;
+            gift.Effect.TileRange = 1;
+            gift.Effect.DataIndex = blast;
+            CoreTriggerFixtures.AttachRuntime(m, d, gift, 0);          // 부착(카드의 자리 — 7b 가 이 입구를 쓴다)
             float3 site = d.Position;
             float body = d.HitRadius;
 
@@ -125,7 +125,7 @@ namespace Wassup.Tests.EditMode.Core
                 },
             };
             var rule = Rule(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern);
-            rule.PatternDefIndex = 0;
+            rule.Effect.PatternDefIndex = 0;
             GiveUnit(def, 0, rule);
             var m = CoreMatchFixtures.BeginBattle(def);
             var cells = new[] { new int2(4, 1), new int2(5, 1), new int2(4, 2), new int2(5, 3), new int2(6, 2) };

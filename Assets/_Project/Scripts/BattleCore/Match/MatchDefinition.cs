@@ -110,11 +110,11 @@ namespace Wassup.BattleCore
         public Trigger.EffectDef[] Effects = System.Array.Empty<Trigger.EffectDef>();
 
         /// <summary>
-        /// 규칙 줄의 효과 값 — **효과 값을 읽는 유일한 길**(1a). 표를 가리키면 그 줄, 아니면(-1) 줄의 인라인 칸
-        /// (1a 한정 폴백 — 고정구가 직접 채운 줄 · 판 규칙이 런타임에 조립하는 줄). 1b 에서 폴백이 사라진다.
+        /// 규칙 줄의 효과 값 — **효과 값을 읽는 유일한 길**. -1 = 효과 값 없음(`EffectDef.Default()` — 판 규칙이 런타임에
+        /// 조립하는 코어 효과 줄만 이렇다. 그 값은 `GimmickDef` 가 든다). 표 밖 번호는 조용히 폴백하지 않고 던진다.
         /// </summary>
         public Trigger.EffectDef EffectOf(in Trigger.BindingDef b)
-            => b.EffectIndex >= 0 ? Effects[b.EffectIndex] : b.InlineEffect();
+            => b.EffectIndex >= 0 ? Effects[b.EffectIndex] : Trigger.EffectDef.Default();
 
         /// <summary>
         /// unit 7b — **판 호스트가 판 시작에 드는 규칙 줄**(드림스톤 — 판 진입 장비의 스탯 상속). 비면 한 줄도 안 쓴다.

@@ -147,7 +147,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var probe = new ProbeSkill();
             var rule = Probe(TriggerKind.None, probe);
-            var b = _m.Bindings.Attach(_d, in rule, -1, 0);
+            var b = CoreTriggerFixtures.AttachRuntime(_m, _d, rule, 0);
             _m.Intents.Begin(b, _d.Faction, null);
             Apply(new SimIntent { Kind = SimIntentKind.EmitPattern, Source = S(_d), PatternIndex = 0 });
             _m.Intents.End();

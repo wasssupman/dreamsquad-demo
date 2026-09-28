@@ -117,6 +117,8 @@ namespace Wassup.BattleCore.Trigger
             if (b != null) b.Elapsed = BattleMatch.Dt;
         }
 
+        // skill-data-table 1b — 코어 효과 줄은 **효과 표 밖**이다(`EffectIndex = -1` → 효과 값 없음 · `Binding.Effect` 는 기본값).
+        // 수치는 이 기믹의 `GimmickDef` 가 들고 실행자(`ICoreEffect`)가 거기서 읽는다 — 효과 줄로 옮길 값이 없다.
         private static BindingDef Row(string label, TriggerKind trigger, ICoreEffect fx)
         {
             var d = BindingDef.Default();

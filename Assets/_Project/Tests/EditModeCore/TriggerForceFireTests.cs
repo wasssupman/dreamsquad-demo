@@ -13,7 +13,7 @@ namespace Wassup.Tests.EditMode.Core
     [TestFixture]
     public class TriggerForceFireTests
     {
-        private static BattleMatch Board(BindingDef rule, out Unit owner, out Binding binding)
+        private static BattleMatch Board(RuleRow rule, out Unit owner, out Binding binding)
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f);
             CoreTriggerFixtures.GiveUnit(def, 0, rule);
@@ -28,7 +28,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var probe = new CoreTriggerFixtures.ProbeSkill();
             var rule = CoreTriggerFixtures.Probe(TriggerKind.AttackN, probe);
-            rule.Period = 5;   // 공격 다섯 번째마다 — 한 번도 안 쳤다
+            rule.Rule.Period = 5;   // 공격 다섯 번째마다 — 한 번도 안 쳤다
             var m = Board(rule, out var owner, out var b);
 
             var r = m.Apply(Command.DebugFireBinding(owner.Id, b.InstanceId));
@@ -43,8 +43,8 @@ namespace Wassup.Tests.EditMode.Core
         {
             var probe = new CoreTriggerFixtures.ProbeSkill();
             var rule = CoreTriggerFixtures.Probe(TriggerKind.AttackN, probe);
-            rule.Period = 5;
-            rule.FireCap = 1;
+            rule.Rule.Period = 5;
+            rule.Rule.FireCap = 1;
             var m = Board(rule, out var owner, out var b);
 
             m.Apply(Command.DebugFireBinding(owner.Id, b.InstanceId));
@@ -68,7 +68,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var probe = new CoreTriggerFixtures.ProbeSkill();
             var rule = CoreTriggerFixtures.Probe(TriggerKind.OnDamagedN, probe);
-            rule.Period = 3;
+            rule.Rule.Period = 3;
             var m = Board(rule, out var owner, out var b);
             Assert.AreEqual(BindingStatus.NoDetector, BindingDiagnosis.Diagnose(b, m.Triggers), "아무도 안 때렸다");
 
@@ -84,7 +84,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var probe = new CoreTriggerFixtures.ProbeSkill();
             var rule = CoreTriggerFixtures.Probe(TriggerKind.PeriodicTimer, probe);
-            rule.PeriodSeconds = 100f;
+            rule.Rule.PeriodSeconds = 100f;
             var m = Board(rule, out _, out var b);
             CoreCombatFixtures.Tick(m, 2);
             Assert.AreEqual(BindingStatus.ConditionNotMet, BindingDiagnosis.Diagnose(b, m.Triggers), "주기가 아직이다");
@@ -95,8 +95,8 @@ namespace Wassup.Tests.EditMode.Core
         {
             var probe = new CoreTriggerFixtures.ProbeSkill();
             var rule = CoreTriggerFixtures.Probe(TriggerKind.AttackN, probe);
-            rule.Lifetime = BindingLifetime.Timed;
-            rule.LifetimeSeconds = 0.05f;
+            rule.Rule.Lifetime = BindingLifetime.Timed;
+            rule.Rule.LifetimeSeconds = 0.05f;
             var m = Board(rule, out _, out var b);
             CoreCombatFixtures.Tick(m, 10);
             Assert.IsTrue(b.Detached);

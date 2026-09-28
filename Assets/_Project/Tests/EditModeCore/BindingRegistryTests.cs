@@ -20,10 +20,10 @@ namespace Wassup.Tests.EditMode.Core
             return m;
         }
 
-        private static BindingDef Periodic(ISkill skill, float period = BattleMatch.Dt)
+        private static RuleRow Periodic(ISkill skill, float period = BattleMatch.Dt)
         {
             var d = Probe(TriggerKind.PeriodicTimer, skill);
-            d.PeriodSeconds = period;
+            d.Rule.PeriodSeconds = period;
             return d;
         }
 
@@ -75,9 +75,9 @@ namespace Wassup.Tests.EditMode.Core
             var m = Match();
             var d = SpawnDefender(m, new int2(5, 2));
             var rule = Periodic(probe);
-            rule.FireCap = 1;
-            rule.Lifetime = BindingLifetime.Owner;
-            var b = m.Bindings.Attach(d, in rule, -1, 0);
+            rule.Rule.FireCap = 1;
+            rule.Rule.Lifetime = BindingLifetime.Owner;
+            var b = CoreTriggerFixtures.AttachRuntime(m, d, rule, 0);
             CoreCombatFixtures.Tick(m, 10);
             Assert.AreEqual(1, probe.Count, "fireCap 1");
             Assert.IsFalse(b.Detached, "표식처럼 — 발동 1회 + 소유자 소멸까지 부착(정정 5)");
@@ -91,10 +91,10 @@ namespace Wassup.Tests.EditMode.Core
             var m = Match();
             var d = SpawnDefender(m, new int2(5, 2));
             var rule = Periodic(probe);
-            rule.FireCap = 2;
-            rule.Lifetime = BindingLifetime.UntilFireCap;
+            rule.Rule.FireCap = 2;
+            rule.Rule.Lifetime = BindingLifetime.UntilFireCap;
             var detached = CoreCombatFixtures.Listen(m, CoreEventKind.BindingDetached);
-            var b = m.Bindings.Attach(d, in rule, -1, 0);
+            var b = CoreTriggerFixtures.AttachRuntime(m, d, rule, 0);
             CoreCombatFixtures.Tick(m, 10);
             Assert.AreEqual(2, probe.Count);
             Assert.IsTrue(b.Detached);
@@ -107,10 +107,10 @@ namespace Wassup.Tests.EditMode.Core
             var m = Match();
             var d = SpawnDefender(m, new int2(5, 2));
             var rule = Periodic(new ProbeSkill(), 99f);
-            rule.Lifetime = BindingLifetime.Timed;
-            rule.LifetimeSeconds = 0.5f;
+            rule.Rule.Lifetime = BindingLifetime.Timed;
+            rule.Rule.LifetimeSeconds = 0.5f;
             var detached = CoreCombatFixtures.Listen(m, CoreEventKind.BindingDetached);
-            var b = m.Bindings.Attach(d, in rule, -1, 0);
+            var b = CoreTriggerFixtures.AttachRuntime(m, d, rule, 0);
             CoreCombatFixtures.Tick(m, 29);
             Assert.IsFalse(b.Detached);
             CoreCombatFixtures.Tick(m, 3);
@@ -124,8 +124,8 @@ namespace Wassup.Tests.EditMode.Core
             var probe = new ProbeSkill();
             var m = Match();
             var rule = Periodic(probe);
-            rule.Lifetime = BindingLifetime.Match;
-            var b = m.Bindings.Attach(null, in rule, -1, 0);
+            rule.Rule.Lifetime = BindingLifetime.Match;
+            var b = CoreTriggerFixtures.AttachRuntime(m, null, rule, 0);
             Assert.AreEqual(SimEntityId.Match, b.Owner);
             Assert.AreEqual(1, m.Bindings.MatchBindings.Count);
             CoreCombatFixtures.Tick(m, 3);
@@ -139,8 +139,8 @@ namespace Wassup.Tests.EditMode.Core
             var m = Match();
             var d = SpawnDefender(m, new int2(5, 2));
             var rule = Periodic(probe);
-            rule.Lifetime = BindingLifetime.Manual;
-            var b = m.Bindings.Attach(d, in rule, -1, 0);
+            rule.Rule.Lifetime = BindingLifetime.Manual;
+            var b = CoreTriggerFixtures.AttachRuntime(m, d, rule, 0);
             CoreCombatFixtures.Tick(m, 2);
             Assert.IsTrue(m.Bindings.Detach(b, BindingDetachReason.Manual, 2));
             CoreCombatFixtures.Tick(m, 3);
@@ -157,13 +157,13 @@ namespace Wassup.Tests.EditMode.Core
                 var d = SpawnDefender(m, new int2(5, 2));
                 var ally = SpawnDefender(m, new int2(6, 2));
                 var rule = Rule(TriggerKind.PeriodicTimer, EffectKind.AllyStatAura);
-                rule.PeriodSeconds = BattleMatch.Dt;
-                rule.Magnitude = 50f;          // +50%
-                rule.Duration = 99f;
-                rule.TileRange = 3;
-                rule.StatKind = (int)SkillStatKind.DamageMul;
-                rule.RevokeOnExpire = revoke;
-                var b = m.Bindings.Attach(d, in rule, -1, 0);
+                rule.Rule.PeriodSeconds = BattleMatch.Dt;
+                rule.Effect.Magnitude = 50f;          // +50%
+                rule.Effect.Duration = 99f;
+                rule.Effect.TileRange = 3;
+                rule.Effect.StatKind = (int)SkillStatKind.DamageMul;
+                rule.Rule.RevokeOnExpire = revoke;
+                var b = CoreTriggerFixtures.AttachRuntime(m, d, rule, 0);
                 m.Tick();
                 Assert.AreEqual(1.5f, ally.Modifiers.Effective.DamageMul, 1e-5f, "걸렸다");
                 m.Bindings.Detach(b, BindingDetachReason.Manual, m.Clock.Tick);
@@ -180,8 +180,8 @@ namespace Wassup.Tests.EditMode.Core
             m.Report = said.Add;
             var d = SpawnDefender(m, new int2(5, 2));
             var rule = Periodic(new ProbeSkill(), 99f);
-            for (int i = 0; i < BindingRegistry.MaxPerUnit; i++) Assert.IsNotNull(m.Bindings.Attach(d, in rule, -1, 0));
-            Assert.IsNull(m.Bindings.Attach(d, in rule, -1, 0));
+            for (int i = 0; i < BindingRegistry.MaxPerUnit; i++) Assert.IsNotNull(CoreTriggerFixtures.AttachRuntime(m, d, rule, 0));
+            Assert.IsNull(CoreTriggerFixtures.AttachRuntime(m, d, rule, 0));
             Assert.IsTrue(said.Exists(s => s.Contains("상한")), "조용한 폐기 금지");
         }
     }

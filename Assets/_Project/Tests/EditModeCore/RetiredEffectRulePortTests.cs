@@ -174,11 +174,11 @@ namespace Wassup.Tests.EditMode.Core
 
         // ══ 14 · ActiveSlowFieldTest ═══════════════════════════════════════════
 
-        private static BindingDef SlowField(float mul, float seconds, int tiles = 1)
+        private static RuleRow SlowField(float mul, float seconds, int tiles = 1)
         {
             var r = CoreCardFixtures.CardProbe(TriggerKind.None, new TileStatBurstSkill());
-            r.StatKind = (int)SkillStatKind.MoveSpeedMul;
-            r.Magnitude = mul; r.Duration = seconds; r.TileRange = tiles;
+            r.Effect.StatKind = (int)SkillStatKind.MoveSpeedMul;
+            r.Effect.Magnitude = mul; r.Effect.Duration = seconds; r.Effect.TileRange = tiles;
             return r;
         }
 

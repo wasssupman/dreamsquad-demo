@@ -88,33 +88,33 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         /// <summary>A·AA 가 공유하는 효과 부분(트리거 = 배치). 다른 것은 주어·수명·출처뿐이다.</summary>
-        private static BindingDef Effect()
+        private static RuleRow Effect()
         {
             var r = Rule(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern);
-            r.PatternDefIndex = 0;
-            r.TileRange = N;          // 조준 후보 반경 = 탄 최대 거리(`EmitPatternParams.Range`)
-            r.Magnitude = Hit;        // ⚠ 패턴 경로는 이 값을 읽지 않는다 — `패턴_경로의_피해는_…` 참조
+            r.Effect.PatternDefIndex = 0;
+            r.Effect.TileRange = N;          // 조준 후보 반경 = 탄 최대 거리(`EmitPatternParams.Range`)
+            r.Effect.Magnitude = Hit;        // ⚠ 패턴 경로는 이 값을 읽지 않는다 — `패턴_경로의_피해는_…` 참조
             return r;
         }
 
-        private static BindingDef UnitSkillRow()
+        private static RuleRow UnitSkillRow()
         {
             var r = Effect();
-            r.Label = "A 배치 융단폭격";
-            r.Subject = BindingSubject.Self;
-            r.Origin = BindingOrigin.UnitAuthored;
+            r.Rule.Label = "A 배치 융단폭격";
+            r.Rule.Subject = BindingSubject.Self;
+            r.Rule.Origin = BindingOrigin.UnitAuthored;
             return r;
         }
 
         /// <summary>AA 규칙 줄 — 빌더 픽스처(`UnifiedEffectBakeFixtureTests`)가 굽힌 줄과 대조한다.</summary>
-        public static BindingDef CardRow()
+        public static RuleRow CardRow()
         {
             var r = Effect();
-            r.Label = "AA 배치 상속 융단폭격";
-            r.Subject = BindingSubject.Any;
-            r.SubjectFilter = BindingSubjectFilter.PlacedDefender;
-            r.Lifetime = BindingLifetime.Owner;
-            r.Origin = BindingOrigin.Card;
+            r.Rule.Label = "AA 배치 상속 융단폭격";
+            r.Rule.Subject = BindingSubject.Any;
+            r.Rule.SubjectFilter = BindingSubjectFilter.PlacedDefender;
+            r.Rule.Lifetime = BindingLifetime.Owner;
+            r.Rule.Origin = BindingOrigin.Card;
             return r;
         }
 
@@ -316,10 +316,10 @@ namespace Wassup.Tests.EditMode.Core
             // 피해는 그 공유 줄(`PatternDef.Damage`)에서 나온다(`IntentApplier.cs:311`) — 바인딩 Magnitude 를 0 으로 해도 100.
             var def = Definition();
             var unit = UnitSkillRow();
-            unit.Magnitude = 0f;
+            unit.Effect.Magnitude = 0f;
             var card = CardRow();
             var rows = Add(def, unit, card);
-            Assert.AreEqual(def.Bindings[rows[0]].PatternDefIndex, def.Bindings[rows[1]].PatternDefIndex, "같은 명세 줄을 가리킨다");
+            Assert.AreEqual(def.EffectOf(in def.Bindings[rows[0]]).PatternDefIndex, def.EffectOf(in def.Bindings[rows[1]]).PatternDefIndex, "같은 명세 줄을 가리킨다");
             Assert.AreSame(def.Bindings[rows[0]].Skill, def.Bindings[rows[1]].Skill, "실행자는 무상태 한 벌(라우팅 표)");
 
             def.Units[0].Bindings = new[] { rows[0] };

@@ -71,34 +71,34 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         /// <summary>액티브 「운석 소환」 규칙(빌더 `BakeActive` 의 Meteor 갈래와 같은 칸들).</summary>
-        private static BindingDef ActiveMeteorRule(int tiles = N)
+        private static RuleRow ActiveMeteorRule(int tiles = N)
         {
             Assert.IsTrue(SkillRouting.Registry.TryGet(TileMeteorSkill.Id, out var skill));
             var r = CoreCardFixtures.CardProbe(TriggerKind.None, skill);
-            r.Label = "액티브 운석 소환";
-            r.FireCap = 1;
-            r.Lifetime = BindingLifetime.UntilFireCap;
-            r.Magnitude = ActiveHit;
-            r.TileRange = tiles;
-            r.DataIndex = 0;              // 운석 탄 줄
-            r.Duration = WarningSec;      // 메테오만 지속 = 낙하 예고
-            r.VisualScale = 1f;
+            r.Rule.Label = "액티브 운석 소환";
+            r.Rule.FireCap = 1;
+            r.Rule.Lifetime = BindingLifetime.UntilFireCap;
+            r.Effect.Magnitude = ActiveHit;
+            r.Effect.TileRange = tiles;
+            r.Effect.DataIndex = 0;              // 운석 탄 줄
+            r.Effect.Duration = WarningSec;      // 메테오만 지속 = 낙하 예고
+            r.Effect.VisualScale = 1f;
             return r;
         }
 
         /// <summary>드림캐쳐 「타격 운석」 규칙 — 매 타격 · 대상에게 탄(같은 운석 줄). 빌더 픽스처(`UnifiedEffectBakeFixtureTests`)가 굽힌 줄과 대조한다.</summary>
-        public static BindingDef OnHitMeteorRule(int tiles = N, MovementKind movement = 0, PayloadKind payload = 0)
+        public static RuleRow OnHitMeteorRule(int tiles = N, MovementKind movement = 0, PayloadKind payload = 0)
         {
             var r = CoreCardFixtures.CardRule(TriggerKind.AttackN, EffectKind.ProjectileToTarget);
-            r.Label = "타격 운석";
-            r.Subject = BindingSubject.Self;
-            r.Period = 1;
-            r.Magnitude = OnHitHit;
-            r.TileRange = tiles;
-            r.DataIndex = 0;              // 액티브와 **같은** 탄 줄
-            r.VisualScale = 1f;
-            r.ProjectileMovement = (int)movement;   // 0 = 탄 정의의 궤적을 쓴다
-            r.ProjectilePayload = (int)payload;
+            r.Rule.Label = "타격 운석";
+            r.Rule.Subject = BindingSubject.Self;
+            r.Rule.Period = 1;
+            r.Effect.Magnitude = OnHitHit;
+            r.Effect.TileRange = tiles;
+            r.Effect.DataIndex = 0;              // 액티브와 **같은** 탄 줄
+            r.Effect.VisualScale = 1f;
+            r.Effect.ProjectileMovement = (int)movement;   // 0 = 탄 정의의 궤적을 쓴다
+            r.Effect.ProjectilePayload = (int)payload;
             return r;
         }
 
@@ -161,7 +161,7 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         private static Obs RunOnHit(MatchDefinition def, int anchorEnemy = ThinEnemy, int attacks = 3,
-                                    BindingDef? rule = null)
+                                    RuleRow? rule = null)
         {
             int row = Add(def, rule ?? OnHitMeteorRule())[0];
             def.ConfigHash = def.ComputeConfigHash();
@@ -321,7 +321,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             // unit 1 — 칸 결합 탄의 `FlightTime` = 의도 Duration(`TargetProjectileSkill` 이 SkillParams.Duration 을 싣는다).
             var rule = OnHitMeteorRule();
-            rule.Duration = WarningSec;
+            rule.Effect.Duration = WarningSec;
             var h = RunOnHit(Definition(), rule: rule, attacks: 1);
             var hs = h.Spawned.Find(e => e.B == h.D.Id);
             CoreCombatFixtures.Tick(h.M, 40);
@@ -338,7 +338,7 @@ namespace Wassup.Tests.EditMode.Core
             // `BindingDef.Telegraph` → `SkillParams.Telegraph` → `TargetProjectileSkill` 이 의도에 싣고 → 칸 결합 갈래가
             // `TelegraphTileRange` 를 채운다. 저작 칸(빌더)은 unit 5 — 그 전 라이브는 늘 꺼짐(`두_경로의_예고와_…` 가 박제).
             var rule = OnHitMeteorRule();
-            rule.Telegraph = true;
+            rule.Effect.Telegraph = true;
             var h = RunOnHit(Definition(), rule: rule, attacks: 1);
             Assert.AreEqual(N, h.Spawned.Find(e => e.B == h.D.Id).AreaTiles);
         }
@@ -366,7 +366,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 타격_운석도_떨어지는_운석_그림이_뜬다()
         {
             var rule = OnHitMeteorRule();
-            rule.Duration = WarningSec;
+            rule.Effect.Duration = WarningSec;
             var h = RunOnHit(Definition(), rule: rule, attacks: 1);
             var hs = h.Spawned.Find(e => e.B == h.D.Id);
             Assert.AreEqual(0, hs.DefIndex, "사건이 탄 정의 줄(운석)을 나른다 — 뷰가 비행 프리팹을 고르는 키");

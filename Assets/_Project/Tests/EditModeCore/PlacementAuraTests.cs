@@ -17,16 +17,16 @@ namespace Wassup.Tests.EditMode.Core
         private static int AuraCard(MatchDefinition def, float asMul, float sleepSec)
         {
             var speed = CardProbe(TriggerKind.OnPlace, new SelfStatBuffSkill());
-            speed.Payload = EffectKind.PlacementAura;
-            speed.Subject = BindingSubject.Any;
-            speed.StatKind = (int)SkillStatKind.AttackSpeedMul;
-            speed.Magnitude = asMul;
-            speed.RevokeOnExpire = true;
+            speed.Effect.Kind = EffectKind.PlacementAura;
+            speed.Rule.Subject = BindingSubject.Any;
+            speed.Effect.StatKind = (int)SkillStatKind.AttackSpeedMul;
+            speed.Effect.Magnitude = asMul;
+            speed.Rule.RevokeOnExpire = true;
             var sleep = CardProbe(TriggerKind.OnPlace, new PlacementSleepSkill());
-            sleep.Payload = EffectKind.PlacementAura;
-            sleep.Subject = BindingSubject.Any;
-            sleep.Duration = sleepSec;
-            sleep.RevokeOnExpire = false;
+            sleep.Effect.Kind = EffectKind.PlacementAura;
+            sleep.Rule.Subject = BindingSubject.Any;
+            sleep.Effect.Duration = sleepSec;
+            sleep.Rule.RevokeOnExpire = false;
             return AddAttachCard(def, "slow_awakening", 1, speed, sleep);
         }
 

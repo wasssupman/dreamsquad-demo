@@ -58,17 +58,17 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         /// <summary>드림캐쳐 「별똥 타격」 카드 규칙 줄 — 하드 케이스 2 의 타격 운석과 같은 모양 + 낙하 0.5초.</summary>
-        private static BindingDef StarfallRow()
+        private static RuleRow StarfallRow()
         {
             var r = CoreCardFixtures.CardRule(TriggerKind.AttackN, EffectKind.ProjectileToTarget);
-            r.Label = "별똥 타격(적 소유)";
-            r.Subject = BindingSubject.Self;
-            r.Period = 1;
-            r.Magnitude = MeteorHit;
-            r.TileRange = MeteorTiles;
-            r.Duration = MeteorFall;
-            r.DataIndex = 0;
-            r.VisualScale = 1f;
+            r.Rule.Label = "별똥 타격(적 소유)";
+            r.Rule.Subject = BindingSubject.Self;
+            r.Rule.Period = 1;
+            r.Effect.Magnitude = MeteorHit;
+            r.Effect.TileRange = MeteorTiles;
+            r.Effect.Duration = MeteorFall;
+            r.Effect.DataIndex = 0;
+            r.Effect.VisualScale = 1f;
             return r;
         }
 
@@ -127,9 +127,9 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreMatchFixtures.Definition();
             def.Mode.Cost = new CostDef { Start = 0f, Max = 100f, RegenPerSec = 0f };   // 재생 0 — 늘면 규칙 몫이다
             var r = CoreCardFixtures.CardRule(TriggerKind.PeriodicTimer, EffectKind.GainCost);
-            r.Label = "코스트 획득(적 소유)";
-            r.PeriodSeconds = 1f;
-            r.Magnitude = CostGain;
+            r.Rule.Label = "코스트 획득(적 소유)";
+            r.Rule.PeriodSeconds = 1f;
+            r.Effect.Magnitude = CostGain;
             int row = Add(def, r)[0];
             def.ConfigHash = def.ComputeConfigHash();
             var m = CoreMatchFixtures.BeginBattle(def);
@@ -204,16 +204,16 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         /// <summary>개사기 카드 규칙 줄 — 하드 케이스 A/AA 의 `CardRow` 와 같은 모양(스코프 3).</summary>
-        private static BindingDef GaesagiRow()
+        private static RuleRow GaesagiRow()
         {
             var r = CoreCardFixtures.CardRule(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern);
-            r.Label = "개사기(적 소유)";
-            r.Subject = BindingSubject.Any;
-            r.SubjectFilter = BindingSubjectFilter.PlacedDefender;
-            r.Lifetime = BindingLifetime.Owner;
-            r.PatternDefIndex = 0;
-            r.TileRange = Scope;
-            r.Magnitude = ShotHit;
+            r.Rule.Label = "개사기(적 소유)";
+            r.Rule.Subject = BindingSubject.Any;
+            r.Rule.SubjectFilter = BindingSubjectFilter.PlacedDefender;
+            r.Rule.Lifetime = BindingLifetime.Owner;
+            r.Effect.PatternDefIndex = 0;
+            r.Effect.TileRange = Scope;
+            r.Effect.Magnitude = ShotHit;
             return r;
         }
 
@@ -312,7 +312,7 @@ namespace Wassup.Tests.EditMode.Core
             def.Units[0].MaxOnBoard = 8;
             var probe = new ProbeSkill();
             var r = CoreCardFixtures.CardProbe(TriggerKind.OnPlace, probe);
-            r.Subject = BindingSubject.Self;
+            r.Rule.Subject = BindingSubject.Self;
             int row = Add(def, r)[0];
             def.ConfigHash = def.ComputeConfigHash();
             var m = CoreMatchFixtures.BeginBattle(def);

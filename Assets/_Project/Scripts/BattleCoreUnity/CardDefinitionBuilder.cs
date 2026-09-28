@@ -37,6 +37,7 @@ namespace Wassup.BattleCoreUnity
                                 MatchViewAssets view = null)
         {
             var rows = new List<BindingDef>(def.Bindings ?? System.Array.Empty<BindingDef>());
+            var effects = new List<EffectDef>(def.Effects ?? System.Array.Empty<EffectDef>());
             var cards = new List<CardDef>();
             // unit 7c — 카드 줄 번호 → 카드 에셋(아트·문안). 빈 칸을 건너뛰는 **이 순회**가 번호를 매기므로 목록도 여기서 낸다.
             var assets = new List<DreamcatcherCard>();
@@ -45,24 +46,14 @@ namespace Wassup.BattleCoreUnity
                 {
                     var c = src.Cards[i];
                     if (c == null) { Warn($"덱 {i} 번 카드가 비었다 — 건너뛴다."); continue; }
-                    cards.Add(Bake(c, src.Awakening, projectiles, patterns, hazards, rows));
+                    cards.Add(Bake(c, src.Awakening, projectiles, patterns, hazards, rows, effects));
                     assets.Add(c);
                 }
             if (cards.Count > 0) def.Cards = cards.ToArray();
             view?.SetCards(assets);
-            var match = BakeDreamstones(src.Dreamstones, rows);
+            var match = BakeDreamstones(src.Dreamstones, rows, effects);
             if (match.Length > 0) def.MatchBindings = match;
             def.Bindings = rows.ToArray();
-            // skill-data-table unit 1a — 효과 값을 효과 표로(id = `{카드}.{자리}` · 판 호스트 규칙 = `match.{자리}`).
-            var effects = new List<EffectDef>(def.Effects ?? System.Array.Empty<EffectDef>());
-            for (int i = 0; i < def.Cards.Length; i++)
-            {
-                ref var c = ref def.Cards[i];
-                BindingDefinitionBuilder.MoveEffects(def, effects, c.Bindings, c.Id);
-                BindingDefinitionBuilder.MoveEffects(def, effects, c.SquadBindings, c.Id, "squad");
-                if (c.ActiveBinding >= 0) BindingDefinitionBuilder.MoveEffects(def, effects, new[] { c.ActiveBinding }, c.Id, "active");
-            }
-            BindingDefinitionBuilder.MoveEffects(def, effects, def.MatchBindings, "match");
             def.Effects = effects.ToArray();
         }
 
@@ -94,7 +85,8 @@ namespace Wassup.BattleCoreUnity
         // ── 카드 한 장 ────────────────────────────────────────────────────────
 
         private static CardDef Bake(DreamcatcherCard card, AwakeningConfig awakening, List<ProjectileData> projectiles,
-                                    List<ProjectilePatternData> patterns, HazardSO[] hazards, List<BindingDef> rows)
+                                    List<ProjectilePatternData> patterns, HazardSO[] hazards, List<BindingDef> rows,
+                                    List<EffectDef> effects)
         {
             var c = CardDef.Default();
             c.Id = card.id;
@@ -107,7 +99,7 @@ namespace Wassup.BattleCoreUnity
                 if (card.skill == null) { Error($"'{card.id}': 액티브인데 SkillData 가 없다 — 시전이 거절된다."); return c; }
                 c.CooldownSeconds = card.skill.cooldownSec;
                 c.NeedsTwoCells = card.skill.NeedsTwoTiles;
-                c.ActiveBinding = BakeActive(card, projectiles, rows);
+                c.ActiveBinding = BakeActive(card, projectiles, rows, effects);
                 return c;
             }
 
@@ -116,7 +108,7 @@ namespace Wassup.BattleCoreUnity
             if (card.type == CardType.Squad)
             {
                 // Squad 는 effects 만 읽는다(옛 계약 — mechanics 는 Unit 카드만).
-                c.SquadBindings = BakeSquad(card, rows);
+                c.SquadBindings = BakeSquad(card, rows, effects);
                 return c;
             }
 
@@ -134,7 +126,7 @@ namespace Wassup.BattleCoreUnity
                     Warn($"{label}: 적 표식 카드는 표식 메커닉만 쓴다(옛 `ApplyBountyMark`) — {mech[i].payload.kind} 는 건너뛴다.");
                     continue;
                 }
-                BakeMechanic(in mech[i], label, card, projectiles, patterns, hazards, rows, mine, mods, ref aura, ref c);
+                BakeMechanic(in mech[i], label, card, projectiles, patterns, hazards, rows, effects, mine, mods, ref aura, ref c);
             }
             if (!c.TargetsEnemies && card.attackMods != null)
                 for (int i = 0; i < card.attackMods.Length; i++)
@@ -155,26 +147,26 @@ namespace Wassup.BattleCoreUnity
             return c;
         }
 
-        private static BindingDef CardRow(string label, TriggerKind trigger, EffectKind payload)
+        private static BindingDef CardRow(string label, TriggerKind trigger, EffectKind payload, out EffectDef fx)
         {
             var b = BindingDef.Default();
             b.Label = label;
             b.Trigger = trigger;
-            b.Payload = payload;
             b.Origin = BindingOrigin.Card;
             b.Skill = SkillRouting.Resolve(trigger, payload);
+            fx = EffectDef.Default();
+            fx.Kind = payload;
             return b;
         }
 
-        private static void Add(List<BindingDef> rows, List<int> mine, in BindingDef b)
-        {
-            mine.Add(rows.Count);
-            rows.Add(b);
-        }
+        // 카드 규칙 줄 — id = `{카드}.{자리}`(자리 = 그 카드 목록 안 순번).
+        private static void Add(List<BindingDef> rows, List<EffectDef> effects, List<int> mine, string cardId,
+                                in BindingDef b, in EffectDef fx)
+            => BindingDefinitionBuilder.AddRow(rows, effects, mine, b, fx, cardId + "." + mine.Count);
 
         private static void BakeMechanic(in DcMechanic m, string label, DreamcatcherCard card,
                                          List<ProjectileData> projectiles, List<ProjectilePatternData> patterns,
-                                         HazardSO[] hazards, List<BindingDef> rows, List<int> mine,
+                                         HazardSO[] hazards, List<BindingDef> rows, List<EffectDef> effects, List<int> mine,
                                          List<AttackModDef> mods, ref bool aura, ref CardDef c)
         {
             var trigger = BindingDefinitionBuilder.ToCoreTrigger(m.trigger.kind);
@@ -189,34 +181,34 @@ namespace Wassup.BattleCoreUnity
                     case EffectKind.SelfBuffLethal:
                     {
                         if (p.magnitude <= 0f || p.duration <= 0f) { Warn($"{label}: SelfBuffLethal magnitude/duration <= 0 — 건너뛴다."); return; }
-                        var b = CardRow(label, trigger, payload);
-                        b.Magnitude = 1f + p.magnitude / 100f;   // % → 배율(도메인은 저작 인코딩을 모른다)
-                        b.Duration = p.duration;
+                        var b = CardRow(label, trigger, payload, out var fx);
+                        fx.Magnitude = 1f + p.magnitude / 100f;   // % → 배율(도메인은 저작 인코딩을 모른다)
+                        fx.Duration = p.duration;
                         b.FireCap = 1;
-                        Add(rows, mine, in b);
+                        Add(rows, effects, mine, card.id, in b, in fx);
                         return;
                     }
                     case EffectKind.DreamCocoon:
                     {
                         if (p.magnitude <= 0f || p.duration <= ProgressiveStates.CocoonEpsilon) { Warn($"{label}: DreamCocoon magnitude <= 0 또는 duration <= ε — 건너뛴다(무수면 즉시 완주)."); return; }
                         if (!MapBuff(p.buffStat, p.magnitude, out var stat, out float mul)) { Warn($"{label}: DreamCocoon 스탯 {p.buffStat} 을 옮길 수 없다 — 건너뛴다."); return; }
-                        var b = CardRow(label, trigger, payload);
-                        b.StatKind = (int)stat;
-                        b.Magnitude = mul;
-                        b.Duration = p.duration;
+                        var b = CardRow(label, trigger, payload, out var fx);
+                        fx.StatKind = (int)stat;
+                        fx.Magnitude = mul;
+                        fx.Duration = p.duration;
                         b.FireCap = 1;
-                        Add(rows, mine, in b);
+                        Add(rows, effects, mine, card.id, in b, in fx);
                         return;
                     }
                     case EffectKind.BountyMark:
                     {
                         if (p.magnitude <= 1f) { Warn($"{label}: BountyMark magnitude <= 1(현상금 없음) — 건너뛴다."); return; }
                         if (p.tileRange < 0 || p.tileRange >= 100) { Warn($"{label}: BountyMark tileRange(받는 피해 감소 %) [0,100) 밖 — 건너뛴다."); return; }
-                        var b = CardRow(label, trigger, payload);
-                        b.Magnitude = p.magnitude;                                     // 각성 배율
-                        b.HitThreshold = p.tileRange > 0 ? 1f - p.tileRange / 100f : 0f;   // 받는 피해 배율(0 = 안 건다)
+                        var b = CardRow(label, trigger, payload, out var fx);
+                        fx.Magnitude = p.magnitude;                                     // 각성 배율
+                        fx.HitThreshold = p.tileRange > 0 ? 1f - p.tileRange / 100f : 0f;   // 받는 피해 배율(0 = 안 건다)
                         b.FireCap = 1;
-                        Add(rows, mine, in b);
+                        Add(rows, effects, mine, card.id, in b, in fx);
                         return;
                     }
                     case EffectKind.PlacementAura:
@@ -227,25 +219,25 @@ namespace Wassup.BattleCoreUnity
                         if (!ToAxis(card.axis, out int mask, out int cost)) { Warn($"{label}: 축 {card.axis} 을 옮길 수 없다 — 건너뛴다."); return; }
                         aura = true;
                         // **규칙 둘**(정정 3 · H6) — 공속은 숙주가 떠나면 소급 회수, 수면은 등록부에서만 빠진다.
-                        var speed = CardRow(label + " 공속", TriggerKind.OnPlace, payload);
+                        var speed = CardRow(label + " 공속", TriggerKind.OnPlace, payload, out var speedFx);
                         speed.Skill = new SelfStatBuffSkill();
                         speed.Subject = BindingSubject.Any;
                         speed.SubjectClassMask = mask;
                         speed.SubjectCost = cost;
-                        speed.StatKind = (int)SkillStatKind.AttackSpeedMul;
-                        speed.Magnitude = 1f + p.magnitude / 100f;
+                        speedFx.StatKind = (int)SkillStatKind.AttackSpeedMul;
+                        speedFx.Magnitude = 1f + p.magnitude / 100f;
                         speed.RevokeOnExpire = true;
-                        Add(rows, mine, in speed);
+                        Add(rows, effects, mine, card.id, in speed, in speedFx);
                         if (p.duration > 0f)
                         {
-                            var sleep = CardRow(label + " 수면", TriggerKind.OnPlace, payload);
+                            var sleep = CardRow(label + " 수면", TriggerKind.OnPlace, payload, out var sleepFx);
                             sleep.Skill = new PlacementSleepSkill();
                             sleep.Subject = BindingSubject.Any;
                             sleep.SubjectClassMask = mask;
                             sleep.SubjectCost = cost;
-                            sleep.Duration = p.duration;
+                            sleepFx.Duration = p.duration;
                             sleep.RevokeOnExpire = false;
-                            Add(rows, mine, in sleep);
+                            Add(rows, effects, mine, card.id, in sleep, in sleepFx);
                         }
                         return;
                     }
@@ -283,28 +275,28 @@ namespace Wassup.BattleCoreUnity
                 return;
             }
 
-            var r = CardRow(label, trigger, payload);
+            var r = CardRow(label, trigger, payload, out var rFx);
             r.Period = Mathf.Clamp(m.trigger.period, 0, ushort.MaxValue);
             r.PeriodSeconds = m.trigger.periodSeconds;
             r.Fraction = m.trigger.fraction;
             r.Gate = gate;
             r.GateSubject = gateSubject;
             r.GateValue = m.trigger.gateValue;
-            r.Magnitude = p.magnitude;
-            r.TileRange = Mathf.Max(0, p.tileRange);
-            r.Duration = Mathf.Max(0f, p.duration);
-            r.CcKind = (int)BindingDefinitionBuilder.ToSkillCc(p.ccKind);
-            r.StackKind = (int)BindingDefinitionBuilder.ToSkillStack(p.stackKind);
-            r.StatKind = (int)(BindingDefinitionBuilder.TryToSkillStat(p.buffStat, out var st) ? st : SkillStatKind.DamageMul);
-            BindingDefinitionBuilder.BakeCone(ref r, p.coneHalfAngleDeg);
-            BindingDefinitionBuilder.ApplyAuthoredAxes(ref r, in m);
+            rFx.Magnitude = p.magnitude;
+            rFx.TileRange = Mathf.Max(0, p.tileRange);
+            rFx.Duration = Mathf.Max(0f, p.duration);
+            rFx.CcKind = (int)BindingDefinitionBuilder.ToSkillCc(p.ccKind);
+            rFx.StackKind = (int)BindingDefinitionBuilder.ToSkillStack(p.stackKind);
+            rFx.StatKind = (int)(BindingDefinitionBuilder.TryToSkillStat(p.buffStat, out var st) ? st : SkillStatKind.DamageMul);
+            BindingDefinitionBuilder.BakeCone(ref rFx, p.coneHalfAngleDeg);
+            BindingDefinitionBuilder.ApplyAuthoredAxes(ref r, ref rFx, in m);
 
             // 값 가드 · 표 참조는 두 빌더 공용(`BindingDefinitionBuilder.BindPayload`). 아래 둘은 **카드 저작 인코딩**이다(H4 후속).
-            if (!BindingDefinitionBuilder.BindPayload(ref r, in m, label, projectiles, patterns, hazards)) return;
+            if (!BindingDefinitionBuilder.BindPayload(ref r, ref rFx, in m, label, projectiles, patterns, hazards)) return;
             switch (payload)
             {
                 case EffectKind.SelfTileAoe:
-                    r.VisualScale = p.projectile.visualScale;   // 카드는 착탄 연출 배율을 싣는다(유닛 bake 는 0)
+                    rFx.VisualScale = p.projectile.visualScale;   // 카드는 착탄 연출 배율을 싣는다(유닛 bake 는 0)
                     break;
                 case EffectKind.SelfStatBuff:
                 {
@@ -312,19 +304,19 @@ namespace Wassup.BattleCoreUnity
                     if (!MapBuff(p.buffStat, p.magnitude, out var stat, out float mul)) { Warn($"{label}: SelfStatBuff 스탯 {p.buffStat} 을 옮길 수 없다 — 건너뛴다."); return; }
                     // 최대 중첩(tileRange > 0)은 배율 > 1 에서만 성립한다(곱셈 버킷 값을 더하면 뜻이 뒤집힌다).
                     if (p.tileRange > 0 && mul <= 1f) { Warn($"{label}: SelfStatBuff 최대 중첩은 배율 > 1 에서만 — 건너뛴다."); return; }
-                    r.StatKind = (int)stat;
-                    r.Magnitude = mul;
+                    rFx.StatKind = (int)stat;
+                    rFx.Magnitude = mul;
                     break;
                 }
             }
 
             if (r.Skill == null) { Warn($"{label}: '{trigger} × {payload}' 조합에 라우팅이 없다 — 건너뛴다."); return; }
-            Add(rows, mine, in r);
+            Add(rows, effects, mine, card.id, in r, in rFx);
         }
 
         // ── Squad ─────────────────────────────────────────────────────────────
 
-        private static int[] BakeSquad(DreamcatcherCard card, List<BindingDef> rows)
+        private static int[] BakeSquad(DreamcatcherCard card, List<BindingDef> rows, List<EffectDef> table)
         {
             var mine = new List<int>();
             if (!ToAxis(card.axis, out int mask, out int cost)) { Error($"'{card.id}': 축 {card.axis} 을 옮길 수 없다 — 효과 없음."); return null; }
@@ -334,19 +326,19 @@ namespace Wassup.BattleCoreUnity
                 var e = effects[i];
                 // `CostRate` 는 유닛 스탯이 아니다 — 카드 경로에서는 옛 전투도 무동작이었다(드림스톤 전용 · 판 진입 배율).
                 if (!MapBuff(e.kind, e.percent, out var stat, out float mul)) { Warn($"'{card.id}' effect {i}: {e.kind} 는 카드 스탯이 아니다 — 건너뛴다."); continue; }
-                var b = CardRow($"카드 '{card.id}' effect {i}", TriggerKind.OnPlace, EffectKind.SelfStatBuff);
+                var b = CardRow($"카드 '{card.id}' effect {i}", TriggerKind.OnPlace, EffectKind.SelfStatBuff, out var fx);
                 b.Subject = BindingSubject.Any;
                 b.SubjectClassMask = mask;
                 b.SubjectCost = cost;
-                b.StatKind = (int)stat;
-                b.Magnitude = mul;
+                fx.StatKind = (int)stat;
+                fx.Magnitude = mul;
                 b.RevokeOnExpire = true;   // 숙주가 떠나면(사망 ∪ 퇴근) 판 전체에서 소급 회수(정정 1)
-                Add(rows, mine, in b);
+                BindingDefinitionBuilder.AddRow(rows, table, mine, b, fx, card.id + ".squad" + mine.Count);
             }
             return mine.Count > 0 ? mine.ToArray() : null;
         }
 
-        private static int[] BakeDreamstones(IReadOnlyList<DreamstoneData> stones, List<BindingDef> rows)
+        private static int[] BakeDreamstones(IReadOnlyList<DreamstoneData> stones, List<BindingDef> rows, List<EffectDef> effects)
         {
             var mine = new List<int>();
             if (stones == null) return mine.ToArray();
@@ -356,50 +348,51 @@ namespace Wassup.BattleCoreUnity
                 if (s == null || s.effect.kind == CardBuffKind.CostRate) continue;   // 코스트 돌은 `CostRateOf`
                 if (!MapBuff(s.effect.kind, s.effect.percent, out var stat, out float mul)) { Warn($"드림스톤 '{s.id}': {s.effect.kind} 를 옮길 수 없다 — 건너뛴다."); continue; }
                 var b = BindingDef.Default();
+                var fx = EffectDef.Default();
                 b.Label = $"드림스톤 '{s.id}'";
                 b.Trigger = TriggerKind.OnPlace;
                 b.Subject = BindingSubject.Any;          // 축 All(옛 `MatchesDcAxis(All)`)
                 b.Skill = new DreamstoneStatSkill();
-                b.StatKind = (int)stat;
-                b.Magnitude = mul;
+                fx.StatKind = (int)stat;
+                fx.Magnitude = mul;
                 b.Lifetime = BindingLifetime.Match;
                 b.RevokeOnExpire = true;                 // 칸 판별자 = 이 규칙(돌마다 새 칸 — 옛 `_dcStackCounter++`)
                 b.Origin = BindingOrigin.Match;
-                mine.Add(rows.Count);
-                rows.Add(b);
+                BindingDefinitionBuilder.AddRow(rows, effects, mine, b, fx, "match." + mine.Count);
             }
             return mine.ToArray();
         }
 
         // ── 액티브 ────────────────────────────────────────────────────────────
 
-        private static int BakeActive(DreamcatcherCard card, List<ProjectileData> projectiles, List<BindingDef> rows)
+        private static int BakeActive(DreamcatcherCard card, List<ProjectileData> projectiles, List<BindingDef> rows, List<EffectDef> effects)
         {
             var s = card.skill;
             var b = BindingDef.Default();
+            var fx = EffectDef.Default();
             b.Label = $"액티브 '{card.id}'";
             b.Trigger = TriggerKind.None;
             b.Origin = BindingOrigin.Card;
             b.FireCap = 1;
             b.Lifetime = BindingLifetime.UntilFireCap;
-            b.Magnitude = s.magnitude;
-            b.Duration = s.durationSec;
-            b.TileRange = SkillMath.RangeToTiles(s.range);
+            fx.Magnitude = s.magnitude;
+            fx.Duration = s.durationSec;
+            fx.TileRange = SkillMath.RangeToTiles(s.range);
             int id;
             switch (s.effect)
             {
-                case SkillEffectType.SlowField: id = TileStatBurstSkill.Id; b.StatKind = (int)SkillStatKind.MoveSpeedMul; break;
+                case SkillEffectType.SlowField: id = TileStatBurstSkill.Id; fx.StatKind = (int)SkillStatKind.MoveSpeedMul; break;
                 case SkillEffectType.Tornado: id = PullFieldSkill.Id; break;
                 case SkillEffectType.Meteor:
                     id = TileMeteorSkill.Id;
                     // ⚠ 저작 오류라도 시전은 성공이다(옛 동작) — 떨어질 것이 없을 뿐 값·대기는 소모된다.
                     if (s.projectile == null) Error($"'{card.id}': 메테오에 탄(ProjectileData)이 없다 — 시전해도 아무것도 안 떨어진다.");
-                    else { b.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, s.projectile); b.VisualScale = s.projectile.visualScale; }
-                    b.Duration = s.warningSec > 0f ? s.warningSec : 0f;   // 메테오만 지속이 **낙하 예고**다
+                    else { fx.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, s.projectile); fx.VisualScale = s.projectile.visualScale; }
+                    fx.Duration = s.warningSec > 0f ? s.warningSec : 0f;   // 메테오만 지속이 **낙하 예고**다
                     break;
                 // 아군 버프는 시간제 장판이다(두 갈래가 같은 concrete — 스탯만 다르다).
-                case SkillEffectType.PowerSurge: id = AllyBuffFieldSkill.Id; b.StatKind = (int)SkillStatKind.DamageMul; break;
-                case SkillEffectType.RapidFire: id = AllyBuffFieldSkill.Id; b.StatKind = (int)SkillStatKind.AttackSpeedMul; break;
+                case SkillEffectType.PowerSurge: id = AllyBuffFieldSkill.Id; fx.StatKind = (int)SkillStatKind.DamageMul; break;
+                case SkillEffectType.RapidFire: id = AllyBuffFieldSkill.Id; fx.StatKind = (int)SkillStatKind.AttackSpeedMul; break;
                 case SkillEffectType.Portal:
                     id = PortalSkill.Id;
                     if (!s.NeedsTwoTiles) Warn($"'{card.id}': 포탈인데 두 칸 조준(needsTwoTiles)이 꺼져 있다 — 출구가 없어 발동해도 아무 일이 없다.");
@@ -410,7 +403,7 @@ namespace Wassup.BattleCoreUnity
             }
             if (!SkillRouting.Registry.TryGet(id, out var skill)) { Error($"'{card.id}': 액티브 실행자({id})가 레지스트리에 없다."); return -1; }
             b.Skill = skill;
-            rows.Add(b);
+            BindingDefinitionBuilder.AddRow(rows, effects, null, b, fx, card.id + ".active0");
             return rows.Count - 1;
         }
 

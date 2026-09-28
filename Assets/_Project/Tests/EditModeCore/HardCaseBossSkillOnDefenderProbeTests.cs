@@ -59,47 +59,47 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         /// <summary>짱쎈 행 55 — 경계 × 순간이동(착지 슬램 50 · 반경 1). 저작은 magnitude = 밀집 탐색 반경 · tileRange = 착지 링.</summary>
-        private static BindingDef BlinkRow(int slamDef, float fraction = 0.5f)
+        private static RuleRow BlinkRow(int slamDef, float fraction = 0.5f)
         {
             var r = Rule(TriggerKind.HealthThreshold, EffectKind.SelfBlink);
-            r.Label = "짱쎈 순간이동(방어유닛 소유)";
-            r.Fraction = fraction;
-            r.Magnitude = 2f;
-            r.TileRange = 6;
-            r.SlamDamage = SlamDamage;
-            r.SlamTileRange = 1;
-            r.DataIndex = slamDef;
-            r.Origin = BindingOrigin.UnitAuthored;
+            r.Rule.Label = "짱쎈 순간이동(방어유닛 소유)";
+            r.Rule.Fraction = fraction;
+            r.Effect.Magnitude = 2f;
+            r.Effect.TileRange = 6;
+            r.Effect.SlamDamage = SlamDamage;
+            r.Effect.SlamTileRange = 1;
+            r.Effect.DataIndex = slamDef;
+            r.Rule.Origin = BindingOrigin.UnitAuthored;
             return r;
         }
 
         /// <summary>짱쎈 행 56 — 경계 × 궁극기 도약(예고 2초 · 슬램 100 · 반경 2 · fireCap 1 = 빌더가 굽는 값).</summary>
-        private static BindingDef UltRow(int slamDef, float fraction = 0.8f)
+        private static RuleRow UltRow(int slamDef, float fraction = 0.8f)
         {
             var r = Rule(TriggerKind.HealthThreshold, EffectKind.UltimateLeap);
-            r.Label = "짱쎈 궁극기 도약(방어유닛 소유)";
-            r.Fraction = fraction;
-            r.Magnitude = 2f;
-            r.TileRange = 6;
-            r.Duration = 2f;
-            r.SlamDamage = UltSlamDamage;
-            r.SlamTileRange = 2;
-            r.DataIndex = slamDef;
-            r.FireCap = 1;
-            r.Origin = BindingOrigin.UnitAuthored;
+            r.Rule.Label = "짱쎈 궁극기 도약(방어유닛 소유)";
+            r.Rule.Fraction = fraction;
+            r.Effect.Magnitude = 2f;
+            r.Effect.TileRange = 6;
+            r.Effect.Duration = 2f;
+            r.Effect.SlamDamage = UltSlamDamage;
+            r.Effect.SlamTileRange = 2;
+            r.Effect.DataIndex = slamDef;
+            r.Rule.FireCap = 1;
+            r.Rule.Origin = BindingOrigin.UnitAuthored;
             return r;
         }
 
         /// <summary>짱쎈 행 54 — 경계 × 자기 자리 폭발.</summary>
-        private static BindingDef QuakeRow(int slamDef)
+        private static RuleRow QuakeRow(int slamDef)
         {
             var r = Rule(TriggerKind.HealthThreshold, EffectKind.SelfTileAoe);
-            r.Label = "짱쎈 지진(방어유닛 소유)";
-            r.Fraction = 0.2f;
-            r.Magnitude = 60f;
-            r.TileRange = 2;
-            r.DataIndex = slamDef;
-            r.Origin = BindingOrigin.UnitAuthored;
+            r.Rule.Label = "짱쎈 지진(방어유닛 소유)";
+            r.Rule.Fraction = 0.2f;
+            r.Effect.Magnitude = 60f;
+            r.Effect.TileRange = 2;
+            r.Effect.DataIndex = slamDef;
+            r.Rule.Origin = BindingOrigin.UnitAuthored;
             return r;
         }
 

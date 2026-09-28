@@ -85,8 +85,8 @@ namespace Wassup.Tests.EditMode.Core
             // 부여 — 스킬(`GrantSelfCharge`)이 의도를 낸다. 소비 규칙은 모른다.
             var grant = SkillRouting.Resolve(TriggerKind.OnDamagedN, EffectKind.NextAttackDoubleFire);
             var rule = Probe(TriggerKind.None, grant);
-            rule.Magnitude = 3f;
-            var b = m.Bindings.Attach(d, in rule, -1, 0);
+            rule.Effect.Magnitude = 3f;
+            var b = CoreTriggerFixtures.AttachRuntime(m, d, rule, 0);
             m.Triggers.RaiseFor(b, EventAt(Seam.Periodic, d));
             // 주기 seam(전투 앞)에서 부여 → 같은 틱의 START 가 소비한다.
             CoreCombatFixtures.Tick(m, 3);

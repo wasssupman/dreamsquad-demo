@@ -32,15 +32,15 @@ namespace Wassup.Tests.EditMode.Core
         public void 대상을_안_주는_숙주에는_대상_효과가_안_붙는다()
         {
             var host = new HostProfile { Archetype = HostArchetype.BombThrow, Route = HostRoute.Grenade, TargetsEnemies = true, HasDamageOutput = true };
-            var cc = BindingDef.Default(); cc.Payload = EffectKind.ApplyCcToTarget;
-            Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in cc, cc.InlineEffect(), in host));
-            var dagger = BindingDef.Default(); dagger.Payload = EffectKind.ProjectileToTarget;
-            Assert.AreEqual(RejectReason.NeedsFallbackRange, Applicability.Evaluate(in dagger, dagger.InlineEffect(), in host));
-            dagger.TileRange = 4;
-            Assert.AreEqual(RejectReason.None, Applicability.Evaluate(in dagger, dagger.InlineEffect(), in host), "폴백 반경이 있으면 스스로 찾는다");
-            var gated = BindingDef.Default(); gated.Payload = EffectKind.SelfTileAoe;
-            gated.Gate = GateKind.HpBelow; gated.GateSubject = GateSubject.EventTarget;
-            Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in gated, gated.InlineEffect(), in host),
+            var cc = CoreTriggerFixtures.Rule(TriggerKind.None, EffectKind.ApplyCcToTarget);
+            Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in cc.Rule, in cc.Effect, in host));
+            var dagger = CoreTriggerFixtures.Rule(TriggerKind.None, EffectKind.ProjectileToTarget);
+            Assert.AreEqual(RejectReason.NeedsFallbackRange, Applicability.Evaluate(in dagger.Rule, in dagger.Effect, in host));
+            dagger.Effect.TileRange = 4;
+            Assert.AreEqual(RejectReason.None, Applicability.Evaluate(in dagger.Rule, in dagger.Effect, in host), "폴백 반경이 있으면 스스로 찾는다");
+            var gated = CoreTriggerFixtures.Rule(TriggerKind.None, EffectKind.SelfTileAoe);
+            gated.Rule.Gate = GateKind.HpBelow; gated.Rule.GateSubject = GateSubject.EventTarget;
+            Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in gated.Rule, in gated.Effect, in host),
                 "평가할 수단이 없는 게이트는 조건 없는 발동이 된다 — 거절");
             var heavy = new AttackModDef { Kind = AttackModKind.HeavyStrike, Period = 3, DamageMul = 2f };
             Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.EvaluateAttackMod(in heavy, in host));
@@ -65,7 +65,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreMatchFixtures.Definition();
             var cards = new List<int>();
             var stack = CardRule(TriggerKind.AttackN, EffectKind.ApplyStackToTarget);
-            stack.Period = 3; stack.Magnitude = 1f;
+            stack.Rule.Period = 3; stack.Effect.Magnitude = 1f;
             cards.Add(AddAttachCard(def, "ember_bite", 1, stack));
             var bounce = CardDef.Default();
             bounce.Id = "bouncy"; bounce.Kind = CardKind.Attach; bounce.Cost = 1;
@@ -76,7 +76,7 @@ namespace Wassup.Tests.EditMode.Core
             req.Requirement = new AttachRequirementDef { Kind = AttachRequirementKind.Class, Role = 2 };
             cards.Add(AddCard(def, req));
             var mark = CardRule(TriggerKind.None, EffectKind.BountyMark);
-            mark.Magnitude = 2f; mark.FireCap = 1;
+            mark.Effect.Magnitude = 2f; mark.Rule.FireCap = 1;
             int markCard = AddAttachCard(def, "mark", 1, mark);
             def.Cards[markCard].TargetsEnemies = true;
             cards.Add(markCard);

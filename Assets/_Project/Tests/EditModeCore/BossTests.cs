@@ -19,12 +19,12 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f, enemyHealth: bossHealth);
             slamDef = CoreTriggerFixtures.AddBlastProjectile(def);
             var leap = CoreTriggerFixtures.Rule(TriggerKind.HealthThreshold, EffectKind.SelfBlink);
-            leap.Fraction = 0.3f;
-            leap.Magnitude = 2f;     // 밀집 탐색 반경(칸) — `LeapParams` 가 이름을 붙인다
-            leap.TileRange = 2;      // 착지 링 상한
-            leap.SlamDamage = SlamDamage;
-            leap.SlamTileRange = 1;
-            leap.DataIndex = slamDef;
+            leap.Rule.Fraction = 0.3f;
+            leap.Effect.Magnitude = 2f;     // 밀집 탐색 반경(칸) — `LeapParams` 가 이름을 붙인다
+            leap.Effect.TileRange = 2;      // 착지 링 상한
+            leap.Effect.SlamDamage = SlamDamage;
+            leap.Effect.SlamTileRange = 1;
+            leap.Effect.DataIndex = slamDef;
             CoreTriggerFixtures.GiveEnemy(def, 0, leap);
             var m = CoreMatchFixtures.BeginBattle(def);
             // 밀집 셋(오른쪽) · 외톨이 하나(왼쪽 위)
@@ -99,9 +99,9 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f, enemyHealth: 100f);
             var probe = new CoreTriggerFixtures.ProbeSkill();
             var rule = CoreTriggerFixtures.Probe(TriggerKind.HealthThreshold, probe);
-            rule.Payload = payload;
-            rule.Fraction = 0.2f;   // 경계 0.8 · 0.6 · 0.4 · 0.2
-            rule.FireCap = fireCap;
+            rule.Effect.Kind = payload;
+            rule.Rule.Fraction = 0.2f;   // 경계 0.8 · 0.6 · 0.4 · 0.2
+            rule.Rule.FireCap = fireCap;
             CoreTriggerFixtures.GiveEnemy(def, 0, rule);
             var m = CoreMatchFixtures.BeginBattle(def);
             CoreTriggerFixtures.SpawnDefender(m, new int2(9, 2));

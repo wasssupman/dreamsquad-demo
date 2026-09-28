@@ -80,8 +80,8 @@ namespace Wassup.Tests.EditMode.Core
 
             var onAttack = new ProbeSkill { OnExecute = (c, t, p, x) => attackTick = m.Clock.Tick };
             var onPeriodic = new ProbeSkill { OnExecute = (c, t, p, x) => periodicTick = m.Clock.Tick };
-            var bAttack = m.Bindings.Attach(d, Probe(TriggerKind.AttackN, onAttack), -1, 0);
-            var bPeriodic = m.Bindings.Attach(d, Probe(TriggerKind.PeriodicTimer, onPeriodic), -1, 0);
+            var bAttack = CoreTriggerFixtures.AttachRuntime(m, d, Probe(TriggerKind.AttackN, onAttack), 0);
+            var bPeriodic = CoreTriggerFixtures.AttachRuntime(m, d, Probe(TriggerKind.PeriodicTimer, onPeriodic), 0);
 
             // 주기 seam(앞)에서 공격 seam(뒤)으로 → 같은 틱.
             var starter = new ProbeSkill();
@@ -92,8 +92,8 @@ namespace Wassup.Tests.EditMode.Core
                 m.Triggers.RaiseFor(bAttack, EventAt(Seam.Attack, d));
             };
             var s = Probe(TriggerKind.PeriodicTimer, starter);
-            s.PeriodSeconds = BattleMatch.Dt;
-            m.Bindings.Attach(d, in s, -1, 0);
+            s.Rule.PeriodSeconds = BattleMatch.Dt;
+            CoreTriggerFixtures.AttachRuntime(m, d, s, 0);
             m.Tick();
             Assert.AreEqual(raisedAt, attackTick, "후속 seam — 같은 틱");
 
@@ -123,12 +123,12 @@ namespace Wassup.Tests.EditMode.Core
             ProbeSkill P(string tag) => new ProbeSkill { OnExecute = (c, t, p, x) => log.Add(tag) };
 
             // 부착 순서를 뒤섞어도 실행 순서는 (소유자, InstanceId) 다.
-            var rb1 = Probe(TriggerKind.PeriodicTimer, P("b1")); rb1.PeriodSeconds = BattleMatch.Dt;
-            var ra1 = Probe(TriggerKind.PeriodicTimer, P("a1")); ra1.PeriodSeconds = BattleMatch.Dt;
-            var ra2 = Probe(TriggerKind.PeriodicTimer, P("a2")); ra2.PeriodSeconds = BattleMatch.Dt;
-            m.Bindings.Attach(b, in rb1, -1, 0);
-            m.Bindings.Attach(a, in ra1, -1, 0);
-            m.Bindings.Attach(a, in ra2, -1, 0);
+            var rb1 = Probe(TriggerKind.PeriodicTimer, P("b1")); rb1.Rule.PeriodSeconds = BattleMatch.Dt;
+            var ra1 = Probe(TriggerKind.PeriodicTimer, P("a1")); ra1.Rule.PeriodSeconds = BattleMatch.Dt;
+            var ra2 = Probe(TriggerKind.PeriodicTimer, P("a2")); ra2.Rule.PeriodSeconds = BattleMatch.Dt;
+            CoreTriggerFixtures.AttachRuntime(m, b, rb1, 0);
+            CoreTriggerFixtures.AttachRuntime(m, a, ra1, 0);
+            CoreTriggerFixtures.AttachRuntime(m, a, ra2, 0);
             m.Tick();
             CollectionAssert.AreEqual(new[] { "a1", "a2", "b1" }, log, "유닛 순회 = SimEntityId 오름차순");
         }
@@ -141,13 +141,13 @@ namespace Wassup.Tests.EditMode.Core
             var log = new List<string>();
             Binding child = null;
             var childSkill = new ProbeSkill { OnExecute = (c, t, p, x) => log.Add("child") };
-            child = m.Bindings.Attach(d, Probe(TriggerKind.None, childSkill), -1, 0);
+            child = CoreTriggerFixtures.AttachRuntime(m, d, Probe(TriggerKind.None, childSkill), 0);
             var parent = new ProbeSkill { OnExecute = (c, t, p, x) => { log.Add("parent"); m.Triggers.RaiseFor(child, EventAt(Seam.Periodic, d)); } };
             var sibling = new ProbeSkill { OnExecute = (c, t, p, x) => log.Add("sibling") };
-            var rp = Probe(TriggerKind.PeriodicTimer, parent); rp.PeriodSeconds = 99f;
-            var rs = Probe(TriggerKind.PeriodicTimer, sibling); rs.PeriodSeconds = 99f;
-            var bp = m.Bindings.Attach(d, in rp, -1, 0);
-            var bs = m.Bindings.Attach(d, in rs, -1, 0);
+            var rp = Probe(TriggerKind.PeriodicTimer, parent); rp.Rule.PeriodSeconds = 99f;
+            var rs = Probe(TriggerKind.PeriodicTimer, sibling); rs.Rule.PeriodSeconds = 99f;
+            var bp = CoreTriggerFixtures.AttachRuntime(m, d, rp, 0);
+            var bs = CoreTriggerFixtures.AttachRuntime(m, d, rs, 0);
             m.Triggers.RaiseFor(bp, EventAt(Seam.Periodic, d));
             m.Triggers.RaiseFor(bs, EventAt(Seam.Periodic, d));
             m.Tick();
@@ -165,7 +165,7 @@ namespace Wassup.Tests.EditMode.Core
             Binding self = null;
             var loop = new ProbeSkill();
             loop.OnExecute = (c, t, p, x) => m.Triggers.RaiseFor(self, EventAt(Seam.Periodic, d));
-            self = m.Bindings.Attach(d, Probe(TriggerKind.None, loop), -1, 0);
+            self = CoreTriggerFixtures.AttachRuntime(m, d, Probe(TriggerKind.None, loop), 0);
             m.Triggers.RaiseFor(self, EventAt(Seam.Periodic, d));
             m.Tick();
             Assert.AreEqual(1 + TriggerDispatcher.MaxDepth, loop.Count, "세대 0..4");
@@ -179,7 +179,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreCombatFixtures.Definition(defenderDamage: 1f, enemyHealth: 1000f);
             var probe = new ProbeSkill();
             var rule = Probe(TriggerKind.AttackN, probe);
-            rule.Period = 3;
+            rule.Rule.Period = 3;
             GiveUnit(def, 0, rule);
             var m = CoreMatchFixtures.BeginBattle(def);
             var shooter = SpawnDefender(m, new int2(5, 2));
@@ -194,7 +194,7 @@ namespace Wassup.Tests.EditMode.Core
             var def2 = CoreCombatFixtures.Definition(defenderDamage: 1f, enemyHealth: 1000f);
             var gated = new ProbeSkill();
             var g = Probe(TriggerKind.AttackN, gated);
-            g.Period = 1; g.Gate = GateKind.HpBelow; g.GateSubject = GateSubject.EventTarget; g.GateValue = 0.3f;
+            g.Rule.Period = 1; g.Rule.Gate = GateKind.HpBelow; g.Rule.GateSubject = GateSubject.EventTarget; g.Rule.GateValue = 0.3f;
             GiveUnit(def2, 0, g);
             var m2 = CoreMatchFixtures.BeginBattle(def2);
             var dd = SpawnDefender(m2, new int2(5, 2));
@@ -211,8 +211,8 @@ namespace Wassup.Tests.EditMode.Core
             var m = Match();
             var d = SpawnDefender(m, new int2(5, 2));
             var probe = new ProbeSkill();
-            var r = Probe(TriggerKind.PeriodicTimer, probe); r.PeriodSeconds = BattleMatch.Dt;
-            m.Bindings.Attach(d, in r, -1, 0);
+            var r = Probe(TriggerKind.PeriodicTimer, probe); r.Rule.PeriodSeconds = BattleMatch.Dt;
+            CoreTriggerFixtures.AttachRuntime(m, d, r, 0);
             d.Cc.Apply(Wassup.BattleCore.Effects.CcSlotKind.Sleep, 99f, float3.zero, SimEntityId.None);
             CoreCombatFixtures.Tick(m, 3);
             Assert.AreEqual(3, probe.Count, "잠든 채로 쏜다");
@@ -227,7 +227,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreCombatFixtures.Definition();
             var probe = new ProbeSkill();
             var r = Probe(TriggerKind.HealthThreshold, probe);
-            r.Fraction = 0.2f;
+            r.Rule.Fraction = 0.2f;
             GiveEnemy(def, 0, r);
             var m = Match();
             m = new BattleMatch(def); m.Begin();

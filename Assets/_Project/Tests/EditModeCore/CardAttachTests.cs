@@ -13,12 +13,12 @@ namespace Wassup.Tests.EditMode.Core
     [TestFixture]
     public class CardAttachTests
     {
-        private static BindingDef LastFlame()
+        private static RuleRow LastFlame()
         {
             var r = CardRule(TriggerKind.None, EffectKind.SelfBuffLethal);
-            r.Magnitude = 1.9f;   // 배율(bake 가 % → 배율로 바꿔 싣는다)
-            r.Duration = 5f;
-            r.FireCap = 1;
+            r.Effect.Magnitude = 1.9f;   // 배율(bake 가 % → 배율로 바꿔 싣는다)
+            r.Effect.Duration = 5f;
+            r.Rule.FireCap = 1;
             return r;
         }
 
@@ -93,7 +93,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             var rule = CardRule(TriggerKind.OnKill, EffectKind.SelfStatBuff);
-            rule.Magnitude = 1.1f;
+            rule.Effect.Magnitude = 1.1f;
             int u1 = AddAttachCard(def, "u1", 1, rule);
             int u2 = AddAttachCard(def, "u2", 1, rule);
             int s1 = AddSquadCard(def, "s1", 1, SkillStatKind.DamageMul, 1.1f);
@@ -114,7 +114,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f);
             int blast = CoreTriggerFixtures.AddBlastProjectile(def);
             var gift = CardRule(TriggerKind.OnDeath, EffectKind.SelfTileAoe);
-            gift.Magnitude = 5f; gift.TileRange = 1; gift.DataIndex = blast;
+            gift.Effect.Magnitude = 5f; gift.Effect.TileRange = 1; gift.Effect.DataIndex = blast;
             int a = AddAttachCard(def, "farewell_a", 1, gift);
             int b = AddAttachCard(def, "farewell_b", 1, gift);
             var m = CardBattle(def);
@@ -136,7 +136,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f);
             int blast = CoreTriggerFixtures.AddBlastProjectile(def);
             var corpse = CardRule(TriggerKind.OnKill, EffectKind.SelfTileAoe);
-            corpse.Magnitude = 5f; corpse.TileRange = 1; corpse.DataIndex = blast;
+            corpse.Effect.Magnitude = 5f; corpse.Effect.TileRange = 1; corpse.Effect.DataIndex = blast;
             int a = AddAttachCard(def, "corpse_a", 1, corpse);
             int b = AddAttachCard(def, "corpse_b", 1, corpse);
             var m = CardBattle(def);
@@ -158,8 +158,8 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreMatchFixtures.Definition();
             var probe = new CoreTriggerFixtures.ProbeSkill();
             var rule = CardProbe(TriggerKind.PeriodicTimer, probe);
-            rule.Payload = EffectKind.SelfOrbitProjectile;   // 불꽃 팽이 — 숙주 모델과 무관한 payload
-            rule.PeriodSeconds = 6f;
+            rule.Effect.Kind = EffectKind.SelfOrbitProjectile;   // 불꽃 팽이 — 숙주 모델과 무관한 payload
+            rule.Rule.PeriodSeconds = 6f;
             int c = AddAttachCard(def, "flame_spinner", 1, rule);
             var m = CardBattle(def);
             var host = Defender(m, new int2(3, 1));
@@ -195,7 +195,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             var rule = CardRule(TriggerKind.OnKill, EffectKind.SelfStatBuff);
-            rule.Magnitude = 1.1f;
+            rule.Effect.Magnitude = 1.1f;
             int card = AddAttachCard(def, "plain", 1, rule);
             var m = CardBattle(def);
             var attached = CoreCombatFixtures.Listen(m, CoreEventKind.CardAttached);

@@ -14,7 +14,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             var rule = CardRule(TriggerKind.OnKill, EffectKind.SelfStatBuff);
-            rule.Magnitude = 1.1f;
+            rule.Effect.Magnitude = 1.1f;
             int a = AddAttachCard(def, "plain_a", 1, rule);
             int b = AddAttachCard(def, "plain_b", 1, rule);
             var hv = CardDef.Default();

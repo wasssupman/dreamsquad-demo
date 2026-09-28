@@ -83,29 +83,26 @@ namespace Wassup.Tests.EditModeAssets
             return row;
         }
 
-        // 빌더가 규칙 줄에 명시로 옮기는 선택자 기본값(저작 기본 = Stun · Bleed · 반각 0 → (sin, cos) = (0, 1)).
-        private static void WithBuilderSelectorDefaults(ref BindingDef b)
+        // 빌더가 효과 줄에 명시로 옮기는 선택자 기본값(저작 기본 = Stun · Bleed · 반각 0 → (sin, cos) = (0, 1)).
+        private static void WithBuilderSelectorDefaults(ref RuleRow r)
         {
-            b.CcKind = (int)BindingDefinitionBuilder.ToSkillCc(default(DcCcKind));
-            b.StackKind = (int)BindingDefinitionBuilder.ToSkillStack(default(DcStackKind));
-            b.StatKind = (int)(BindingDefinitionBuilder.TryToSkillStat(default(CardBuffKind), out var st) ? st : SkillStatKind.DamageMul);
-            b.ConeSinHalf = 0f; b.ConeCosHalf = 1f;
+            r.Effect.CcKind = (int)BindingDefinitionBuilder.ToSkillCc(default(DcCcKind));
+            r.Effect.StackKind = (int)BindingDefinitionBuilder.ToSkillStack(default(DcStackKind));
+            r.Effect.StatKind = (int)(BindingDefinitionBuilder.TryToSkillStat(default(CardBuffKind), out var st) ? st : SkillStatKind.DamageMul);
+            r.Effect.ConeSinHalf = 0f; r.Effect.ConeCosHalf = 1f;
         }
 
-        // skill-data-table 1a — 탐침 줄은 효과를 인라인으로 들고(-1), 구운 줄은 효과 표를 가리킨다. 규칙 칸은 규칙 칸끼리,
-        // 효과 값은 **해석한 효과 줄끼리**(탐침 = `InlineEffect()` · 구움 = `EffectOf`) 대조한다 — id 는 빼고.
-        private static void AssertFieldEqual(BindingDef expected, BindingDef actual, in EffectDef actualEffect)
+        // 규칙 칸은 규칙 칸끼리(효과 줄 번호 · 진단 이름 · 실행자 참조 제외), 효과 값은 효과 줄끼리(id 제외) 대조한다.
+        private static void AssertFieldEqual(in RuleRow expected, BindingDef actual, in EffectDef actualEffect)
         {
-            Assert.AreEqual(expected.SkillId, actual.SkillId, "실행자(스킬 번호)");
-            var effectFields = new HashSet<string> { "Payload", nameof(BindingDef.EffectIndex) };
-            foreach (var f in typeof(EffectDef).GetFields(BindingFlags.Public | BindingFlags.Instance)) effectFields.Add(f.Name);
+            Assert.AreEqual(expected.Rule.SkillId, actual.SkillId, "실행자(스킬 번호)");
             foreach (var f in typeof(BindingDef).GetFields(BindingFlags.Public | BindingFlags.Instance))
             {
-                if (f.Name == nameof(BindingDef.Label) || f.Name == nameof(BindingDef.Skill) || f.Name == nameof(BindingDef.CoreSkill)) continue;
-                if (effectFields.Contains(f.Name)) continue;
-                Assert.AreEqual(f.GetValue(expected), f.GetValue(actual), $"필드 {f.Name} 이 탐침의 손조립 줄과 다르다");
+                if (f.Name == nameof(BindingDef.Label) || f.Name == nameof(BindingDef.Skill) || f.Name == nameof(BindingDef.CoreSkill)
+                    || f.Name == nameof(BindingDef.EffectIndex)) continue;
+                Assert.AreEqual(f.GetValue(expected.Rule), f.GetValue(actual), $"필드 {f.Name} 이 탐침의 손조립 줄과 다르다");
             }
-            object want = expected.InlineEffect();
+            object want = expected.Effect;
             object got = actualEffect;
             foreach (var f in typeof(EffectDef).GetFields(BindingFlags.Public | BindingFlags.Instance))
             {
@@ -167,8 +164,8 @@ namespace Wassup.Tests.EditModeAssets
             var (movement, payload) = CombatDefinitionBuilder.Translate(ProjectileFlightMode.SkyFall);
             var expected = HardCaseMeteorProbeTests.OnHitMeteorRule(HardCaseMeteorProbeTests.N, movement, payload);
             // 탐침의 예고 판(`…예고`)과 같은 두 칸 — 낙하 = 효과 지속 · 예고 켬(U1).
-            expected.Duration = HardCaseMeteorProbeTests.WarningSec;
-            expected.Telegraph = true;
+            expected.Effect.Duration = HardCaseMeteorProbeTests.WarningSec;
+            expected.Effect.Telegraph = true;
             WithBuilderSelectorDefaults(ref expected);
             AssertFieldEqual(expected, baked, in bakedEffect);
         }

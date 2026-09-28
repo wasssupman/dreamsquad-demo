@@ -13,9 +13,9 @@ namespace Wassup.Tests.EditMode.Core
         private static int Bounty(MatchDefinition def, float rewardMul = 3f, float dmgTakenMul = 0.7f)
         {
             var rule = CardRule(TriggerKind.None, EffectKind.BountyMark);
-            rule.Magnitude = rewardMul;
-            rule.HitThreshold = dmgTakenMul;   // bake 가 「받는 피해 −30%」를 배율로 싣는다
-            rule.FireCap = 1;
+            rule.Effect.Magnitude = rewardMul;
+            rule.Effect.HitThreshold = dmgTakenMul;   // bake 가 「받는 피해 −30%」를 배율로 싣는다
+            rule.Rule.FireCap = 1;
             int c = AddAttachCard(def, "fattened_offering", 20, rule);
             def.Cards[c].TargetsEnemies = true;
             return c;
@@ -80,7 +80,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             var rule = CardRule(TriggerKind.OnKill, EffectKind.SelfStatBuff);
-            rule.Magnitude = 1.1f;
+            rule.Effect.Magnitude = 1.1f;
             int u1 = AddAttachCard(def, "u1", 1, rule);
             int mark = Bounty(def);
             def.Mode.AttachCap = 1;

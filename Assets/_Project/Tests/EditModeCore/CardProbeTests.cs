@@ -18,21 +18,21 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             var lf = CardRule(TriggerKind.None, EffectKind.SelfBuffLethal);
-            lf.Magnitude = 1.9f;
-            lf.Duration = 5f;
-            lf.FireCap = 1;
+            lf.Effect.Magnitude = 1.9f;
+            lf.Effect.Duration = 5f;
+            lf.Rule.FireCap = 1;
             lastFlame = AddAttachCard(def, "fixture_last_flame", 1, lf);
 
             var fa = CardRule(TriggerKind.AttackN, EffectKind.ApplyCcToTarget);
-            fa.Period = 3;
-            fa.CcKind = (int)SkillCcKind.Stun;
-            fa.Duration = 1f;
+            fa.Rule.Period = 3;
+            fa.Effect.CcKind = (int)SkillCcKind.Stun;
+            fa.Effect.Duration = 1f;
             frostArrow = AddAttachCard(def, "fixture_frost_arrow", 1, fa);
 
             var fw = CardRule(TriggerKind.OnDeath, EffectKind.SelfTileAoe);
-            fw.Magnitude = 7f;
-            fw.TileRange = 1;
-            fw.DataIndex = CoreTriggerFixtures.AddBlastProjectile(def);
+            fw.Effect.Magnitude = 7f;
+            fw.Effect.TileRange = 1;
+            fw.Effect.DataIndex = CoreTriggerFixtures.AddBlastProjectile(def);
             farewell = AddAttachCard(def, "fixture_farewell", 1, fw);
             def.ConfigHash = def.ComputeConfigHash();
             return def;
