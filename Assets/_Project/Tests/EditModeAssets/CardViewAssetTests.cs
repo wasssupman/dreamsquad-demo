@@ -83,6 +83,8 @@ namespace Wassup.Tests.EditModeAssets
                 bool oldHas = old.shape != DcRangeShape.None;
                 bool nowHas = now.Shape != RangeShape.None;
                 Assert.AreEqual(oldHas, nowHas, $"'{cards[i].id}': 옛 카탈로그와 범위 유무가 다르다");
+                // skill-data-table 4-정리(B21) — 옛 카탈로그 삭제 전 기대값 고정용 실측 줄. 형식: `[B21] id|shape|radius|metric`.
+                TestContext.WriteLine($"[B21] {cards[i].id}|{(oldHas ? old.shape.ToString() : "None")}|{old.radiusTiles}|{old.metric}");
                 if (!oldHas) continue;
                 spatial++;
                 Assert.AreEqual(old.radiusTiles, now.RadiusTiles, 1e-5f, $"'{cards[i].id}': 도형 반경이 다르다");
