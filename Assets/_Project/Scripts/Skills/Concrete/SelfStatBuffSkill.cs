@@ -12,9 +12,11 @@ namespace Wassup.Skills.Concrete
     // (대상을 갖는 형제들도 «막지» 않는다 — 그쪽은 진영을 **caster 에서 도출**해서
     //  오사가 애초에 표현 불가능하다. 「막는다」와 「표현 불가」는 다르고, 이 레이어가
     //  택한 것은 후자다.)
-    // ⚠ **꼬리표와 칸 규칙이 트리거마다 다르다.** 그래서 공용 구현 하나에 얇은 파생 둘이다
-    // (스탯 오라·seam 과 같은 형태). 꼬리표는 연출(강화 오라 켜짐)이, 칸 규칙(`PerBindingSlot`)은 병합이 읽는다 —
-    // 둘은 한때 한 칸이었다(skill-data-table unit 2 에서 갈랐다).
+    // ⚠ **꼬리표는 트리거와 무관하게 하나다(U15) — 칸 규칙만 트리거마다 다르다.** 그래서 공용
+    // 구현 하나에 얇은 파생 둘이다(스탯 오라·seam 과 같은 형태). 꼬리표는 연출(강화 오라 켜짐)이,
+    // 칸 규칙(`PerBindingSlot`)은 병합이 읽는다 — 둘은 한때 한 칸이었다(skill-data-table unit 2 에서
+    // 갈랐다). 파생 둘이 «누가 들었나»에서 꼬리표를 갈랐던 적이 있었는데(빈사폭주가 `HealthThreshold`
+    // 꼬리표를 썼다) 그건 U15 위반이었다 — 같은 효과는 트리거가 달라도 같은 연출이다.
     public abstract class SelfStatBuffSkillBase : ISkill
     {
         public abstract int SkillId { get; }
@@ -55,13 +57,13 @@ namespace Wassup.Skills.Concrete
         protected override bool PerBindingSlot => true;
     }
 
-    // 체력 경계에서 켜지는 버프(빈사폭주) — **꼬리표가 다르다.** 강화 오라를 켜지 않고(`ModifierAuraClassifier` 가 그 꼬리표만
-    // 센다), 칸은 배치 칸(스택 id)이다 — 옛 동작 그대로.
+    // 체력 경계에서 켜지는 버프(빈사폭주) — **같은 효과라 꼬리표도 같다**(강화 오라, U15).
+    // 칸만 다르다: 배치 칸(스택 id)이다 — 옛 동작 그대로(회수 방식 불변).
     public sealed class ThresholdSelfBuffSkill : SelfStatBuffSkillBase
     {
         public const int Id = 22;
         public override int SkillId => Id;
-        protected override SkillModifierOrigin ModifierOrigin => SkillModifierOrigin.HealthThreshold;
+        protected override SkillModifierOrigin ModifierOrigin => SkillModifierOrigin.Dreamcatcher;
         protected override bool PerBindingSlot => false;
     }
 }

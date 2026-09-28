@@ -5,6 +5,7 @@ using Wassup.BattleCore;
 using Wassup.BattleCore.Effects;
 using Wassup.BattleCore.Trigger;
 using Wassup.Skills;
+using Wassup.Skills.Concrete;
 using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
 
 namespace Wassup.Tests.EditMode.Core
@@ -200,6 +201,42 @@ namespace Wassup.Tests.EditMode.Core
                 Assert.AreEqual(ModifierOrigin.Dreamcatcher, slot.Origin, $"{rule.Def.Origin} — 꼬리표는 효과가 박는다");
                 Assert.AreEqual(SlotTag.OfBinding(rule.InstanceId), slot.Key.Tag, $"{rule.Def.Origin} — 규칙 인스턴스 칸(옛 규칙 그대로)");
             }
+        }
+
+        [Test]
+        public void 빈사폭주도_광란과_같은_강화_오라를_켠다_병합_칸은_트리거마다_그대로다()
+        {
+            // U15 후속 — 같은 효과(`SelfStatBuff`)는 트리거가 달라도 같은 연출 꼬리표다. 예전엔 빈사폭주(`HealthThreshold`)
+            // 만 꼬리표가 달라 강화 오라가 안 켜졌다(`SelfStatBuffSkill.cs` 옛 주석) — 그 예외를 걷는다.
+            // 병합 칸 규칙(`PerBindingSlot`)은 트리거별로 그대로 — 광란은 규칙 인스턴스 칸, 빈사폭주는 배치 칸.
+            var attackRow = CoreTriggerFixtures.Rule(TriggerKind.AttackN, EffectKind.SelfStatBuff);
+            attackRow.Effect.Magnitude = 1.1f;
+            var thresholdRow = CoreTriggerFixtures.Rule(TriggerKind.HealthThreshold, EffectKind.SelfStatBuff);
+            thresholdRow.Effect.Magnitude = 1.1f;
+            Assert.AreEqual(SelfStatBuffSkill.Id, attackRow.Rule.SkillId, "픽스처 전제 — 라우팅이 광란으로 간다");
+            Assert.AreEqual(ThresholdSelfBuffSkill.Id, thresholdRow.Rule.SkillId, "픽스처 전제 — 라우팅이 빈사폭주로 간다");
+
+            var m = CoreMatchFixtures.BeginBattle(CoreMatchFixtures.Definition());
+            var attackHost = CoreTriggerFixtures.SpawnDefender(m, new int2(2, 1));
+            var thresholdHost = CoreTriggerFixtures.SpawnDefender(m, new int2(4, 1));
+            var attackBinding = CoreTriggerFixtures.AttachRuntime(m, attackHost, attackRow);
+            var thresholdBinding = CoreTriggerFixtures.AttachRuntime(m, thresholdHost, thresholdRow);
+
+            // 강제 발화 — 카운터·게이트·감지자를 건너뛰고 실행자만(tools.md 「트리거 강제 발화」). 공격 N회·빈사 진입을
+            // 실제로 재현하지 않아도 「이 트리거가 이 효과를 실행하면 무엇이 걸리나」를 직접 잰다.
+            Assert.IsTrue(m.Apply(Command.DebugFireBinding(attackHost.Id, attackBinding.InstanceId)).Accepted);
+            Assert.IsTrue(m.Apply(Command.DebugFireBinding(thresholdHost.Id, thresholdBinding.InstanceId)).Accepted);
+
+            Assert.IsTrue(ModifierAuraClassifier.HasActiveDreamcatcherModifier(attackHost.Modifiers.Slots), "광란 — 강화 오라(기존 동작 무변)");
+            Assert.IsTrue(ModifierAuraClassifier.HasActiveDreamcatcherModifier(thresholdHost.Modifiers.Slots), "빈사폭주 — 같은 효과라 같은 강화 오라(U15)");
+
+            var attackSlot = attackHost.Modifiers.Slots[0];
+            var thresholdSlot = thresholdHost.Modifiers.Slots[0];
+            Assert.AreEqual(ModifierOrigin.Dreamcatcher, attackSlot.Origin, "광란 — 꼬리표(무변)");
+            Assert.AreEqual(ModifierOrigin.Dreamcatcher, thresholdSlot.Origin, "빈사폭주 — 꼬리표가 같아졌다");
+
+            Assert.AreEqual(SlotTag.OfBinding(attackBinding.InstanceId), attackSlot.Key.Tag, "광란 — 규칙 인스턴스 칸(무변)");
+            Assert.AreEqual(new SlotTag(SlotKind.OnPlace, 0), thresholdSlot.Key.Tag, "빈사폭주 — 배치 칸(무변, 꼬리표와 무관)");
         }
 
         [Test]
