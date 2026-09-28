@@ -64,14 +64,6 @@ namespace Wassup.Data
         // category color when unassigned. Appended last to keep serialization
         // order stable for existing card assets.
         public Sprite art;
-        // dreamcatcher-unit-trigger Unit 0 — appended last to keep serialization
-        // order stable for existing card assets (mechanics deserialize as empty).
-        // effects[] and mechanics[] may coexist, but the current interpretation
-        // path consumes mechanics only for type=Unit cards (Squad/axis apply stays
-        // effects-only). Bake-time read only — never iterate mechanics per-frame
-        // (managed array). dreamcatcher-taxonomy-cleanup — scope keys on CardType
-        // now (the redundant CardBinding was removed).
-        public DcMechanic[] mechanics;
         // dreamcatcher-attack-mod-bounce Unit 0 — card class (c): always-on
         // attack-output modifications (usually 0~1). Appended last; bake-time
         // read only, same rules as mechanics above.
@@ -112,9 +104,8 @@ namespace Wassup.Data
         // (unit 7 rev 의 동기 — 구 3필드 설계의 잔존 companion 문제).
         public string attachValue;
 
-        // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄 · `BindingSpec`). 비어 있으면 굽기가 옛 칸
-        // (`mechanics` · `skill`)을 읽는다(이전 과도기 — 옛 칸은 사용자 승인 뒤 4-정리에서 걷는다). 액티브 카드는 정확히 한 줄
-        // (시전 `Cast` × 액티브 효과). Squad 는 줄 0(스탯 효과 = `effects`).
+        // skill-data-table unit 4 — 카드의 규칙 = **소유 줄**(효과 에셋 참조 · `BindingSpec`). 옛 `mechanics` 는 이전 뒤 은퇴. Unit 카드만
+        // 읽고(Squad 는 `effects`), 액티브 카드는 정확히 한 줄(시전 `Cast` × 액티브 효과 — `skill` 은 문안 · 덱 구성만 읽는다).
         public BindingSpec[] bindings;
         // U5 — 붙을 수 있는 숙주 종류(부여 게이트). 기본 방어유닛 · 적 표식 카드 = 적. 굽기가 켜진 종류마다 조합을 검증한다.
         public HostKinds hostKinds = HostKinds.Defender;

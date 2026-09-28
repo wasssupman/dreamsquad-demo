@@ -140,14 +140,15 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
             card.id = "test_card";
             card.displayName = "OLD";
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
                     trigger = new TriggerSpec { kind = TriggerKind.AttackN, period = 5 },
                     payload = new DcPayloadSpec { kind = EffectKind.SelfTileAoe, magnitude = 20, tileRange = 1 },
                 },
-            };
+            });
+            var effect = card.bindings[0].effect;
             var catalog = ScriptableObject.CreateInstance<DreamcatcherCardCatalog>();
             catalog.cards = new[] { card };
 
@@ -159,11 +160,13 @@ namespace Wassup.Tests.EditMode.UnitStatImport
                 Tabs, catalog, null, null);
 
             Assert.AreEqual("NEW", card.displayName, "other tabs still apply");
-            Assert.AreEqual(5, card.mechanics[0].trigger.period, "mechanics must not be touched by login import");
-            Assert.AreEqual(20f, card.mechanics[0].payload.magnitude);
-            Assert.AreEqual(1, card.mechanics[0].payload.tileRange);
+            Assert.AreEqual(5, card.bindings[0].trigger.period, "소유 줄은 로그인 import 가 못 건드린다");
+            Assert.AreSame(effect, card.bindings[0].effect);
+            Assert.AreEqual(20f, effect.values.damage);
+            Assert.AreEqual(1, effect.values.radiusTiles);
             StringAssert.Contains("[dc-mechanics] 1 row(s) ignored", log);
 
+            Object.DestroyImmediate(effect);
             Object.DestroyImmediate(card);
             Object.DestroyImmediate(catalog);
         }

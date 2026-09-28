@@ -342,18 +342,8 @@ namespace Wassup.Data
         // 정의 계층의 SO 참조는 위 projectile·auraPrefab·pattern 선례와 동일 — 금지
         // 대상은 Entities/Battle 타입이다. null = 요약 라인 생략(기존 카드 무변화).
         public StackModifierSO stackModifier;
-        // elite-enemy-tier unit 5 — SplitOnDeath 전용. 죽을 때 태어날 적 SO.
-        // 정의 계층의 SO 참조는 위 projectile·auraPrefab·pattern·stackModifier 선례와 동일 —
-        // 금지 대상은 Entities/Battle 타입이고 AttackUnitData 는 같은 Wassup.Data 다.
-        // null = bake 가 loud 거절. 다른 kind 는 무시.
-        //
-        // ⚠ **중간 단계는 메커닉을 갖는다 — 다단계 분열이 사양이다**(슬라임: 본체 → 중간 ×2 →
-        // 작은 ×4). 그래서 «자식은 메커닉이 없다» 를 재귀 방어로 쓰지 않는다(초판 규약이었고
-        // 2026-08-12 에 폐기됐다). 무한 분열을 실제로 만드는 것은 **사슬이 자기에게 돌아오는
-        // 것**이므로 판정은 `SplitChain.Validate`(순환·과길이·자손 총수)가 소유하고 bake 가
-        // 호출한다. 저작 규칙은 하나다 — **마지막 단계의 `nightmareMechanics` 를 비워** 사슬을
-        // 끝낼 것.
-        public AttackUnitData splitUnit;
+        // (옛 `splitUnit` — 분열 자식 SO 는 적 고유 값 `AttackUnitData.splitUnit` 으로 옮겼다 · skill-data-table unit 4.
+        //  다단계 분열 · 사슬 검증 규칙은 `SplitChain` 머리말.)
         // dreamcatcher-content-4 unit 8 — SelfOrbitProjectile 전용 **구슬 개수**(0/1 = 1개).
         // 명시 필드인 이유는 `slamDamage`·`coneHalfAngleDeg` 와 같다 — 이 payload 가 쓰는
         // 스칼라는 전부 임자가 있다(magnitude=피해 · duration=지속 · tileRange=궤도 반경).
@@ -375,6 +365,8 @@ namespace Wassup.Data
         public bool telegraph;
     }
 
+    // skill-data-table unit 4 — 이제 **저장 형식이 아니라 보기**다(`BindingSpecView` 가 소유 줄에서 비춘다 · 에셋에 안 쓴다). 문안 · 진단 ·
+    // 굽기 잎 검증이 옛 칸 이름으로 읽는 동안만 남는다(개명 · 은퇴는 후속).
     [Serializable]
     public struct DcMechanic
     {

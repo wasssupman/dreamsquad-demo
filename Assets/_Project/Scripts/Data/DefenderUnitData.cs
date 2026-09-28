@@ -148,7 +148,7 @@ namespace Wassup.Data
         // skill-layer-migration unit 2g — **배치 효과 flat 필드군이 은퇴했다.**
         // `onPlaceEffect` enum 11종과 그 파라미터 5개(range/magnitude/duration/stackKind/
         // tickInterval)가 여기 있었다. 이제 배치 스킬은 `abilities` 의
-        // `UnitSkillAbility{OnPlace × payload}` 하나로만 저작한다 — 어휘가 하나다.
+        // 소유 줄(`bindings` — OnPlace × 효과 에셋) 하나로만 저작한다 — 어휘가 하나다(skill-data-table unit 4).
 
         // camera-direction unit 17 — 배치 스킬이 발동하는 순간의 카메라 셰이크.
         // 배치 확정 seam 두 곳이 공유한다. 스킬이 없는 유닛에도 걸 수 있지만
@@ -244,13 +244,13 @@ namespace Wassup.Data
 
         // defender-ability-assets unit 2 — 능력별 flat 필드 그룹(volley 4·hazard 8·
         // shield 4·bomb 9)은 능력 서브에셋(Data/Abilities/)으로 이관·삭제됨. 파라미터는
-        // DirectionalVolleyAbility/HazardCastAbility/ShieldCastAbility/BombThrowAbility 소유.
+        // DirectionalVolleyAbility/HazardCastAbility/BombThrowAbility(+SummonPatrolAbility) 소유 — 실드 캐스트는 소유 줄로 이전.
         // 같은 구체 타입 중복 부착 금지(GetAbility = 첫 매치, 저작 규율 — spec 계약 1).
         [Header("Abilities")]
         public List<DefenderAbilityData> abilities = new List<DefenderAbilityData>();
 
-        // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄). 비어 있지 않으면 굽기가 이것만 읽고 규칙 레일 능력 둘
-        // (`UnitSkillAbility` · `ShieldCastAbility`)은 안 읽는다(이전 과도기 — 둘은 4-정리에서 은퇴). 평타 경로 능력은 `abilities` 그대로.
+        // skill-data-table unit 4 — 방어유닛의 규칙 = **소유 줄**(효과 에셋 참조). 옛 규칙 레일 능력 둘(`UnitSkillAbility` · `ShieldCastAbility`)은
+        // 이전 뒤 은퇴(타입 · 에셋 18 삭제). `abilities` 는 평타 경로 능력(폭탄 · 방향 사격 · 순찰 소환 · 장판 시전)만 든다.
         public BindingSpec[] bindings;
         /// <summary>소유 줄을 옛 메커닉 모양으로(진단 — `BindingSpecView`). 매 프레임 금지.</summary>
         public DcMechanic[] RuleView() => BindingSpecView.Of(bindings);

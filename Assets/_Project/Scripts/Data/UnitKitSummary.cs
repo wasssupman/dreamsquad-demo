@@ -56,7 +56,7 @@ namespace Wassup.Data
             if (u.aggroCapacity > 0)
                 traits.Add($"최대 {u.aggroCapacity}체 도발 유지");
             // on-place-skill-rework unit 6 — 배치 스킬의 출처가 둘이다: 레거시 enum 과
-            // 규칙(UnitSkillAbility). 규칙을 먼저 보고, 없을 때만 enum 으로 떨어진다 —
+            // 규칙(소유 줄 `bindings`). 규칙을 먼저 보고, 없을 때만 enum 으로 떨어진다 —
             // 둘 다 선언된 유닛은 bake 가 경고하므로 여기선 한 줄만 낸다.
             string onPlace = OnPlaceRuleClause(u);
             if (!string.IsNullOrEmpty(onPlace))

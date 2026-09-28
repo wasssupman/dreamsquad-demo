@@ -229,24 +229,15 @@ namespace Wassup.Data
         [Header("Awakening")]
         public int awakeningReward = 1;
 
-        // nightmare-catcher unit 5 — 특수 메커닉 선언(정의 계층 DcMechanic, ECS 무참조).
-        // 비어있지 않으면 스폰 베이크가 `DcTriggerSlot` 을 부착한다. 빈 배열/null = 무변경.
-        //
-        // ★**«비어있지 않으면 이 적이 곧 보스» 는 더 이상 참이 아니다**(elite-enemy-tier unit 0).
-        // BossTag·ThreatEntry·등장경보는 이제 `tier == EnemyTier.Boss` 에서만 나온다. 그래서
-        // **특수 메커닉을 가진 «보스가 아닌 적»**(엘리트)이 성립한다 — 그게 그 spec 의 요점이다.
-        // 이 필드 이름이 이제 실제 범위보다 좁다(보스 전용이 아니다). rename 하지 않는 이유는
-        // 라이브 에셋들이 이 YAML 키를 들고 있어서다.
-        [Header("Nightmare Catcher")]
-        public DcMechanic[] nightmareMechanics;
 
-        // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄). 비어 있지 않으면 굽기가 이것만 읽는다(이전 과도기 —
-        // `nightmareMechanics` 는 4-정리에서 걷는다).
+        // skill-data-table unit 4 — 특수 규칙 = **소유 줄**(효과 에셋 참조 · 카드 · 방어유닛과 같은 형식). 옛 `nightmareMechanics` 는 이전 뒤 은퇴.
+        // ★ 비어 있지 않다고 보스가 아니다 — 보스 표식은 `tier == EnemyTier.Boss`(elite-enemy-tier unit 0). 엘리트도 규칙을 든다.
+        [Header("Rules")]
         public BindingSpec[] bindings;
         /// <summary>소유 줄을 옛 메커닉 모양으로(진단 — `BindingSpecView`). 매 프레임 금지.</summary>
         public DcMechanic[] RuleView() => BindingSpecView.Of(bindings);
         // 분열은 소유 줄이 아니라 **적 고유 값**이다(`tables.md` §8 · 옛 `SplitOnDeath` 메커닉 — 빌더가 규칙 줄을 안 만들었다).
-        // `splitUnit` 이 있으면 `SplitChain` 이 이것을 읽는다(없으면 옛 메커닉). 사슬 끝 = 마지막 단계의 `splitUnit` 을 비운다.
+        // `SplitChain` 이 이것만 읽는다. 사슬 끝 = 마지막 단계의 `splitUnit` 을 비운다.
         public AttackUnitData splitUnit;
         [Tooltip("분열 자식 수 — 1 이상 · 정의표 상한(MovementTuning.splitMaxChildren) 이하.")]
         public int splitCount;
