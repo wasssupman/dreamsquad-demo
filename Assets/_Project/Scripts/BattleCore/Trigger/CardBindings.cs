@@ -134,13 +134,16 @@ namespace Wassup.BattleCore.Trigger
                 HasCellAim = true, CellA = cellA, CellB = cellB, HasCellB = hasCellB,
             };
 
-        /// <summary>이 적에 표식이 이미 붙었나 — 카드 표식 규칙이 붙어 있는가(옛 `_bountyMarked` 등록부의 후계).</summary>
+        /// <summary>
+        /// 이 적에 표식이 이미 붙었나 — 표식 **효과**를 든 규칙이 붙어 있는가(옛 `_bountyMarked` 등록부의 후계). 정체는 효과다 —
+        /// 누가 붙였나(출처 꼬리표)를 묻지 않는다(skill-data-table unit 2).
+        /// </summary>
         public static bool IsMarked(Unit enemy)
         {
             if (enemy == null) return false;
             var list = enemy.Bindings;
             for (int i = 0; i < list.Count; i++)
-                if (list[i].Effect.Kind == EffectKind.BountyMark && list[i].Def.Origin == BindingOrigin.Card) return true;
+                if (list[i].Effect.Kind == EffectKind.BountyMark) return true;
             return false;
         }
 

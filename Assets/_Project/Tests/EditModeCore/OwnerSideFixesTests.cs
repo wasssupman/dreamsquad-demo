@@ -10,6 +10,7 @@ namespace Wassup.Tests.EditMode.Core
 {
     // skill-data-table unit 2 — **소유자 쪽 결손.** 스킬은 소유자를 묻지 않고, 소유자마다 달라야 하는 값은 그 값의 담당자가 든다.
     //   · 주체 없는 시전(판 시전 · 판 주기 · 표식)의 진영 = 규칙 인스턴스의 시전 진영(`Binding.CastFaction` — 붙인 쪽이 채운다)
+    //   · 표식의 정체 = 효과(`CardBindings.IsMarked` 가 출처 꼬리표를 묻지 않는다)
     //   · 「부착 즉시 첫 발동」은 카드 행 부착 경로 한정(`BindingRegistry.ArmFirstFireOnAttach`) — 유닛 저작 · 온천 위상은 그대로
     // ⚠ 여기 수치는 게임 값이 아니라 픽스처다.
     [TestFixture]
@@ -116,6 +117,26 @@ namespace Wassup.Tests.EditMode.Core
             int first = heat.Find(e => e.A == withCard.Id).Tick;
             Assert.AreEqual(heat.Find(e => e.A == control.Id).Tick, first, "카드가 붙은 숙주의 열기 위상 = 카드 없는 숙주");
             Assert.Greater(first, 1, "열기는 부착 즉시 발동이 아니다(위상 보정 한 틱만)");
+        }
+
+        // ── 표식의 정체 = 효과 ─────────────────────────────────────────────
+
+        [Test]
+        public void 표식_판정은_효과로_가른다_출처를_묻지_않는다()
+        {
+            var def = CoreMatchFixtures.Definition();
+            var m = CoreMatchFixtures.BeginBattle(def);
+            var enemy = CoreTriggerFixtures.SpawnEnemy(m, new int2(5, 2));
+            Assert.IsFalse(CardBindings.IsMarked(enemy));
+            var other = CoreTriggerFixtures.Rule(TriggerKind.None, EffectKind.SelfStatBuff);
+            other.Rule.Origin = BindingOrigin.Card;
+            CoreTriggerFixtures.AttachRuntime(m, enemy, other);
+            Assert.IsFalse(CardBindings.IsMarked(enemy), "카드 출처라도 표식 효과가 아니면 표식이 아니다");
+
+            var mark = CoreTriggerFixtures.Rule(TriggerKind.None, EffectKind.BountyMark);
+            Assert.AreNotEqual(BindingOrigin.Card, mark.Rule.Origin, "픽스처 전제 — 카드 출처가 아닌 표식 줄");
+            CoreTriggerFixtures.AttachRuntime(m, enemy, mark);
+            Assert.IsTrue(CardBindings.IsMarked(enemy), "표식 효과를 든 규칙 = 표식(출처 무관)");
         }
     }
 }
