@@ -818,28 +818,7 @@ namespace Wassup.BattleCore
             ref var card = ref def.Cards[cardRow];
             sb.Append("[card ").Append(cardRow.ToString(inv)).Append(' ').Append(card.Id).Append("]\n");
             card.Canonicalize(sb, inv);
-            foreach (var r in Rows(card))
-            {
-                if (r < 0 || r >= def.Bindings.Length) { sb.Append("[rule ").Append(r.ToString(inv)).Append("] 표 밖\n"); continue; }
-                ref var d = ref def.Bindings[r];
-                sb.Append("[rule ").Append(r.ToString(inv)).Append("] ").Append(d.Label).Append('\n');
-                d.Canonicalize(sb, inv);
-                if (d.DataIndex >= 0 && d.DataIndex < def.Projectiles.Length)
-                {
-                    sb.Append("[projectile ").Append(d.DataIndex.ToString(inv)).Append("]\n");
-                    def.Projectiles[d.DataIndex].Canonicalize(sb, inv);
-                }
-                if (d.PatternDefIndex >= 0 && d.PatternDefIndex < def.Patterns.Length)
-                {
-                    sb.Append("[pattern ").Append(d.PatternDefIndex.ToString(inv)).Append("]\n");
-                    def.Patterns[d.PatternDefIndex].Canonicalize(sb, inv);
-                }
-                if (d.HazardDefIndex >= 0 && d.HazardDefIndex < def.Hazards.Length)
-                {
-                    sb.Append("[hazard ").Append(d.HazardDefIndex.ToString(inv)).Append("]\n");
-                    def.Hazards[d.HazardDefIndex].Canonicalize(sb, inv);
-                }
-            }
+            foreach (var r in Rows(card)) AppendRule(sb, def, r, inv);
             return sb.ToString();
         }
 
@@ -849,6 +828,46 @@ namespace Wassup.BattleCore
             var sb = new StringBuilder(def.Cards.Length * 512);
             for (int i = 0; i < def.Cards.Length; i++) sb.Append(CanonicalCardText(def, i));
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// unified-effect-layer unit 5 — 유닛·적 줄 하나가 든 **공격 수식자 + 규칙 줄**의 canonical 텍스트(카드 스냅샷과 같은
+        /// canonicalize). 규칙도 수식자도 없으면 빈 문자열. 머리줄(어느 에셋인가)은 호출부가 쓴다 — 코어는 에셋을 모른다.
+        /// </summary>
+        public static string CanonicalHostRulesText(MatchDefinition def, bool enemy, int row)
+        {
+            var inv = CultureInfo.InvariantCulture;
+            var sb = new StringBuilder(256);
+            var attack = enemy ? def.Enemies[row].Attack : def.Units[row].Attack;
+            var rules = enemy ? def.Enemies[row].Bindings : def.Units[row].Bindings;
+            int mods = attack.Mods != null ? attack.Mods.Length : 0;
+            for (int i = 0; i < mods; i++) attack.Mods[i].Canonicalize(sb, inv, "attackMod" + i.ToString(inv));
+            if (rules != null) foreach (var r in rules) AppendRule(sb, def, r, inv);
+            return sb.ToString();
+        }
+
+        // 규칙 줄 하나 + 그 줄이 가리키는 탄·발사 명세·장판 줄(표에 있을 때만).
+        private static void AppendRule(StringBuilder sb, MatchDefinition def, int r, CultureInfo inv)
+        {
+            if (r < 0 || r >= def.Bindings.Length) { sb.Append("[rule ").Append(r.ToString(inv)).Append("] 표 밖\n"); return; }
+            ref var d = ref def.Bindings[r];
+            sb.Append("[rule ").Append(r.ToString(inv)).Append("] ").Append(d.Label).Append('\n');
+            d.Canonicalize(sb, inv);
+            if (d.DataIndex >= 0 && d.DataIndex < def.Projectiles.Length)
+            {
+                sb.Append("[projectile ").Append(d.DataIndex.ToString(inv)).Append("]\n");
+                def.Projectiles[d.DataIndex].Canonicalize(sb, inv);
+            }
+            if (d.PatternDefIndex >= 0 && d.PatternDefIndex < def.Patterns.Length)
+            {
+                sb.Append("[pattern ").Append(d.PatternDefIndex.ToString(inv)).Append("]\n");
+                def.Patterns[d.PatternDefIndex].Canonicalize(sb, inv);
+            }
+            if (d.HazardDefIndex >= 0 && d.HazardDefIndex < def.Hazards.Length)
+            {
+                sb.Append("[hazard ").Append(d.HazardDefIndex.ToString(inv)).Append("]\n");
+                def.Hazards[d.HazardDefIndex].Canonicalize(sb, inv);
+            }
         }
 
         /// <summary>콘솔·테스트 메시지용 표(카드 · 구움 · 발동 · 관측 · 진단).</summary>
