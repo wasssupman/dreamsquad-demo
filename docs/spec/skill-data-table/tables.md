@@ -233,7 +233,7 @@
 5. `DreamcatcherCard.leakAllowanceCost` 코어 소비 0 — 문안(`DreamcatcherCardText.cs:149-151`)과 테스트만 읽는다. 열은 유지(값 보존) · 처리는 후속 후보.
 6. census(2026-09-26)의 Unit 카드 33 · 메커닉 32 는 이후 `star_strike` · `gaesagi` 추가로 35 · 34 — census 는 날짜 스냅샷이라 고치지 않는다.
 
-## 사용자 확인
+## 사용자 확인 (2026-09-28 답: 표 모양 승인 U12 · 같은 값 병합 안 함 U13 · 실드 반경 고정값 U14 — README)
 
 1. **표 모양 전체**(0 완료 기준 — 저작자가 쓰는 도구). 특히 ① 옛 겸직 칸(`magnitude`·`tileRange`·`duration`)을 뜻 이름 칸으로 푼 것 ② 액티브를 효과 표에 넣은 것(종류 6 append · 트리거 `Cast`) ③ 공격 수식자 · 스쿼드 효과 · 드림스톤은 효과 id 를 주지 않은 것.
 2. **같은 값 효과 병합** — `heavy_strike` · `execution_strike` · `calamity_heart` 의 강타 ×2 가 한 효과, 짱쎈 순간이동 2줄(0.9 · 0.5)이 한 효과가 된다. 병합하면 **한 줄 조정이 모든 소유자에 번진다**. 병합 / 소유자별 분리(값이 같아도 다른 id) 중 택일(unit 4 dry-run 에서 줄 단위로 다시 확인).
