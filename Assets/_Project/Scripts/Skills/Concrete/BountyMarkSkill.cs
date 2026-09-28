@@ -36,7 +36,8 @@ namespace Wassup.Skills.Concrete
                 Source = target.Unit,
                 Selector = (int)SkillStatKind.DmgTakenMul,
                 Op = SkillCombineOp.FromAuthoredMultiplier,
-                Origin = SkillModifierOrigin.Dreamcatcher,
+                Origin = SkillModifierOrigin.Dreamcatcher,   // 연출 꼬리표 = 강화 오라(효과 기준 · U15)
+                PerBindingSlot = true,                        // 규칙 인스턴스 칸(병합 규칙)
                 Amount = p.HitThreshold,   // 감지자가 % → 배율로 이미 바꿔 실었다
                 Duration = p.Duration,
                 StackId = p.StackId,

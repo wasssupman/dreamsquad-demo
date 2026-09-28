@@ -147,11 +147,12 @@ namespace Wassup.BattleCore.Trigger
                              TagFor(in i), cap, ToCoreOrigin(i.Origin));
         }
 
-        // 병합 칸(6a 구현 3). **카드 효과는 그 규칙의 `InstanceId`**(카드마다 새 칸 — 옛 `_dcStackCounter++` 의
-        // 후계이고 소급 회수의 판별자), 유닛 저작 스킬은 스택 id 를 판별자로 한 배치 칸이다(옛 `stackId`).
+        // 병합 칸(6a 구현 3). **인스턴스 칸을 청한 효과는 그 규칙의 `InstanceId`**(붙일 때마다 새 칸 — 옛 `_dcStackCounter++` 의
+        // 후계이고 소급 회수의 판별자), 그 밖은 스택 id 를 판별자로 한 배치 칸이다(옛 `stackId`).
+        // skill-data-table unit 2 — 판별은 규칙 칸(`PerBindingSlot`)이다. 연출 꼬리표(`Origin`)를 읽지 않는다(U15 — 연출과 규칙 분리).
         private SlotTag TagFor(in SimIntent i)
         {
-            if (i.Origin == SkillModifierOrigin.Dreamcatcher && _binding != null)
+            if (i.PerBindingSlot && _binding != null)
                 return SlotTag.OfBinding(_binding.InstanceId);
             if (_binding != null && _binding.Def.RevokeOnExpire)
                 return SlotTag.OfBinding(_binding.InstanceId);   // 회수할 수 있어야 하는 칸

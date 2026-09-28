@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
 using Wassup.BattleCore;
+using Wassup.BattleCore.Effects;
 using Wassup.BattleCore.Trigger;
 using Wassup.Skills;
 using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
@@ -13,6 +14,7 @@ namespace Wassup.Tests.EditMode.Core
     //   · 표식의 정체 = 효과(`CardBindings.IsMarked` 가 출처 꼬리표를 묻지 않는다)
     //   · 카드 발동 연출(카드 펄스 · 발동 임팩트)의 게이트 = 그 줄이 카드 보유 줄인가(`MatchDefinition.IsCardRow` · U16)
     //   · 「부착 즉시 첫 발동」은 카드 행 부착 경로 한정(`BindingRegistry.ArmFirstFireOnAttach`) — 유닛 저작 · 온천 위상은 그대로
+    //   · 연출은 효과 기준(U15) — 강화 오라 꼬리표는 효과(실행자)가 박고, 병합 칸 규칙(`SimIntent.PerBindingSlot`)은 그 꼬리표를 안 읽는다
     // ⚠ 여기 수치는 게임 값이 아니라 픽스처다.
     [TestFixture]
     public class OwnerSideFixesTests
@@ -169,6 +171,76 @@ namespace Wassup.Tests.EditMode.Core
                 Assert.AreEqual(e.DefIndex == cardRow, m.Definition.IsCardRow(e.DefIndex), $"같은 효과 · 같은 숙주 — 줄 {e.DefIndex} 는 보유로만 갈린다");
             Assert.IsFalse(m.Definition.IsCardRow(-1), "런타임 조립 줄");
             Assert.IsFalse(m.Definition.IsCardRow(def.Bindings.Length), "표 밖");
+        }
+
+        // ── 연출은 효과 기준(U15) ───────────────────────────────────────────
+
+        [Test]
+        public void 같은_효과면_소유자가_달라도_같은_연출_꼬리표와_같은_칸_규칙이다()
+        {
+            // 강화 오라(`CoreDcAuraVisualPool`)는 이 판정(`HasActiveDreamcatcherModifier`)만 본다 — 카드가 들든 유닛이 들든 같아야 한다.
+            var m = CoreMatchFixtures.BeginBattle(CoreMatchFixtures.Definition());
+            var innateHost = CoreTriggerFixtures.SpawnDefender(m, new int2(2, 1));
+            var cardHost = CoreTriggerFixtures.SpawnDefender(m, new int2(4, 1));
+            var innate = CoreTriggerFixtures.Rule(TriggerKind.PeriodicTimer, EffectKind.SelfStatBuff);
+            innate.Rule.PeriodSeconds = BattleMatch.Dt;
+            innate.Effect.Magnitude = 1.1f;
+            var carded = innate;
+            carded.Rule.Origin = BindingOrigin.Card;
+            Assert.AreNotEqual(innate.Rule.Origin, carded.Rule.Origin, "픽스처 전제 — 소유자만 다르다");
+            var a = CoreTriggerFixtures.AttachRuntime(m, innateHost, innate);
+            var b = CoreTriggerFixtures.AttachRuntime(m, cardHost, carded);
+
+            for (int t = 0; t < 5; t++) m.Tick();
+
+            foreach (var (host, rule) in new[] { (innateHost, a), (cardHost, b) })
+            {
+                Assert.IsTrue(ModifierAuraClassifier.HasActiveDreamcatcherModifier(host.Modifiers.Slots), $"{rule.Def.Origin} — 강화 오라");
+                var slot = host.Modifiers.Slots[0];
+                Assert.AreEqual(ModifierOrigin.Dreamcatcher, slot.Origin, $"{rule.Def.Origin} — 꼬리표는 효과가 박는다");
+                Assert.AreEqual(SlotTag.OfBinding(rule.InstanceId), slot.Key.Tag, $"{rule.Def.Origin} — 규칙 인스턴스 칸(옛 규칙 그대로)");
+            }
+        }
+
+        [Test]
+        public void 병합_칸_규칙은_연출_꼬리표를_읽지_않는다()
+        {
+            var m = CoreMatchFixtures.BeginBattle(CoreMatchFixtures.Definition());
+            var host = CoreTriggerFixtures.SpawnDefender(m, new int2(2, 1));
+            var rule = CoreTriggerFixtures.AttachRuntime(m, host, CoreTriggerFixtures.Rule(TriggerKind.PeriodicTimer, EffectKind.SelfStatBuff));
+            var id = CoreSkillContext.ToSkill(host.Id);
+            m.Intents.Begin(rule, BattleMatch.PlayerFaction, null);
+            // 강화 오라 꼬리표인데 칸 규칙은 끔 → 배치 칸 / 다른 꼬리표인데 칸 규칙은 켬 → 인스턴스 칸.
+            m.Intents.Apply(new SimIntent
+            {
+                Kind = SimIntentKind.ApplyStatModifier, Target = id, Source = id, Selector = (int)SkillStatKind.DamageMul,
+                Op = SkillCombineOp.FromAuthoredMultiplier, Origin = SkillModifierOrigin.Dreamcatcher, Amount = 1.1f, StackId = 7,
+            });
+            m.Intents.Apply(new SimIntent
+            {
+                Kind = SimIntentKind.ApplyStatModifier, Target = id, Source = id, Selector = (int)SkillStatKind.AttackSpeedMul,
+                Op = SkillCombineOp.FromAuthoredMultiplier, Origin = SkillModifierOrigin.OnPlace, PerBindingSlot = true, Amount = 1.1f,
+            });
+            m.Intents.End();
+
+            Assert.AreEqual(2, host.Modifiers.Count);
+            Assert.AreEqual(new SlotTag(SlotKind.OnPlace, 7), host.Modifiers.Slots[0].Key.Tag, "꼬리표만으로는 인스턴스 칸이 아니다");
+            Assert.AreEqual(SlotTag.OfBinding(rule.InstanceId), host.Modifiers.Slots[1].Key.Tag, "칸 규칙이 인스턴스 칸을 정한다");
+        }
+
+        [Test]
+        public void 표식_효과_줄이_붙는_사건은_소유자와_무관하게_효과_종류를_싣는다()
+        {
+            // 표식 별(`CoreStatusFxSpawner`)은 이 사건의 효과 종류로 켠다 — 카드 부착 사건(`CardAttached`)이 아니다.
+            var m = CoreMatchFixtures.BeginBattle(CoreMatchFixtures.Definition());
+            var enemy = CoreTriggerFixtures.SpawnEnemy(m, new int2(5, 2));
+            var attached = CoreCombatFixtures.Listen(m, CoreEventKind.BindingAttached);
+            var mark = CoreTriggerFixtures.Rule(TriggerKind.None, EffectKind.BountyMark);
+            Assert.AreNotEqual(BindingOrigin.Card, mark.Rule.Origin, "픽스처 전제 — 카드가 아닌 소유자");
+            CoreTriggerFixtures.AttachRuntime(m, enemy, mark);
+            m.Tick();   // 사건은 틱 경계에서 배달된다
+            Assert.IsTrue(attached.Exists(e => e.A == enemy.Id && (EffectKind)(int)e.Amount == EffectKind.BountyMark),
+                          "카드가 아닌 소유자의 표식 줄도 표식 효과로 보인다");
         }
     }
 }

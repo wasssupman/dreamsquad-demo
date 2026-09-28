@@ -64,7 +64,10 @@ namespace Wassup.BattleCore.Effects
                 || rNet > Eps || rNet < -Eps;
         }
 
-        /// <summary>드림캐쳐가 건 스탯이 살아 있나 — 옛 이름의 짝(강화 오라).</summary>
+        /// <summary>
+        /// 강화 오라를 켜는 효과가 건 스탯이 살아 있나. 꼬리표 `Dreamcatcher` 는 옛 출처 이름이고, 뜻은 「이 효과는 강화 오라로
+        /// 보인다」다 — 실행자(효과)가 박는다, 소유자에서 파생하지 않는다(skill-data-table U15). 개명은 unit 4(B13).
+        /// </summary>
         public static bool HasActiveDreamcatcherModifier(IReadOnlyList<ModifierSlot> slots)
             => HasActiveModifier(slots, ModifierOrigin.Dreamcatcher);
 

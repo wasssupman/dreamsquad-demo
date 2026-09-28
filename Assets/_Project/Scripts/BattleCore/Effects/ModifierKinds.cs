@@ -44,6 +44,8 @@ namespace Wassup.BattleCore.Effects
     /// <summary>
     /// 이 모디파이어가 **어디서 왔나**. 꼬리표이고 **병합 키가 아니다**(F26 — 병합 키는
     /// `SlotTag` 다). 오라 판정·로그·상태 그림이 이것으로 거른다.
+    /// skill-data-table unit 2(U15 — 연출은 효과 기준): 연출이 읽는 값(`Dreamcatcher` = 강화 오라 · `Burnout`)은 **효과가** 박는다 —
+    /// 소유자(카드 · 유닛 · 적)에서 파생하지 않는다. 병합 칸 규칙은 이것을 읽지 않는다(`SimIntent.PerBindingSlot`).
     ///
     /// ⚠ 3(`Synergy`)은 **은퇴 슬롯**이다(2026-09-03 기능 제거). 지우면 뒤 값이 밀려
     /// `SkillModifierOrigin` 캐스트가 조용히 어긋난다 — 번호만 보존한다.

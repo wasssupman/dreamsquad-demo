@@ -7,8 +7,10 @@ using Wassup.Data.BattleView;
 
 namespace Wassup.BattleCoreUnity.View
 {
-    // battle-core-rebuild unit 6c — **드림캐쳐가 건 스탯의 오라**(강화 오라). 옛 `DcAuraVisualPool`
+    // battle-core-rebuild unit 6c — **강화 오라**(옛 이름 「드림캐쳐가 건 스탯의 오라」). 옛 `DcAuraVisualPool`
     // (92줄) + 브리지 `ReconcileStatusFx` 의 `Empowered` 분기의 후계다.
+    // skill-data-table unit 2(U15) — 켜는 것은 **효과**다(그 효과의 실행자가 박은 꼬리표). 같은 효과면 카드가 들든 유닛·적이
+    // 들든 같은 오라가 뜬다. 부착 오라(아래 7c)도 효과 저작(`payload.auraPrefab`)이 정하고 카드 줄에도 실린다.
     //
     // 켜짐의 판정은 **순수 함수**가 한다(`ModifierAuraClassifier.HasActiveDreamcatcherModifier` —
     // 출처 필터 + net 편차). 이 풀은 판정하지 않는다: 스탯 사건(`ModifierApplied`·`ModifierRevoked`)을

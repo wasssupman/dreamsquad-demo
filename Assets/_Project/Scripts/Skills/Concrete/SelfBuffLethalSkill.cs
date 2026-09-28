@@ -29,7 +29,8 @@ namespace Wassup.Skills.Concrete
                 Selector = (int)SkillStatKind.AttackSpeedMul,
                 // 배율→버킷 변환은 저작 계층 규칙이라 어댑터가 소유한다.
                 Op = SkillCombineOp.FromAuthoredMultiplier,
-                Origin = SkillModifierOrigin.Dreamcatcher,
+                Origin = SkillModifierOrigin.Dreamcatcher,   // 연출 꼬리표 = 강화 오라(효과 기준 · U15)
+                PerBindingSlot = true,                        // 규칙 인스턴스 칸(병합 규칙)
                 Amount = p.Magnitude,     // 감지자가 % → 배율로 이미 바꿔 실었다
                 Duration = p.Duration,
                 StackId = 0,              // 레거시와 같은 슬롯(카드 자기 버프 공용)

@@ -61,6 +61,7 @@ namespace Wassup.Skills
         // 없는 유일한 출처다(손패에서 칸을 지정해 쓴다). 상태FX·오라 집계가 이 값으로
         // 「누가 걸었나」를 읽으므로 다른 출처로 접으면 안 된다.
         Skill = 2,
+        // 강화 오라로 보이는 효과(옛 출처 이름 — 실행자 = 효과가 박는다 · skill-data-table U15). 칸 규칙은 `SimIntent.PerBindingSlot`.
         Dreamcatcher = 4,
         Boss = 8,
         HealthThreshold = 9,

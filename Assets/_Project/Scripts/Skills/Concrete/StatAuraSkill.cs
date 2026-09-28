@@ -20,8 +20,9 @@ namespace Wassup.Skills.Concrete
         // 「이동속도 오라」처럼 payload 이름이 이미 스탯을 말하는 경우가 그것이다.
         protected virtual SkillStatKind? FixedStat => null;
 
-        // ⚠ **출처는 병합 키의 일부다.** 파생이 자기 것을 선언한다 — 하나로 묶으면
-        // 보스 채찍과 배치 오라가 같은 키를 공유해 서로를 덮는다.
+        // 연출·로그 꼬리표 — 파생이 자기 것을 선언한다(효과 기준 · U15). **병합 키가 아니다**(병합 키 = 출처 개체 · 스탯 ·
+        // 결합 · 칸 — `ModifierKey`). 보스 채찍과 배치 오라가 서로를 안 덮는 것은 스탯·결합이 달라서다.
+        // (skill-data-table unit 2 — 옛 주석 「출처는 병합 키의 일부」는 F26 이후 거짓이었다. `Boss` 를 읽는 연출은 오늘 없다.)
         protected virtual SkillModifierOrigin ModifierOrigin => SkillModifierOrigin.OnPlace;
 
         // ⚠ **결합 버킷도 파생 축이다**(skill-layer-migration unit 4d 에서 발견).

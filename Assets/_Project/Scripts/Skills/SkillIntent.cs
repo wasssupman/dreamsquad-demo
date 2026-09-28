@@ -195,7 +195,12 @@ namespace Wassup.Skills
         // 모디파이어 축. `Selector` 하나에 packing 하지 않는다 — 그 겸직이 이 레이어를
         // 만드는 이유였다.
         public SkillCombineOp Op;
+        // 연출·로그 꼬리표(skill-data-table unit 2 · U15) — **그 효과가** 무엇으로 보이나(예: 강화 오라)를 실행자가 정한다.
+        // 병합·회수 규칙은 이것을 읽지 않는다(아래 `PerBindingSlot`). 누가 들었나(소유자)에서 파생하지 않는다.
         public SkillModifierOrigin Origin;
+        // 병합 칸 규칙 — 참이면 이 버프는 **그 규칙 인스턴스의 칸**(`SlotTag.OfBinding(InstanceId)` — 붙일 때마다 새 칸)에 든다.
+        // 예전엔 `Origin == Dreamcatcher` 가 이 규칙을 겸했다(연출 꼬리표와 한 칸) — 연출을 효과 기준으로 두려고 칸을 갈랐다.
+        public bool PerBindingSlot;
 
         // ⚠ 병합 키는 `(Source, Selector(stat), Op, StackId)` 다. **이 넷이 회수(revoke)
         // 가능성의 조건이다** — 회수가 「제거」가 아니라 같은 키로 항등을 재발행하는
