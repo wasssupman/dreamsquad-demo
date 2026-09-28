@@ -34,7 +34,7 @@
 | 열 | 형 | 허용 값 | 기본 | 필수 |
 |---|---|---|---|---|
 | `effect_id` | string | `^[a-z][a-z0-9_]*$` · 표 안 유일 | — | 필수 |
-| `kind` | enum | `DcPayloadKind` 이름(§3 에서 표에 들 수 있는 것만) + 액티브 6(§3 끝) | — | 필수 |
+| `kind` | enum | 효과 종류 이름(코어 `TriggerPayload`)(§3 에서 표에 들 수 있는 것만) + 액티브 6(§3 끝) | — | 필수 |
 | `deprecated` | bool | | false | — |
 | `magnitude_mode` | enum | `Flat` · `OwnerStatRatio`(U7) | `Flat` | — |
 | `basis_stat` | enum | `Attack`(U11 — 평타 한 발 출력 합 × 공격자 쪽 배율) · `MaxHealth` | — | ratio 면 필수 |
@@ -118,7 +118,7 @@
 | `owner_kind` | enum | `card` · `unit` · `enemy` | — | 필수 |
 | `owner_id` | string | `Cards` · `Units` · `Enemies` 의 `id` | — | 필수 |
 | `slot` | int | ≥ 0 · 소유자 안 유일 · 굽는 순서 = slot 오름차순 | — | 필수 |
-| `trigger` | enum | `DcTriggerKind` 이름 + `Cast`(액티브 시전 — 표 어휘 · 저작 append 는 unit 4) | — | 필수 |
+| `trigger` | enum | 트리거 종류 이름(코어 `TriggerKind`) + `Cast`(액티브 시전 — 표 어휘 · 저작 append 는 unit 4) | — | 필수 |
 | `period` | int | ≥ 1 | 0 | `AttackN` · `OnDamagedN` |
 | `period_sec` | float | > 0 | 0 | `PeriodicTimer` |
 | `fraction` | float | (0, 1) | 0 | `HealthThreshold` |
