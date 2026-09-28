@@ -16,3 +16,5 @@
 ## 완료 기준
 - 이전 전후 굽기 스냅샷 값 동치 · 하드 케이스 3 신설 단언 「방어유닛이 짱쎈 도약 효과를 **같은 id 로** 소유해 발동」(자리 문제는 범위 밖 — 기존 `[Ignore]` 유지).
 - EditMode Assets lane · 헤드리스(`Data/` 형 변경 → `BattleCoreUnity.Check` 거짓 빨강 가능 · 증거는 `Retire.Check`) · PlayMode Core · 골든(해시 계약 8 — 재베이크 필요 시 격리 커밋) · 리뷰 = 묶음(4–5).
+- 4 1부 구현 2026-09-29(이전 **전**까지 · 에셋 무변) — `4dd668aea` 4-차단(DcMechanics 줄 버림 · 로그인·에디터 둘 다) · `2fcb084dd` 4-enum(코어 enum 직접 · 거울 5 · 번역 5 · 핀 4 은퇴) · `5739360e3` 시전 어휘(`TriggerKind.Cast` · 액티브 6 · ⓪) · `42f3682de` 저작 모양(`EffectData` · `EffectValues` · `BindingSpec` · `bindings` ×3 · `hostKinds` · 분열 고유 값 · `EffectSlots` 표 하나) · `fc8ac220e` 새 형식 한 경로 `BindingSpecBuilder` + 이전 계획 `LegacyBindingMigration` + 메뉴 `Wassup/BattleCore/Skill Data Table/이전 dry-run (표만 쓴다)` · 적용(미실행) · `42acffe53` 헤드리스 dry-run(`tools/skill-data-table/dry_run.py` → `dry-run/dry_run_table_headless.md` — 효과 줄 69 · 병합 0 · 깃발 1 · 왕복 56/0). 헤드리스 1035/4.
+- 남은 것: 사용자 dry-run 승인 → 적용 → 굽기 스냅샷 2 · `BindingSpecBakeTests` → 4-정리(옛 칸 · 규칙 레일 능력 · `SkillData` 흡수 · UI 소비처 이전 · 옛 몸통 둘을 `BindingSpecBuilder` 로 합치기).
