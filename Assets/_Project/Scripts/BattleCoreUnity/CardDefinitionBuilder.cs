@@ -74,7 +74,16 @@ namespace Wassup.BattleCoreUnity
             if (cards != null)
                 foreach (var c in cards)
                 {
-                    if (c?.mechanics == null) continue;
+                    if (c == null) continue;
+                    if (HasBindings(c))
+                    {
+                        // skill-data-table unit 4 — 새 저작 형식이면 소유 줄의 효과 에셋에서(옛 칸과 같은 규칙).
+                        foreach (var b in c.bindings)
+                            if (b.effect != null && b.effect.values.kind == EffectKind.SpawnHazard && b.effect.hazard != null && !list.Contains(b.effect.hazard))
+                                list.Add(b.effect.hazard);
+                        continue;
+                    }
+                    if (c.mechanics == null) continue;
                     foreach (var m in c.mechanics)
                         if (m.payload.kind == EffectKind.SpawnHazard && m.payload.hazard != null && !list.Contains(m.payload.hazard))
                             list.Add(m.payload.hazard);
@@ -96,6 +105,14 @@ namespace Wassup.BattleCoreUnity
             if (card.type == CardType.Active)
             {
                 c.Kind = CardKind.Active;
+                if (HasBindings(card))
+                {
+                    // skill-data-table unit 4 — 새 저작 형식: 시전 한 줄 × 액티브 효과 · 대기 · 두 칸 조준은 카드 칸.
+                    c.CooldownSeconds = card.cooldownSec;
+                    c.NeedsTwoCells = card.needsTwoTiles;
+                    c.ActiveBinding = BakeActiveBinding(card, projectiles, rows, effects);
+                    return c;
+                }
                 if (card.skill == null) { Error($"'{card.id}': 액티브인데 SkillData 가 없다 — 시전이 거절된다."); return c; }
                 c.CooldownSeconds = card.skill.cooldownSec;
                 c.NeedsTwoCells = card.skill.NeedsTwoTiles;
@@ -107,17 +124,33 @@ namespace Wassup.BattleCoreUnity
             c.Requirement = ToRequirement(card);
             if (card.type == CardType.Squad)
             {
+                if (HasBindings(card)) Warn($"'{card.id}': Squad 카드의 소유 줄(bindings)은 읽지 않는다 — 스쿼드 스탯 효과는 effects 다.");
                 // Squad 는 effects 만 읽는다(옛 계약 — mechanics 는 Unit 카드만).
                 c.SquadBindings = BakeSquad(card, rows, effects);
                 return c;
             }
 
-            // Unit — mechanics + attackMods.
+            // Unit — mechanics(또는 새 형식 bindings) + attackMods.
             var mine = new List<int>();
             var mods = new List<AttackModDef>();
-            c.TargetsEnemies = card.HasBountyMark();
             var mech = card.mechanics ?? System.Array.Empty<DcMechanic>();
             bool aura = false;
+            if (HasBindings(card))
+            {
+                // skill-data-table unit 4 — 새 저작 형식. 적 겨냥 = 숙주 종류가 적만(U5 — 옛 `HasBountyMark()` 파생을 값으로).
+                var hosts = card.hostKinds;
+                c.TargetsEnemies = hosts == HostKinds.Enemy;
+                if (hosts == (HostKinds.Defender | HostKinds.Enemy))
+                    Warn($"'{card.id}': 숙주 종류가 방어유닛 · 적 둘 다 — 코어 카드 줄은 한쪽만 싣는다. 방어유닛 카드로 굽는다(조합 검증은 둘 다).");
+                BindingSpecBuilder.Bake(card.bindings, new RuleOwner
+                    {
+                        Origin = BindingOrigin.Card, Label = $"카드 '{card.id}'", IsCard = true,
+                        CardHosts = hosts, CardTargetsEnemies = c.TargetsEnemies, Axis = card.axis,
+                    },
+                    projectiles, patterns, hazards, rows, effects, mine, mods, ref c.DeclaresRetireRecall, view);
+                mech = System.Array.Empty<DcMechanic>();
+            }
+            else c.TargetsEnemies = card.HasBountyMark();
             for (int i = 0; i < mech.Length; i++)
             {
                 string label = $"카드 '{card.id}' mechanic {i}";
@@ -355,6 +388,10 @@ namespace Wassup.BattleCoreUnity
                 var s = stones[i];
                 if (s == null || s.effect.kind == CardBuffKind.CostRate) continue;   // 코스트 돌은 `CostRateOf`
                 if (!MapBuff(s.effect.kind, s.effect.percent, out var stat, out float mul)) { Warn($"드림스톤 '{s.id}': {s.effect.kind} 를 옮길 수 없다 — 건너뛴다."); continue; }
+                // skill-data-table unit 4 — 드림스톤도 조합 검증을 지난다: 판 시전(주인 없음) × 남의 배치 × 스탯 버프(고정 수치).
+                var stoneCombo = new EffectCombo { Trigger = TriggerKind.OnPlace, Subject = BindingSubject.Any, Payload = EffectKind.SelfStatBuff,
+                                                   Magnitude = MagnitudeMode.Flat, CastHasNoOwner = true };
+                if (!BindingDefinitionBuilder.CheckCombo(in stoneCombo, $"드림스톤 '{s.id}'")) continue;
                 var b = BindingDef.Default();
                 var fx = EffectDef.Default();
                 b.Label = $"드림스톤 '{s.id}'";
@@ -376,6 +413,8 @@ namespace Wassup.BattleCoreUnity
         private static int BakeActive(DreamcatcherCard card, List<ProjectileData> projectiles, List<BindingDef> rows, List<EffectDef> effects)
         {
             var s = card.skill;
+            // skill-data-table unit 4 — 액티브도 조합 검증 한 함수를 지난다(시전 · 주인 없음). 옛 칸은 전량 고정 수치라 허용.
+            if (!CheckCast(ActiveKindOf(s.effect), MagnitudeMode.Flat, $"액티브 '{card.id}'")) return -1;
             var b = BindingDef.Default();
             var fx = EffectDef.Default();
             b.Label = $"액티브 '{card.id}'";
@@ -413,6 +452,84 @@ namespace Wassup.BattleCoreUnity
             b.Skill = skill;
             BindingDefinitionBuilder.AddRow(rows, effects, null, b, fx, card.id + ".active0");
             return rows.Count - 1;
+        }
+
+        /// <summary>
+        /// skill-data-table unit 4 — 새 저작 형식의 액티브 시전 한 줄(옛 `BakeActive` 와 같은 값 · 효과 id 만 저작 id). 효과 줄의 종류는 옛 굽기처럼
+        /// `None` 으로 남긴다(해시 무변 — 실행자는 레지스트리 id 가 고른다).
+        /// </summary>
+        private static int BakeActiveBinding(DreamcatcherCard card, List<ProjectileData> projectiles, List<BindingDef> rows, List<EffectDef> effects)
+        {
+            string label = $"액티브 '{card.id}'";
+            if (card.bindings.Length != 1) { Error($"{label}: 액티브 카드의 소유 줄은 정확히 하나다(지금 {card.bindings.Length}) — 시전이 거절된다."); return -1; }
+            var spec = card.bindings[0];
+            var e = spec.effect;
+            if (e == null) { Error($"{label}: 효과 에셋이 비었다 — 시전이 거절된다."); return -1; }
+            if (e.deprecated) { Error($"{label}: 폐기된 효과 '{e.id}' — 시전이 거절된다."); return -1; }
+            if (spec.trigger.kind != TriggerKind.Cast) { Error($"{label}: 액티브 줄의 트리거는 시전(Cast)이다(지금 {spec.trigger.kind}) — 시전이 거절된다."); return -1; }
+            var v = e.values;
+            if (!CheckCast(v.kind, v.magnitudeMode, label)) return -1;
+            if (spec.fireCap != 1) Warn($"{label}: 시전 줄의 fireCap({spec.fireCap}) — 시전은 1회 발동이다(1 로 굽는다).");
+            var p = EffectSlots.ToLegacy(in v);
+            var b = BindingDef.Default();
+            var fx = EffectDef.Default();
+            b.Label = label;
+            b.Trigger = TriggerKind.None;
+            b.Origin = BindingOrigin.Card;
+            b.FireCap = 1;
+            b.Lifetime = BindingLifetime.UntilFireCap;
+            fx.Magnitude = p.Magnitude;
+            fx.Duration = p.Duration;
+            fx.TileRange = p.TileRange;
+            int id;
+            switch (v.kind)
+            {
+                case EffectKind.ActiveSlowField: id = TileStatBurstSkill.Id; fx.StatKind = (int)SkillStatKind.MoveSpeedMul; break;
+                case EffectKind.ActiveTornado: id = PullFieldSkill.Id; break;
+                case EffectKind.ActiveMeteor:
+                    id = TileMeteorSkill.Id;
+                    if (e.projectile == null) Error($"{label}: 메테오에 탄(ProjectileData)이 없다 — 시전해도 아무것도 안 떨어진다.");
+                    else { fx.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, e.projectile); fx.VisualScale = e.projectile.visualScale; }
+                    break;
+                case EffectKind.ActivePowerSurge: id = AllyBuffFieldSkill.Id; fx.StatKind = (int)SkillStatKind.DamageMul; break;
+                case EffectKind.ActiveRapidFire: id = AllyBuffFieldSkill.Id; fx.StatKind = (int)SkillStatKind.AttackSpeedMul; break;
+                case EffectKind.ActivePortal:
+                    id = PortalSkill.Id;
+                    if (!card.needsTwoTiles) Warn($"{label}: 포탈인데 두 칸 조준(needsTwoTiles)이 꺼져 있다 — 출구가 없어 발동해도 아무 일이 없다.");
+                    break;
+                default:
+                    Error($"{label}: 모르는 액티브 효과 {v.kind} — 시전이 거절된다.");
+                    return -1;
+            }
+            if (!SkillRouting.Registry.TryGet(id, out var skill)) { Error($"{label}: 액티브 실행자({id})가 레지스트리에 없다."); return -1; }
+            b.Skill = skill;
+            BindingDefinitionBuilder.AddRow(rows, effects, null, b, fx, e.id);
+            return rows.Count - 1;
+        }
+
+        /// <summary>시전 조합 검증(주인 없는 시전 — 비율형 기준 없음 · 액티브 효과만).</summary>
+        private static bool CheckCast(EffectKind kind, MagnitudeMode mode, string label)
+        {
+            var c = new EffectCombo { Trigger = TriggerKind.Cast, Payload = kind, Magnitude = mode, CastHasNoOwner = true };
+            return BindingDefinitionBuilder.CheckCombo(in c, label);
+        }
+
+        /// <summary>새 저작 형식을 쓰는 카드인가(비어 있으면 옛 칸 — 이전 과도기).</summary>
+        internal static bool HasBindings(DreamcatcherCard card) => card.bindings != null && card.bindings.Length > 0;
+
+        /// <summary>옛 액티브 효과(`SkillEffectType`) → 효과 종류(1:1 · `tables.md` §3). 모르는 값 = None.</summary>
+        public static EffectKind ActiveKindOf(SkillEffectType t)
+        {
+            switch (t)
+            {
+                case SkillEffectType.Meteor: return EffectKind.ActiveMeteor;
+                case SkillEffectType.SlowField: return EffectKind.ActiveSlowField;
+                case SkillEffectType.PowerSurge: return EffectKind.ActivePowerSurge;
+                case SkillEffectType.RapidFire: return EffectKind.ActiveRapidFire;
+                case SkillEffectType.Tornado: return EffectKind.ActiveTornado;
+                case SkillEffectType.Portal: return EffectKind.ActivePortal;
+                default: return EffectKind.None;
+            }
         }
 
         // ── 저작 어휘 → 코어 어휘 ────────────────────────────────────────────

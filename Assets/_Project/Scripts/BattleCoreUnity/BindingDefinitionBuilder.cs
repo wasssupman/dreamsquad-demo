@@ -41,22 +41,43 @@ namespace Wassup.BattleCoreUnity
                 if (d == null) continue;
                 var mods = new List<AttackModDef>();
                 var mine = new List<int>();
-                var skill = d.GetAbility<UnitSkillAbility>();
-                if (skill?.mechanics != null)
-                    Bake(skill.mechanics, hostIsEnemy: false, d.name, def.Units[i].Id, d.aggroCapacity > 0, null,
-                         projectiles, patterns, hazards, rows, effects, mine, mods, def.Movement.SplitMaxChildren, view);
-                BakeShieldCast(d, def.Units[i].Id, rows, effects, mine);
+                if (d.bindings != null && d.bindings.Length > 0)
+                {
+                    // skill-data-table unit 4 — 새 저작 형식(소유 줄)이 있으면 그것만 — 규칙 레일 능력 둘(유닛 스킬 · 실드 캐스트)은 안 읽는다.
+                    bool unusedRecall = false;
+                    BindingSpecBuilder.Bake(d.bindings, new RuleOwner { Origin = BindingOrigin.UnitAuthored, Label = d.name,
+                                                                        HostIsGuardian = d.aggroCapacity > 0 },
+                                            projectiles, patterns, hazards, rows, effects, mine, mods, ref unusedRecall, view);
+                }
+                else
+                {
+                    var skill = d.GetAbility<UnitSkillAbility>();
+                    if (skill?.mechanics != null)
+                        Bake(skill.mechanics, hostIsEnemy: false, d.name, def.Units[i].Id, d.aggroCapacity > 0, null,
+                             projectiles, patterns, hazards, rows, effects, mine, mods, def.Movement.SplitMaxChildren, view);
+                    BakeShieldCast(d, def.Units[i].Id, rows, effects, mine);
+                }
                 if (mine.Count > 0) def.Units[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Units[i].Attack.Mods = mods.ToArray();
             }
             for (int i = 0; i < def.Enemies.Length && i < (enemies?.Length ?? 0); i++)
             {
                 var e = enemies[i];
-                if (e?.nightmareMechanics == null || e.nightmareMechanics.Length == 0) continue;
+                if (e == null) continue;
+                if (e.splitUnit != null) ValidateSplit(e, def.Movement.SplitMaxChildren);
+                bool authoredNew = e.bindings != null && e.bindings.Length > 0;
+                if (!authoredNew && (e.nightmareMechanics == null || e.nightmareMechanics.Length == 0)) continue;
                 var mods = new List<AttackModDef>();
                 var mine = new List<int>();
-                Bake(e.nightmareMechanics, hostIsEnemy: true, e.name, def.Enemies[i].Id, false, e,
-                     projectiles, patterns, hazards, rows, effects, mine, mods, def.Movement.SplitMaxChildren, view);
+                if (authoredNew)
+                {
+                    bool unusedRecall = false;
+                    BindingSpecBuilder.Bake(e.bindings, new RuleOwner { Origin = BindingOrigin.UnitAuthored, Label = e.name, IsEnemy = true },
+                                            projectiles, patterns, hazards, rows, effects, mine, mods, ref unusedRecall, view);
+                }
+                else
+                    Bake(e.nightmareMechanics, hostIsEnemy: true, e.name, def.Enemies[i].Id, false, e,
+                         projectiles, patterns, hazards, rows, effects, mine, mods, def.Movement.SplitMaxChildren, view);
                 if (mine.Count > 0) def.Enemies[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Enemies[i].Attack.Mods = mods.ToArray();
             }
@@ -76,6 +97,15 @@ namespace Wassup.BattleCoreUnity
             b.EffectIndex = EffectDef.Intern(effects, in fx);
             mine?.Add(rows.Count);
             rows.Add(b);
+        }
+
+        // skill-data-table unit 4 — 분열 = 적 고유 값(`splitUnit` · `splitCount`)의 가드. 옛 메커닉 갈래(`Bake` 의 분열 분기)와 같은 셋.
+        private static void ValidateSplit(AttackUnitData e, int splitCap)
+        {
+            string label = $"{e.name} split";
+            if (e.splitCount < 1) Error($"{label}: splitCount({e.splitCount}) < 1 — 자식이 0기다.");
+            else if (e.splitCount > splitCap) Error($"{label}: splitCount({e.splitCount}) > {splitCap} — {splitCap}기로 잘린다.");
+            else if (!SplitChain.Validate(e, out string splitError)) Error($"{label}: {splitError}");
         }
 
         // 실드 캐스트 능력 — 저작은 그대로, **주기 × 실드 규칙**으로 굽는다(옛 전용 상태·시스템 은퇴).
