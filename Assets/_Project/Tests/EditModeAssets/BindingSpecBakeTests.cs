@@ -12,8 +12,7 @@ namespace Wassup.Tests.EditModeAssets
 {
     // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄)을 굽는 한 경로의 증언.
     //
-    // ① 이전 전 증명: 라이브 저작 전부에 이전 계획(`LegacyBindingMigration`)을 **메모리 사본**에 입혀 굽고, 옛 굽기와 규칙 줄 값이 같다
-    //    (라벨 텍스트 제외 · 알려진 해시 변화 = dry-run 표의 깃발 하나 — 실드 캐스트 반각). 에셋은 쓰지 않는다.
+    // ① 두 경로 동치(이전 뒤): 새 칸을 비운 사본(옛 칸 경로)과 라이브(새 소유 줄 경로)의 굽기가 값으로 같다(알려진 깃발 둘 제외).
     // ② 검증 질문 ① — 같은 효과 에셋을 두 소유자(방어유닛 배치 · 카드 「남의 배치」)가 참조하면 **같은 효과 줄**을 가리킨다.
     // ③ 하드 케이스 3 신설 — 방어유닛이 짱쎈의 도약 효과를 **같은 id 로** 소유한다(자리 문제는 범위 밖 — 코어 탐침의 `[Ignore]` 그대로).
     public class BindingSpecBakeTests
@@ -121,8 +120,11 @@ namespace Wassup.Tests.EditModeAssets
         }
 
         [Test]
-        public void 이전_계획을_입힌_사본의_굽기가_옛_굽기와_값으로_같다()
+        public void 옛_칸_경로와_새_소유_줄_경로의_굽기가_값으로_같다()
         {
+            // 이전 뒤(2933243c2) — 라이브 에셋은 옛 칸과 새 소유 줄을 **둘 다** 든다. 새 칸을 비운 사본은 옛 경로로, 라이브는 새 경로로
+            // 굽힌다. 두 경로 동치 = 이전이 값을 잃지 않았다는 증거. 옛 칸을 읽는 경로가 사라지는 4-정리에서 이 테스트도 은퇴한다
+            // (그 뒤의 증거 = 굽기 스냅샷 둘 — 이전 커밋 `eacbae0ce` 에서 새 경로로 다시 굳혔다).
             var units = AssetsByPath<DefenderUnitData>("t:DefenderUnitData");
             var enemies = AssetsByPath<AttackUnitData>("t:AttackUnitData");
             var cards = CardEffectWitnessTests.Cards();
@@ -130,43 +132,25 @@ namespace Wassup.Tests.EditModeAssets
             foreach (var u in units) paths.Add(AssetDatabase.GetAssetPath(u));
             foreach (var e in enemies) paths.Add(AssetDatabase.GetAssetPath(e));
 
-            string hostsBefore = BakeHosts(units, enemies, paths);
-            string cardsBefore = BakeCards(cards);
+            int migrated = 0;
+            var unitsOld = new List<DefenderUnitData>();
+            var enemiesOld = new List<AttackUnitData>();
+            var cardsOld = new List<DreamcatcherCard>();
+            foreach (var u in units) { if (u.bindings != null && u.bindings.Length > 0) migrated++; var c = Clone(u); c.bindings = null; unitsOld.Add(c); }
+            foreach (var e in enemies) { if (e.bindings != null && e.bindings.Length > 0) migrated++; var c = Clone(e); c.bindings = null; enemiesOld.Add(c); }
+            foreach (var k in cards) { if (k.bindings != null && k.bindings.Length > 0) migrated++; var c = Clone(k); c.bindings = null; cardsOld.Add(c); }
+            Assert.Greater(migrated, 0, "새 소유 줄을 든 에셋이 없다 — 이전 전이면 이 테스트는 공허하다");
 
-            var plan = LegacyBindingMigration.Build(cards, units, enemies);
-            var clones = new Dictionary<ScriptableObject, ScriptableObject>();
-            var unitClones = new List<DefenderUnitData>();
-            var enemyClones = new List<AttackUnitData>();
-            var cardClones = new List<DreamcatcherCard>();
-            foreach (var u in units) { var c = Clone(u); clones[u] = c; unitClones.Add(c); }
-            foreach (var e in enemies) { var c = Clone(e); clones[e] = c; enemyClones.Add(c); }
-            foreach (var k in cards) { var c = Clone(k); clones[k] = c; cardClones.Add(c); }
-            int rows = 0;
-            foreach (var o in plan.Owners)
-            {
-                rows += o.Rows.Count;
-                LegacyBindingMigration.Apply(o, clones[o.Owner], r =>
-                {
-                    var fx = LegacyBindingMigration.Materialize(r);
-                    _made.Add(fx);
-                    return fx;
-                });
-            }
-            Assert.Greater(rows, 0, "이전할 규칙이 하나도 없다면 테스트가 공허하다");
-
-            string hostsAfter = BakeHosts(unitClones, enemyClones, paths);
-            string cardsAfter = BakeCards(cardClones);
-
-            var hostDiffs = Diffs(hostsBefore, hostsAfter);
+            var hostDiffs = Diffs(BakeHosts(unitsOld, enemiesOld, paths), BakeHosts(units, enemies, paths));
             var diffs = new List<string>(hostDiffs);
-            diffs.AddRange(Diffs(cardsBefore, cardsAfter));
-            // 알려진 해시 변화(dry-run 깃발 — 이전 커밋 끝 격리 재베이크로 흡수):
+            diffs.AddRange(Diffs(BakeCards(cardsOld), BakeCards(cards)));
+            // 알려진 해시 변화(이전 dry-run 깃발 · `eacbae0ce` 에서 스냅샷에 흡수):
             //   · 실드 캐스트 줄은 옛 전용 굽기가 반각을 안 구워 (0,0) 이었다 — 일반 경로는 (0,1).
             //   · U15 — 유닛 · 적 소유 자리 폭발(SelfTileAoe)의 착탄 연출 배율 0 → 그 탄의 배율(카드와 같게). 유닛·적 쪽에서만 난다.
             var unexpected = diffs.FindAll(d => !(d.Contains("실드 캐스트") && d.Contains("coneSinCos=0,0") && d.Contains("coneSinCos=0,1"))
                                                 && !(hostDiffs.Contains(d) && d.Contains("`visualScale=0` → `visualScale=")));
             foreach (var d in diffs) TestContext.WriteLine(d);
-            Assert.IsEmpty(unexpected, "새 형식 굽기가 옛 굽기와 갈렸다:\n" + string.Join("\n", unexpected));
+            Assert.IsEmpty(unexpected, "새 소유 줄 굽기가 옛 칸 굽기와 갈렸다:\n" + string.Join("\n", unexpected));
         }
 
         [Test]
@@ -215,22 +199,22 @@ namespace Wassup.Tests.EditModeAssets
         [Test]
         public void 방어유닛이_짱쎈_도약_효과를_같은_id_로_소유한다()
         {
-            // 하드 케이스 3 — 짱쎈(적)의 라이브 도약 규칙을 이전 계획으로 효과 에셋화하고, 그 **같은 에셋**을 방어유닛이 소유 줄로 든다.
+            // 하드 케이스 3 — 짱쎈(적)이 **라이브로 소유한** 도약 효과 에셋(이전 `2933243c2`)을 방어유닛이 소유 줄로 든다.
             AttackUnitData jjangssen = null;
             foreach (var e in AssetsByPath<AttackUnitData>("t:AttackUnitData")) if (e.name == "Enemy_Boss_Jjangssen") jjangssen = e;
             Assert.IsNotNull(jjangssen, "라이브 짱쎈이 없다");
-            var plan = LegacyBindingMigration.Build(null, null, new[] { jjangssen });
-            Assert.AreEqual(1, plan.Owners.Count);
-            LegacyBindingMigration.RowPlan blink = null;
-            foreach (var r in plan.Owners[0].Rows) if (r.Values.kind == EffectKind.SelfBlink) { blink = r; break; }
-            Assert.IsNotNull(blink, "짱쎈에 도약(SelfBlink) 규칙이 없다");
-            var effect = LegacyBindingMigration.Materialize(blink);
-            _made.Add(effect);
+            Assert.IsNotNull(jjangssen.bindings, "짱쎈이 새 소유 줄을 안 든다(이전 전?)");
+            BindingSpec blink = default;
+            bool found = false;
+            foreach (var b in jjangssen.bindings)
+                if (b.effect != null && b.effect.values.kind == EffectKind.SelfBlink) { blink = b; found = true; break; }
+            Assert.IsTrue(found, "짱쎈에 도약(SelfBlink) 소유 줄이 없다");
+            var effect = blink.effect;
 
             var enemy = Clone(jjangssen);
-            enemy.bindings = new[] { new BindingSpec { trigger = blink.Trigger, fireCap = blink.FireCap, effect = effect } };
+            enemy.bindings = new[] { blink };
             var unit = LiveDefenderClone("Fixture_Defender");
-            unit.bindings = new[] { new BindingSpec { trigger = blink.Trigger, fireCap = blink.FireCap, effect = effect } };
+            unit.bindings = new[] { new BindingSpec { trigger = blink.trigger, fireCap = blink.fireCap, effect = effect } };
 
             var def = new MatchDefinition { Units = new[] { MatchDefinitionBuilder.ToUnitDef(unit) }, Enemies = new EnemyDef[1] };
             BindingDefinitionBuilder.Fill(def, new List<DefenderUnitData> { unit }, new[] { enemy }, new List<ProjectileData>(),
@@ -240,7 +224,7 @@ namespace Wassup.Tests.EditModeAssets
             var mine = def.Bindings[def.Units[0].Bindings[0]];
             var boss = def.Bindings[def.Enemies[0].Bindings[0]];
             Assert.AreEqual(boss.EffectIndex, mine.EffectIndex, "같은 효과 줄");
-            Assert.AreEqual(blink.EffectId, def.EffectOf(in mine).Id, "같은 효과 id");
+            Assert.AreEqual(effect.id, def.EffectOf(in mine).Id, "같은 효과 id");
             Assert.AreEqual(EffectKind.SelfBlink, def.EffectOf(in mine).Kind);
             Assert.IsNotNull(mine.Skill, "방어유닛 소유 줄에도 실행자가 있다(발동한다)");
         }

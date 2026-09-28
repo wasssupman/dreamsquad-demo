@@ -76,23 +76,26 @@ namespace Wassup.Tests.EditModeAssets
         {
             var cards = CardEffectWitnessTests.Cards();
             string committed = Committed();
-            // 규칙 줄을 싣는 첫 카드의 첫 메커닉 크기(메모리에서만 — 저장하지 않고 되돌린다).
+            // 규칙 줄을 싣는 첫 카드의 첫 소유 줄이 가리키는 **효과 에셋**의 피해(메모리에서만 — 저장하지 않고 되돌린다).
+            // skill-data-table unit 4 — 이전 뒤 빌더는 옛 칸(mechanics)이 아니라 소유 줄 → 효과 에셋을 읽는다.
             DreamcatcherCard target = null;
             foreach (var c in cards)
-                if (c.type != CardType.Active && c.mechanics != null && c.mechanics.Length > 0) { target = c; break; }
-            Assert.IsNotNull(target, "메커닉을 든 카드가 없다");
-            float was = target.mechanics[0].payload.magnitude;
+                if (c.type == CardType.Unit && c.bindings != null && c.bindings.Length > 0 && c.bindings[0].effect != null
+                    && c.bindings[0].effect.values.damage > 0f) { target = c; break; }
+            Assert.IsNotNull(target, "피해 효과를 참조하는 카드가 없다");
+            var effect = target.bindings[0].effect;
+            float was = effect.values.damage;
             try
             {
-                target.mechanics[0].payload.magnitude = was + 1f;
+                effect.values.damage = was + 1f;
                 string diff = FirstDiff(committed, Bake(cards));
-                TestContext.WriteLine($"반증 대상 {target.id}: {diff}");
-                Assert.IsNotNull(diff, $"{target.id} 의 크기를 바꿨는데 스냅샷이 같다 — 스냅샷이 저작을 증언하지 못한다");
+                TestContext.WriteLine($"반증 대상 {target.id} → 효과 {effect.id}: {diff}");
+                Assert.IsNotNull(diff, $"{target.id} 의 효과 '{effect.id}' 피해를 바꿨는데 스냅샷이 같다 — 스냅샷이 저작을 증언하지 못한다");
                 StringAssert.Contains(target.id, diff, "차이가 바꾼 그 카드에서 난다");
             }
             finally
             {
-                target.mechanics[0].payload.magnitude = was;
+                effect.values.damage = was;
             }
             Assert.IsNull(FirstDiff(committed, Bake(cards)), "되돌린 뒤엔 다시 같다");
         }
