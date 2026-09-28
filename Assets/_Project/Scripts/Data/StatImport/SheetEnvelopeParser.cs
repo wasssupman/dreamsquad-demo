@@ -58,7 +58,11 @@ namespace Wassup.Data.StatImport
             {
                 knownFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var f in typeof(T).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
-                    knownFields.Add(f.Name);
+                {
+                    // skill-data-table unit 5 — 스네이크 열(`[JsonProperty]`)은 그 이름이 헤더다(필드 이름이 아니다).
+                    var named = (Newtonsoft.Json.JsonPropertyAttribute)Attribute.GetCustomAttribute(f, typeof(Newtonsoft.Json.JsonPropertyAttribute));
+                    knownFields.Add(named?.PropertyName ?? f.Name);
+                }
             }
 
             foreach (var row in rows)
