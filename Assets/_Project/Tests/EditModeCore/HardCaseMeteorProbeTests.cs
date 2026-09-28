@@ -412,7 +412,7 @@ namespace Wassup.Tests.EditMode.Core
             // (탐침 당시) 빌더는 `ProjectileToTarget` 의 셀 바인딩 탄(SkyFall)을 거절했다 — unit 5 가 풀었다(`EffectComboRule`).
             // 받아 주는 운석형 궤적은 `SkyFallOnTarget` 하나 → (SkyFallOnEntity, SingleSplash)(`CombatDefinitionBuilder.cs:417-418`)
             // 이고 빌더는 그 축을 규칙에 싣는다(`CardDefinitionBuilder.cs:321-322`). 그 모양을 손으로 재현한다.
-            var def = Definition(movement: MovementKind.SkyFallOnEntity, payload: PayloadKind.SingleSplash, splashRadius: 1.5f);
+            var def = Definition(movement: MovementKind.SkyFallOnEntity, payload: PayloadKind.SingleSplash, splashRadius: N);
             var rule = OnHitMeteorRule(movement: MovementKind.SkyFallOnEntity, payload: PayloadKind.SingleSplash);
             var h = RunOnHit(def, rule: rule, attacks: 1);
             int hi = h.Spawned.FindIndex(e => e.B == h.D.Id);
@@ -421,10 +421,10 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(MovementKind.SkyFallOnEntity, (MovementKind)h.Spawned[hi].Arg, "⚠ 궤적이 액티브(SkyFall)와 다르다");
             Assert.AreEqual(PayloadKind.SingleSplash, hh.Payload, "⚠ 페이로드가 다르다 — 직격 + 비산(`ResolveSingleSplash`)");
             Assert.AreEqual(0, hh.AreaTiles, "⚠ 광역 반경 0 → 운석 폭발 그림 조건(`CoreVfxSpawner.cs:285`) 불성립");
-            // 반경도 다른 자다 — 비산 반경은 월드 단위 + 대상 몸, 칸 반폭 항 없음(`TickProjectilePhase.cs:874` 인라인).
-            // N = 1 의 자리형 도달(1.75)을 흉내 내려면 비산 반경을 1.5 로 **손으로** 맞춰야 한다.
+            // 반경은 **같은 자**다(unified-effect-layer unit 5) — 비산도 자리형 정본(`SkillMath.ReachFromImpact`)을 지나
+            // 반경 N + 칸 반폭 0.5 + 대상 몸 = 1.75. (탐침 당시엔 월드 반경 + 대상 몸 인라인이라 1.5 로 손으로 맞춰야 했다.)
             Assert.AreEqual(OnHitHit, h.MeteorDamageTo(h.E, OnHitHit), 1e-3f, "직격");
-            foreach (var e in h.Near) Assert.AreEqual(OnHitHit, h.MeteorDamageTo(e, OnHitHit), 1e-3f, "비산 1.5 + 0.25");
+            foreach (var e in h.Near) Assert.AreEqual(OnHitHit, h.MeteorDamageTo(e, OnHitHit), 1e-3f, "비산 N + 0.5 + 0.25");
             Assert.AreEqual(0f, h.MeteorDamageTo(h.Far, OnHitHit));
         }
     }

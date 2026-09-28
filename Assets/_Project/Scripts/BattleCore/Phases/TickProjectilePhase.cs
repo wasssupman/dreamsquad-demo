@@ -869,10 +869,11 @@ namespace Wassup.BattleCore
                 {
                     var u = units[i];
                     if (u == direct || !u.IsTargetable() || !IsAreaLegal(u, p)) continue;
-                    float dx = u.Position.x - p.Position.x;
-                    float dz = u.Position.z - p.Position.z;
-                    float reach = p.SplashRadius + u.HitRadius * tileSize;
-                    if (dx * dx + dz * dz > reach * reach) continue;
+                    // 제약 13 — 비산은 **자리에 떨어지는 것**(착탄점엔 주인이 없다 → 원점 몸 0 = 칸 반폭). 옛 인라인 자
+                    // (`월드 반경 + 대상 몸`, 칸 반폭 항 없음)는 unified-effect-layer unit 5 에서 은퇴 — 저작 반경은 월드 단위라 칸으로 옮긴다.
+                    float dx = (u.Position.x - p.Position.x) / tileSize;
+                    float dz = (u.Position.z - p.Position.z) / tileSize;
+                    if (!SkillMath.ReachFromImpact(dx, dz, p.SplashRadius / tileSize, 0f, u.HitRadius)) continue;
                     Deal(ctx, p, u, p.Damage * p.SplashDamageMul);
                     hits++;
                 }
