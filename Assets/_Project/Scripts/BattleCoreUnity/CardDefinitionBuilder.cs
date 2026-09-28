@@ -244,9 +244,9 @@ namespace Wassup.BattleCoreUnity
                 }
             }
 
-            if (payload == TriggerPayload.None || (trigger == TriggerKind.AttackN && m.trigger.period <= 0))
+            if (payload == TriggerPayload.None)
             {
-                Warn($"{label}: None 종류 또는 period <= 0 — 건너뛴다.");
+                Warn($"{label}: None 종류 — 건너뛴다.");
                 return;
             }
             // 손패 동작(인수인계) — 규칙이 아니라 퇴근 회수 규칙의 선언이다. **퇴근에만**, 게이트 없이.
@@ -257,31 +257,18 @@ namespace Wassup.BattleCoreUnity
                 c.DeclaresRetireRecall = true;
                 return;
             }
-            // 카드는 배치 **뒤**에 붙는다 — 배치 사건은 이미 지났다(붙는데 영영 안 터지는 카드).
-            if (trigger == TriggerKind.OnPlace) { Warn($"{label}: OnPlace 는 카드 경로에 쓸 수 없다 — 건너뛴다."); return; }
-            if (trigger == TriggerKind.PeriodicTimer && m.trigger.periodSeconds <= 0f) { Warn($"{label}: PeriodicTimer periodSeconds <= 0 — 건너뛴다."); return; }
-            if (trigger == TriggerKind.OnRetire && payload != TriggerPayload.SelfTileAoe) { Warn($"{label}: OnRetire 는 SelfTileAoe 만 배선돼 있다 — 건너뛴다."); return; }
+            // unified-effect-layer unit 5 — 조합은 **검증 한 함수**(출처는 입력이 아니다). 카드는 숙주가 **놓인 뒤** 붙는다 —
+            // 자기 배치는 이미 지났다. 숙주는 부착 때 정해져 가디언 여부를 여기서 모른다(부착 판정 몫).
+            if (!BindingDefinitionBuilder.CheckCombo(BindingDefinitionBuilder.ComboOf(in m, trigger, payload, hostIsEnemy: false,
+                                                     bindsAfterPlacement: true, hostCannotHoldAggro: false), label)) return;
             var gate = BindingDefinitionBuilder.ToCoreGate(m.trigger.gate);
             var gateSubject = BindingDefinitionBuilder.ToCoreGateSubject(m.trigger.gateSubject);
-            if (gate != GateKind.None)
-            {
-                if (!SkillRouting.GateComboSupported(trigger, gate, gateSubject)) { Warn($"{label}: 게이트 조합 {trigger}×{gate}/{gateSubject} 미배선 — 건너뛴다(S26)."); return; }
-                if (m.trigger.gateValue <= 0f || m.trigger.gateValue >= 1f) { Warn($"{label}: gateValue 가 (0,1) 밖 — 건너뛴다."); return; }
-            }
-            if (trigger == TriggerKind.OnDamagedN)
-            {
-                if (m.trigger.period <= 0) { Warn($"{label}: OnDamagedN period <= 0 — 건너뛴다."); return; }
-                if (payload != TriggerPayload.SelfTileAoe && payload != TriggerPayload.NextAttackDoubleFire) { Warn($"{label}: OnDamagedN × {payload} 미지원 — 건너뛴다."); return; }
-            }
-            if (trigger == TriggerKind.HealthThreshold && m.trigger.fraction <= 0f) { Warn($"{label}: HealthThreshold fraction <= 0 — 건너뛴다."); return; }
+            if (!BindingDefinitionBuilder.TriggerValuesValid(in m, trigger, gate, gateSubject, label)) return;
 
             // 강공 — 어휘 밖(그 공격의 성질). 공격 수식자로 접는다.
             if (payload == TriggerPayload.HeavyStrike)
             {
-                if (trigger != TriggerKind.AttackN) { Warn($"{label}: HeavyStrike 는 AttackN 전용 — 건너뛴다."); return; }
-                if (p.magnitude <= 1f) { Warn($"{label}: HeavyStrike magnitude <= 1(강공이 아님) — 건너뛴다."); return; }
-                mods.Add(new AttackModDef { Kind = AttackModKind.HeavyStrike, Period = m.trigger.period, DamageMul = p.magnitude,
-                                            Gate = gate, GateValue = m.trigger.gateValue });
+                if (BindingDefinitionBuilder.TryHeavyStrike(in m, trigger, gate, label, out var heavy)) mods.Add(heavy);
                 return;
             }
 
@@ -302,62 +289,16 @@ namespace Wassup.BattleCoreUnity
             r.ConeHalfAngleDeg = p.coneHalfAngleDeg;
             r.ConeCosSq = cone * cone;
 
+            // 값 가드 · 표 참조는 두 빌더 공용(`BindingDefinitionBuilder.BindPayload`). 아래 둘은 **카드 저작 인코딩**이다(H4 후속).
+            if (!BindingDefinitionBuilder.BindPayload(ref r, in m, label, projectiles, patterns, hazards)) return;
             switch (payload)
             {
-                case TriggerPayload.ProjectileToTarget:
-                {
-                    if (p.projectile == null || p.magnitude <= 0f) { Warn($"{label}: ProjectileToTarget 탄 없음 / magnitude <= 0 — 건너뛴다."); return; }
-                    var (mv, pl) = CombatDefinitionBuilder.Translate(p.projectile.flightMode);
-                    var bind = MovementBinding.Of(mv);
-                    // 셀 바인딩 탄은 착탄점이 없어 보드 원점에 떨어진다(옛 가드).
-                    if (bind == BindingClass.Cell) { Warn($"{label}: 셀 바인딩 탄({p.projectile.flightMode})은 미배선 — 건너뛴다."); return; }
-                    if (bind == BindingClass.Direction
-                        && (p.projectile.hitThreshold <= 0f || p.projectile.speed <= 0f || p.tileRange <= 0))
-                    { Warn($"{label}: 경로 스윕 탄의 굵기/속도/거리(tileRange) 중 0 이 있다 — 건너뛴다."); return; }
-                    r.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
-                    r.Speed = p.projectile.speed;
-                    r.HitThreshold = p.projectile.hitThreshold;
-                    r.VisualScale = p.projectile.visualScale;
-                    r.ProjectileMovement = (int)mv;
-                    r.ProjectilePayload = (int)pl;
-                    break;
-                }
                 case TriggerPayload.SelfTileAoe:
-                    if (p.projectile == null || p.magnitude <= 0f) { Warn($"{label}: SelfTileAoe 탄(착탄 연출) 없음 / magnitude <= 0 — 건너뛴다."); return; }
-                    r.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
-                    r.VisualScale = p.projectile.visualScale;
-                    break;
-                case TriggerPayload.SpawnHazard:
-                {
-                    if (trigger != TriggerKind.OnKill) { Warn($"{label}: SpawnHazard 는 OnKill 만 배선돼 있다 — 건너뛴다."); return; }
-                    int h = hazards != null && p.hazard != null ? System.Array.IndexOf(hazards, p.hazard) : -1;
-                    if (h < 0) { Warn($"{label}: SpawnHazard 의 장판이 장판 표에 없다 — 건너뛴다(`WithCardHazards` 를 거쳤나)."); return; }
-                    r.HazardDefIndex = h;
-                    break;
-                }
-                case TriggerPayload.SelfOrbitProjectile:
-                    if (trigger != TriggerKind.PeriodicTimer) { Warn($"{label}: SelfOrbitProjectile 은 PeriodicTimer 만 — 건너뛴다."); return; }
-                    if (p.projectile == null || p.magnitude <= 0f || p.duration <= 0f || p.tileRange <= 0
-                        || p.projectile.speed <= 0f || p.projectile.hitThreshold <= 0f)
-                    { Warn($"{label}: SelfOrbitProjectile 탄·피해·지속·반경·속도·굵기 중 빈 것이 있다 — 건너뛴다."); return; }
-                    r.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
-                    r.VisualScale = p.projectile.visualScale;
-                    r.Speed = p.projectile.speed;
-                    r.HitThreshold = p.projectile.hitThreshold;
-                    r.Period = Mathf.Clamp(p.orbitCount <= 0 ? 1 : p.orbitCount, 1, 16);   // 구슬 개수(옛 슬롯 period 재사용)
-                    if (m.trigger.periodSeconds < p.duration) Warn($"{label}: 주기 < 지속 — 화염구가 겹쳐 쌓인다.");
-                    break;
-                case TriggerPayload.AreaSleep:
-                    if (p.magnitude < 1f || p.tileRange < 1 || p.duration <= 0f) { Warn($"{label}: AreaSleep 인원/반경/수면 초가 비었다 — 건너뛴다."); return; }
-                    break;
-                case TriggerPayload.ApplyCcToTarget:
-                    if (p.duration <= 0f) { Warn($"{label}: ApplyCcToTarget duration <= 0 — 건너뛴다."); return; }
-                    break;
-                case TriggerPayload.ApplyStackToTarget:
-                    if (p.magnitude < 1f) { Warn($"{label}: ApplyStackToTarget magnitude < 1(스택 없음) — 건너뛴다."); return; }
+                    r.VisualScale = p.projectile.visualScale;   // 카드는 착탄 연출 배율을 싣는다(유닛 bake 는 0)
                     break;
                 case TriggerPayload.SelfStatBuff:
                 {
+                    // 카드 버프는 % 저작 → 배율(유닛 저작은 배율 그대로).
                     if (!MapBuff(p.buffStat, p.magnitude, out var stat, out float mul)) { Warn($"{label}: SelfStatBuff 스탯 {p.buffStat} 을 옮길 수 없다 — 건너뛴다."); return; }
                     // 최대 중첩(tileRange > 0)은 배율 > 1 에서만 성립한다(곱셈 버킷 값을 더하면 뜻이 뒤집힌다).
                     if (p.tileRange > 0 && mul <= 1f) { Warn($"{label}: SelfStatBuff 최대 중첩은 배율 > 1 에서만 — 건너뛴다."); return; }
@@ -365,13 +306,8 @@ namespace Wassup.BattleCoreUnity
                     r.Magnitude = mul;
                     break;
                 }
-                case TriggerPayload.EmitProjectilePattern:
-                    if (trigger != TriggerKind.PeriodicTimer) { Warn($"{label}: EmitProjectilePattern 은 PeriodicTimer 만 — 건너뛴다."); return; }
-                    if (!BindingDefinitionBuilder.BindPattern(ref r, p.pattern, p.tileRange, label, projectiles, patterns)) return;
-                    break;
             }
 
-            if (!SkillRouting.HasDetector(trigger, hostIsEnemy: false)) { Warn($"{label}: 트리거 '{trigger}' 를 잡는 감지자가 없다 — 건너뛴다."); return; }
             if (r.Effect == null) { Warn($"{label}: '{trigger} × {payload}' 조합에 라우팅이 없다 — 건너뛴다."); return; }
             Add(rows, mine, in r);
         }
