@@ -46,8 +46,8 @@ namespace Wassup.Tests.EditModeAssets
             return AssetDatabase.LoadAssetAtPath<AwakeningConfig>(AssetDatabase.GUIDToAssetPath(guids[0]));
         }
 
-        // 카드 한 장을 굽고 그 카드의 규칙 줄 하나 + 빌더가 낸 로그를 돌려준다.
-        private BindingDef BakeOne(DcMechanic mechanic, out List<string> logs)
+        // 카드 한 장을 굽고 그 카드의 규칙 줄 하나(+ 그 줄이 가리키는 효과 줄 — skill-data-table 1a) + 빌더가 낸 로그를 돌려준다.
+        private BindingDef BakeOne(DcMechanic mechanic, out EffectDef effect, out List<string> logs)
         {
             var card = Make<DreamcatcherCard>();
             card.id = "fixture_card";
@@ -78,7 +78,9 @@ namespace Wassup.Tests.EditModeAssets
             Assert.AreEqual(1, def.Cards.Length);
             Assert.IsNotNull(def.Cards[0].Bindings, "규칙 줄이 안 구워졌다: " + string.Join(" / ", lines));
             Assert.AreEqual(1, def.Cards[0].Bindings.Length);
-            return def.Bindings[def.Cards[0].Bindings[0]];
+            var row = def.Bindings[def.Cards[0].Bindings[0]];
+            effect = def.EffectOf(in row);
+            return row;
         }
 
         // 빌더가 규칙 줄에 명시로 옮기는 선택자 기본값(저작 기본 = Stun · Bleed · 반각 0 → (sin, cos) = (0, 1)).
@@ -90,13 +92,25 @@ namespace Wassup.Tests.EditModeAssets
             b.ConeSinHalf = 0f; b.ConeCosHalf = 1f;
         }
 
-        private static void AssertFieldEqual(BindingDef expected, BindingDef actual)
+        // skill-data-table 1a — 탐침 줄은 효과를 인라인으로 들고(-1), 구운 줄은 효과 표를 가리킨다. 규칙 칸은 규칙 칸끼리,
+        // 효과 값은 **해석한 효과 줄끼리**(탐침 = `InlineEffect()` · 구움 = `EffectOf`) 대조한다 — id 는 빼고.
+        private static void AssertFieldEqual(BindingDef expected, BindingDef actual, in EffectDef actualEffect)
         {
             Assert.AreEqual(expected.SkillId, actual.SkillId, "실행자(스킬 번호)");
+            var effectFields = new HashSet<string> { "Payload", nameof(BindingDef.EffectIndex) };
+            foreach (var f in typeof(EffectDef).GetFields(BindingFlags.Public | BindingFlags.Instance)) effectFields.Add(f.Name);
             foreach (var f in typeof(BindingDef).GetFields(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (f.Name == nameof(BindingDef.Label) || f.Name == nameof(BindingDef.Skill) || f.Name == nameof(BindingDef.CoreSkill)) continue;
+                if (effectFields.Contains(f.Name)) continue;
                 Assert.AreEqual(f.GetValue(expected), f.GetValue(actual), $"필드 {f.Name} 이 탐침의 손조립 줄과 다르다");
+            }
+            object want = expected.InlineEffect();
+            object got = actualEffect;
+            foreach (var f in typeof(EffectDef).GetFields(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (f.Name == nameof(EffectDef.Id)) continue;
+                Assert.AreEqual(f.GetValue(want), f.GetValue(got), $"효과 칸 {f.Name} 이 탐침의 손조립 줄과 다르다");
             }
         }
 
@@ -120,12 +134,12 @@ namespace Wassup.Tests.EditModeAssets
                 },
             };
 
-            var baked = BakeOne(m, out var logs);
+            var baked = BakeOne(m, out var bakedEffect, out var logs);
             Assert.IsEmpty(logs, "경고·오류 0 이어야 한다: " + string.Join(" / ", logs));
 
             var expected = HardCaseUnifiedSkillProbeTests.CardRow();
             WithBuilderSelectorDefaults(ref expected);
-            AssertFieldEqual(expected, baked);
+            AssertFieldEqual(expected, baked, in bakedEffect);
         }
 
         [Test]
@@ -147,7 +161,7 @@ namespace Wassup.Tests.EditModeAssets
                 },
             };
 
-            var baked = BakeOne(m, out var logs);
+            var baked = BakeOne(m, out var bakedEffect, out var logs);
             Assert.IsEmpty(logs, "경고·오류 0 이어야 한다: " + string.Join(" / ", logs));
 
             var (movement, payload) = CombatDefinitionBuilder.Translate(ProjectileFlightMode.SkyFall);
@@ -156,7 +170,7 @@ namespace Wassup.Tests.EditModeAssets
             expected.Duration = HardCaseMeteorProbeTests.WarningSec;
             expected.Telegraph = true;
             WithBuilderSelectorDefaults(ref expected);
-            AssertFieldEqual(expected, baked);
+            AssertFieldEqual(expected, baked, in bakedEffect);
         }
     }
 }

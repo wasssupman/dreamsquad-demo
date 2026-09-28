@@ -89,21 +89,21 @@ namespace Wassup.BattleCore.Trigger
 
         /// <summary>
         /// 규칙 한 줄 × 숙주 → 거절 사유(`None` = 발동한다). 트리거(게이트 축)와 payload(대상 축)가 둘 다 숙주와
-        /// 얽혀 줄 전체를 본다(옛 `EvaluateMechanic`).
+        /// 얽혀 줄 전체를 본다(옛 `EvaluateMechanic`). `e` = 그 줄의 효과(`MatchDefinition.EffectOf`).
         /// </summary>
-        public static RejectReason Evaluate(in BindingDef d, in HostProfile host)
+        public static RejectReason Evaluate(in BindingDef d, in EffectDef e, in HostProfile host)
         {
             // 게이트 주어가 사건 대상인데 숙주가 대상을 안 주면 게이트를 **평가할 수단이 없다** — 두면 게이트가
             // 없는 것처럼 무시되고 조건 없이 발동한다(사양 초과).
             if (d.Gate != GateKind.None && d.GateSubject == GateSubject.EventTarget && !HostProvidesTarget(host.Archetype))
                 return RejectReason.NeedsTargetContext;
 
-            switch (d.Payload)
+            switch (e.Kind)
             {
                 // 비수 — 숙주의 대상으로 날아가고, 숙주가 대상을 못 주면 폴백 반경으로 스스로 찾는다.
                 case EffectKind.ProjectileToTarget:
                     if (!host.TargetsEnemies) return RejectReason.NeedsEnemyTargeting;
-                    return HostProvidesTarget(host.Archetype) || d.TileRange > 0
+                    return HostProvidesTarget(host.Archetype) || e.TileRange > 0
                         ? RejectReason.None : RejectReason.NeedsFallbackRange;
                 // 「그 공격의 대상」에 걸리는 것 — 폴백이 없다.
                 case EffectKind.ApplyCcToTarget:

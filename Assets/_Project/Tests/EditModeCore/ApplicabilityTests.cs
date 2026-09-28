@@ -33,14 +33,14 @@ namespace Wassup.Tests.EditMode.Core
         {
             var host = new HostProfile { Archetype = HostArchetype.BombThrow, Route = HostRoute.Grenade, TargetsEnemies = true, HasDamageOutput = true };
             var cc = BindingDef.Default(); cc.Payload = EffectKind.ApplyCcToTarget;
-            Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in cc, in host));
+            Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in cc, cc.InlineEffect(), in host));
             var dagger = BindingDef.Default(); dagger.Payload = EffectKind.ProjectileToTarget;
-            Assert.AreEqual(RejectReason.NeedsFallbackRange, Applicability.Evaluate(in dagger, in host));
+            Assert.AreEqual(RejectReason.NeedsFallbackRange, Applicability.Evaluate(in dagger, dagger.InlineEffect(), in host));
             dagger.TileRange = 4;
-            Assert.AreEqual(RejectReason.None, Applicability.Evaluate(in dagger, in host), "폴백 반경이 있으면 스스로 찾는다");
+            Assert.AreEqual(RejectReason.None, Applicability.Evaluate(in dagger, dagger.InlineEffect(), in host), "폴백 반경이 있으면 스스로 찾는다");
             var gated = BindingDef.Default(); gated.Payload = EffectKind.SelfTileAoe;
             gated.Gate = GateKind.HpBelow; gated.GateSubject = GateSubject.EventTarget;
-            Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in gated, in host),
+            Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in gated, gated.InlineEffect(), in host),
                 "평가할 수단이 없는 게이트는 조건 없는 발동이 된다 — 거절");
             var heavy = new AttackModDef { Kind = AttackModKind.HeavyStrike, Period = 3, DamageMul = 2f };
             Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.EvaluateAttackMod(in heavy, in host));

@@ -838,7 +838,7 @@ namespace Wassup.BattleCore
                                              Combat.AttackShapeBaked cone = default, float coneRange = 0f)
             => new CoreEvent(CoreEventKind.TriggerFired, tick,
                              b.Owner, target, casterSite, targetSite, faction,
-                             b.InstanceId, (float)(int)b.Def.Payload, b.DefIndex,
+                             b.InstanceId, (float)(int)b.Effect.Kind, b.DefIndex,
                              attackDir: coneAxis, attackShape: cone, attackRange: coneRange);
 
         public static CoreEvent BindingAttached(int tick, Trigger.Binding b, Unit owner)
@@ -846,7 +846,7 @@ namespace Wassup.BattleCore
                              b.Owner, SimEntityId.None,
                              owner != null ? new Site(owner.Position, owner.HitRadius) : Site.Nowhere,
                              Site.Nowhere, owner != null ? owner.Faction : Faction.None,
-                             b.InstanceId, (float)(int)b.Def.Payload, b.DefIndex);
+                             b.InstanceId, (float)(int)b.Effect.Kind, b.DefIndex);
 
         public static CoreEvent BindingDetached(int tick, Trigger.Binding b, Unit owner,
                                                 Trigger.BindingDetachReason reason)

@@ -104,6 +104,19 @@ namespace Wassup.BattleCore
         public Trigger.BindingDef[] Bindings = System.Array.Empty<Trigger.BindingDef>();
 
         /// <summary>
+        /// skill-data-table unit 1a — **효과 표**(스킬의 정체 · U6). 규칙 줄이 `BindingDef.EffectIndex` 로 가리킨다.
+        /// ⚠ 해시에 표 자체를 적지 않는다 — id 문자열·표 순서는 해시 밖이고, 규칙 줄이 **해석된 값**을 적는다(README 계약 8).
+        /// </summary>
+        public Trigger.EffectDef[] Effects = System.Array.Empty<Trigger.EffectDef>();
+
+        /// <summary>
+        /// 규칙 줄의 효과 값 — **효과 값을 읽는 유일한 길**(1a). 표를 가리키면 그 줄, 아니면(-1) 줄의 인라인 칸
+        /// (1a 한정 폴백 — 고정구가 직접 채운 줄 · 판 규칙이 런타임에 조립하는 줄). 1b 에서 폴백이 사라진다.
+        /// </summary>
+        public Trigger.EffectDef EffectOf(in Trigger.BindingDef b)
+            => b.EffectIndex >= 0 ? Effects[b.EffectIndex] : b.InlineEffect();
+
+        /// <summary>
         /// unit 7b — **판 호스트가 판 시작에 드는 규칙 줄**(드림스톤 — 판 진입 장비의 스탯 상속). 비면 한 줄도 안 쓴다.
         /// 카드가 아니다(손패·각성과 무관) — 그 판에 들고 들어온 플레이어 장비라 모드가 아니라 반입이 정한다
         /// (`CostRateMultiplier` 와 같은 축).
@@ -306,7 +319,7 @@ namespace Wassup.BattleCore
             for (int i = 0; i < Bindings.Length; i++)
             {
                 sb.Append("[binding").Append(i.ToString(inv)).Append("]\n");
-                Bindings[i].Canonicalize(sb, inv);
+                Bindings[i].Canonicalize(sb, inv, EffectOf(in Bindings[i]));
             }
         }
 

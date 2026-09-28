@@ -119,7 +119,7 @@ namespace Wassup.EditorTools.BattleCore
                 string counter = d.Period > 0 ? $"{b.Counter}/{d.Period}" : "-";
                 string period = d.Trigger == TriggerKind.PeriodicTimer ? $"{b.Elapsed:0.0}/{d.PeriodSeconds:0.0}s" : "-";
                 string life = d.Lifetime == BindingLifetime.Timed ? $"{b.Remaining:0.0}s" : d.Lifetime.ToString();
-                sb.AppendLine($"{owner} | #{b.InstanceId} | {d.Label} | {d.Trigger}×{d.Payload} | {b.FireCount}/{cap} | "
+                sb.AppendLine($"{owner} | #{b.InstanceId} | {d.Label} | {d.Trigger}×{b.Effect.Kind} | {b.FireCount}/{cap} | "
                     + $"{counter} | {period} | {life} | {Explain(status, d.Trigger, triggers)}");
             }
         }

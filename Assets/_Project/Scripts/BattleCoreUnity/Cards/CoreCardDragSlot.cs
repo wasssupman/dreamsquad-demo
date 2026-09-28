@@ -193,7 +193,8 @@ namespace Wassup.BattleCoreUnity.Cards
                 int r = rows[i];
                 if (r < 0 || r >= def.Bindings.Length) continue;
                 ref var b = ref def.Bindings[r];
-                var spec = RangeCatalog.Resolve(b.Trigger, b.Payload, b.TileRange);
+                var fx = def.EffectOf(in b);
+                var spec = RangeCatalog.Resolve(b.Trigger, fx.Kind, fx.TileRange);
                 if (spec.Shape != RangeShape.None) return spec;
             }
             return RangeSpec.None;
@@ -487,7 +488,7 @@ namespace Wassup.BattleCoreUnity.Cards
             if (_portalEntryCell.HasValue) { PaintPortalCells(_portalEntryCell.Value, cell); return; }
             var def = _view.Driver.Definition;
             int row = def.Cards[cardIndex].ActiveBinding;
-            int tileRange = row >= 0 && row < def.Bindings.Length ? def.Bindings[row].TileRange : 0;
+            int tileRange = row >= 0 && row < def.Bindings.Length ? def.EffectOf(in def.Bindings[row]).TileRange : 0;
             if (tileRange <= 0)
             {
                 _portalCells.Clear();

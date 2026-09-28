@@ -36,7 +36,7 @@ namespace Wassup.BattleCore.Trigger
                 if (IsMarked(host)) return RejectReason.DuplicateState;
                 var marks = card.Bindings;
                 for (int i = 0; marks != null && i < marks.Length; i++)
-                    if (InTable(def, marks[i]) && def.Bindings[marks[i]].Payload == EffectKind.BountyMark)
+                    if (InTable(def, marks[i]) && def.EffectOf(in def.Bindings[marks[i]]).Kind == EffectKind.BountyMark)
                         rows?.Add(marks[i]);
                 return rows != null && rows.Count > 0 ? RejectReason.None : RejectReason.NoContribution;
             }
@@ -52,14 +52,14 @@ namespace Wassup.BattleCore.Trigger
             var list = card.Bindings;
             // 이중 상태는 어떤 쓰기보다 먼저 **카드 전체**를 거절한다(부분 적용 금지).
             for (int i = 0; list != null && i < list.Length; i++)
-                if (InTable(def, list[i]) && Applicability.Evaluate(in def.Bindings[list[i]], in profile) == RejectReason.DuplicateState)
+                if (InTable(def, list[i]) && Applicability.Evaluate(in def.Bindings[list[i]], def.EffectOf(in def.Bindings[list[i]]), in profile) == RejectReason.DuplicateState)
                     return RejectReason.DuplicateState;
 
             var first = RejectReason.None;
             for (int i = 0; list != null && i < list.Length; i++)
             {
                 if (!InTable(def, list[i])) continue;
-                var r = Applicability.Evaluate(in def.Bindings[list[i]], in profile);
+                var r = Applicability.Evaluate(in def.Bindings[list[i]], def.EffectOf(in def.Bindings[list[i]]), in profile);
                 if (r == RejectReason.None) rows?.Add(list[i]);
                 else if (first == RejectReason.None) first = r;
             }
@@ -95,7 +95,7 @@ namespace Wassup.BattleCore.Trigger
                 var b = att.Bindings[i];
                 if (b.Def.Trigger != TriggerKind.None) continue;
                 TriggerEvent e;
-                if (b.Def.Payload == EffectKind.BountyMark)
+                if (b.Effect.Kind == EffectKind.BountyMark)
                 {
                     // 표식은 **플레이어가 건다** — 시전자가 없다(옛 `Caster = Entity.Null`). 대상 = 그 적.
                     e = new TriggerEvent
@@ -140,7 +140,7 @@ namespace Wassup.BattleCore.Trigger
             if (enemy == null) return false;
             var list = enemy.Bindings;
             for (int i = 0; i < list.Count; i++)
-                if (list[i].Def.Payload == EffectKind.BountyMark && list[i].Def.Origin == BindingOrigin.Card) return true;
+                if (list[i].Effect.Kind == EffectKind.BountyMark && list[i].Def.Origin == BindingOrigin.Card) return true;
             return false;
         }
 

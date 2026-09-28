@@ -531,7 +531,7 @@ namespace Wassup.BattleCore.Trigger
             var target = new SkillTarget(targetUnit != null ? CoreSkillContext.ToSkill(targetUnit.Id) : SkillEntityId.None,
                                          in origin, e.CellB, e.HasCellB, e.Direction);
 
-            var prm = d.ToParams(e.TargetLayers);
+            var prm = d.ToParams(in b.Effect, e.TargetLayers);
 
             b.FireCount++;
             PublishFired(b, in e, ctx.Tick, targetUnit);
@@ -583,18 +583,18 @@ namespace Wassup.BattleCore.Trigger
         {
             var casterSite = new Site(e.SubjectPos, e.SubjectBody);
             var targetSite = e.HasSite ? new Site(e.Site, e.SiteBody) : casterSite;
-            ref var d = ref b.Def;
-            if (d.Payload == EffectKind.AreaBreath)
+            ref var fx = ref b.Effect;
+            if (fx.Kind == EffectKind.AreaBreath)
             {
                 // 브레스의 그림은 **이 스킬의 콘**이다(6c 후속 3) — 축 = 시전자→대상, 반각·사거리 = 저작.
                 var cone = new Combat.AttackShapeBaked
                 {
                     kind = Combat.AttackShapeBaked.SectorKind,
-                    cosHalf = d.ConeCosHalf,
-                    sinHalf = d.ConeSinHalf,
+                    cosHalf = fx.ConeCosHalf,
+                    sinHalf = fx.ConeSinHalf,
                 };
                 _bus.Publish(CoreEvent.TriggerFired(tick, b, e.Target, casterSite, targetSite, e.SubjectFaction,
-                                                    e.Direction, cone, d.TileRange));
+                                                    e.Direction, cone, fx.TileRange));
                 return;
             }
             _bus.Publish(CoreEvent.TriggerFired(tick, b, e.Target, casterSite, targetSite, e.SubjectFaction));

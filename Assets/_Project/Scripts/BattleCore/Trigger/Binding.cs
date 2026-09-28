@@ -11,6 +11,12 @@ namespace Wassup.BattleCore.Trigger
     {
         public BindingDef Def;
 
+        /// <summary>
+        /// skill-data-table unit 1a — 이 규칙의 **효과 값**(붙는 순간 `MatchDefinition.EffectOf` 로 해석한 사본). `Def` 와 같은
+        /// 성질의 값이다 — 인스턴스는 정의의 사본을 들고, 효과 값은 이 칸에서만 읽는다(`Def` 의 인라인 효과 칸이 아니다).
+        /// </summary>
+        public EffectDef Effect;
+
         /// <summary>`MatchDefinition.Bindings` 의 줄. 런타임에 조립한 규칙(카드 — 7b)은 -1.</summary>
         public int DefIndex = -1;
 

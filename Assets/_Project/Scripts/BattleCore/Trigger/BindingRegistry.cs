@@ -93,6 +93,7 @@ namespace Wassup.BattleCore.Trigger
             var b = new Binding
             {
                 Def = def,
+                Effect = _def != null ? _def.EffectOf(in def) : def.InlineEffect(),
                 DefIndex = defIndex,
                 Owner = owner != null ? owner.Id : SimEntityId.Match,
                 InstanceId = _nextInstanceId++,
@@ -217,7 +218,7 @@ namespace Wassup.BattleCore.Trigger
                 // 스킬(스폰과 함께 시작)은 이 줄을 안 탄다.
                 if (b.Def.Trigger == TriggerKind.PeriodicTimer) b.Elapsed = b.Def.PeriodSeconds;
                 // 호접몽 완주 버프의 칸 판별자 = 그 규칙의 `InstanceId`(옛 `_dcStackCounter++` — 붙일 때마다 새 칸).
-                if (b.Def.Payload == EffectKind.DreamCocoon) b.Def.StackId = b.InstanceId;
+                if (b.Effect.Kind == EffectKind.DreamCocoon) b.Def.StackId = b.InstanceId;
                 into.Add(b);
             }
         }

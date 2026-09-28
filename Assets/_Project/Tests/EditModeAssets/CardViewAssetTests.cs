@@ -114,9 +114,10 @@ namespace Wassup.Tests.EditModeAssets
             for (int row = 0; row < def.Bindings.Length; row++)
             {
                 ref var b = ref def.Bindings[row];
-                if (b.Payload == EffectKind.AreaDot && b.DataIndex >= 0)
+                var fx = def.EffectOf(in b);
+                if (fx.Kind == EffectKind.AreaDot && fx.DataIndex >= 0)
                 {
-                    Assert.IsNotNull(view.SkillVfx(b.DataIndex), $"'{b.Label}': 빔 번호가 뷰 표 밖을 가리킨다");
+                    Assert.IsNotNull(view.SkillVfx(fx.DataIndex), $"'{b.Label}': 빔 번호가 뷰 표 밖을 가리킨다");
                     Assert.IsFalse(view.TryGetBindingAura(row, out _, out _),
                         $"'{b.Label}': 빔 프리팹이 오라로도 등록됐다(옛 bake 의 겸용 결함 — 빔만 옮긴다)");
                     beams++;

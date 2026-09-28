@@ -111,9 +111,9 @@ namespace Wassup.Tests.EditModeAssets
                 Assert.IsTrue(def.Cards[i].TargetsEnemies);
                 foreach (int r in def.Cards[i].Bindings)
                 {
-                    Assert.AreEqual(EffectKind.BountyMark, def.Bindings[r].Payload);
+                    Assert.AreEqual(EffectKind.BountyMark, def.EffectOf(in def.Bindings[r]).Kind);
                     Assert.AreEqual(1, def.Bindings[r].FireCap, "fireCap 1 — 수명은 소유자 소멸(다른 축)");
-                    Assert.Greater(def.Bindings[r].Magnitude, 1f);
+                    Assert.Greater(def.EffectOf(in def.Bindings[r]).Magnitude, 1f);
                 }
             }
             Assert.Greater(found, 0, "라이브에 표식 카드가 있다(살찌운 제물)");

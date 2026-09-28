@@ -352,7 +352,8 @@ namespace Wassup.BattleCore
                 {
                     if (r < 0 || r >= def.Bindings.Length) continue;
                     ref var d = ref def.Bindings[r];
-                    var spec = RangeCatalog.Resolve(d.Trigger, d.Payload, d.TileRange);
+                    var fx = def.EffectOf(in d);
+                    var spec = RangeCatalog.Resolve(d.Trigger, fx.Kind, fx.TileRange);
                     if (spec.Shape != RangeShape.Circle) continue;
                     if (!SkillMath.TryOriginRadius(spec.Metric, hostBody, out float originR)) continue;
                     for (int k = 0; k < TargetCount && all; k++)
@@ -852,21 +853,22 @@ namespace Wassup.BattleCore
             if (r < 0 || r >= def.Bindings.Length) { sb.Append("[rule ").Append(r.ToString(inv)).Append("] 표 밖\n"); return; }
             ref var d = ref def.Bindings[r];
             sb.Append("[rule ").Append(r.ToString(inv)).Append("] ").Append(d.Label).Append('\n');
-            d.Canonicalize(sb, inv);
-            if (d.DataIndex >= 0 && d.DataIndex < def.Projectiles.Length)
+            var e = def.EffectOf(in d);
+            d.Canonicalize(sb, inv, in e);
+            if (e.DataIndex >= 0 && e.DataIndex < def.Projectiles.Length)
             {
-                sb.Append("[projectile ").Append(d.DataIndex.ToString(inv)).Append("]\n");
-                def.Projectiles[d.DataIndex].Canonicalize(sb, inv);
+                sb.Append("[projectile ").Append(e.DataIndex.ToString(inv)).Append("]\n");
+                def.Projectiles[e.DataIndex].Canonicalize(sb, inv);
             }
-            if (d.PatternDefIndex >= 0 && d.PatternDefIndex < def.Patterns.Length)
+            if (e.PatternDefIndex >= 0 && e.PatternDefIndex < def.Patterns.Length)
             {
-                sb.Append("[pattern ").Append(d.PatternDefIndex.ToString(inv)).Append("]\n");
-                def.Patterns[d.PatternDefIndex].Canonicalize(sb, inv);
+                sb.Append("[pattern ").Append(e.PatternDefIndex.ToString(inv)).Append("]\n");
+                def.Patterns[e.PatternDefIndex].Canonicalize(sb, inv);
             }
-            if (d.HazardDefIndex >= 0 && d.HazardDefIndex < def.Hazards.Length)
+            if (e.HazardDefIndex >= 0 && e.HazardDefIndex < def.Hazards.Length)
             {
-                sb.Append("[hazard ").Append(d.HazardDefIndex.ToString(inv)).Append("]\n");
-                def.Hazards[d.HazardDefIndex].Canonicalize(sb, inv);
+                sb.Append("[hazard ").Append(e.HazardDefIndex.ToString(inv)).Append("]\n");
+                def.Hazards[e.HazardDefIndex].Canonicalize(sb, inv);
             }
         }
 

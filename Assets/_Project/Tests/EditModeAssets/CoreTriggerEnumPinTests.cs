@@ -134,7 +134,7 @@ namespace Wassup.Tests.EditMode
             foreach (var b in def.Bindings)
             {
                 if (b.Trigger != TriggerKind.HealthThreshold) continue;
-                if (b.Payload == EffectKind.UltimateLeap) { ultimates++; Assert.AreEqual(1, b.FireCap, b.Label); }
+                if (def.EffectOf(b).Kind == EffectKind.UltimateLeap) { ultimates++; Assert.AreEqual(1, b.FireCap, b.Label); }
                 else { others++; Assert.AreEqual(0, b.FireCap, b.Label + " — 경계 규칙은 다회가 사양"); }
             }
             Assert.Greater(ultimates, 0, "라이브 궁극기가 없다면 테스트가 공허하다");
@@ -152,13 +152,16 @@ namespace Wassup.Tests.EditMode
             var def = MatchDefinitionBuilder.Build(defenders, Array.Empty<AttackUnitData>(), 1, ModeDef.Default());
             bool found = false;
             foreach (var b in def.Bindings)
-                if (b.Payload == EffectKind.EmitProjectilePattern && b.PatternDefIndex >= 0
-                    && def.Patterns[b.PatternDefIndex].Id == cannon.id)
+            {
+                var fx = def.EffectOf(b);
+                if (fx.Kind == EffectKind.EmitProjectilePattern && fx.PatternDefIndex >= 0
+                    && def.Patterns[fx.PatternDefIndex].Id == cannon.id)
                 {
                     found = true;
-                    Assert.IsTrue(def.Patterns[b.PatternDefIndex].FanOutToAllCandidates);
+                    Assert.IsTrue(def.Patterns[fx.PatternDefIndex].FanOutToAllCandidates);
                     Assert.AreEqual(TriggerKind.OnPlace, b.Trigger);
                 }
+            }
             Assert.IsTrue(found, "캐논 배치 스킬이 규칙으로 안 구워졌다");
         }
     }

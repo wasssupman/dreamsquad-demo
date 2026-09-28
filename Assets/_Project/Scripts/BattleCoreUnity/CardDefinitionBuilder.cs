@@ -53,6 +53,17 @@ namespace Wassup.BattleCoreUnity
             var match = BakeDreamstones(src.Dreamstones, rows);
             if (match.Length > 0) def.MatchBindings = match;
             def.Bindings = rows.ToArray();
+            // skill-data-table unit 1a — 효과 값을 효과 표로(id = `{카드}.{자리}` · 판 호스트 규칙 = `match.{자리}`).
+            var effects = new List<EffectDef>(def.Effects ?? System.Array.Empty<EffectDef>());
+            for (int i = 0; i < def.Cards.Length; i++)
+            {
+                ref var c = ref def.Cards[i];
+                BindingDefinitionBuilder.MoveEffects(def, effects, c.Bindings, c.Id);
+                BindingDefinitionBuilder.MoveEffects(def, effects, c.SquadBindings, c.Id, "squad");
+                if (c.ActiveBinding >= 0) BindingDefinitionBuilder.MoveEffects(def, effects, new[] { c.ActiveBinding }, c.Id, "active");
+            }
+            BindingDefinitionBuilder.MoveEffects(def, effects, def.MatchBindings, "match");
+            def.Effects = effects.ToArray();
         }
 
         /// <summary>판 진입 드림스톤의 코스트 재생 배율(옛 `ResolveCostRateMultiplier` — 1 + Σ%/100). 스탯 돌은 규칙 줄이다.</summary>

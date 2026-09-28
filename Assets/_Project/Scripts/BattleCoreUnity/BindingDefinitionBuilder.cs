@@ -60,6 +60,22 @@ namespace Wassup.BattleCoreUnity
                 if (mods.Count > 0) def.Enemies[i].Attack.Mods = mods.ToArray();
             }
             def.Bindings = rows.ToArray();
+            var effects = new List<EffectDef>(def.Effects ?? System.Array.Empty<EffectDef>());
+            for (int i = 0; i < def.Units.Length; i++) MoveEffects(def, effects, def.Units[i].Bindings, def.Units[i].Id);
+            for (int i = 0; i < def.Enemies.Length; i++) MoveEffects(def, effects, def.Enemies[i].Bindings, def.Enemies[i].Id);
+            def.Effects = effects.ToArray();
+        }
+
+        /// <summary>
+        /// skill-data-table unit 1a — 소유자가 든 규칙 줄의 효과 값을 **효과 표**로 옮긴다(두 빌더 공용). id = `{소유자}.{자리}`
+        /// (저작 경로에서 파생한 임시 id — 저작 효과 id 는 unit 4). 굽기는 오늘 저작을 그대로 두고 이 한 곳이 번역한다.
+        /// </summary>
+        internal static void MoveEffects(MatchDefinition def, List<EffectDef> effects, int[] rows, string owner, string slot = "")
+        {
+            if (rows == null) return;
+            for (int k = 0; k < rows.Length; k++)
+                if (rows[k] >= 0 && rows[k] < def.Bindings.Length)
+                    EffectDef.MoveInline(effects, ref def.Bindings[rows[k]], owner + "." + slot + k);
         }
 
         // 실드 캐스트 능력 — 저작은 그대로, **주기 × 실드 규칙**으로 굽는다(옛 전용 상태·시스템 은퇴).

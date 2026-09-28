@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using Wassup.Skills;
@@ -63,6 +64,16 @@ namespace Wassup.BattleCore.Trigger
         /// </summary>
         public ICoreEffect CoreSkill;
 
+        /// <summary>
+        /// skill-data-table unit 1a — 이 규칙이 가리키는 **효과 줄**(`MatchDefinition.Effects`). **-1 = 아래 인라인 칸을 읽는다**
+        /// (1a 한정 폴백 — 고정구가 직접 채운 줄 · 판 규칙이 런타임에 조립하는 줄). 읽기는 언제나 `MatchDefinition.EffectOf` 로.
+        /// ⚠ 해시에 안 싣는다 — 해시는 해석된 효과 값만 본다(README 계약 8). 줄 번호는 정체가 아니다(계약 6).
+        /// </summary>
+        public int EffectIndex;
+
+        // ⚠ skill-data-table unit 1a — 아래 효과 칸(과 `Payload`)은 **인라인 폴백**이다. 효과 값의 정본은 `EffectDef` 이고
+        // 빌더는 효과 표에 싣는다. 1b 에서 이 칸들을 지운다(`StackId` 는 인스턴스 값이라 남는다).
+
         // 수치 — `SkillParams` 의 원시 칸과 같은 이름. 읽는 쪽이 payload 별 뷰로 이름을 붙인다.
         public float Magnitude;
         public float Duration;
@@ -119,8 +130,71 @@ namespace Wassup.BattleCore.Trigger
             DataIndex = -1,
             PatternDefIndex = -1,
             HazardDefIndex = -1,
+            EffectIndex = -1,
             Lifetime = BindingLifetime.Owner,
         };
+
+        /// <summary>
+        /// 인라인 효과 칸 → 효과 줄(1a 한정 — `EffectOf` 의 폴백이자 빌더가 효과 표에 옮길 때의 한 변환). `Id` 는 비어 있다.
+        /// </summary>
+        public EffectDef InlineEffect() => new EffectDef
+        {
+            Id = "",
+            Kind = Payload,
+            Magnitude = Magnitude,
+            Duration = Duration,
+            TileRange = TileRange,
+            DataIndex = DataIndex,
+            PatternDefIndex = PatternDefIndex,
+            HazardDefIndex = HazardDefIndex,
+            CcKind = CcKind,
+            StatKind = StatKind,
+            StackKind = StackKind,
+            ShieldFilter = ShieldFilter,
+            ShieldTargetCount = ShieldTargetCount,
+            ShieldIncludesSelf = ShieldIncludesSelf,
+            Speed = Speed,
+            HitThreshold = HitThreshold,
+            VisualScale = VisualScale,
+            ConeHalfAngleDeg = ConeHalfAngleDeg,
+            ConeSinHalf = ConeSinHalf,
+            ConeCosHalf = ConeCosHalf,
+            SlamDamage = SlamDamage,
+            SlamTileRange = SlamTileRange,
+            ProjectileMovement = ProjectileMovement,
+            ProjectilePayload = ProjectilePayload,
+            Telegraph = Telegraph,
+        };
+
+        /// <summary>인라인 효과 칸을 `Default()` 값으로 비운다 — 빌더가 효과 표로 옮긴 뒤 부른다(값이 두 벌이 되지 않게).</summary>
+        public void ClearInlineEffect()
+        {
+            var d = Default();
+            Payload = d.Payload;
+            Magnitude = d.Magnitude;
+            Duration = d.Duration;
+            TileRange = d.TileRange;
+            DataIndex = d.DataIndex;
+            PatternDefIndex = d.PatternDefIndex;
+            HazardDefIndex = d.HazardDefIndex;
+            CcKind = d.CcKind;
+            StatKind = d.StatKind;
+            StackKind = d.StackKind;
+            ShieldFilter = d.ShieldFilter;
+            ShieldTargetCount = d.ShieldTargetCount;
+            ShieldIncludesSelf = d.ShieldIncludesSelf;
+            Speed = d.Speed;
+            HitThreshold = d.HitThreshold;
+            VisualScale = d.VisualScale;
+            ConeHalfAngleDeg = d.ConeHalfAngleDeg;
+            ConeSinHalf = d.ConeSinHalf;
+            ConeCosHalf = d.ConeCosHalf;
+            SlamDamage = d.SlamDamage;
+            SlamTileRange = d.SlamTileRange;
+            ProjectileMovement = d.ProjectileMovement;
+            ProjectilePayload = d.ProjectilePayload;
+            Telegraph = d.Telegraph;
+        }
 
         public int SkillId => Skill != null ? Skill.SkillId : SkillRouting.NotRouted;
 
@@ -131,19 +205,21 @@ namespace Wassup.BattleCore.Trigger
         /// 이번 발동의 params. 사건 스냅샷(층)은 호출부가 넘긴다 — **드레인 시점에 다시 읽지 않는다**.
         /// 사건의 자리·몸은 여기가 아니라 원점(`SkillTarget.Origin` — unified-effect-layer unit 2)으로 간다.
         /// `patternIndex` 는 정의표 줄 번호다(코어에는 host 버퍼가 없다 — 슬롯은 바인딩이 든다).
+        /// 효과 값은 `e`(해석된 효과 줄 — `MatchDefinition.EffectOf`) · 트리거 값(`Period`)과 인스턴스 값(`StackId`)은 이 줄.
         /// </summary>
-        public SkillParams ToParams(byte targetLayers)
+        public SkillParams ToParams(in EffectDef e, byte targetLayers)
             => new SkillParams(
-                Magnitude, Duration, TileRange, Period, DataIndex,
-                CcKind, Speed, HitThreshold, SlamDamage, SlamTileRange, StackId, VisualScale,
-                PatternDefIndex, StatKind, StackKind, ProjectileMovement, ProjectilePayload,
-                targetLayers, HazardDefIndex,
-                ShieldTargetCount, ShieldIncludesSelf, ShieldFilter, ConeSinHalf, ConeCosHalf, Telegraph);
+                e.Magnitude, e.Duration, e.TileRange, Period, e.DataIndex,
+                e.CcKind, e.Speed, e.HitThreshold, e.SlamDamage, e.SlamTileRange, StackId, e.VisualScale,
+                e.PatternDefIndex, e.StatKind, e.StackKind, e.ProjectileMovement, e.ProjectilePayload,
+                targetLayers, e.HazardDefIndex,
+                e.ShieldTargetCount, e.ShieldIncludesSelf, e.ShieldFilter, e.ConeSinHalf, e.ConeCosHalf, e.Telegraph);
 
-        internal void Canonicalize(StringBuilder sb, CultureInfo inv)
+        /// <summary>`e` = 해석된 효과 줄(`MatchDefinition.EffectOf`). 키·순서는 1a 이전과 같다 — 해시 무변(README 계약 8).</summary>
+        internal void Canonicalize(StringBuilder sb, CultureInfo inv, in EffectDef e)
         {
             MatchDefinition.Put(sb, "trigger", (int)Trigger, inv);
-            MatchDefinition.Put(sb, "payload", (int)Payload, inv);
+            MatchDefinition.Put(sb, "payload", (int)e.Kind, inv);
             MatchDefinition.Put(sb, "skill", SkillId, inv);
             MatchDefinition.Put(sb, "subject", (int)Subject, inv);
             MatchDefinition.Put(sb, "subjectClass", SubjectClassMask, inv);
@@ -157,33 +233,114 @@ namespace Wassup.BattleCore.Trigger
             MatchDefinition.Put(sb, "gate", (int)Gate, inv);
             MatchDefinition.Put(sb, "gateSubject", (int)GateSubject, inv);
             MatchDefinition.Put(sb, "gateValue", GateValue, inv);
-            MatchDefinition.Put(sb, "magnitude", Magnitude, inv);
-            MatchDefinition.Put(sb, "duration", Duration, inv);
-            MatchDefinition.Put(sb, "tileRange", TileRange, inv);
-            MatchDefinition.Put(sb, "data", DataIndex, inv);
-            MatchDefinition.Put(sb, "pattern", PatternDefIndex, inv);
-            MatchDefinition.Put(sb, "hazard", HazardDefIndex, inv);
-            MatchDefinition.Put(sb, "cc", CcKind, inv);
-            MatchDefinition.Put(sb, "stat", StatKind, inv);
-            MatchDefinition.Put(sb, "stack", StackKind, inv);
+            MatchDefinition.Put(sb, "magnitude", e.Magnitude, inv);
+            MatchDefinition.Put(sb, "duration", e.Duration, inv);
+            MatchDefinition.Put(sb, "tileRange", e.TileRange, inv);
+            MatchDefinition.Put(sb, "data", e.DataIndex, inv);
+            MatchDefinition.Put(sb, "pattern", e.PatternDefIndex, inv);
+            MatchDefinition.Put(sb, "hazard", e.HazardDefIndex, inv);
+            MatchDefinition.Put(sb, "cc", e.CcKind, inv);
+            MatchDefinition.Put(sb, "stat", e.StatKind, inv);
+            MatchDefinition.Put(sb, "stack", e.StackKind, inv);
             MatchDefinition.Put(sb, "shield",
-                ShieldFilter.ToString(inv) + "," + ShieldTargetCount.ToString(inv) + ","
-                + (ShieldIncludesSelf ? "1" : "0"));
-            MatchDefinition.Put(sb, "speed", Speed, inv);
-            MatchDefinition.Put(sb, "hitThreshold", HitThreshold, inv);
-            MatchDefinition.Put(sb, "visualScale", VisualScale, inv);
-            MatchDefinition.Put(sb, "coneDeg", ConeHalfAngleDeg, inv);
-            MatchDefinition.Put(sb, "coneSinCos", ConeSinHalf.ToString("R", inv) + "," + ConeCosHalf.ToString("R", inv));
-            MatchDefinition.Put(sb, "slam", SlamDamage.ToString("R", inv) + "," + SlamTileRange.ToString(inv));
+                e.ShieldFilter.ToString(inv) + "," + e.ShieldTargetCount.ToString(inv) + ","
+                + (e.ShieldIncludesSelf ? "1" : "0"));
+            MatchDefinition.Put(sb, "speed", e.Speed, inv);
+            MatchDefinition.Put(sb, "hitThreshold", e.HitThreshold, inv);
+            MatchDefinition.Put(sb, "visualScale", e.VisualScale, inv);
+            MatchDefinition.Put(sb, "coneDeg", e.ConeHalfAngleDeg, inv);
+            MatchDefinition.Put(sb, "coneSinCos", e.ConeSinHalf.ToString("R", inv) + "," + e.ConeCosHalf.ToString("R", inv));
+            MatchDefinition.Put(sb, "slam", e.SlamDamage.ToString("R", inv) + "," + e.SlamTileRange.ToString(inv));
             MatchDefinition.Put(sb, "stackId", StackId, inv);
-            MatchDefinition.Put(sb, "projAxes", ProjectileMovement.ToString(inv) + "," + ProjectilePayload.ToString(inv));
+            MatchDefinition.Put(sb, "projAxes", e.ProjectileMovement.ToString(inv) + "," + e.ProjectilePayload.ToString(inv));
             // unified-effect-layer unit 2 — 기본값이면 안 쓴다(unit 1 까지의 규칙 줄 해시 무변).
-            if (Telegraph) MatchDefinition.Put(sb, "telegraph", 1, inv);
+            if (e.Telegraph) MatchDefinition.Put(sb, "telegraph", 1, inv);
             MatchDefinition.Put(sb, "fireCap", FireCap, inv);
             MatchDefinition.Put(sb, "lifetime", (int)Lifetime, inv);
             MatchDefinition.Put(sb, "lifetimeSec", LifetimeSeconds, inv);
             MatchDefinition.Put(sb, "revoke", RevokeOnExpire ? 1 : 0, inv);
             MatchDefinition.Put(sb, "origin", (int)Origin, inv);
+        }
+    }
+
+    /// <summary>
+    /// skill-data-table unit 1a — **효과 줄**(스킬의 정체 · 사용자 결정 U6). 종류 + 수치 + 안정 `Id`. 규칙 줄(`BindingDef`)이
+    /// `EffectIndex` 로 가리킨다 — 탄 · 패턴 · 장판 표와 같은 참조 표(README 계약 1).
+    ///
+    /// 담지 않는 것: 실행자(`BindingDef.Skill` — 라우팅이 트리거 × 종류로 고른다) · 트리거 값(`Period` …) · **인스턴스 값**
+    /// (호접몽 `StackId = InstanceId` · 부착 캐스트 FireCap/Lifetime — 규칙 인스턴스가 든다).
+    /// ⚠ 「없음」은 -1 이다(S4) — 탄·패턴·장판 세 축. 그래서 줄은 `Default()` 에서 시작한다.
+    /// </summary>
+    public struct EffectDef
+    {
+        /// <summary>안정 id(`{소유자}.{자리}` — 1a 는 저작 경로에서 파생). 서버 어휘(계약 6) · **해시 밖**(계약 8).</summary>
+        public string Id;
+        /// <summary>효과 종류. 해시 키는 `"payload"` 그대로(골든 무관).</summary>
+        public EffectKind Kind;
+
+        // 수치 — `SkillParams` 의 원시 칸과 같은 이름. 읽는 쪽이 종류별 뷰로 이름을 붙인다.
+        public float Magnitude;
+        public float Duration;
+        public int TileRange;
+        /// <summary>탄·연출 index(`MatchDefinition.Projectiles`, 빔은 뷰의 스킬 VFX 표). **-1 = 없음.**</summary>
+        public int DataIndex;
+        /// <summary>발사 명세(`MatchDefinition.Patterns`). **-1 = 없음.**</summary>
+        public int PatternDefIndex;
+        /// <summary>존 장판(`MatchDefinition.Hazards`). **-1 = 없음.**</summary>
+        public int HazardDefIndex;
+        /// <summary>`SkillCcKind` 값(저작 `DcCcKind` 와 번호가 다르다 — 빌더가 이름으로 옮긴다).</summary>
+        public int CcKind;
+        /// <summary>`SkillStatKind` 값.</summary>
+        public int StatKind;
+        /// <summary>`SkillStackKind` 값.</summary>
+        public int StackKind;
+        /// <summary>실드 대상 선정(`SkillShieldFilter`) · 대상 수(0 = 전원) · 자기 포함.</summary>
+        public int ShieldFilter;
+        public int ShieldTargetCount;
+        public bool ShieldIncludesSelf;
+        public float Speed;
+        public float HitThreshold;
+        public float VisualScale;
+        /// <summary>부채꼴 반각(도). 판정·그림은 아래 (sin, cos) — bake 가 1회 변환해 둘 다 싣는다.</summary>
+        public float ConeHalfAngleDeg;
+        public float ConeSinHalf;
+        public float ConeCosHalf;
+        public float SlamDamage;
+        public int SlamTileRange;
+        public int ProjectileMovement;
+        public int ProjectilePayload;
+        /// <summary>칸 결합 탄의 착탄 예고(사용자 결정 U1 · 기본 꺼짐).</summary>
+        public bool Telegraph;
+
+        public static EffectDef Default() => new EffectDef
+        {
+            Id = "",
+            DataIndex = -1,
+            PatternDefIndex = -1,
+            HazardDefIndex = -1,
+        };
+
+        /// <summary>
+        /// 1a 한정 — 규칙 줄의 인라인 효과 칸을 효과 표로 옮기고 그 줄이 표를 가리키게 한다(빌더 번역의 한 곳). 인라인 칸은
+        /// 비운다(값이 두 벌이 되지 않게). 같은 id · 같은 값이 이미 있으면 그 줄을 다시 가리킨다(같은 카드 두 장).
+        /// 이미 표를 가리키는 줄은 그대로 둔다. 반환 = 효과 줄 번호.
+        /// </summary>
+        public static int MoveInline(List<EffectDef> table, ref BindingDef row, string id)
+        {
+            if (row.EffectIndex >= 0) return row.EffectIndex;
+            var e = row.InlineEffect();
+            e.Id = id ?? "";
+            int at = -1;
+            for (int i = 0; i < table.Count && at < 0; i++)
+                if (table[i].Equals(e)) at = i;
+            if (at < 0)
+            {
+                at = table.Count;
+                table.Add(e);
+            }
+            row.EffectIndex = at;
+            row.ClearInlineEffect();
+            return at;
         }
     }
 }
