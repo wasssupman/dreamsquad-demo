@@ -17,19 +17,23 @@ namespace Wassup.UI
         // UnitId 일 때 id→표시명 해석기(주입). optional 이라 기존 호출처는 무수정으로
         // 컴파일되고, 미주입 시 id 문자열로 폴백한다(unit 5 가 실제 해석기를 넘긴다).
         // 포매터는 DefenderCatalog 를 직접 알지 않는다 — 순수 유지.
-        public static string Body(DreamcatcherCard card, Func<string, string> unitNameOf = null)
-            => Assemble(card, compact: false, unitNameOf);
+        //
+        // skill-data-table U18 — `activeCost` = 액티브 카드의 **실제 비용**(정의표 카드 값 = `AwakeningConfig.costActive`). 옛
+        // `SkillData.cost`(2~4)는 코어가 안 읽는 값이라 문안에서 은퇴했다. 비용을 모르는 호출처(null)는 비용 칸을 빼고 쓴다 —
+        // 틀린 숫자를 보이지 않는다. Squad · Unit 카드는 이 값을 안 읽는다.
+        public static string Body(DreamcatcherCard card, Func<string, string> unitNameOf = null, int? activeCost = null)
+            => Assemble(card, compact: false, unitNameOf, activeCost);
 
-        public static string BodyCompact(DreamcatcherCard card, Func<string, string> unitNameOf = null)
-            => Assemble(card, compact: true, unitNameOf);
+        public static string BodyCompact(DreamcatcherCard card, Func<string, string> unitNameOf = null, int? activeCost = null)
+            => Assemble(card, compact: true, unitNameOf, activeCost);
 
         // dreamcatcher-hand-card-face unit 0 — 손패 카드 본문: 타입/대상은 카드 면의
         // 색·태그 칩이 담당하므로 헤더 줄(축·타입) 없이 효과 라인만. 라인 빌드와
         // description 폴백 규칙은 Assemble 과 같은 소스(LinesWithFallback)를 공유한다.
         // 화살표 강제 줄바꿈(2026-07-25 사용자 확정): 좁은 카드 폭에서 "트리거 →" 와
         // 효과가 줄로 분리되어 구조가 읽힌다. 손패 전용 — 툴팁/덱빌더(넓은 패널)는 미적용.
-        public static string BodyLinesOnly(DreamcatcherCard card, Func<string, string> unitNameOf = null)
-            => string.Join("\n", LinesWithFallback(card, unitNameOf)).Replace(" → ", " →\n");
+        public static string BodyLinesOnly(DreamcatcherCard card, Func<string, string> unitNameOf = null, int? activeCost = null)
+            => string.Join("\n", LinesWithFallback(card, unitNameOf, activeCost)).Replace(" → ", " →\n");
 
         // selection-hand-attach unit 11 rev2 — 부착 셀용 압축 문안.
         // **"항상 → " 만 떼고 나머지 트리거는 남긴다**(사용자 결정 2026-07-30).
@@ -67,9 +71,9 @@ namespace Wassup.UI
         // EffectOnly 가 이 접두만 떼어내므로 리터럴로 흩어두면 조용히 어긋난다.
         private const string AlwaysPrefix = "항상" + Arrow;
 
-        private static string Assemble(DreamcatcherCard card, bool compact, Func<string, string> unitNameOf = null)
+        private static string Assemble(DreamcatcherCard card, bool compact, Func<string, string> unitNameOf, int? activeCost)
         {
-            var lines = LinesWithFallback(card, unitNameOf);
+            var lines = LinesWithFallback(card, unitNameOf, activeCost);
 
             string axis = AxisLabel(card == null ? CardTargetAxis.All : card.axis);
             string typeLabel = TypeLabel(card == null ? CardType.Squad : card.type);
@@ -84,10 +88,10 @@ namespace Wassup.UI
         }
 
         private static List<string> LinesWithFallback(DreamcatcherCard card,
-            Func<string, string> unitNameOf = null)
+            Func<string, string> unitNameOf = null, int? activeCost = null)
         {
             bool hasUnsupportedData;
-            var lines = BuildSummaryLines(card, out hasUnsupportedData);
+            var lines = BuildSummaryLines(card, activeCost, out hasUnsupportedData);
             if ((lines.Count == 0 || hasUnsupportedData)
                 && card != null && !string.IsNullOrEmpty(card.description))
             {
@@ -123,7 +127,7 @@ namespace Wassup.UI
             }
         }
 
-        private static List<string> BuildSummaryLines(DreamcatcherCard card, out bool hasUnsupportedData)
+        private static List<string> BuildSummaryLines(DreamcatcherCard card, int? activeCost, out bool hasUnsupportedData)
         {
             var lines = new List<string>();
             hasUnsupportedData = false;
@@ -138,7 +142,7 @@ namespace Wassup.UI
                     hasUnsupportedData = !BuildUnitLines(card, lines);
                     break;
                 case CardType.Active:
-                    if (card.skill != null) hasUnsupportedData = !BuildSkillLine(card.skill, lines);
+                    if (card.skill != null) hasUnsupportedData = !BuildSkillLine(card.skill, activeCost, lines);
                     break;
             }
 
@@ -511,7 +515,7 @@ namespace Wassup.UI
             }
         }
 
-        private static bool BuildSkillLine(SkillData skill, List<string> lines)
+        private static bool BuildSkillLine(SkillData skill, int? activeCost, List<string> lines)
         {
             string effect;
             switch (skill.effect)
@@ -545,7 +549,8 @@ namespace Wassup.UI
                     return false;
             }
 
-            lines.Add($"{effect} · 비용 {skill.cost} · 재사용 {Duration(skill.cooldownSec)}");
+            string cost = activeCost.HasValue ? $" · 비용 {activeCost.Value}" : "";
+            lines.Add($"{effect}{cost} · 재사용 {Duration(skill.cooldownSec)}");
             return true;
         }
 

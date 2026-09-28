@@ -389,10 +389,24 @@ namespace Wassup.Tests.EditMode
             card.skill = Skill(SkillEffectType.RapidFire, 2f, 6f, 25f, 2);
             card.skill.range = 1f; // active-dreamcatcher-tile-aim unit 0 — 아군 버프도 타일 반경
 
+            // skill-data-table U18 — 비용 칸 = 실제 비용(호출처가 넘기는 카드 값 · `AwakeningConfig.costActive`). `SkillData.cost`(2)는 안 읽는다.
             StringAssert.Contains(
-                "타일 지정 → 반경 1칸 아군 공격 속도 x2 · 6초 · 비용 2 · 재사용 25초",
-                DreamcatcherCardText.Body(card));
-            StringAssert.DoesNotContain("레거시 설명", DreamcatcherCardText.Body(card));
+                "타일 지정 → 반경 1칸 아군 공격 속도 x2 · 6초 · 비용 20 · 재사용 25초",
+                DreamcatcherCardText.Body(card, activeCost: 20));
+            StringAssert.DoesNotContain("레거시 설명", DreamcatcherCardText.Body(card, activeCost: 20));
+        }
+
+        [Test]
+        public void ActiveSkill_CostUnknown_OmitsCost_AndNeverShowsSkillDataCost()
+        {
+            // U18 — 비용을 모르는 호출처는 비용 칸을 뺀다(옛 `SkillData.cost` 로 떨어지지 않는다).
+            var card = Card(CardType.Active);
+            card.skill = Skill(SkillEffectType.RapidFire, 2f, 6f, 25f, 2);
+            card.skill.range = 1f;
+
+            StringAssert.Contains("타일 지정 → 반경 1칸 아군 공격 속도 x2 · 6초 · 재사용 25초", DreamcatcherCardText.Body(card));
+            StringAssert.DoesNotContain("비용", DreamcatcherCardText.Body(card));
+            StringAssert.Contains("비용 20", DreamcatcherCardText.BodyLinesOnly(card, null, 20));
         }
 
         [Test]
@@ -403,8 +417,8 @@ namespace Wassup.Tests.EditMode
             card.skill.range = 2f;
 
             StringAssert.Contains(
-                "타일 지정 → 반경 2칸 적을 중심으로 끌어당김 · 끌어당김 속도 12.5 · 3초 · 비용 2 · 재사용 20초",
-                DreamcatcherCardText.Body(card));
+                "타일 지정 → 반경 2칸 적을 중심으로 끌어당김 · 끌어당김 속도 12.5 · 3초 · 비용 20 · 재사용 20초",
+                DreamcatcherCardText.Body(card, activeCost: 20));
         }
 
         [Test]

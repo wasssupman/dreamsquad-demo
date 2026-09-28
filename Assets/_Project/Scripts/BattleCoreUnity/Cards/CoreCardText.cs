@@ -19,8 +19,9 @@ namespace Wassup.BattleCoreUnity.Cards
         public const string Good = "#9FE6A0";
         public const string Hint = "#FFD98A";
 
-        public static string Body(DreamcatcherCard card, System.Func<string, string> unitNameOf)
-            => card != null ? DreamcatcherCardText.BodyLinesOnly(card, unitNameOf) : "";
+        /// <summary>`cost` = 정의표 카드 값(`CardDef.Cost`) — 액티브 문안의 비용 칸이 이 값을 보인다(U18 · 배지와 같은 숫자).</summary>
+        public static string Body(DreamcatcherCard card, System.Func<string, string> unitNameOf, int cost)
+            => card != null ? DreamcatcherCardText.BodyLinesOnly(card, unitNameOf, cost) : "";
 
         public static string Red(string s) => $"<color={Bad}>{s}</color>";
         public static string Green(string s) => $"<color={Good}>{s}</color>";

@@ -1049,7 +1049,7 @@ namespace Wassup.BattleCoreUnity.Cards
             slot.costLabel.text = _driver.Definition.Cards[cardIndex].Cost.ToString();
             slot.nameTag.SetActive(true);
             slot.nameLabel.text = card != null ? card.displayName : _driver.Definition.Cards[cardIndex].Id;
-            slot.bodyLabel.text = CoreCardText.Body(card, UnitNameOf);
+            slot.bodyLabel.text = CoreCardText.Body(card, UnitNameOf, _driver.Definition.Cards[cardIndex].Cost);
             slot.art.enabled = card != null;
             slot.art.sprite = card != null ? FaceSpriteFor(card) : null;
             slot.art.color = FaceNormal;
