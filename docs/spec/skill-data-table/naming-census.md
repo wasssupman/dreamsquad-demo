@@ -57,7 +57,7 @@
 | B8 | 소유자 필드 `DreamcatcherCard.mechanics` · `UnitSkillAbility.mechanics` · `AttackUnitData.nightmareMechanics`(`:241`) | 세 소유자 SO 공통 `bindings` | 176/34(18) · 27/13(7) | **YAML 키** — `mechanics:` 71 에셋 · `nightmareMechanics:` 24 에셋. 원소 타입이 바뀌므로 `[FormerlySerializedAs]` 로 해결 안 됨 → 이전 스크립트 + 옛 필드 제거 | 4 |
 | B9 | 규칙 레일 능력 `UnitSkillAbility` · `ShieldCastAbility`(코드가 굽는 넷째 저장처 `BindingDefinitionBuilder.cs:67`) | 은퇴 → 방어유닛 `bindings` | 12/9(4) · 5/4(1) | 능력 에셋(규칙 레일 18) 삭제 + `DefenderUnitData.abilities` 참조 정리 · CreateAssetMenu `Wassup/Ability/Unit Skill` 제거 | 4 |
 | B10 | `BindingOrigin { UnitAuthored, Card, Gimmick, Match }`(`TriggerKinds.cs`) | `OwnerKind { Unit, Card, Gimmick, Match }`(시트 `owner_kind` 와 같은 어휘) | 25/16(6) · `UnitAuthored` 6/4 | **정수 해시됨**(`"origin"` 키 · 스냅샷 `origin=`) → 값·키 문자열 유지 | 4(빌더와 함께) |
-| B11 | 실행자가 출처를 박는다: `SelfStatBuffSkill` · `BountyMarkSkill` · `SelfBuffLethalSkill` → `SkillModifierOrigin.Dreamcatcher` · `AllySpeedAuraSkill` → `.Boss` · `CombatPhase.cs:1424`(고치) → `ModifierOrigin.Dreamcatcher` | 출처 = **소유 줄의 `OwnerKind` 에서 파생**(`IntentApplier.ToCoreOrigin` 자리) — 실행자는 출처를 모른다(계약 3) | 7 자리 / 5 파일 | 오늘 라이브 무변(현 소유자와 박힌 값이 일치). 소유자를 바꾸면 **강화 오라·상태 FX 가 달라진다** → 「사용자 확인」 2 | 2 |
+| B11 | 실행자가 출처를 박는다: `SelfStatBuffSkill` · `BountyMarkSkill` · `SelfBuffLethalSkill` → `SkillModifierOrigin.Dreamcatcher` · `AllySpeedAuraSkill` → `.Boss` · `CombatPhase.cs:1424`(고치) → `ModifierOrigin.Dreamcatcher` | ~~출처 = 소유 줄의 `OwnerKind` 에서 파생~~ → **U15 로 뒤집힘**: 꼬리표는 연출이고 **효과(실행자)가 박는다** — 소유자에서 파생하지 않는다. 겸하던 병합 칸 규칙은 `SimIntent.PerBindingSlot` 으로 분리(unit 2) | 7 자리 / 5 파일 | 라이브 무변. 값 이름(`Dreamcatcher` · `Boss`)의 개명은 B13 과 함께(unit 4) | 2(분리) · 4(이름) |
 | B12 | `SlotKind.Card = 4` · `SlotTag.OfCard` · `IntentApplier.TagFor`(`:154` `Origin == Dreamcatcher` 로 칸 가르기) | `SlotKind.BindingInstance` · `SlotTag.OfBinding` · 판별 = 「규칙 인스턴스 소유 버프」 | ≈6/4 | 코어 런타임 · 정수 4 유지 → 해시·골든 무관 | 1a(이름) · 2(판별) |
 | B13 | `CoreDcAuraVisualPool` · `ModifierAuraClassifier.HasActiveDreamcatcherModifier` — 후반부는 **저작 선언 부착 오라**(보스 바람 오라 포함) | `CoreAuraVisualPool` · `HasActiveEmpowerModifier`(B11 결정 뒤) | 3/2 · 2/2 | MonoBehaviour — 파일+클래스 개명, `.meta` 보존(`BattleCoreScene.unity` 는 GUID 참조) | 4 |
 | B14 | 파일 `Trigger/CardSkills.cs`(`PlacementSleepSkill` · `DreamstoneStatSkill` — 코어 로컬 실행자) | `CoreSkills.cs` | 파일명 0 참조 | 없음 | 1a |
@@ -117,7 +117,7 @@
 ## 사용자 확인 (플레이어·기획자에게 보이는 것)
 
 1. **카드·유닛 문안** — `DreamcatcherCardText`(29 자리) · `UnitKitSummary` 가 enum 교체(B19)를 탄다. 정수가 같아 문안은 그대로여야 하지만 **문안 변경은 에이전트가 정하지 않는다** — 달라지면 멈추고 보고.
-2. **강화 오라·상태 FX 의 출처** — 지금은 실행자가 「드림캐쳐」·「보스」를 박는다(B11). 소유자를 자유롭게 하면: 방어유닛이 든 자기 버프에도 드림캐쳐 강화 오라가 켜져야 하나? 적이 든 이속 오라는 계속 「보스」로 보이나? (소유자별 표시 / 효과별 표시 중 택일)
+2. ~~강화 오라·상태 FX 의 출처~~ — **결정 U15(효과별 표시)**. 같은 효과면 누가 들었든 같은 연출(unit 2 에서 반영).
 3. **시트 탭·열 이름**(D1 · D2 · D6) — `Skills` 가 효과 표인가 소유 줄 표인가 · `Units` vs 기존 `Defenders` · `owner_kind` 값 철자 · 효과 종류의 한국어 표시 열.
 4. **카드 발동 연출은 카드 줄만**(A10) — 같은 효과를 유닛이 들면 발동 임팩트·카드 펄스가 없다. 유지 확인.
 

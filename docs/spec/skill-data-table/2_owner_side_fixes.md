@@ -9,6 +9,7 @@
 - 카드 주기 규칙의 첫 발동(`BindingRegistry.cs:218`) — **카드 행 부착 경로에 한정한 채** 이름만 「부착 즉시 첫 발동」 규칙으로 명시(공용 `Attach` 로 옮기면 온천 열기 `GimmickBindings.cs:97-117` 의 위상 보정이 즉시 발동으로 바뀐다 · `Unit` 에 스폰 틱 칸이 없다). 온천 테스트 · 「같은 틱 배치 + 부착」 테스트 추가.
 - `EffectComboRule` — 주체 `Any` 규칙을 숙주 종류 감지자 판정보다 **먼저** 본다(적 숙주 `Any` 오판 결함). 부수 효과: 「적 × 남의 배치」가 합법 조합이 된다 — 저작 게이트는 카드 `HostKinds`(unit 4)가 막는다.
 - 표식 판정(`CardBindings.IsMarked`)이 출처 꼬리표를 정체로 쓰는 곳 → 효과 id 로.
+- **U15 연출은 효과 기준** — 연출을 소유자로 고르던 곳 둘을 효과로: 표식 별(`CoreStatusFxSpawner` — 카드 부착 → 표식 효과 줄의 `BindingAttached`) · 효과 저작 연출(`payload.auraPrefab` 부착 오라 · `AreaDot` 빔 — 카드 빌더도 `BindingDefinitionBuilder.BakeAuthoredVisual` 을 지난다). 강화 오라 꼬리표(`ModifierOrigin.Dreamcatcher` — 이름만 옛 출처)는 **실행자(효과)가 박고** 소유자에서 파생하지 않는다. 그 꼬리표가 겸하던 병합 칸 규칙은 `SimIntent.PerBindingSlot` 으로 갈랐다(`IntentApplier.TagFor`). 카드 발동 연출(U16)은 그대로.
 
 ## 완료 기준
 - 하드 케이스 4 탐침: `현행_적이_든_코스트_획득은_…` 뒤집고 `[Ignore]` 해제 · 검증 오판 `현행_` 뒤집기.
