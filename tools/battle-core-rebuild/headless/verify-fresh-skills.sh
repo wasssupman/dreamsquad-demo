@@ -8,7 +8,10 @@
 #
 # 사용: verify-fresh-skills.sh [ref=HEAD] [덮어쓸 워크트리 파일 ...]
 #   덮어쓸 파일을 주면 export 위에 워크트리 사본을 얹는다(커밋 전 검증용).
-#   환경: VERIFY_OUT(출력 폴더) · UNITY_LIB(참조 dll 폴더, 기본 = 이 워크트리 Library/ScriptAssemblies)
+#   환경: VERIFY_OUT(출력 폴더) · UNITY_LIB(참조 dll 폴더, 기본 = 이 워크트리 Library/ScriptAssemblies) · KEEP_VERIFY=1(끝나도 사본을 남긴다)
+# ⚠ 리포 전체를 풀지 않는다 — 벤더 에셋까지 풀면 실행마다 ~0.9GB 가 쌓여 디스크를 채웠다(2026-09-28 ENOSPC).
+#    헤드리스 csproj 가 읽는 경로만 푼다: Scripts · Editor · Tests · tools · 퇴역 장부(docs/spec/battle-core-rebuild).
+#    실행이 끝나면 출력 폴더를 지운다(KEEP_VERIFY=1 이면 남긴다).
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/../../.." && pwd)
 LIB=${UNITY_LIB:-$REPO/Library/ScriptAssemblies}
@@ -17,7 +20,8 @@ OUT=${VERIFY_OUT:-$(mktemp -d "${TMPDIR:-/tmp}/verify-XXXXXX")}
 EXPORT=$OUT/export
 ASM=$OUT/asm
 mkdir -p "$EXPORT" "$ASM" "$OUT/skills"
-git -C "$REPO" archive "$REF" | tar -x -C "$EXPORT"
+if [ "${KEEP_VERIFY:-0}" != "1" ]; then trap 'rm -rf "$OUT"' EXIT; fi
+git -C "$REPO" archive "$REF" -- Assets/_Project/Scripts Assets/_Project/Editor Assets/_Project/Tests tools docs/spec/battle-core-rebuild | tar -x -C "$EXPORT"
 for f in "$@"; do mkdir -p "$EXPORT/$(dirname "$f")"; cp "$REPO/$f" "$EXPORT/$f"; done
 
 # ① export 의 Skills 소스로 Wassup.Skills.dll 을 새로 굽는다(워크트리 Library 의 옛 dll 을 쓰지 않는다).
