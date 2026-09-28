@@ -4,10 +4,10 @@
 스킬은 소유자를 묻지 않고, 소유자마다 달라야 하는 결과는 **그 상태의 담당자**가 정한다(계약 3). 하드 케이스 4 가 찾은 결손과 토론이 찾은 숨은 분기를 고친다. 방어유닛 자리 이동은 범위 밖(README).
 
 ## 변경 대상
-- `Scripts/BattleCore/Trigger/IntentApplier.cs` 메타 의도(`GainCost` · `ReduceSkillCooldown`) — 시전자 진영이 플레이어 편이 아니면 **무효**(U4). 손패 회수(인수인계)도 같은 게이트.
-- 판 시전 진영 — `TriggerDispatcher` 의 「주체 없는 시전 = 방어유닛」 폴백을 **규칙 인스턴스의 진영**(붙인 쪽이 채움)으로.
-- 카드 주기 규칙의 첫 발동(`BindingRegistry` 부착 경로 한 줄) — 출처(카드) 분기 대신 「주인이 스폰된 뒤 부여됐다」로 파생.
-- `EffectComboRule` — 주체 `Any` 규칙을 숙주 종류 감지자 판정보다 **먼저** 본다(적 숙주 `Any` 오판 결함).
+- `Scripts/BattleCore/Trigger/IntentApplier.cs` 메타 의도(`GainCost` · `ReduceSkillCooldown`) — 시전자 진영이 플레이어 편이 아니면 **무효**(U4). 인수인계(손패 앞당김)는 이미 퇴근 전용이라 코드 변경 0 — 손패 **회수**(`HandDeck.Recover`)는 현상금 표식 소멸에도 쓰이므로 막지 않는다.
+- 판 시전 진영 — 「주체 없는 시전 = 방어유닛」 하드코딩 **다섯 곳**(`TriggerDispatcher.cs:440 · :509-510` · `CardBindings.cs:104 · :132` · `CommandPhase.cs:178`)을 **규칙 인스턴스의 진영**(`Binding` 새 칸 — 붙인 쪽이 채움)으로.
+- 카드 주기 규칙의 첫 발동(`BindingRegistry.cs:218`) — **카드 행 부착 경로에 한정한 채** 이름만 「부착 즉시 첫 발동」 규칙으로 명시(공용 `Attach` 로 옮기면 온천 열기 `GimmickBindings.cs:97-117` 의 위상 보정이 즉시 발동으로 바뀐다 · `Unit` 에 스폰 틱 칸이 없다). 온천 테스트 · 「같은 틱 배치 + 부착」 테스트 추가.
+- `EffectComboRule` — 주체 `Any` 규칙을 숙주 종류 감지자 판정보다 **먼저** 본다(적 숙주 `Any` 오판 결함). 부수 효과: 「적 × 남의 배치」가 합법 조합이 된다 — 저작 게이트는 카드 `HostKinds`(unit 4)가 막는다.
 - 표식 판정(`CardBindings.IsMarked`)이 출처 꼬리표를 정체로 쓰는 곳 → 효과 id 로.
 
 ## 완료 기준
