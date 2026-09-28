@@ -6,9 +6,8 @@ using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
-    // dreamcatcher-attach-lockon — 부착 조준 preflight 순수 판정 핀. ApplyDreamcatcherCardToUnit
-    // 의 유닛-종속 게이트(통통구슬=ProjectileBounce→투사체 / 끝을 보는 눈=FrontmostTarget·
-    // HeavyStrike→데미지 output / 이중 상태)와의 동기화를 게임플레이 케이스로 고정한다.
+    // dreamcatcher-attach-requirement — 부착 제한(정적 술어) 핀. host 종속 판정(옛 `WouldApply`)은 코어 `Applicability` 의
+    // 몫이라 그 케이스들은 코어 테스트(`EditModeCore/ApplicabilityTests`)가 잰다 — skill-data-table 4-정리(B21)에서 옛 사본과 함께 옮겼다.
     public class DreamcatcherAttachEvalTests
     {
         private static DreamcatcherCard UnitCard(DcMechanic[] mech = null, DcAttackModSpec[] mods = null)
@@ -26,139 +25,7 @@ namespace Wassup.Tests.EditMode
         private static DcAttackModSpec Mod(DcAttackModKind kind, int count, float damageMul) =>
             new DcAttackModSpec { kind = kind, count = count, damageMul = damageMul };
 
-        // attack-decoupling unit 1 — host 속성이 DcHostProfile 하나로 접혔다.
-        // 기존 케이스의 전제를 그대로 보존한다: archetype = Standard(RESOLVE 도달),
-        // proj:true = homing 투사체 유닛 / proj:false = 근접, targetsEnemies 기본 true.
-        private static DcHostProfile Profile(bool proj, bool dmg, bool lethal, bool cocoon, bool targetsEnemies) =>
-            new DcHostProfile
-            {
-                archetype = DcHostArchetype.Standard,
-                route = proj ? DcProjectileRoute.Homing : DcProjectileRoute.None,
-                targetsEnemies = targetsEnemies,
-                hasDamageOutput = dmg,
-                hasLethalTimer = lethal,
-                hasDreamCocoon = cocoon,
-            };
-
-        private static bool Eval(DreamcatcherCard card, bool proj, bool dmg,
-            bool lethal = false, bool cocoon = false, bool targetsEnemies = true) =>
-            DreamcatcherAttachEval.WouldApply(card, Profile(proj, dmg, lethal, cocoon, targetsEnemies));
-
-        // ── 통통구슬 = ProjectileBounce: 투사체 유닛만 ──────────────────────────
-        [Test]
-        public void ProjectileBounce_OnProjectileUnit_Applies()
-        {
-            var card = UnitCard(mods: new[] { Mod(DcAttackModKind.ProjectileBounce, 2, 1f) });
-            Assert.IsTrue(Eval(card, proj: true, dmg: true));
-        }
-
-        [Test]
-        public void ProjectileBounce_OnMeleeUnit_Rejects()
-        {
-            var card = UnitCard(mods: new[] { Mod(DcAttackModKind.ProjectileBounce, 2, 1f) });
-            Assert.IsFalse(Eval(card, proj: false, dmg: true), "가디언(근접, 투사체 없음)엔 부착 불가");
-        }
-
-        [Test]
-        public void ProjectileBounce_ZeroCount_Rejects()
-        {
-            var card = UnitCard(mods: new[] { Mod(DcAttackModKind.ProjectileBounce, 0, 1f) });
-            Assert.IsFalse(Eval(card, proj: true, dmg: true));
-        }
-
-        // ── FrontmostTarget / HeavyStrike: 데미지 output 필요 ──────────────────
-        [Test]
-        public void FrontmostTarget_NeedsDamageOutput()
-        {
-            var card = UnitCard(mods: new[] { Mod(DcAttackModKind.FrontmostTarget, 0, 1.2f) });
-            Assert.IsTrue(Eval(card, proj: false, dmg: true));
-            Assert.IsFalse(Eval(card, proj: false, dmg: false), "데미지 output 없는 서포트는 거부");
-        }
-
-        [Test]
-        public void HeavyStrike_NeedsDamageOutput()
-        {
-            var card = UnitCard(mech: new[] { Mech(EffectKind.HeavyStrike) });
-            Assert.IsTrue(Eval(card, proj: false, dmg: true));
-            Assert.IsFalse(Eval(card, proj: false, dmg: false));
-        }
-
-        // ── 비수 = ProjectileToTarget: 적을 타겟하는 유닛만 ────────────────────
-        // 니들은 그 공격의 대상으로 날아가므로, 대상이 아군인 힐러(targetAllies)에
-        // 붙으면 회복 대상을 때린다. 근접/원거리/머신거너는 전부 적을 타겟한다.
-        [Test]
-        public void PokeNeedle_OnEnemyTargetingUnit_Applies()
-        {
-            var card = UnitCard(mech: new[] { Mech(EffectKind.ProjectileToTarget) });
-            Assert.IsTrue(Eval(card, proj: true, dmg: true), "원거리 유닛");
-            Assert.IsTrue(Eval(card, proj: false, dmg: true), "근접 유닛도 5회째에 니들을 쏜다");
-        }
-
-        [Test]
-        public void PokeNeedle_OnAllyTargetingUnit_Rejects()
-        {
-            var card = UnitCard(mech: new[] { Mech(EffectKind.ProjectileToTarget) });
-            Assert.IsFalse(Eval(card, proj: false, dmg: false, targetsEnemies: false),
-                "힐러(아군 타겟)에 붙으면 니들이 아군을 때린다 — 부착 거절");
-        }
-
-        [Test]
-        public void PokeNeedle_MixedCard_StillAppliesOnHealerViaOtherMechanic()
-        {
-            // ProjectileToTarget 만 거절되고 카드 전체가 죽지는 않는다(부분 skip = apply 와 동일 결).
-            var card = UnitCard(mech: new[]
-            {
-                Mech(EffectKind.ProjectileToTarget),
-                Mech(EffectKind.SelfStatBuff),
-            });
-            Assert.IsTrue(Eval(card, proj: false, dmg: false, targetsEnemies: false));
-        }
-
-        // ── 유닛-무관 mechanic 은 아무 유닛에나 기여 ───────────────────────────
-        [Test]
-        public void GenericMechanic_AppliesToAnyUnit()
-        {
-            var card = UnitCard(mech: new[] { Mech(EffectKind.SelfStatBuff) });
-            Assert.IsTrue(Eval(card, proj: false, dmg: false), "클래스 무관 mechanic 은 근접에도 기여");
-        }
-
-        [Test]
-        public void MechanicSavesMeleeFromProjectileMod()
-        {
-            // mechanic(무관) + ProjectileBounce(투사체 필요) 혼합 → 근접이어도 mechanic 이 살림.
-            var card = UnitCard(
-                mech: new[] { Mech(EffectKind.SelfStatBuff) },
-                mods: new[] { Mod(DcAttackModKind.ProjectileBounce, 2, 1f) });
-            Assert.IsTrue(Eval(card, proj: false, dmg: false));
-        }
-
-        // ── 이중 상태 거부(카드 전체) ─────────────────────────────────────────
-        [Test]
-        public void DupLethalTimer_RejectsWholeCard()
-        {
-            var card = UnitCard(mech: new[] { Mech(EffectKind.SelfBuffLethal) });
-            Assert.IsFalse(Eval(card, proj: true, dmg: true, lethal: true), "이미 LethalTimer 면 거부");
-            Assert.IsTrue(Eval(card, proj: true, dmg: true, lethal: false));
-        }
-
-        // ── Squad / 빈 카드 ───────────────────────────────────────────────────
-        [Test]
-        public void SquadCard_AlwaysApplies()
-        {
-            var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
-            c.type = CardType.Squad;
-            Assert.IsTrue(DreamcatcherAttachEval.WouldApply(c, Profile(false, false, false, false, false)));
-        }
-
-        [Test]
-        public void NoEffects_Rejects()
-        {
-            Assert.IsFalse(Eval(UnitCard(), proj: true, dmg: true));
-            Assert.IsFalse(DreamcatcherAttachEval.WouldApply(null, Profile(true, true, false, false, true)));
-        }
-
         // ── dreamcatcher-attach-requirement unit 0: 부착 대상 제한(정적 술어) ──────
-        // WouldApply 와 독립 함수라 위 케이스들은 무영향 — 제한만 따로 핀한다.
 
         private static DreamcatcherCard RequireCard(DcAttachType type, string value = null)
         {

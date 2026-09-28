@@ -4,19 +4,8 @@ using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Core
 {
-    // dreamcatcher-attach-lockon — 부착 조준 유효성 preflight 의 순수 판정.
-    // "이 defender-hosted 카드가 이 유닛에 '기여'하는가"(= 실제 커밋이 -1 이
-    // 아닌가)를, **유닛-종속 게이트만** 미러해 plain 값으로 판정한다.
-    //
-    // attack-decoupling unit 1 — host 종속 판정의 source of truth 는 이제
-    // `DcApplicability` **한 곳**이다. 이 클래스와 커밋 경로
-    // (ApplyDreamcatcherCardToUnit)가 같은 함수를 호출하므로, 예전의 "★ 동기화 계약"
-    // (두 미러를 손으로 맞추기)은 폐기됐다 — 그 부채가 통통구슬×머신거너 같은
-    // "붙는데 무효" 조합의 원인이었다.
-    //
-    // 여전히 여기 남는 것: **카드 단위 해석**(어느 메커닉 하나라도 발동하면 기여) +
-    // 카드 데이터 검증(magnitude·duration·projectile-null·attachType). 후자는 어느
-    // 유닛에서든 같은 결과라 host 판정과 레이어가 다르다.
+    // dreamcatcher-attach-requirement — 부착 제한(`attachType` · `attachValue`)의 정적 술어 셋. host 종속 판정(옛 `WouldApply` ·
+    // `DcApplicability`)은 코어 `Applicability` 로 옮겨 갔고 옛 사본은 skill-data-table 4-정리(B21)에서 지웠다.
     public static class DreamcatcherAttachEval
     {
         // dreamcatcher-attach-requirement unit 0 — 부착 대상 제한(정적 술어) 판정.
@@ -83,57 +72,7 @@ namespace Wassup.Core
             }
         }
 
-        // attack-decoupling unit 1 — host 종속 판정은 전부 DcApplicability 로 위임한다.
-        // 이 함수에 남는 것은 **카드 단위 해석**뿐: "메커닉/모드 중 하나라도 이 host 에서
-        // 발동하면 카드가 기여한다"(spec 계약 4 — 판정 단위는 메커닉, 전량 무효일 때만
-        // 카드 거절). host 속성이 profile 하나로 접혀 새 속성이 생겨도 시그니처가
-        // 흔들리지 않는다.
-        public static bool WouldApply(DreamcatcherCard card, in DcHostProfile host)
-        {
-            if (card == null) return false;
-            // Squad = 축-집합 버프라 host 능력 profile 게이트는 없다. unit 10의
-            // attachType 앵커 제한은 이 함수 밖의 공용 preflight가 먼저 판정한다.
-            // Active는 defender-hosted 경로 밖.
-            if (card.type == CardType.Squad) return true;
-            if (card.type != CardType.Unit) return false;
-
-            var mech = card.RuleView();   // skill-data-table unit 4 — 소유 줄 보기
-            bool hasMech = mech.Length > 0;
-            bool hasMods = card.attackMods != null && card.attackMods.Length > 0;
-            if (!hasMech && !hasMods) return false;
-
-            if (hasMech)
-            {
-                // 이중 상태 거부만 카드 '전체' 거부다(apply preflight 가 -1 을 반환하는
-                // 유일한 host 사유 — 부분 적용이 원래 상태를 리셋하기 때문).
-                for (int i = 0; i < mech.Length; i++)
-                {
-                    var m = mech[i];
-                    if (DcApplicability.EvaluateMechanic(m, host)
-                        == DcRejectReason.DuplicateState) return false;
-                }
-                for (int i = 0; i < mech.Length; i++)
-                {
-                    var m = mech[i];
-                    if (m.payload.kind == EffectKind.None) continue;
-                    if (DcApplicability.EvaluateMechanic(m, host)
-                        == DcRejectReason.None) return true;
-                }
-            }
-
-            if (hasMods)
-            {
-                for (int i = 0; i < card.attackMods.Length; i++)
-                {
-                    var am = card.attackMods[i];
-                    // 카드 데이터 검증(kind/damageMul/count)은 host 무관이라 여기 남는다.
-                    if (am.kind == DcAttackModKind.None || am.damageMul <= 0f) continue;
-                    if (am.kind == DcAttackModKind.ProjectileBounce && am.count <= 0) continue;
-                    if (DcApplicability.EvaluateAttackMod(am.kind, host) == DcRejectReason.None) return true;
-                }
-            }
-
-            return false;
-        }
+        // skill-data-table 4-정리(B21) — `WouldApply`(host 종속 부착 판정의 옛 사본 · 라이브 호출 0)는 삭제했다. 정본 = 코어
+        // `Applicability` · `CardBindings.Plan`. 여기 남는 것은 부착 제한(정적 술어) 셋이다.
     }
 }
