@@ -13,6 +13,8 @@ namespace Wassup.Core
     // catalog / active-card / config SO instances IN MEMORY (no asset writes —
     // editor-only API). Values hold for the app session; a restart reverts.
     // dev/QA-only; scene-local component, not a singleton.
+    // skill-data-table unit 4 — DcMechanics 탭은 받아도 `DcSheetApplier` 가 버린다(옛 mechanics 겹쳐쓰기 차단 ·
+    // 로그인 자동 import 도 이 경로다). 탭 목록은 계약 고정이라 그대로 두고, 차단 지점은 적용 코어 한 곳이다.
     public class DcSheetRuntimeRefresher : MonoBehaviour, IRuntimeRefresher
     {
         // DC tab names are contract-fixed (dreamcatcher-sheet-sync 0_json_schema).

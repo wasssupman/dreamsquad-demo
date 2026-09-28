@@ -12,8 +12,8 @@ namespace Wassup.Data.StatImport
     //  - sheet-SoT tabs (DcCardEffects/DcAttackMods, pure scalars): a cardId that
     //    appears in the tab gets its array REBUILT from its rows (slot-ordered);
     //    absent cards keep their arrays; length changes are reported.
-    //  - Unity-SoT tab (DcMechanics, holds a projectile asset ref): value overlay
-    //    onto the existing slot only; structure and asset refs never change.
+    //  - DcMechanics tab: **disabled** (skill-data-table unit 4 — rows are ignored and
+    //    reported; the old value overlay is retired, new sheet format = unit 5).
     public static class DcSheetApplier
     {
         public static string Apply(DcSheetPayload payload,
@@ -31,7 +31,7 @@ namespace Wassup.Data.StatImport
 
             RebuildEffects(payload?.cardEffects, cardsById, onApplied, log, c);
             RebuildAttackMods(payload?.attackMods, cardsById, onApplied, log, c);
-            OverlayMechanics(payload?.mechanics, cardsById, onApplied, log, c);
+            IgnoreMechanics(payload?.mechanics, log, c);
 
             log.Insert(0, $"Matched {c.matched}, unmatched {c.unmatched}, fields applied {c.fieldsApplied}, arrays rebuilt {c.rebuilt}, skipped {c.skipped}.\n");
             return log.ToString();
@@ -177,50 +177,16 @@ namespace Wassup.Data.StatImport
             }
         }
 
-        // -------- Unity-SoT tab: overlay values onto existing mechanics slots --------
+        // -------- DcMechanics 탭: 차단 --------
 
-        private static void OverlayMechanics(DcMechanicDto[] rows,
-            Dictionary<string, DreamcatcherCard> cardsById,
-            Action<ScriptableObject> onApplied, StringBuilder log, Counters c)
+        // skill-data-table unit 4 — 옛 mechanics 겹쳐쓰기는 **끊었다**. 저작 형식이 효과 SO + 소유 줄로 바뀌는 중이라
+        // (unit 4 이전 스크립트) 옛 칸(`so.mechanics[slot].payload`)에 로비 진입마다 쓰면 이전 전후 값이 갈린다.
+        // 시트가 새 형식을 알게 되는 것은 unit 5 다 — 그때까지 이 탭의 줄은 읽기만 하고 버린다(다른 탭은 그대로).
+        private static void IgnoreMechanics(DcMechanicDto[] rows, StringBuilder log, Counters c)
         {
-            if (rows == null) return;
-            var seen = new HashSet<string>();
-            foreach (var dto in rows)
-            {
-                if (string.IsNullOrEmpty(dto.cardId) || !cardsById.TryGetValue(dto.cardId, out var so))
-                { c.unmatched++; log.AppendLine($"[dc-mechanics] no match for cardId='{dto.cardId}'"); continue; }
-                if (dto.slot == null)
-                { c.skipped++; log.AppendLine($"[dc-mechanics] '{dto.cardId}' row without slot — skipped."); continue; }
-                if (!seen.Add($"{dto.cardId}:{dto.slot}"))
-                { c.skipped++; log.AppendLine($"[dc-mechanics] duplicate row for '{dto.cardId}' slot {dto.slot} — skipped."); continue; }
-                var arr = so.mechanics;
-                if (arr == null || dto.slot.Value < 0 || dto.slot.Value >= arr.Length)
-                {
-                    c.skipped++;
-                    log.AppendLine($"[dc-mechanics] '{dto.cardId}' slot {dto.slot} out of range (have {arr?.Length ?? 0}) — structure changes stay in Unity.");
-                    continue;
-                }
-
-                var m = arr[dto.slot.Value];
-                if (dto.triggerKind != null) { m.trigger.kind = dto.triggerKind.Value; c.fieldsApplied++; }
-                if (dto.triggerPeriod != null) { m.trigger.period = dto.triggerPeriod.Value; c.fieldsApplied++; }
-                if (dto.payloadKind != null) { m.payload.kind = dto.payloadKind.Value; c.fieldsApplied++; }
-                if (dto.magnitude != null) { m.payload.magnitude = dto.magnitude.Value; c.fieldsApplied++; }
-                if (dto.tileRange != null) { m.payload.tileRange = dto.tileRange.Value; c.fieldsApplied++; }
-                if (dto.duration != null) { m.payload.duration = dto.duration.Value; c.fieldsApplied++; }
-                if (dto.triggerPeriodSeconds != null) { m.trigger.periodSeconds = dto.triggerPeriodSeconds.Value; c.fieldsApplied++; }
-                if (dto.triggerFraction != null) { m.trigger.fraction = dto.triggerFraction.Value; c.fieldsApplied++; }
-                if (dto.ccKind != null) { m.payload.ccKind = dto.ccKind.Value; c.fieldsApplied++; }
-                if (dto.stackKind != null) { m.payload.stackKind = dto.stackKind.Value; c.fieldsApplied++; }
-                if (dto.buffStat != null) { m.payload.buffStat = dto.buffStat.Value; c.fieldsApplied++; }
-                arr[dto.slot.Value] = m; // payload.projectile untouched by design
-
-                if (m.payload.kind == DcPayloadKind.ProjectileToTarget && m.payload.projectile == null)
-                    log.AppendLine($"[dc-mechanics] '{dto.cardId}' slot {dto.slot} is ProjectileToTarget but projectile is unassigned — assign it in Unity.");
-
-                c.matched++;
-                onApplied?.Invoke(so);
-            }
+            if (rows == null || rows.Length == 0) return;
+            c.skipped += rows.Length;
+            log.AppendLine($"[dc-mechanics] {rows.Length} row(s) ignored — mechanics import is disabled (skill-data-table unit 4 · new sheet format = unit 5).");
         }
     }
 }

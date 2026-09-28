@@ -130,5 +130,41 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Object.DestroyImmediate(card);
             Object.DestroyImmediate(catalog);
         }
+
+        // skill-data-table unit 4 — 로그인 자동 import(LoginAutoImport → AllRuntimeRefresher → 이 코어)가 옛 mechanics 칸에 쓰지 않는다.
+        // 같은 호출에서 다른 탭(DcCards)은 그대로 적용된다.
+        [Test]
+        public void ApplyBodies_MechanicsTab_IsIgnored_OtherTabsApply()
+        {
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.id = "test_card";
+            card.displayName = "OLD";
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 5 },
+                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfTileAoe, magnitude = 20, tileRange = 1 },
+                },
+            };
+            var catalog = ScriptableObject.CreateInstance<DreamcatcherCardCatalog>();
+            catalog.cards = new[] { card };
+
+            string log = DcSheetRuntimeRefresher.ApplyBodies(
+                Results(Body(@"{ ""id"": ""test_card"", ""displayName"": ""NEW"" }"),
+                    Empty,
+                    Body(@"{ ""cardId"": ""test_card"", ""slot"": 0, ""triggerPeriod"": 2, ""magnitude"": 99, ""tileRange"": 3 }"),
+                    Empty, Empty, Empty),
+                Tabs, catalog, null, null);
+
+            Assert.AreEqual("NEW", card.displayName, "other tabs still apply");
+            Assert.AreEqual(5, card.mechanics[0].trigger.period, "mechanics must not be touched by login import");
+            Assert.AreEqual(20f, card.mechanics[0].payload.magnitude);
+            Assert.AreEqual(1, card.mechanics[0].payload.tileRange);
+            StringAssert.Contains("[dc-mechanics] 1 row(s) ignored", log);
+
+            Object.DestroyImmediate(card);
+            Object.DestroyImmediate(catalog);
+        }
     }
 }

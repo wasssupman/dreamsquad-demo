@@ -318,7 +318,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.AreEqual(2, so.attackMods[0].count);
         }
 
-        // -------- Unity-SoT tab: mechanics overlay --------
+        // -------- DcMechanics tab: disabled (skill-data-table unit 4) --------
 
         private DreamcatcherCard NewMechanicCard(string id, ProjectileData projectile)
         {
@@ -337,95 +337,37 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             return so;
         }
 
+        // skill-data-table unit 4 — 옛 mechanics 겹쳐쓰기 차단. 시트 줄이 와도 값·참조·구조 어느 것도 바뀌지 않고, 버린 줄 수가 로그에 남는다.
         [Test]
-        public void OverlayMechanics_UpdatesValuesAndPreservesProjectileRef()
+        public void Mechanics_RowsAreIgnored_CardUntouched()
         {
             var projectile = ScriptableObject.CreateInstance<ProjectileData>();
             var so = NewMechanicCard("poke_needle", projectile);
+            var log = new StringBuilder();
 
-            var payload = new DcSheetPayload
-            {
-                mechanics = new[]
-                {
-                    new DcMechanicDto { cardId = "poke_needle", slot = 0, triggerPeriod = 4, magnitude = 25 },
-                },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["poke_needle"] = so });
-
-            Assert.AreEqual(4, so.mechanics[0].trigger.period);
-            Assert.AreEqual(25f, so.mechanics[0].payload.magnitude);
-            Assert.AreEqual(DcTriggerKind.AttackN, so.mechanics[0].trigger.kind, "omitted column keeps value");
-            Assert.AreSame(projectile, so.mechanics[0].payload.projectile, "asset ref must survive the overlay");
-        }
-
-        // unit 7 — Spec A/B 신필드(triggerFraction/ccKind/stackKind/buffStat) overlay 라운드트립.
-        [Test]
-        public void OverlayMechanics_AppliesSpecABNewFields()
-        {
-            var so = NewMechanicCard("last_stand", null);
             var payload = new DcSheetPayload
             {
                 mechanics = new[]
                 {
                     new DcMechanicDto
                     {
-                        cardId = "last_stand", slot = 0,
-                        triggerKind = DcTriggerKind.HealthThreshold, triggerFraction = 0.7f, triggerPeriodSeconds = 2.5f,
-                        payloadKind = DcPayloadKind.SelfStatBuff, buffStat = CardBuffKind.AttackDamage,
-                        ccKind = DcCcKind.Stun, stackKind = DcStackKind.Bleed,
+                        cardId = "poke_needle", slot = 0, triggerPeriod = 4, magnitude = 25,
+                        triggerKind = DcTriggerKind.HealthThreshold, payloadKind = DcPayloadKind.SelfStatBuff,
                     },
                 },
             };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["last_stand"] = so });
-
-            Assert.AreEqual(0.7f, so.mechanics[0].trigger.fraction, "triggerFraction overlaid");
-            Assert.AreEqual(2.5f, so.mechanics[0].trigger.periodSeconds, "triggerPeriodSeconds overlaid");
-            Assert.AreEqual(CardBuffKind.AttackDamage, so.mechanics[0].payload.buffStat, "buffStat overlaid");
-            Assert.AreEqual(DcCcKind.Stun, so.mechanics[0].payload.ccKind, "ccKind overlaid");
-            Assert.AreEqual(DcStackKind.Bleed, so.mechanics[0].payload.stackKind, "stackKind overlaid");
-        }
-
-        // 신필드 omit(null) 시 기존 SO 값 유지 — partial-update 컨벤션 가드.
-        [Test]
-        public void OverlayMechanics_OmittedNewFields_KeepExistingValues()
-        {
-            var so = NewMechanicCard("last_stand", null);
-            so.mechanics[0].trigger.fraction = 0.5f;
-            so.mechanics[0].trigger.periodSeconds = 3f;
-            so.mechanics[0].payload.buffStat = CardBuffKind.AttackSpeed;
-            so.mechanics[0].payload.ccKind = DcCcKind.Impulse;
-            so.mechanics[0].payload.stackKind = DcStackKind.Poison;
-
-            var payload = new DcSheetPayload
-            {
-                mechanics = new[] { new DcMechanicDto { cardId = "last_stand", slot = 0, magnitude = 12 } },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["last_stand"] = so });
-
-            Assert.AreEqual(12f, so.mechanics[0].payload.magnitude);
-            Assert.AreEqual(0.5f, so.mechanics[0].trigger.fraction, "omitted triggerFraction keeps value");
-            Assert.AreEqual(3f, so.mechanics[0].trigger.periodSeconds, "omitted triggerPeriodSeconds keeps value");
-            Assert.AreEqual(CardBuffKind.AttackSpeed, so.mechanics[0].payload.buffStat, "omitted buffStat keeps value");
-            Assert.AreEqual(DcCcKind.Impulse, so.mechanics[0].payload.ccKind, "omitted ccKind keeps value");
-            Assert.AreEqual(DcStackKind.Poison, so.mechanics[0].payload.stackKind, "omitted stackKind keeps value");
-        }
-
-        [Test]
-        public void OverlayMechanics_SlotOutOfRange_SkipsAndReports()
-        {
-            var so = NewMechanicCard("poke_needle", null);
-            var log = new StringBuilder();
-
-            var payload = new DcSheetPayload
-            {
-                mechanics = new[] { new DcMechanicDto { cardId = "poke_needle", slot = 1, magnitude = 99 } },
-            };
             Apply(payload, new Dictionary<string, DreamcatcherCard> { ["poke_needle"] = so }, log: log);
 
-            Assert.AreEqual(1, so.mechanics.Length);
+            Assert.AreEqual(5, so.mechanics[0].trigger.period, "mechanics overlay must stay disabled");
             Assert.AreEqual(20f, so.mechanics[0].payload.magnitude);
-            StringAssert.Contains("out of range", log.ToString());
+            Assert.AreEqual(DcTriggerKind.AttackN, so.mechanics[0].trigger.kind);
+            Assert.AreEqual(DcPayloadKind.ProjectileToTarget, so.mechanics[0].payload.kind);
+            Assert.AreSame(projectile, so.mechanics[0].payload.projectile);
+            StringAssert.Contains("[dc-mechanics] 1 row(s) ignored", log.ToString());
+            Object.DestroyImmediate(projectile);
+            Object.DestroyImmediate(so);
         }
+
 
         // ---- unit 6 (review fixes) — edge cases from the two-track review ----
 
@@ -509,26 +451,6 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         }
 
         [Test]
-        public void OverlayMechanics_DuplicateRow_AppliesFirstSkipsRest()
-        {
-            var so = NewMechanicCard("poke_needle", null);
-            var log = new StringBuilder();
-
-            var payload = new DcSheetPayload
-            {
-                mechanics = new[]
-                {
-                    new DcMechanicDto { cardId = "poke_needle", slot = 0, magnitude = 30 },
-                    new DcMechanicDto { cardId = "poke_needle", slot = 0, magnitude = 40 },
-                },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["poke_needle"] = so }, log: log);
-
-            Assert.AreEqual(30f, so.mechanics[0].payload.magnitude, "first row applies, duplicates skip");
-            StringAssert.Contains("duplicate row", log.ToString());
-        }
-
-        [Test]
         public void ChildTab_UnknownCardId_ReportsNoMatch()
         {
             var log = new StringBuilder();
@@ -582,20 +504,5 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.AreEqual(9, so.awakeningReward, "import must write the sheet value");
         }
 
-        [Test]
-        public void OverlayMechanics_ProjectileToTargetWithoutRef_Warns()
-        {
-            var so = NewMechanicCard("poke_needle", null);
-            var log = new StringBuilder();
-
-            var payload = new DcSheetPayload
-            {
-                mechanics = new[] { new DcMechanicDto { cardId = "poke_needle", slot = 0, magnitude = 25 } },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["poke_needle"] = so }, log: log);
-
-            Assert.AreEqual(25f, so.mechanics[0].payload.magnitude, "warning must not block the apply");
-            StringAssert.Contains("projectile is unassigned", log.ToString());
-        }
     }
 }
