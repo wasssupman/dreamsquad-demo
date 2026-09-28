@@ -66,6 +66,9 @@ namespace Wassup.Tests.EditMode
             { "nightmare_hunt", "악몽사냥" },
             // content-5 unit 6 — 발사 명세 카드 1호.
             { "moth_swarm", "불나방떼" },
+            // unified-effect-layer — 하드 케이스 둘의 실사용 카드(남의 배치 × 전원 미사일 · 타격 × 맞은 자리 운석).
+            { "gaesagi", "개사기" },
+            { "star_strike", "별똥 타격" },
             { "poke_needle", "비수" },
             { "ranger_as", "레인저속" },
             { "ranger_atk", "레인저딜" },

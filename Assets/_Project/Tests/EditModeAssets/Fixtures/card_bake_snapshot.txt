@@ -1823,14 +1823,100 @@ kind=0
 cost=20
 cooldownSeconds=0
 retireRecall=1
-[card 45 active_meteor]
+[card 45 gaesagi]
+id=gaesagi
+kind=0
+cost=20
+cooldownSeconds=0
+retireRecall=0
+bindings=43
+[rule 43] 카드 'gaesagi' mechanic 0
+trigger=9
+payload=17
+skill=7
+subject=1
+subjectClass=0
+subjectFilter=1
+period=0
+periodSec=0
+fraction=0
+gate=0
+gateSubject=0
+gateValue=0
+magnitude=0
+duration=0
+tileRange=0
+data=-1
+pattern=1
+hazard=-1
+cc=3
+stat=0
+stack=1
+shield=0,0,0
+speed=0
+hitThreshold=0
+visualScale=0
+coneDeg=0
+coneCosSq=1
+slam=0,0
+stackId=0
+projAxes=0,0
+fireCap=0
+lifetime=0
+lifetimeSec=0
+revoke=0
+origin=1
+[card 46 star_strike]
+id=star_strike
+kind=0
+cost=20
+cooldownSeconds=0
+retireRecall=0
+bindings=44
+[rule 44] 카드 'star_strike' mechanic 0
+trigger=1
+payload=1
+skill=19
+subject=0
+subjectClass=0
+period=1
+periodSec=0
+fraction=0
+gate=0
+gateSubject=0
+gateValue=0
+magnitude=30
+duration=0.5
+tileRange=1
+data=6
+pattern=-1
+hazard=-1
+cc=3
+stat=0
+stack=1
+shield=0,0,0
+speed=0
+hitThreshold=0.3
+visualScale=1.3
+coneDeg=0
+coneCosSq=1
+slam=0,0
+stackId=0
+projAxes=2,1
+telegraph=1
+fireCap=0
+lifetime=0
+lifetimeSec=0
+revoke=0
+origin=1
+[card 47 active_meteor]
 id=active_meteor
 kind=1
 cost=20
 cooldownSeconds=18
 retireRecall=0
-active=43
-[rule 43] 액티브 'active_meteor'
+active=45
+[rule 45] 액티브 'active_meteor'
 trigger=0
 payload=0
 skill=33
@@ -1865,15 +1951,15 @@ lifetime=3
 lifetimeSec=0
 revoke=0
 origin=1
-[card 46 active_portal]
+[card 48 active_portal]
 id=active_portal
 kind=1
 cost=20
 cooldownSeconds=14
 retireRecall=0
-active=44
+active=46
 twoCells=1
-[rule 44] 액티브 'active_portal'
+[rule 46] 액티브 'active_portal'
 trigger=0
 payload=0
 skill=32
@@ -1908,14 +1994,14 @@ lifetime=3
 lifetimeSec=0
 revoke=0
 origin=1
-[card 47 active_power_surge]
+[card 49 active_power_surge]
 id=active_power_surge
 kind=1
 cost=20
 cooldownSeconds=30
 retireRecall=0
-active=45
-[rule 45] 액티브 'active_power_surge'
+active=47
+[rule 47] 액티브 'active_power_surge'
 trigger=0
 payload=0
 skill=30
@@ -1950,14 +2036,14 @@ lifetime=3
 lifetimeSec=0
 revoke=0
 origin=1
-[card 48 active_rapid_fire]
+[card 50 active_rapid_fire]
 id=active_rapid_fire
 kind=1
 cost=20
 cooldownSeconds=25
 retireRecall=0
-active=46
-[rule 46] 액티브 'active_rapid_fire'
+active=48
+[rule 48] 액티브 'active_rapid_fire'
 trigger=0
 payload=0
 skill=30
@@ -1992,14 +2078,14 @@ lifetime=3
 lifetimeSec=0
 revoke=0
 origin=1
-[card 49 active_slow_field]
+[card 51 active_slow_field]
 id=active_slow_field
 kind=1
 cost=20
 cooldownSeconds=20
 retireRecall=0
-active=47
-[rule 47] 액티브 'active_slow_field'
+active=49
+[rule 49] 액티브 'active_slow_field'
 trigger=0
 payload=0
 skill=29
@@ -2034,14 +2120,14 @@ lifetime=3
 lifetimeSec=0
 revoke=0
 origin=1
-[card 50 active_tornado]
+[card 52 active_tornado]
 id=active_tornado
 kind=1
 cost=20
 cooldownSeconds=12
 retireRecall=0
-active=48
-[rule 48] 액티브 'active_tornado'
+active=50
+[rule 50] 액티브 'active_tornado'
 trigger=0
 payload=0
 skill=31
@@ -2076,14 +2162,14 @@ lifetime=3
 lifetimeSec=0
 revoke=0
 origin=1
-[card 51 sub_incubus_pact]
+[card 53 sub_incubus_pact]
 id=sub_incubus_pact
 kind=0
 cost=20
 cooldownSeconds=0
 retireRecall=0
-squadBindings=49
-[rule 49] 카드 'sub_incubus_pact' effect 0
+squadBindings=51
+[rule 51] 카드 'sub_incubus_pact' effect 0
 trigger=9
 payload=12
 skill=18
