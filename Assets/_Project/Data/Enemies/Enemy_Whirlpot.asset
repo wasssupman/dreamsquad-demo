@@ -32,6 +32,10 @@ MonoBehaviour:
   bodySize: 1
   impactSocketHeight: 0
   attackTargetCount: 10
+  attackShape:
+    kind: 0
+    angleDeg: 360
+    width: 0
   projectile: {fileID: 0}
   hitDelaySec: 0
   aggroAttackDamage: 0
@@ -60,12 +64,16 @@ MonoBehaviour:
   slotColors: []
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 3
-  nightmareMechanics: []
+  bindings: []
+  splitUnit: {fileID: 0}
+  splitCount: 0
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 2
   waypointPathIndex: -1
   flightLift: 0
-  idleVariants: []
+  idleBreaks: []
+  idleBreakInterval: {x: 1, y: 3}
   tier: 1
   detectionRange: 0
+  spriteMotions: {fileID: 0}

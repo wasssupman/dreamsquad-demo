@@ -19,7 +19,6 @@ MonoBehaviour:
   category: 0
   effects: []
   art: {fileID: 21300000, guid: dbded4ca405947698482275eede81008, type: 3}
-  mechanics: []
   attackMods: []
   type: 2
   skill: {fileID: 11400000, guid: a1f7c4d2e85b4e6f9c3d7b8e2a1f5d60, type: 2}

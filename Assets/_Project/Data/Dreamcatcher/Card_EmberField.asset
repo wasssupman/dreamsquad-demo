@@ -19,37 +19,6 @@ MonoBehaviour:
   category: 1
   effects: []
   art: {fileID: 21300000, guid: 117a0d1d987790572ee22edf4a1fa161, type: 3}
-  mechanics:
-  - trigger:
-      kind: 6
-      period: 0
-      periodSeconds: 0
-      fraction: 0
-      gate: 0
-      gateSubject: 0
-      gateValue: 0
-      subject: 0
-    payload:
-      kind: 24
-      magnitude: 0
-      projectile: {fileID: 0}
-      tileRange: 0
-      duration: 0
-      auraPrefab: {fileID: 0}
-      auraScale: 0
-      ccKind: 0
-      stackKind: 0
-      buffStat: 0
-      pattern: {fileID: 0}
-      slamDamage: 0
-      slamTileRange: 0
-      tickIntervalSec: 0
-      stackModifier: {fileID: 0}
-      splitUnit: {fileID: 0}
-      orbitCount: 0
-      hazard: {fileID: 11400000, guid: 5c0f1a3d7b2e4f8a9c6d1e0b3a5f7c92, type: 2}
-      coneHalfAngleDeg: 0
-      telegraph: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}

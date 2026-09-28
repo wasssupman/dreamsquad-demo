@@ -21,7 +21,6 @@ MonoBehaviour:
   - kind: 0
     percent: 8
   art: {fileID: 21300000, guid: 8b9a340f3ecb493b91d6eab9877b789e, type: 3}
-  mechanics: []
   attackMods: []
   type: 0
   skill: {fileID: 0}
