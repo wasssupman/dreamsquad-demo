@@ -155,14 +155,19 @@ namespace Wassup.BattleCoreUnity.View
                     Unwant(new Key(e.A.Value, StatusFxKind.LastRun));
                     break;
 
-                // unit 7c — **표식**(살찌운 제물). 적에게 붙은 카드 규칙이 곧 표식이다(7b — 표식 등록부 없음). 옛 브리지는 등록부를
-                // 매 프레임 훑어 `Marked` 표식을 세웠다 — 여기는 부착 사건이 켜고, 떨어짐(처치·유출 = 숙주 소멸)이 끈다.
-                // 「적을 겨누는 카드인가」는 코어의 한 칸(`TargetsEnemies`)이다 — 메커닉을 뒤져 추측하지 않는다.
-                case CoreEventKind.CardAttached:
-                    if (IsMarkCard(e.DefIndex)) _wanted.Add(new Key(e.A.Value, StatusFxKind.Marked));
+                // unit 7c — **표식**(살찌운 제물). 옛 브리지는 등록부를 매 프레임 훑어 `Marked` 표식을 세웠다 — 여기는 부착 사건이
+                // 켜고, 떨어짐(처치·유출 = 숙주 소멸)이 끈다.
+                // skill-data-table unit 2(U15 — 연출은 효과 기준) — 켜는 것은 **표식 효과를 든 규칙 줄**이 붙는 사건이다. 예전엔
+                // 「적을 겨누는 카드가 붙었나」(`CardAttached` · `TargetsEnemies`)를 봐서, 같은 표식 효과를 카드가 아닌 소유자가 들면
+                // 별이 안 떴다. 정체 판정은 코어의 한 곳(`CardBindings.IsMarked` — 효과로 본다)이다.
+                case CoreEventKind.BindingAttached:
+                    if ((Wassup.BattleCore.Trigger.EffectKind)(int)e.Amount == Wassup.BattleCore.Trigger.EffectKind.BountyMark)
+                        _wanted.Add(new Key(e.A.Value, StatusFxKind.Marked));
                     break;
-                case CoreEventKind.CardDetached:
-                    if (IsMarkCard(e.DefIndex)) Unwant(new Key(e.A.Value, StatusFxKind.Marked));
+                case CoreEventKind.BindingDetached:
+                    // 한 줄이 떨어져도 표식 효과를 든 다른 줄이 남아 있으면 별은 그대로다(떼기는 목록에서 뺀 뒤 사건을 낸다).
+                    if (IsMarkRow(e.DefIndex) && !Wassup.BattleCore.Trigger.CardBindings.IsMarked(_driver.Find(e.A)))
+                        Unwant(new Key(e.A.Value, StatusFxKind.Marked));
                     break;
 
                 // 숙주가 사라지면 그 몸의 표식은 **전부** 간다. 피해로 죽은 순간(`UnitSlain`)에도 거둔다 —
@@ -176,10 +181,11 @@ namespace Wassup.BattleCoreUnity.View
             }
         }
 
-        private bool IsMarkCard(int cardIndex)
+        private bool IsMarkRow(int row)
         {
             var def = _driver != null ? _driver.Definition : null;
-            return def != null && cardIndex >= 0 && cardIndex < def.Cards.Length && def.Cards[cardIndex].TargetsEnemies;
+            return def != null && row >= 0 && row < def.Bindings.Length
+                && def.EffectOf(in def.Bindings[row]).Kind == Wassup.BattleCore.Trigger.EffectKind.BountyMark;
         }
 
         private static bool TryCcKind(CcSlotKind kind, out StatusFxKind fx)
