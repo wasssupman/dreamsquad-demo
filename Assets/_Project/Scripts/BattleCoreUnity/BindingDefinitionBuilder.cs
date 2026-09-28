@@ -194,14 +194,22 @@ namespace Wassup.BattleCoreUnity
                 //   · 그 밖의 `auraPrefab` = 숙주를 따라다니는 **부착 오라**(옛 `DcAuraVisualPool.Register`, kind 무관).
                 //   ⚠ 옛 bake 는 `AreaDot` 의 빔 프리팹도 오라로 **같이** 등록했다(두 갈래가 한 필드를 겸한 뒤 가드가 안 생겼다) —
                 //   빔이 숙주에 기본 방향으로 박혀 떠 있게 된다. 빔 쪽만 옮긴다(7c 이식 제외).
-                if (view != null && m.payload.auraPrefab != null)
-                {
-                    if (fx.Kind == EffectKind.AreaDot) fx.DataIndex = view.RegisterSkillVfx(m.payload.auraPrefab);
-                    else view.SetBindingAura(rows.Count, m.payload.auraPrefab, m.payload.auraScale);
-                }
+                BakeAuthoredVisual(ref fx, in m, rows.Count, view);
 
                 AddRow(rows, effects, mine, b, fx, ownerId + "." + mine.Count);
             }
+        }
+
+        /// <summary>
+        /// 효과 저작이 선언한 연출 프리팹(`payload.auraPrefab`)을 그 줄의 뷰 표에 싣는다 — 빔(`AreaDot`) 또는 부착 오라.
+        /// `row` = 곧 붙을 줄 번호(`AddRow` 직전의 `rows.Count`). skill-data-table unit 2(U15 — 연출은 효과 기준): 카드 빌더도
+        /// 같은 함수를 지난다 — 예전엔 유닛·적 소유 줄만 이 연출을 실어서, 같은 효과를 카드가 들면 오라·빔이 조용히 빠졌다.
+        /// </summary>
+        internal static void BakeAuthoredVisual(ref EffectDef fx, in DcMechanic m, int row, MatchViewAssets view)
+        {
+            if (view == null || m.payload.auraPrefab == null) return;
+            if (fx.Kind == EffectKind.AreaDot) fx.DataIndex = view.RegisterSkillVfx(m.payload.auraPrefab);
+            else view.SetBindingAura(row, m.payload.auraPrefab, m.payload.auraScale);
         }
 
         // ── 두 빌더가 같이 쓰는 검증(unified-effect-layer unit 5 — 계약 5) ─────────────

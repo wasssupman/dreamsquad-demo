@@ -46,7 +46,7 @@ namespace Wassup.BattleCoreUnity
                 {
                     var c = src.Cards[i];
                     if (c == null) { Warn($"덱 {i} 번 카드가 비었다 — 건너뛴다."); continue; }
-                    cards.Add(Bake(c, src.Awakening, projectiles, patterns, hazards, rows, effects));
+                    cards.Add(Bake(c, src.Awakening, projectiles, patterns, hazards, rows, effects, view));
                     assets.Add(c);
                 }
             if (cards.Count > 0) def.Cards = cards.ToArray();
@@ -86,7 +86,7 @@ namespace Wassup.BattleCoreUnity
 
         private static CardDef Bake(DreamcatcherCard card, AwakeningConfig awakening, List<ProjectileData> projectiles,
                                     List<ProjectilePatternData> patterns, HazardSO[] hazards, List<BindingDef> rows,
-                                    List<EffectDef> effects)
+                                    List<EffectDef> effects, MatchViewAssets view)
         {
             var c = CardDef.Default();
             c.Id = card.id;
@@ -126,7 +126,7 @@ namespace Wassup.BattleCoreUnity
                     Warn($"{label}: 적 표식 카드는 표식 메커닉만 쓴다(옛 `ApplyBountyMark`) — {mech[i].payload.kind} 는 건너뛴다.");
                     continue;
                 }
-                BakeMechanic(in mech[i], label, card, projectiles, patterns, hazards, rows, effects, mine, mods, ref aura, ref c);
+                BakeMechanic(in mech[i], label, card, projectiles, patterns, hazards, rows, effects, mine, mods, ref aura, ref c, view);
             }
             if (!c.TargetsEnemies && card.attackMods != null)
                 for (int i = 0; i < card.attackMods.Length; i++)
@@ -167,7 +167,7 @@ namespace Wassup.BattleCoreUnity
         private static void BakeMechanic(in DcMechanic m, string label, DreamcatcherCard card,
                                          List<ProjectileData> projectiles, List<ProjectilePatternData> patterns,
                                          HazardSO[] hazards, List<BindingDef> rows, List<EffectDef> effects, List<int> mine,
-                                         List<AttackModDef> mods, ref bool aura, ref CardDef c)
+                                         List<AttackModDef> mods, ref bool aura, ref CardDef c, MatchViewAssets view)
         {
             var trigger = BindingDefinitionBuilder.ToCoreTrigger(m.trigger.kind);
             var payload = BindingDefinitionBuilder.ToCorePayload(m.payload.kind);
@@ -185,6 +185,7 @@ namespace Wassup.BattleCoreUnity
                         fx.Magnitude = 1f + p.magnitude / 100f;   // % → 배율(도메인은 저작 인코딩을 모른다)
                         fx.Duration = p.duration;
                         b.FireCap = 1;
+                        BindingDefinitionBuilder.BakeAuthoredVisual(ref fx, in m, rows.Count, view);
                         Add(rows, effects, mine, card.id, in b, in fx);
                         return;
                     }
@@ -197,6 +198,7 @@ namespace Wassup.BattleCoreUnity
                         fx.Magnitude = mul;
                         fx.Duration = p.duration;
                         b.FireCap = 1;
+                        BindingDefinitionBuilder.BakeAuthoredVisual(ref fx, in m, rows.Count, view);
                         Add(rows, effects, mine, card.id, in b, in fx);
                         return;
                     }
@@ -208,6 +210,7 @@ namespace Wassup.BattleCoreUnity
                         fx.Magnitude = p.magnitude;                                     // 각성 배율
                         fx.HitThreshold = p.tileRange > 0 ? 1f - p.tileRange / 100f : 0f;   // 받는 피해 배율(0 = 안 건다)
                         b.FireCap = 1;
+                        BindingDefinitionBuilder.BakeAuthoredVisual(ref fx, in m, rows.Count, view);
                         Add(rows, effects, mine, card.id, in b, in fx);
                         return;
                     }
@@ -227,6 +230,8 @@ namespace Wassup.BattleCoreUnity
                         speedFx.StatKind = (int)SkillStatKind.AttackSpeedMul;
                         speedFx.Magnitude = 1f + p.magnitude / 100f;
                         speed.RevokeOnExpire = true;
+                        // 오라는 숙주당 하나(뷰 규약) — 저작 연출은 첫 줄(공속)에 싣는다.
+                        BindingDefinitionBuilder.BakeAuthoredVisual(ref speedFx, in m, rows.Count, view);
                         Add(rows, effects, mine, card.id, in speed, in speedFx);
                         if (p.duration > 0f)
                         {
@@ -311,6 +316,8 @@ namespace Wassup.BattleCoreUnity
             }
 
             if (r.Skill == null) { Warn($"{label}: '{trigger} × {payload}' 조합에 라우팅이 없다 — 건너뛴다."); return; }
+            // 효과가 선언한 연출(빔 · 부착 오라)은 소유자와 무관하다 — 유닛 빌더와 같은 함수(U15).
+            BindingDefinitionBuilder.BakeAuthoredVisual(ref rFx, in m, rows.Count, view);
             Add(rows, effects, mine, card.id, in r, in rFx);
         }
 
