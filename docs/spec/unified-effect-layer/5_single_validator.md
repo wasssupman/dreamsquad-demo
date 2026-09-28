@@ -15,3 +15,5 @@
 - 빌더 스냅샷: 카드 52 · 유닛 능력 18(`UnitSkillAbility` 17 + `ShieldCastAbility` 1) · 악몽 저작 6 을 굽힌 `BindingDef` 가 이 unit 전과 필드 동치.
 - 메모리 SO 픽스처로 AA · 타격 운석을 빌더에 넣으면 경고 0 으로 굽히고, 탐침의 손조립 `BindingDef` 와 필드 동치(가이드 §5). 에셋은 만들지 않는다.
 - 헤드리스 · 골든 11 · EditMode 3 어셈블리(선행 2 외 0) · PlayMode Core · `core-reviewer` APPROVE.
+
+- 구현 2026-09-28 · `042979b2a` `7f3a44804` `816107653`(기준선) `dfce6ccd3` `ab89b8a46` `18443a52d` `d0edbd22d` `804aa1a20` — 헤드리스 981/0 · Unity EditMode 3 어셈블리 2589 중 선행 2만 · `BindingBakeSnapshotTests`·`CardBakeSnapshotTests` 초록(라이브 굽기 무변) · 골든 11 · PlayMode Core 97/97. `BattleCoreUnity.Check` 는 옛 `Wassup.Runtime.dll` 참조로 `DcTriggerSubject` CS0246 거짓 빨강 1(에디터 재컴파일 뒤 해소 — 스크립트 머리말). 리뷰 = 묶음 B.
