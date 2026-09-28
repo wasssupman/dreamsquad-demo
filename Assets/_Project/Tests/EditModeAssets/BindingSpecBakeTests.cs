@@ -50,6 +50,16 @@ namespace Wassup.Tests.EditModeAssets
             return c;
         }
 
+        // 라이브 방어유닛 사본(몸 · 발자국 파생이 저작을 요구한다) — 소유 줄이 있으면 규칙 레일 능력은 안 읽힌다.
+        private DefenderUnitData LiveDefenderClone(string name)
+        {
+            var units = AssetsByPath<DefenderUnitData>("t:DefenderUnitData");
+            Assert.IsNotEmpty(units);
+            var c = Clone(units[0]);
+            c.name = name;
+            return c;
+        }
+
         private T Make<T>() where T : ScriptableObject
         {
             var o = ScriptableObject.CreateInstance<T>();
@@ -172,8 +182,7 @@ namespace Wassup.Tests.EditModeAssets
             effect.values = new EffectValues { kind = EffectKind.EmitProjectilePattern, damage = 100f };
             effect.pattern = pattern;
 
-            var unit = Make<DefenderUnitData>();
-            unit.name = "Fixture_Cannon";
+            var unit = LiveDefenderClone("Fixture_Cannon");
             unit.bindings = new[] { new BindingSpec { trigger = new TriggerSpec { kind = TriggerKind.OnPlace }, effect = effect } };
             var card = Make<DreamcatcherCard>();
             card.id = "fixture_gaesagi";
@@ -216,8 +225,7 @@ namespace Wassup.Tests.EditModeAssets
 
             var enemy = Clone(jjangssen);
             enemy.bindings = new[] { new BindingSpec { trigger = blink.Trigger, fireCap = blink.FireCap, effect = effect } };
-            var unit = Make<DefenderUnitData>();
-            unit.name = "Fixture_Defender";
+            var unit = LiveDefenderClone("Fixture_Defender");
             unit.bindings = new[] { new BindingSpec { trigger = blink.Trigger, fireCap = blink.FireCap, effect = effect } };
 
             var def = new MatchDefinition { Units = new[] { MatchDefinitionBuilder.ToUnitDef(unit) }, Enemies = new EnemyDef[1] };
