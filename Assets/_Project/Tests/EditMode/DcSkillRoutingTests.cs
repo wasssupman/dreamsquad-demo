@@ -3,6 +3,7 @@ using Wassup.Core;
 using Wassup.Data;
 using Wassup.Skills;
 using Wassup.Skills.Concrete;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -13,57 +14,57 @@ namespace Wassup.Tests.EditMode
     // 다른 스킬로 간다(skill-layer-migration 3g 의 경고). 여기 핀은 그 특수 케이스들이다.
     public class DcSkillRoutingTests
     {
-        [TestCase(DcTriggerKind.OnKill)]
-        [TestCase(DcTriggerKind.OnDeath)]
-        [TestCase(DcTriggerKind.OnRetire)]
-        public void SelfTileAoe_OnDeathSiteTriggers_RoutesToDeathSiteBlast(DcTriggerKind trigger)
+        [TestCase(TriggerKind.OnKill)]
+        [TestCase(TriggerKind.OnDeath)]
+        [TestCase(TriggerKind.OnRetire)]
+        public void SelfTileAoe_OnDeathSiteTriggers_RoutesToDeathSiteBlast(TriggerKind trigger)
         {
             // 「실려 온 자리에서 터진다」 — 드레인 시점엔 시전자가 없어 살아 있는 발밑을 물을 수 없다.
-            Assert.AreEqual(DeathSiteBlastSkill.Id, DcSkillRouting.SkillIdFor(trigger, DcPayloadKind.SelfTileAoe));
+            Assert.AreEqual(DeathSiteBlastSkill.Id, DcSkillRouting.SkillIdFor(trigger, EffectKind.SelfTileAoe));
         }
 
-        [TestCase(DcTriggerKind.OnDamagedN)]
-        [TestCase(DcTriggerKind.OnShieldBreak)]
-        [TestCase(DcTriggerKind.HealthThreshold)]
-        public void SelfTileAoe_OnLiveTriggers_RoutesToSelfAreaBlast(DcTriggerKind trigger)
+        [TestCase(TriggerKind.OnDamagedN)]
+        [TestCase(TriggerKind.OnShieldBreak)]
+        [TestCase(TriggerKind.HealthThreshold)]
+        public void SelfTileAoe_OnLiveTriggers_RoutesToSelfAreaBlast(TriggerKind trigger)
         {
-            Assert.AreEqual(SelfAreaBlastSkill.Id, DcSkillRouting.SkillIdFor(trigger, DcPayloadKind.SelfTileAoe));
+            Assert.AreEqual(SelfAreaBlastSkill.Id, DcSkillRouting.SkillIdFor(trigger, EffectKind.SelfTileAoe));
         }
 
         [Test]
         public void OnKill_SpawnHazard_RoutesToDeathSiteHazard()
         {
-            Assert.AreEqual(DeathSiteHazardSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.OnKill, DcPayloadKind.SpawnHazard));
+            Assert.AreEqual(DeathSiteHazardSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.OnKill, EffectKind.SpawnHazard));
         }
 
         [Test]
         public void TriggerlessImmediates_RouteToTheirOwnConcretes()
         {
-            Assert.AreEqual(SelfBuffLethalSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.None, DcPayloadKind.SelfBuffLethal));
-            Assert.AreEqual(DreamCocoonSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.None, DcPayloadKind.DreamCocoon));
-            Assert.AreEqual(BountyMarkSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.None, DcPayloadKind.BountyMark));
+            Assert.AreEqual(SelfBuffLethalSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.None, EffectKind.SelfBuffLethal));
+            Assert.AreEqual(DreamCocoonSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.None, EffectKind.DreamCocoon));
+            Assert.AreEqual(BountyMarkSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.None, EffectKind.BountyMark));
         }
 
         [Test]
         public void SelfStatBuff_SplitsOnHealthThreshold()
         {
-            Assert.AreEqual(ThresholdSelfBuffSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.HealthThreshold, DcPayloadKind.SelfStatBuff));
-            Assert.AreEqual(SelfStatBuffSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.AttackN, DcPayloadKind.SelfStatBuff));
+            Assert.AreEqual(ThresholdSelfBuffSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.HealthThreshold, EffectKind.SelfStatBuff));
+            Assert.AreEqual(SelfStatBuffSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.AttackN, EffectKind.SelfStatBuff));
         }
 
         [Test]
         public void PayloadOnlyKinds_FollowThePayloadTable()
         {
-            Assert.AreEqual(AreaSleepSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.OnShieldBreak, DcPayloadKind.AreaSleep));
-            Assert.AreEqual(AreaSleepSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.PeriodicTimer, DcPayloadKind.AreaSleep));
-            Assert.AreEqual(EmitPatternSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.PeriodicTimer, DcPayloadKind.EmitProjectilePattern));
-            Assert.AreEqual(GrantShieldSkill.Id, DcSkillRouting.SkillIdFor(DcTriggerKind.OnPlace, DcPayloadKind.GrantShield));
+            Assert.AreEqual(AreaSleepSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.OnShieldBreak, EffectKind.AreaSleep));
+            Assert.AreEqual(AreaSleepSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.PeriodicTimer, EffectKind.AreaSleep));
+            Assert.AreEqual(EmitPatternSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.PeriodicTimer, EffectKind.EmitProjectilePattern));
+            Assert.AreEqual(GrantShieldSkill.Id, DcSkillRouting.SkillIdFor(TriggerKind.OnPlace, EffectKind.GrantShield));
         }
 
         [Test]
         public void UnroutedPayload_IsNotRouted()
         {
-            Assert.AreEqual(SkillRegistry.NotRouted, DcSkillRouting.SkillIdFor(DcTriggerKind.AttackN, DcPayloadKind.None));
+            Assert.AreEqual(SkillRegistry.NotRouted, DcSkillRouting.SkillIdFor(TriggerKind.AttackN, EffectKind.None));
         }
     }
 }

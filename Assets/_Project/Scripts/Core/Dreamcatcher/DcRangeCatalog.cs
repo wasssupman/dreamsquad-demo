@@ -2,6 +2,7 @@ using UnityEngine;
 using Wassup.Data;
 using Wassup.Skills;
 using Wassup.Skills.Concrete;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Core
 {
@@ -55,9 +56,9 @@ namespace Wassup.Core
     {
         // 트리거 문맥이 없는 호출부용 — DeathSite 계열은 자리의 주인을 몰라 fail-closed(None)로 접힌다.
         public static DcRangeSpec Resolve(int skillId, int tileRange)
-            => Resolve(skillId, tileRange, DcTriggerKind.None);
+            => Resolve(skillId, tileRange, TriggerKind.None);
 
-        public static DcRangeSpec Resolve(int skillId, int tileRange, DcTriggerKind trigger)
+        public static DcRangeSpec Resolve(int skillId, int tileRange, TriggerKind trigger)
         {
             if (skillId == SelfAreaBlastSkill.Id
                 || skillId == AreaSleepSkill.Id
@@ -93,13 +94,13 @@ namespace Wassup.Core
             //   `OnRetire` = **자리에 떨어지는 것** — 운석이 «비워진 칸» 에 내린다. 퇴근한 유닛이
             //                그것을 «불렀을» 뿐이라 그 유닛의 몸은 안 붙는다(지정은 귀속이지 기하가 아니다).
             // 한 케이스로 묶어 두면 둘 중 하나가 반드시 틀린다.
-            if (skillId == DeathSiteBlastSkill.Id && trigger == DcTriggerKind.OnDeath)
+            if (skillId == DeathSiteBlastSkill.Id && trigger == TriggerKind.OnDeath)
             {
                 return tileRange > 0
                     ? new DcRangeSpec(DcRangeShape.Circle, tileRange, RangeMetric.SelfArea)
                     : DcRangeSpec.None;
             }
-            if (skillId == DeathSiteBlastSkill.Id && trigger == DcTriggerKind.OnRetire)
+            if (skillId == DeathSiteBlastSkill.Id && trigger == TriggerKind.OnRetire)
             {
                 return tileRange > 0
                     ? new DcRangeSpec(DcRangeShape.Circle, tileRange, RangeMetric.CellArea)

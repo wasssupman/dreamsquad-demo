@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Wassup.Data.Authoring;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -17,8 +18,8 @@ namespace Wassup.Tests.EditMode
     // 성공하고 아무도 그 트리거를 안 잡는다 — 화이트리스트가 존재한 이유의 나머지 절반.
     public class DcTriggerArmedTests
     {
-        private static IEnumerable<DcTriggerKind> AllKinds()
-            => (DcTriggerKind[])Enum.GetValues(typeof(DcTriggerKind));
+        private static IEnumerable<TriggerKind> AllKinds()
+            => (TriggerKind[])Enum.GetValues(typeof(TriggerKind));
 
         // 진영에 상관없이 열린 여섯 — 감지 시스템이 진영을 안 보는 것들이다.
         // (주기·경계·N번째 공격·피격 N회·처치·실드 파열)
@@ -27,9 +28,9 @@ namespace Wassup.Tests.EditMode
         {
             var both = new[]
             {
-                DcTriggerKind.PeriodicTimer, DcTriggerKind.HealthThreshold, DcTriggerKind.AttackN,
-                DcTriggerKind.OnDamagedN, DcTriggerKind.OnKill, DcTriggerKind.OnShieldBreak,
-                DcTriggerKind.OnDeath,
+                TriggerKind.PeriodicTimer, TriggerKind.HealthThreshold, TriggerKind.AttackN,
+                TriggerKind.OnDamagedN, TriggerKind.OnKill, TriggerKind.OnShieldBreak,
+                TriggerKind.OnDeath,
             };
             foreach (var k in both)
             {
@@ -43,11 +44,11 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void ShieldBreakAndKill_AreNowOpenToEnemies()
         {
-            Assert.IsTrue(DcTrigger.HasDetector(DcTriggerKind.OnShieldBreak, hostIsEnemy: true),
+            Assert.IsTrue(DcTrigger.HasDetector(TriggerKind.OnShieldBreak, hostIsEnemy: true),
                 "실드 파열이 적에게 열려야 한다 — 이것이 unit 8 이 연 문이고, " +
                 "안전은 이제 concrete 의 진영 무지(無知)와 CasterFaction 스냅샷이 지킨다.");
-            Assert.IsTrue(DcTrigger.HasDetector(DcTriggerKind.OnKill, hostIsEnemy: true));
-            Assert.IsTrue(DcTrigger.HasDetector(DcTriggerKind.OnDamagedN, hostIsEnemy: true));
+            Assert.IsTrue(DcTrigger.HasDetector(TriggerKind.OnKill, hostIsEnemy: true));
+            Assert.IsTrue(DcTrigger.HasDetector(TriggerKind.OnDamagedN, hostIsEnemy: true));
         }
 
         // 배치·퇴근은 **본질상** 적에게 없는 사건이다. 열면 슬롯만 생기고 JustDeployed 가
@@ -55,9 +56,9 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void PlacementEvents_StayClosedForEnemies()
         {
-            Assert.IsFalse(DcTrigger.HasDetector(DcTriggerKind.OnPlace, hostIsEnemy: true));
-            Assert.IsFalse(DcTrigger.HasDetector(DcTriggerKind.OnRetire, hostIsEnemy: true));
-            Assert.IsTrue(DcTrigger.HasDetector(DcTriggerKind.OnPlace, hostIsEnemy: false));
+            Assert.IsFalse(DcTrigger.HasDetector(TriggerKind.OnPlace, hostIsEnemy: true));
+            Assert.IsFalse(DcTrigger.HasDetector(TriggerKind.OnRetire, hostIsEnemy: true));
+            Assert.IsTrue(DcTrigger.HasDetector(TriggerKind.OnPlace, hostIsEnemy: false));
         }
 
         // 적의 작별 선물 — unit 8 에서 열렸다(전용 개념 배제).
@@ -68,16 +69,16 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void OnDeath_IsOpenToBothSides()
         {
-            Assert.IsTrue(DcTrigger.HasDetector(DcTriggerKind.OnDeath, hostIsEnemy: true));
-            Assert.IsTrue(DcTrigger.HasDetector(DcTriggerKind.OnDeath, hostIsEnemy: false));
+            Assert.IsTrue(DcTrigger.HasDetector(TriggerKind.OnDeath, hostIsEnemy: true));
+            Assert.IsTrue(DcTrigger.HasDetector(TriggerKind.OnDeath, hostIsEnemy: false));
         }
 
         // fail-closed — 배선 안 된 kind 는 닫혀 있다. 새 kind 를 더하면 여기서 걸린다.
         [Test]
         public void UnwiredKinds_AreClosed()
         {
-            Assert.IsFalse(DcTrigger.HasDetector(DcTriggerKind.None, hostIsEnemy: true));
-            Assert.IsFalse(DcTrigger.HasDetector(DcTriggerKind.None, hostIsEnemy: false));
+            Assert.IsFalse(DcTrigger.HasDetector(TriggerKind.None, hostIsEnemy: true));
+            Assert.IsFalse(DcTrigger.HasDetector(TriggerKind.None, hostIsEnemy: false));
         }
 
         // 전수 대조 — **새 트리거 kind 를 추가하면 여기서 분류를 강제당한다.**
@@ -94,18 +95,18 @@ namespace Wassup.Tests.EditMode
         public void HasDetector_MatchesTheAuthoredTable_ForEveryKind()
         {
             // (kind, 적에게 열림, 방어유닛에게 열림)
-            var table = new Dictionary<DcTriggerKind, (bool enemy, bool defender)>
+            var table = new Dictionary<TriggerKind, (bool enemy, bool defender)>
             {
-                { DcTriggerKind.None,           (false, false) },
-                { DcTriggerKind.PeriodicTimer,  (true,  true)  },
-                { DcTriggerKind.HealthThreshold,(true,  true)  },
-                { DcTriggerKind.AttackN,        (true,  true)  },
-                { DcTriggerKind.OnDamagedN,     (true,  true)  },
-                { DcTriggerKind.OnKill,         (true,  true)  },
-                { DcTriggerKind.OnShieldBreak,  (true,  true)  },
-                { DcTriggerKind.OnDeath,        (true,  true)  },
-                { DcTriggerKind.OnPlace,        (false, true)  },
-                { DcTriggerKind.OnRetire,       (false, true)  },
+                { TriggerKind.None,           (false, false) },
+                { TriggerKind.PeriodicTimer,  (true,  true)  },
+                { TriggerKind.HealthThreshold,(true,  true)  },
+                { TriggerKind.AttackN,        (true,  true)  },
+                { TriggerKind.OnDamagedN,     (true,  true)  },
+                { TriggerKind.OnKill,         (true,  true)  },
+                { TriggerKind.OnShieldBreak,  (true,  true)  },
+                { TriggerKind.OnDeath,        (true,  true)  },
+                { TriggerKind.OnPlace,        (false, true)  },
+                { TriggerKind.OnRetire,       (false, true)  },
             };
 
             var unclassified = new List<string>();

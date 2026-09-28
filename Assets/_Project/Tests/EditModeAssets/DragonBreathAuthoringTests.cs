@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEditor;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -44,9 +45,9 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, d.nightmareMechanics.Length, "엘리트는 특수 메커니즘 1개다");
 
             var m = d.nightmareMechanics[0];
-            Assert.AreEqual(DcTriggerKind.AttackN, m.trigger.kind);
+            Assert.AreEqual(TriggerKind.AttackN, m.trigger.kind);
             Assert.AreEqual(3, m.trigger.period, "«3회 기본공격 이후» 가 저작 의도다");
-            Assert.AreEqual(DcPayloadKind.AreaBreath, m.payload.kind);
+            Assert.AreEqual(EffectKind.AreaBreath, m.payload.kind);
             Assert.Greater(m.payload.magnitude, 0f, "피해가 0 이면 발동해도 아무 일도 없다");
             Assert.Greater(m.payload.tileRange, 0, "사거리 0 이면 같은 셀만 맞는다");
         }

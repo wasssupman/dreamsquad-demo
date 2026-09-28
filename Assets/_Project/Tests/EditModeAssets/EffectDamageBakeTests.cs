@@ -39,19 +39,19 @@ namespace Wassup.Tests.EditModeAssets
             var p = m.payload;
             switch (p.kind)
             {
-                case DcPayloadKind.EmitProjectilePattern:
+                case EffectKind.EmitProjectilePattern:
                     if (p.pattern != null && p.pattern.barrel != null && p.pattern.barrel.spawnBlocker != null)
                     { source = Source.Blocker; return p.pattern.barrel.spawnBlocker.explodeDamage; }
                     source = Source.Pattern;
                     return p.pattern != null ? p.pattern.damage : 0f;
-                case DcPayloadKind.SpawnHazard:
+                case EffectKind.SpawnHazard:
                     source = Source.Hazard;
                     if (p.hazard?.effects != null)
                         foreach (var he in p.hazard.effects)
                             if (he.kind == Wassup.Data.Authoring.CcKind.DoT) return he.param1;
                     return 0f;
-                case DcPayloadKind.SelfBlink:
-                case DcPayloadKind.UltimateLeap:
+                case EffectKind.SelfBlink:
+                case EffectKind.UltimateLeap:
                     source = Source.Slam;
                     return Mathf.Max(0f, p.slamDamage);
                 default:

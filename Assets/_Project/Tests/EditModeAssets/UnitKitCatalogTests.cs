@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEditor;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -55,7 +56,7 @@ namespace Wassup.Tests.EditMode
                 if (ability?.mechanics == null) continue;
                 bool hasOnPlaceRule = false;
                 foreach (var m in ability.mechanics)
-                    if (m.trigger.kind == DcTriggerKind.OnPlace) hasOnPlaceRule = true;
+                    if (m.trigger.kind == TriggerKind.OnPlace) hasOnPlaceRule = true;
                 if (!hasOnPlaceRule) continue;
 
                 Assert.That(UnitKitSummary.Build(unit), Does.Contain("배치"),

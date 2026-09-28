@@ -12,6 +12,7 @@ using Wassup.BattleCoreUnity.View;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Presentation;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.PlayMode.Core
 {
@@ -252,7 +253,7 @@ namespace Wassup.Tests.PlayMode.Core
             var ab = u.GetAbility<UnitSkillAbility>();
             if (ab == null || ab.mechanics == null) return null;
             foreach (var m in ab.mechanics)
-                if (m.payload.kind == DcPayloadKind.AreaDot) return m.payload;
+                if (m.payload.kind == EffectKind.AreaDot) return m.payload;
             return null;
         }
 

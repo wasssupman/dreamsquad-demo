@@ -3,6 +3,7 @@ using NUnit.Framework;
 using UnityEngine;
 using Wassup.Data;
 using Wassup.UI;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -75,7 +76,7 @@ namespace Wassup.Tests.EditMode
             var card = MakeCard(CardType.Unit);
             card.mechanics = new[]
             {
-                new DcMechanic { payload = new DcPayloadSpec { kind = DcPayloadKind.BountyMark } },
+                new DcMechanic { payload = new DcPayloadSpec { kind = EffectKind.BountyMark } },
             };
             Assert.AreEqual("적 지정", CardCategoryStyle.TargetTag(card));
         }

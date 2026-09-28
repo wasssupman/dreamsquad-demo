@@ -5,6 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using Wassup.Data;
 using Wassup.Data.StatImport;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode.UnitStatImport
 {
@@ -327,10 +328,10 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 5 },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 5 },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.ProjectileToTarget, magnitude = 20, projectile = projectile,
+                        kind = EffectKind.ProjectileToTarget, magnitude = 20, projectile = projectile,
                     },
                 },
             };
@@ -352,7 +353,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
                     new DcMechanicDto
                     {
                         cardId = "poke_needle", slot = 0, triggerPeriod = 4, magnitude = 25,
-                        triggerKind = DcTriggerKind.HealthThreshold, payloadKind = DcPayloadKind.SelfStatBuff,
+                        triggerKind = TriggerKind.HealthThreshold, payloadKind = EffectKind.SelfStatBuff,
                     },
                 },
             };
@@ -360,8 +361,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             Assert.AreEqual(5, so.mechanics[0].trigger.period, "mechanics overlay must stay disabled");
             Assert.AreEqual(20f, so.mechanics[0].payload.magnitude);
-            Assert.AreEqual(DcTriggerKind.AttackN, so.mechanics[0].trigger.kind);
-            Assert.AreEqual(DcPayloadKind.ProjectileToTarget, so.mechanics[0].payload.kind);
+            Assert.AreEqual(TriggerKind.AttackN, so.mechanics[0].trigger.kind);
+            Assert.AreEqual(EffectKind.ProjectileToTarget, so.mechanics[0].payload.kind);
             Assert.AreSame(projectile, so.mechanics[0].payload.projectile);
             StringAssert.Contains("[dc-mechanics] 1 row(s) ignored", log.ToString());
             Object.DestroyImmediate(projectile);

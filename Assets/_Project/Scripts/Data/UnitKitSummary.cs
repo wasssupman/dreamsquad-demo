@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Data
 {
@@ -100,10 +101,10 @@ namespace Wassup.Data
             for (int i = 0; i < ability.mechanics.Length; i++)
             {
                 var m = ability.mechanics[i];
-                if (m.trigger.kind != DcTriggerKind.OnPlace) continue;
+                if (m.trigger.kind != TriggerKind.OnPlace) continue;
                 switch (m.payload.kind)
                 {
-                    case DcPayloadKind.EmitProjectilePattern:
+                    case EffectKind.EmitProjectilePattern:
                         // ⚠ **같은 payload 가 두 그림이다.** 낙하 융단폭격(캐논)과 방향 발사
                         // (샷건맨)가 같은 «발사 명세» 를 쓰므로, 문안은 탄의 **궤적**으로 갈라야
                         // 한다. 안 가르면 샷건맨 충격파가 "미사일 낙하" 로 소개된다(실측 오문안).
@@ -129,45 +130,45 @@ namespace Wassup.Data
                         return m.payload.pattern != null && m.payload.pattern.scopeTileRange > 0
                             ? $"배치 시 주변 {m.payload.pattern.scopeTileRange}타일 적 전원에게 미사일 낙하"
                             : "배치 시 주변 적 전원에게 미사일 낙하";
-                    case DcPayloadKind.AreaTaunt:
+                    case EffectKind.AreaTaunt:
                         return m.payload.tileRange > 0
                             ? $"배치 시 주변 {m.payload.tileRange}타일 광역 도발"
                             : "배치 시 광역 도발";
                     // on-place-shuttle-shotgun unit 0 — 배치 즉시 주변 아군 보호막.
                     // 「자신 제외」를 문안에 넣지 않는 것은 다른 절들과 같은 규율이다:
                     // 이 요약은 **무슨 일이 일어나는가**만 말하고 예외는 스펙이 갖는다.
-                    case DcPayloadKind.GrantShield:
+                    case EffectKind.GrantShield:
                         return m.payload.tileRange > 0
                             ? $"배치 시 주변 {m.payload.tileRange}타일 아군에게 보호막"
                             : "배치 시 주변 아군에게 보호막";
                     // skill-layer-migration unit 2a — 브루저 배치 충격파(레거시 `MeleeBurst`).
-                    case DcPayloadKind.SelfTileAoe:
+                    case EffectKind.SelfTileAoe:
                         return m.payload.tileRange > 0
                             ? $"배치 시 주변 {m.payload.tileRange}타일 적에게 충격파"
                             : "배치 시 주변 적에게 충격파";
                     // unit 2b — 스탯 오라 둘. **진영은 payload 가, 스탯은 저작이 정한다** —
                     // 문안도 같은 두 축으로 만든다. 숫자는 저작값을 그대로 읽는다.
-                    case DcPayloadKind.AllyStatAura:
+                    case EffectKind.AllyStatAura:
                         return $"배치 시 주변 {m.payload.tileRange}타일 아군 "
                                + $"{StatWord(m.payload.buffStat)} {SignedPercent(m.payload.magnitude)}"
                                + $" ({m.payload.duration:0.#}초)";
-                    case DcPayloadKind.OpponentStatAura:
+                    case EffectKind.OpponentStatAura:
                         return $"배치 시 주변 {m.payload.tileRange}타일 적 "
                                + $"{StatWord(m.payload.buffStat)} {SignedPercent(m.payload.magnitude)}"
                                + $" ({m.payload.duration:0.#}초)";
                     // unit 2c — 판 밖 런타임. 반경도 지속도 없어 숫자는 하나뿐이다.
-                    case DcPayloadKind.GainCost:
+                    case EffectKind.GainCost:
                         return $"배치 시 코스트 +{m.payload.magnitude:0.#}";
-                    case DcPayloadKind.ReduceSkillCooldown:
+                    case EffectKind.ReduceSkillCooldown:
                         return $"배치 시 스킬 쿨다운 −{m.payload.magnitude:0.#}초";
                     // unit 2d — 광역 스택. 상한은 문안에 안 넣는다(스택의 성질이지 이 유닛의
                     // 저작이 아니라, 여기 적으면 스택 SO 를 고칠 때 문안이 stale 해진다).
-                    case DcPayloadKind.AreaApplyStack:
+                    case EffectKind.AreaApplyStack:
                         return $"배치 시 주변 {m.payload.tileRange}타일 적에게 "
                                + $"{StackWord(m.payload.stackKind)} {(int)m.payload.magnitude}중첩";
                     // unit 2e — 광역 CC. 부수 피해는 **있을 때만** 말한다(0 이 흔한 저작이라
                     // 「피해 0」이라고 적으면 화면이 거짓말을 한다).
-                    case DcPayloadKind.AreaCc:
+                    case EffectKind.AreaCc:
                         return m.payload.magnitude > 0f
                             ? $"배치 시 주변 {m.payload.tileRange}타일 적 {CcWord(m.payload.ccKind)}"
                               + $" ({m.payload.duration:0.#}초) · 피해 {m.payload.magnitude:0.#}"
@@ -175,7 +176,7 @@ namespace Wassup.Data
                               + $" ({m.payload.duration:0.#}초)";
                     // unit 2e — 광역 지속 피해. **틱당 피해지 총량이 아니다** — 총량을 적으려면
                     // 여기서 곱해야 하고, 그 순간 문안이 자기 숫자를 갖게 된다(이 파일의 규율 위반).
-                    case DcPayloadKind.AreaDot:
+                    case EffectKind.AreaDot:
                         return $"배치 시 주변 {m.payload.tileRange}타일 적을 {m.payload.duration:0.#}초간 지짐"
                                + " (그동안 공격 불가)";
                     // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).

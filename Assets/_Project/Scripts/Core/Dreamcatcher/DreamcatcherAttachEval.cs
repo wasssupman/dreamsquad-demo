@@ -1,5 +1,6 @@
 using System;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Core
 {
@@ -113,7 +114,7 @@ namespace Wassup.Core
                 for (int i = 0; i < card.mechanics.Length; i++)
                 {
                     var m = card.mechanics[i];
-                    if (m.payload.kind == DcPayloadKind.None) continue;
+                    if (m.payload.kind == EffectKind.None) continue;
                     if (DcApplicability.EvaluateMechanic(m, host)
                         == DcRejectReason.None) return true;
                 }

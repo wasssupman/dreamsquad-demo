@@ -3,6 +3,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -120,8 +121,8 @@ namespace Wassup.Tests.EditMode
             Assert.IsEmpty(butterfly.attackMods);
             Assert.AreEqual(1, butterfly.mechanics.Length);
             var m = butterfly.mechanics[0];
-            Assert.AreEqual(DcTriggerKind.None, m.trigger.kind);
-            Assert.AreEqual(DcPayloadKind.DreamCocoon, m.payload.kind);
+            Assert.AreEqual(TriggerKind.None, m.trigger.kind);
+            Assert.AreEqual(EffectKind.DreamCocoon, m.payload.kind);
             // magnitude·duration 은 DcSheet(mechanics 행) 소유 — 값은 자유 튜닝, 구조만 잠근다
             // (test-suite-fast-lane unit 1, 전례: WaveKillBudgetPinTests).
             Assert.Greater(m.payload.magnitude, 0f, "완주 버프 % 가 0 이면 고치가 보상 없는 잠이 된다");
@@ -168,8 +169,8 @@ namespace Wassup.Tests.EditMode
             Assert.IsEmpty(offering.attackMods);
             Assert.AreEqual(1, offering.mechanics.Length);
             var m = offering.mechanics[0];
-            Assert.AreEqual(DcTriggerKind.None, m.trigger.kind);
-            Assert.AreEqual(DcPayloadKind.BountyMark, m.payload.kind);
+            Assert.AreEqual(TriggerKind.None, m.trigger.kind);
+            Assert.AreEqual(EffectKind.BountyMark, m.payload.kind);
             // magnitude(각성 배율)·tileRange(받는 피해 감소 % 로 재해석) 는 DcSheet 소유 (unit 1).
             Assert.Greater(m.payload.magnitude, 1f, "배율이 1 이하면 «살찌운» 제물이 아니다");
             Assert.That(m.payload.tileRange, Is.InRange(1, 99),
@@ -196,15 +197,15 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(3, heart.mechanics.Length);
             // 수치(magnitude·duration·period·tileRange)는 DcSheet 소유 — 자유 튜닝.
             // 여기서는 3-메커닉 구성(kind·trigger)과 부호·배율 구조만 잠근다 (unit 1).
-            Assert.AreEqual(DcPayloadKind.SelfBuffLethal, heart.mechanics[0].payload.kind);
+            Assert.AreEqual(EffectKind.SelfBuffLethal, heart.mechanics[0].payload.kind);
             Assert.Greater(heart.mechanics[0].payload.magnitude, 0f);
             Assert.Greater(heart.mechanics[0].payload.duration, 0f);
-            Assert.AreEqual(DcTriggerKind.AttackN, heart.mechanics[1].trigger.kind);
+            Assert.AreEqual(TriggerKind.AttackN, heart.mechanics[1].trigger.kind);
             Assert.Greater(heart.mechanics[1].trigger.period, 0, "AttackN 주기 0 이면 트리거가 죽는다");
-            Assert.AreEqual(DcPayloadKind.HeavyStrike, heart.mechanics[1].payload.kind);
+            Assert.AreEqual(EffectKind.HeavyStrike, heart.mechanics[1].payload.kind);
             Assert.Greater(heart.mechanics[1].payload.magnitude, 1f, "강타 배율이 1 이하면 강타가 아니다");
-            Assert.AreEqual(DcTriggerKind.OnDeath, heart.mechanics[2].trigger.kind);
-            Assert.AreEqual(DcPayloadKind.SelfTileAoe, heart.mechanics[2].payload.kind);
+            Assert.AreEqual(TriggerKind.OnDeath, heart.mechanics[2].trigger.kind);
+            Assert.AreEqual(EffectKind.SelfTileAoe, heart.mechanics[2].payload.kind);
             Assert.Greater(heart.mechanics[2].payload.magnitude, 0f);
             Assert.Greater(heart.mechanics[2].payload.tileRange, 0);
             Assert.AreSame(byId["farewell"].mechanics[0].payload.projectile,

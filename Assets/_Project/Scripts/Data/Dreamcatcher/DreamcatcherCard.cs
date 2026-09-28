@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Data
 {
@@ -39,7 +40,7 @@ namespace Wassup.Data
     public enum CardType { Squad, Unit, Active }
 
     // dreamcatcher-attach-requirement unit 0 — 부착 **시점**의 정적 술어(누구에게 붙을
-    // 수 있나). 발동 시점의 동적 술어인 DcGateKind 와 레이어가 다르다.
+    // 수 있나). 발동 시점의 동적 술어인 GateKind 와 레이어가 다르다.
     // unit 7 rev — 값 칸을 하나로 합쳐(attachType + attachValue) 종류별 companion 필드를
     // 없앴다. 이 enum 은 attachValue 를 **어떻게 읽을지**만 정한다. append-only.
     public enum DcAttachType { None, Class, UnitId }
@@ -133,7 +134,7 @@ namespace Wassup.Data
         {
             if (mechanics == null) return false;
             for (int i = 0; i < mechanics.Length; i++)
-                if (mechanics[i].payload.kind == DcPayloadKind.BountyMark) return true;
+                if (mechanics[i].payload.kind == EffectKind.BountyMark) return true;
             return false;
         }
     }

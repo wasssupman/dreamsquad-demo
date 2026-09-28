@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using UnityEngine;
 using Wassup.Data;
 using Wassup.Data.StatImport;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Editor.UnitStatImport
 {
@@ -82,9 +83,9 @@ namespace Wassup.Editor.UnitStatImport
                         payloadKind = m.payload.kind, magnitude = m.payload.magnitude,
                         tileRange = m.payload.tileRange, duration = m.payload.duration,
                         triggerPeriodSeconds = m.trigger.periodSeconds, triggerFraction = m.trigger.fraction,
-                        ccKind = m.payload.kind == DcPayloadKind.ApplyCcToTarget ? m.payload.ccKind : (DcCcKind?)null,
-                        stackKind = m.payload.kind == DcPayloadKind.ApplyStackToTarget ? m.payload.stackKind : (DcStackKind?)null,
-                        buffStat = m.payload.kind == DcPayloadKind.SelfStatBuff ? m.payload.buffStat : (CardBuffKind?)null,
+                        ccKind = m.payload.kind == EffectKind.ApplyCcToTarget ? m.payload.ccKind : (DcCcKind?)null,
+                        stackKind = m.payload.kind == EffectKind.ApplyStackToTarget ? m.payload.stackKind : (DcStackKind?)null,
+                        buffStat = m.payload.kind == EffectKind.SelfStatBuff ? m.payload.buffStat : (CardBuffKind?)null,
                         _projectileId = m.payload.projectile != null ? m.payload.projectile.id : null,
                     });
                 }

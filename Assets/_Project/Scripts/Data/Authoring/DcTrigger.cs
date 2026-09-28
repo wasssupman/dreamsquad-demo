@@ -1,3 +1,4 @@
+using Wassup.BattleCore.Trigger;
 namespace Wassup.Data.Authoring
 {
     // dreamcatcher-unit-trigger Unit 2 — pure counting contract for triggered
@@ -69,12 +70,12 @@ namespace Wassup.Data.Authoring
         // 판정은 현재 hp/현재 max (HealthThreshold 의 스폰 스냅샷과 다름).
         // subject 소멸/DeadTag 처리는 caller 책임(게이트 실패 취급). gate=None 은
         // 항상 통과 — 기존 카드의 무게이트 경로.
-        public static bool GatePass(Wassup.Data.DcGateKind gate, float gateValue, float subjectHp, float subjectMaxHp)
+        public static bool GatePass(GateKind gate, float gateValue, float subjectHp, float subjectMaxHp)
         {
             switch (gate)
             {
-                case Wassup.Data.DcGateKind.None: return true;
-                case Wassup.Data.DcGateKind.HpBelow:
+                case GateKind.None: return true;
+                case GateKind.HpBelow:
                     if (gateValue <= 0f || subjectMaxHp <= 0f) return false; // 무값 카드/미베이크 가드
                     return subjectHp <= subjectMaxHp * gateValue;
                 default: return false;
@@ -85,12 +86,12 @@ namespace Wassup.Data.Authoring
         // v1 배선 = ① OnDamagedN×Self(궁지폭발) ② AttackN×EventTarget(처형타) 뿐.
         // 그 외 gate≠None 조합은 bake 가 이 함수를 보고 loud 거절한다 — 미사용
         // 라이브 경로 금지(critic HIGH). 새 조합은 카드+배선+테스트 한 묶음으로 개방.
-        public static bool GateComboSupported(Wassup.Data.DcTriggerKind trigger, Wassup.Data.DcGateKind gate, Wassup.Data.DcGateSubject subject)
+        public static bool GateComboSupported(TriggerKind trigger, GateKind gate, GateSubject subject)
         {
-            if (gate == Wassup.Data.DcGateKind.None) return true;
-            if (gate != Wassup.Data.DcGateKind.HpBelow) return false;
-            if (trigger == Wassup.Data.DcTriggerKind.OnDamagedN && subject == Wassup.Data.DcGateSubject.Self) return true;
-            if (trigger == Wassup.Data.DcTriggerKind.AttackN && subject == Wassup.Data.DcGateSubject.EventTarget) return true;
+            if (gate == GateKind.None) return true;
+            if (gate != GateKind.HpBelow) return false;
+            if (trigger == TriggerKind.OnDamagedN && subject == GateSubject.Self) return true;
+            if (trigger == TriggerKind.AttackN && subject == GateSubject.EventTarget) return true;
             return false;
         }
 
@@ -125,24 +126,24 @@ namespace Wassup.Data.Authoring
         // ⚠ **fail-closed 를 유지한다.** 「감지자 없음」을 통과시키면 슬롯만 생기고
         // 아무도 안 잡는 침묵 no-op 이 된다 — 그것이 애초에 이 술어들이 존재한 이유의
         // 절반이고, 그 절반은 아직 유효하다.
-        public static bool HasDetector(Wassup.Data.DcTriggerKind kind, bool hostIsEnemy)
+        public static bool HasDetector(TriggerKind kind, bool hostIsEnemy)
         {
             switch (kind)
             {
-                case Wassup.Data.DcTriggerKind.PeriodicTimer:
-                case Wassup.Data.DcTriggerKind.HealthThreshold:
-                case Wassup.Data.DcTriggerKind.AttackN:
-                case Wassup.Data.DcTriggerKind.OnDamagedN:
-                case Wassup.Data.DcTriggerKind.OnKill:
-                case Wassup.Data.DcTriggerKind.OnShieldBreak:
+                case TriggerKind.PeriodicTimer:
+                case TriggerKind.HealthThreshold:
+                case TriggerKind.AttackN:
+                case TriggerKind.OnDamagedN:
+                case TriggerKind.OnKill:
+                case TriggerKind.OnShieldBreak:
                     return true;
-                case Wassup.Data.DcTriggerKind.OnDeath:
+                case TriggerKind.OnDeath:
                     // unit 8 — **적에게 열렸다**(사용자 결정 2026-08-26: 전용 개념 배제).
                     // `UnitLifecycleSystem` 의 일반 사망 루프가 라우팅을 갖게 되면서
                     // 감지자가 양 진영을 본다. 진영은 그 루프가 엔티티별로 도출해 싣는다.
                     return true;
-                case Wassup.Data.DcTriggerKind.OnPlace:
-                case Wassup.Data.DcTriggerKind.OnRetire:
+                case TriggerKind.OnPlace:
+                case TriggerKind.OnRetire:
                     return !hostIsEnemy;
                 default:
                     return false;   // None 과 미래의 새 kind — 배선 전엔 닫아 둔다

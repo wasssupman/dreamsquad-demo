@@ -4,6 +4,7 @@ using UnityEngine;
 using Wassup.Data.Authoring;
 using Wassup.Data;
 using Wassup.UI;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -94,10 +95,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 3 },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 3 },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.ApplyStackToTarget,
+                        kind = EffectKind.ApplyStackToTarget,
                         magnitude = 1f,
                         duration = 4f,
                         stackKind = DcStackKind.Bleed,
@@ -118,10 +119,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 3 },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 3 },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.ApplyCcToTarget,
+                        kind = EffectKind.ApplyCcToTarget,
                         ccKind = DcCcKind.Impulse,
                         magnitude = 4f,
                         duration = 0.5f,
@@ -142,10 +143,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 5 },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 5 },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.ApplyCcToTarget,
+                        kind = EffectKind.ApplyCcToTarget,
                         ccKind = DcCcKind.Sleep,
                         duration = 2.5f,
                     },
@@ -168,19 +169,19 @@ namespace Wassup.Tests.EditMode
                 {
                     trigger = new DcTriggerSpec
                     {
-                        kind = DcTriggerKind.AttackN, period = 1,
-                        gate = DcGateKind.HpBelow, gateSubject = DcGateSubject.EventTarget, gateValue = 0.25f,
+                        kind = TriggerKind.AttackN, period = 1,
+                        gate = GateKind.HpBelow, gateSubject = GateSubject.EventTarget, gateValue = 0.25f,
                     },
-                    payload = new DcPayloadSpec { kind = DcPayloadKind.HeavyStrike, magnitude = 2f },
+                    payload = new DcPayloadSpec { kind = EffectKind.HeavyStrike, magnitude = 2f },
                 },
                 new DcMechanic
                 {
                     trigger = new DcTriggerSpec
                     {
-                        kind = DcTriggerKind.OnDamagedN, period = 2,
-                        gate = DcGateKind.HpBelow, gateSubject = DcGateSubject.Self, gateValue = 0.30f,
+                        kind = TriggerKind.OnDamagedN, period = 2,
+                        gate = GateKind.HpBelow, gateSubject = GateSubject.Self, gateValue = 0.30f,
                     },
-                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfTileAoe, magnitude = 20f, tileRange = 1 },
+                    payload = new DcPayloadSpec { kind = EffectKind.SelfTileAoe, magnitude = 20f, tileRange = 1 },
                 },
             };
 
@@ -199,10 +200,10 @@ namespace Wassup.Tests.EditMode
                 {
                     trigger = new DcTriggerSpec
                     {
-                        kind = DcTriggerKind.OnDamagedN, period = 2,
-                        gate = DcGateKind.HpBelow, gateSubject = DcGateSubject.EventTarget, gateValue = 0.30f,
+                        kind = TriggerKind.OnDamagedN, period = 2,
+                        gate = GateKind.HpBelow, gateSubject = GateSubject.EventTarget, gateValue = 0.30f,
                     },
-                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfTileAoe, magnitude = 20f, tileRange = 1 },
+                    payload = new DcPayloadSpec { kind = EffectKind.SelfTileAoe, magnitude = 20f, tileRange = 1 },
                 },
             };
 
@@ -221,12 +222,12 @@ namespace Wassup.Tests.EditMode
                 {
                     trigger = new DcTriggerSpec
                     {
-                        kind = DcTriggerKind.HealthThreshold,
+                        kind = TriggerKind.HealthThreshold,
                         fraction = 0.7f,
                     },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.SelfStatBuff,
+                        kind = EffectKind.SelfStatBuff,
                         magnitude = 30f,
                         buffStat = CardBuffKind.AttackDamage,
                     },
@@ -285,10 +286,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.PeriodicTimer, periodSeconds = 6f },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.PeriodicTimer, periodSeconds = 6f },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.SelfOrbitProjectile,
+                        kind = EffectKind.SelfOrbitProjectile,
                         magnitude = 20f,
                         duration = 3f,
                         tileRange = 1,
@@ -312,10 +313,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnRetire },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.OnRetire },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.SelfTileAoe,
+                        kind = EffectKind.SelfTileAoe,
                         magnitude = 120f,
                         tileRange = 1,
                         duration = 0.8f, // 낙하 예고
@@ -339,10 +340,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnRetire },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.OnRetire },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.RecallAttachedToFront,
+                        kind = EffectKind.RecallAttachedToFront,
                         // 저작 실수로 값이 들어와도 문안이 그것을 읽지 않는다는 것까지 고정한다.
                         magnitude = 2f,
                         tileRange = 3,
@@ -366,10 +367,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnDeath },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.OnDeath },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.SelfTileAoe,
+                        kind = EffectKind.SelfTileAoe,
                         magnitude = 50f,
                         tileRange = 1,
                     },
@@ -435,10 +436,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 3 },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 3 },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.ApplyStackToTarget,
+                        kind = EffectKind.ApplyStackToTarget,
                         magnitude = 1f,
                         duration = 4f,
                         stackKind = DcStackKind.Bleed,
@@ -446,8 +447,8 @@ namespace Wassup.Tests.EditMode
                 },
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.None },
-                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfWarmupBuff },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.None },
+                    payload = new DcPayloadSpec { kind = EffectKind.SelfWarmupBuff },
                 },
             };
 
@@ -545,10 +546,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 1 },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 1 },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.ApplyStackToTarget,
+                        kind = EffectKind.ApplyStackToTarget,
                         magnitude = 1f,
                         duration = 4f,
                         stackKind = stackKind,

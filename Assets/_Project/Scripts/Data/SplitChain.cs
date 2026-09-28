@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Data
 {
@@ -10,7 +11,7 @@ namespace Wassup.Data
     // 된다(중간 슬라임은 메커닉을 가져야 한다). 무한 분열을 실제로 만드는 것은 «자식이
     // 메커닉을 갖는 것» 이 아니라 **사슬이 자기에게 돌아오는 것**이므로, 판정을 그쪽으로 옮긴다.
     //
-    // 분열은 슬롯을 만들지 않고 브리지 킬 드레인이 SO 를 직독하므로(DcPayloadKind.SplitOnDeath),
+    // 분열은 슬롯을 만들지 않고 브리지 킬 드레인이 SO 를 직독하므로(EffectKind.SplitOnDeath),
     // 이 사슬이 그대로 런타임 동작이다 — 순환이면 죽을 때마다 자식이 태어나 판이 끝나지 않는다.
     //
     // 순수 함수(SO 참조만 따라간다. Entities/Battle 무참조) — EditMode 테스트 대상.
@@ -76,8 +77,8 @@ namespace Wassup.Data
             if (mechanics == null) return 0;
             for (int i = 0; i < mechanics.Length; i++)
             {
-                if (mechanics[i].trigger.kind != DcTriggerKind.OnDeath) continue;
-                if (mechanics[i].payload.kind != DcPayloadKind.SplitOnDeath) continue;
+                if (mechanics[i].trigger.kind != TriggerKind.OnDeath) continue;
+                if (mechanics[i].payload.kind != EffectKind.SplitOnDeath) continue;
                 return (int)mechanics[i].payload.magnitude;
             }
             return 0;
@@ -91,8 +92,8 @@ namespace Wassup.Data
             if (mechanics == null) return null;
             for (int i = 0; i < mechanics.Length; i++)
             {
-                if (mechanics[i].trigger.kind != DcTriggerKind.OnDeath) continue;
-                if (mechanics[i].payload.kind != DcPayloadKind.SplitOnDeath) continue;
+                if (mechanics[i].trigger.kind != TriggerKind.OnDeath) continue;
+                if (mechanics[i].payload.kind != EffectKind.SplitOnDeath) continue;
                 return mechanics[i].payload.splitUnit;
             }
             return null;

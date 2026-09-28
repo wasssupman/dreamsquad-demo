@@ -1,4 +1,5 @@
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Data.StatImport
 {
@@ -56,9 +57,9 @@ namespace Wassup.Data.StatImport
     {
         public string cardId;
         public int? slot;
-        public DcTriggerKind? triggerKind;
+        public TriggerKind? triggerKind;
         public int? triggerPeriod;
-        public DcPayloadKind? payloadKind;
+        public EffectKind? payloadKind;
         public float? magnitude;
         public int? tileRange;
         public float? duration;

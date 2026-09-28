@@ -4,6 +4,7 @@ using System.Globalization;
 using Wassup.Data.Authoring;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.UI
 {
@@ -224,21 +225,21 @@ namespace Wassup.UI
 
             switch (payload.kind)
             {
-                case DcPayloadKind.DreamCocoon:
+                case EffectKind.DreamCocoon:
                     lines.Add($"부착 즉시 → 수면 {Duration(payload.duration)} (피격 시 종료)");
                     lines.Add($"무피격 완주 시 → 남은 전투 동안 {BuffLabel(payload.buffStat)} "
                            + $"{SignedPercent(payload.magnitude)}");
                     return true;
-                case DcPayloadKind.BountyMark:
+                case EffectKind.BountyMark:
                     lines.Add($"적 지정 → 대상 받는 피해 -{Count(payload.tileRange)}%");
                     lines.Add($"표식 대상 처치 시 → 각성치 {Multiplier(payload.magnitude)}");
                     lines.Add("표식 대상 이탈 시 → 보상 없음");
                     return true;
-                case DcPayloadKind.SelfBuffLethal:
+                case EffectKind.SelfBuffLethal:
                     lines.Add($"부착 즉시 → 공격 속도 {SignedPercent(payload.magnitude)}"
                            + $" · {Duration(payload.duration)} 후 사망");
                     return true;
-                case DcPayloadKind.PlacementAura:
+                case EffectKind.PlacementAura:
                     lines.Add($"호스트 생존 중 → 새 유닛 배치 {Duration(payload.duration)} 후 "
                            + $"공격 속도 {SignedPercent(payload.magnitude)}");
                     return true;
@@ -249,7 +250,7 @@ namespace Wassup.UI
             string effect;
             switch (payload.kind)
             {
-                case DcPayloadKind.ProjectileToTarget:
+                case EffectKind.ProjectileToTarget:
                     // content-5 unit 3 — 이 payload 는 이제 **탄 에셋의 궤적을 따른다**.
                     // 왕복(부메랑)은 «대상에게» 가 아니라 경로를 훑고 돌아오므로 문안이
                     // 갈려야 한다 — 판정은 탄 SO 를 읽어서 하고 문자열에 수치를 복제하지 않는다.
@@ -258,7 +259,7 @@ namespace Wassup.UI
                         ? $"부메랑이 날아갔다 돌아오며 스치는 적에게 피해 {Count(payload.magnitude)}"
                         : $"대상에게 추가 투사체 피해 {Count(payload.magnitude)}";
                     break;
-                case DcPayloadKind.SelfTileAoe:
+                case EffectKind.SelfTileAoe:
                     // content-4 unit 0 — duration>0 = 낙하 예고(퇴근 운석). 기존 SelfTileAoe
                     // 카드는 전부 0 이라 문안이 바뀌지 않는다. 접두 형태는 액티브 운석 문안
                     // (BuildSkillLine 의 warningSec)과 같게 맞춘다.
@@ -266,20 +267,20 @@ namespace Wassup.UI
                         ? $"{Duration(payload.duration)} 후 반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}"
                         : $"반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}";
                     break;
-                case DcPayloadKind.NextAttackDoubleFire:
+                case EffectKind.NextAttackDoubleFire:
                     effect = "다음 공격 2연발";
                     break;
-                case DcPayloadKind.AreaBarrage:
+                case EffectKind.AreaBarrage:
                     effect = $"반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}";
                     break;
-                case DcPayloadKind.SelfBlink:
+                case EffectKind.SelfBlink:
                     effect = $"반경 {Count(payload.tileRange)}칸 내 위치로 이동";
                     break;
-                case DcPayloadKind.AllyMoveSpeedAura:
+                case EffectKind.AllyMoveSpeedAura:
                     effect = $"반경 {Count(payload.tileRange)}칸 아군 이동 속도 "
                            + $"{SignedPercent(payload.magnitude)} · {Duration(payload.duration)}";
                     break;
-                case DcPayloadKind.ApplyCcToTarget:
+                case EffectKind.ApplyCcToTarget:
                     // Sleep 은 wake-on-hit 리스크가 카드 판단의 핵심이라 문안에 명시 (content-3 unit 2)
                     effect = payload.ccKind == DcCcKind.Impulse
                         ? $"대상에게 넉백 속도 {Count(payload.magnitude)} · {Duration(payload.duration)}"
@@ -287,7 +288,7 @@ namespace Wassup.UI
                             ? $"대상에게 수면 {Duration(payload.duration)} (피격 시 해제)"
                             : $"대상에게 {CcLabel(payload.ccKind)} {Duration(payload.duration)}";
                     break;
-                case DcPayloadKind.ApplyStackToTarget:
+                case EffectKind.ApplyStackToTarget:
                     effect = $"대상에게 {StackLabel(payload.stackKind)} {Count(payload.magnitude)}스택"
                            + $" · {Duration(payload.duration)}";
                     break;
@@ -295,47 +296,47 @@ namespace Wassup.UI
                 // (광란). 중첩과 상한을 말해주지 않으면 「+8%」만 보고 약한 카드로 읽힌다.
                 // 상한 %는 문자열에 박지 않고 저작값에서 뽑는다(제약 6) — 시트가 배율이나
                 // 중첩 중 하나만 바꿔도 문안이 따라간다.
-                case DcPayloadKind.SelfStatBuff:
+                case EffectKind.SelfStatBuff:
                     bool stacks = payload.tileRange > 0;
                     effect = $"{BuffLabel(payload.buffStat)} {SignedPercent(payload.magnitude)}";
                     if (stacks) effect += $" 중첩 (최대 {Count(payload.tileRange)}중첩";
                     if (payload.duration > 0f)
                         effect += stacks ? $" · {Duration(payload.duration)})" : $" · {Duration(payload.duration)}";
                     else if (stacks) effect += ")";
-                    else if (mechanic.trigger.kind == DcTriggerKind.HealthThreshold)
+                    else if (mechanic.trigger.kind == TriggerKind.HealthThreshold)
                         effect += " · 전투 중 1회";
                     else effect += " · 남은 전투 동안";
                     break;
-                case DcPayloadKind.HeavyStrike:
+                case EffectKind.HeavyStrike:
                     effect = $"피해 {Multiplier(payload.magnitude)}";
                     break;
-                case DcPayloadKind.AreaSleep:
+                case EffectKind.AreaSleep:
                     effect = $"반경 {Count(payload.tileRange)}칸 내 적 최대 "
                            + $"{Count(payload.magnitude)}명 수면 {Duration(payload.duration)}";
                     break;
                 // content-4 unit 0 — 궤도 화염구. 재타격 간격은 탄 SO 소유라 이 문안이 모른다
                 // (수치를 문자열에 복제하지 않는다 — 제약 6). 반복 타격이라는 **사실**만 적는다.
-                case DcPayloadKind.SelfOrbitProjectile:
+                case EffectKind.SelfOrbitProjectile:
                     effect = $"주위를 도는 화염구 {Duration(payload.duration)}"
                            + $" · 스치는 적에게 피해 {Count(payload.magnitude)}";
                     break;
                 // content-5 unit 4 — 잿불(장판 설치). **수치를 하나도 적지 않는다** — 피해·
                 // 지속·반경이 전부 해저드 SO 소유라 여기서 읽으면 문자열 복제가 된다(제약 6).
                 // 카드가 말할 수 있는 것은 「무슨 일이 일어나는가」뿐이다.
-                case DcPayloadKind.SpawnHazard:
+                case EffectKind.SpawnHazard:
                     effect = "그 자리에 불씨를 남긴다";
                     break;
                 // dreamcatcher-retire-recall unit 0 — 인수인계. **"다른"이 계약이다**
                 // (선언한 카드 자신은 맨 뒤로 간다 — README 계약 2). 단독 부착이면 아무 일도
                 // 일어나지 않는다는 사실이 이 한 단어에 걸려 있으므로 지우지 말 것.
                 // 수치 칸은 하나도 읽지 않는다 — 이 payload 에는 저작 손잡이가 없다(계약 4).
-                case DcPayloadKind.RecallAttachedToFront:
+                case EffectKind.RecallAttachedToFront:
                     effect = "함께 붙은 다른 드림캐쳐가 손패 맨 앞으로";
                     break;
                 // content-5 unit 5 — 발사 명세. 발수·피해는 **패턴 SO 에서 읽는다**(문자열
                 // 복제 금지 — 제약 6). 「어떻게 흩어지나」는 selection/재추첨 조합이라
                 // 문안으로 옮기지 않는다 — 눈으로 보이는 사실만 적는다.
-                case DcPayloadKind.EmitProjectilePattern:
+                case EffectKind.EmitProjectilePattern:
                 {
                     var pat = payload.pattern;
                     if (pat == null) return false;
@@ -350,7 +351,7 @@ namespace Wassup.UI
             lines.Add($"{trigger} → {effect}");
             // content-3 unit 6 — 스택 카드는 "무엇이 쌓이나" 만으로는 정체가 안 읽힌다.
             // 임계에서 무엇이 터지는지가 그 카드의 실체라 요약 라인을 한 줄 덧붙인다.
-            if (payload.kind == DcPayloadKind.ApplyStackToTarget)
+            if (payload.kind == EffectKind.ApplyStackToTarget)
             {
                 string summary = StackThresholdSummary(payload.stackModifier, payload.stackKind);
                 if (summary != null) lines.Add(summary);
@@ -464,8 +465,8 @@ namespace Wassup.UI
                 return false;
             }
             if (!TryFormatTriggerCore(trigger, out text)) return false;
-            if (trigger.gate == DcGateKind.HpBelow)
-                text = (trigger.gateSubject == DcGateSubject.EventTarget
+            if (trigger.gate == GateKind.HpBelow)
+                text = (trigger.gateSubject == GateSubject.EventTarget
                     ? $"HP {Number(trigger.gateValue * 100f)}% 이하인 적에게 "
                     : $"HP {Number(trigger.gateValue * 100f)}% 이하일 때 ") + text;
             return true;
@@ -475,35 +476,35 @@ namespace Wassup.UI
         {
             switch (trigger.kind)
             {
-                case DcTriggerKind.AttackN:
+                case TriggerKind.AttackN:
                     // period 1 은 "1번째 공격마다"가 아니라 "공격마다" (frostbite, content-3 unit 1)
                     text = trigger.period == 1 ? "공격마다" : $"{Count(trigger.period)}번째 공격마다";
                     return trigger.period > 0;
-                case DcTriggerKind.OnDamagedN:
+                case TriggerKind.OnDamagedN:
                     // period 1 은 "1번째 피격마다"가 아니라 "피격마다" — 바로 위 AttackN 과
                     // 같은 예외다. 시트가 궁지폭발을 2→1 로 바꾸면서 그 어색한 문장이 실제로
                     // 나왔다(2026-08-17).
                     text = trigger.period == 1 ? "피격마다" : $"{Count(trigger.period)}번째 피격마다";
                     return trigger.period > 0;
-                case DcTriggerKind.OnDeath:
+                case TriggerKind.OnDeath:
                     text = "이 유닛이 사망하면";
                     return true;
-                case DcTriggerKind.PeriodicTimer:
+                case TriggerKind.PeriodicTimer:
                     text = $"{Duration(trigger.periodSeconds)}마다";
                     return trigger.periodSeconds > 0f;
-                case DcTriggerKind.HealthThreshold:
+                case TriggerKind.HealthThreshold:
                     text = $"HP {Number((1f - trigger.fraction) * 100f)}% 이하";
                     return trigger.fraction > 0f;
-                case DcTriggerKind.OnKill:
+                case TriggerKind.OnKill:
                     text = "이 유닛이 적을 처치하면";
                     return true;
-                case DcTriggerKind.OnShieldBreak:
+                case TriggerKind.OnShieldBreak:
                     text = "실드 파괴 시";
                     return true;
                 // content-4 unit 0 — 퇴근. 사망("이 유닛이 사망하면")과 **문안에서도 갈라야**
                 // 한다 — 두 트리거가 교차 발동하지 않는다는 것이 이 카드의 계약이라,
                 // 문안이 흐리면 플레이어가 죽어도 터질 거라 기대한다.
-                case DcTriggerKind.OnRetire:
+                case TriggerKind.OnRetire:
                     text = "이 유닛이 철수하면";
                     return true;
                 default:

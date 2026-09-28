@@ -11,47 +11,12 @@ using Wassup.Skills;
 
 namespace Wassup.Tests.EditMode
 {
-    // battle-core-rebuild unit 7a — 저작 트리거 어휘 ↔ 코어 미러의 **값·개수·매핑 핀**.
+    // battle-core-rebuild unit 7a — 저작 어휘 ↔ 코어 어휘의 **매핑 핀** + 라이브 저작이 규칙으로 구워지는가.
     //
-    // 저작 enum(`DcTriggerKind` 10 · `DcPayloadKind` 33 · 게이트 2축 · 공격 수식자)은 시트가 **값으로 왕복**하므로
-    // append-only 이고 코어는 같은 번호의 미러를 든다. 어셈블리가 갈려 컴파일러가 못 잡는다 — 6a 의
-    // `CoreSkillEnumPinTests` 와 같은 그물을 여기 친다(저작 타입이 이 lane 에서만 보인다 — 헤드리스 lane 밖).
+    // skill-data-table unit 4 — 트리거 · 효과 · 게이트 · 주체는 저작이 코어 enum 을 **직접** 들어 핀이 필요 없다(거울 은퇴).
+    // 남은 핀 = 번호가 다른 어휘(공격 수식자 · CC · 스택 · 실드 필터 — 이름으로 옮긴다).
     public class CoreTriggerEnumPinTests
     {
-        private static void Pin<TAuthored, TCore>() where TAuthored : Enum where TCore : Enum
-        {
-            var authored = Enum.GetNames(typeof(TAuthored));
-            CollectionAssert.AreEquivalent(Enum.GetNames(typeof(TCore)), authored,
-                $"{typeof(TAuthored).Name} ↔ {typeof(TCore).Name} — 한쪽에만 값이 늘었다");
-            foreach (var name in authored)
-                Assert.AreEqual(Convert.ToInt32(Enum.Parse(typeof(TAuthored), name)),
-                                Convert.ToInt32(Enum.Parse(typeof(TCore), name)), $"{name} 의 번호가 갈렸다");
-        }
-
-        private static void PinMapping<TAuthored, TCore>(Func<TAuthored, TCore> map) where TAuthored : Enum where TCore : Enum
-        {
-            foreach (TAuthored a in Enum.GetValues(typeof(TAuthored)))
-                Assert.AreEqual(a.ToString(), map(a).ToString(), $"{a} 가 다른 이름으로 옮겨진다");
-        }
-
-        [Test] public void 트리거_10() { Pin<DcTriggerKind, TriggerKind>(); Assert.AreEqual(10, Enum.GetValues(typeof(TriggerKind)).Length); PinMapping<DcTriggerKind, TriggerKind>(BindingDefinitionBuilder.ToCoreTrigger); }
-        [Test] public void 페이로드_33() { Pin<DcPayloadKind, EffectKind>(); Assert.AreEqual(33, Enum.GetValues(typeof(EffectKind)).Length); PinMapping<DcPayloadKind, EffectKind>(BindingDefinitionBuilder.ToCorePayload); }
-        // unified-effect-layer unit 5 — 트리거 주체 축. 이름이 코어와 달라(「남의 배치」 ↔ `Any`) 값과 매핑을 손으로 고정한다.
-        [Test]
-        public void 트리거_주체()
-        {
-            Assert.AreEqual(0, (int)DcTriggerSubject.Self, "기본값 0 = 기존 저작 전부");
-            Assert.AreEqual(1, (int)DcTriggerSubject.OthersPlacement);
-            Assert.AreEqual(2, Enum.GetValues(typeof(DcTriggerSubject)).Length, "값이 늘면 매핑도 늘린다");
-            Assert.AreEqual(BindingSubject.Self, BindingDefinitionBuilder.ToCoreSubject(DcTriggerSubject.Self));
-            Assert.AreEqual(BindingSubject.Any, BindingDefinitionBuilder.ToCoreSubject(DcTriggerSubject.OthersPlacement));
-            Assert.AreEqual(0, (int)BindingSubject.Self);
-            Assert.AreEqual(1, (int)BindingSubject.Any);
-            Assert.AreEqual(1, (int)BindingSubjectFilter.PlacedDefender);
-        }
-
-        [Test] public void 게이트() { Pin<DcGateKind, GateKind>(); Pin<DcGateSubject, GateSubject>(); PinMapping<DcGateKind, GateKind>(BindingDefinitionBuilder.ToCoreGate); PinMapping<DcGateSubject, GateSubject>(BindingDefinitionBuilder.ToCoreGateSubject); }
-
         [Test]
         public void 공격_수식자는_앞_넷이_미러이고_강공이_하나_더_있다()
         {
@@ -115,7 +80,7 @@ namespace Wassup.Tests.EditMode
                 if (mech == null) continue;
                 int expected = 0;
                 foreach (var m in mech)
-                    if (m.payload.kind != DcPayloadKind.SplitOnDeath) expected++;   // 분열 = 무항목(S8, 7d)
+                    if (m.payload.kind != EffectKind.SplitOnDeath) expected++;   // 분열 = 무항목(S8, 7d)
                 int got = def.Enemies[i].Bindings != null ? def.Enemies[i].Bindings.Length : 0;
                 Assert.AreEqual(expected, got, enemies[i].name);
             }

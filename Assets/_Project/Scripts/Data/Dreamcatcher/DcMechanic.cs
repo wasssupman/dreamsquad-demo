@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Data
 {
@@ -36,7 +37,8 @@ namespace Wassup.Data
     // 발화 1회, 카운터 없음. 방어유닛 자기 규칙(UnitSkillAbility) 전용이며 **카드 경로는
     // loud 거절**한다 — 카드는 배치 «후» 에 붙으므로 붙어도 영영 안 터진다.
     // append-only: 에셋이 이 enum 을 int 로 직렬화한다.
-    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold, OnKill, OnShieldBreak, OnRetire, OnPlace }
+    // skill-data-table unit 4 — 위 이력의 트리거 enum(`DcTriggerKind`)은 **은퇴**했다: 저작이 코어 `TriggerKind` 를 직접 든다
+    // (같은 정수 0~9 — 에셋 무변). 아래 효과 종류 · 게이트 · 주체도 같다(`EffectKind` · `GateKind` · `GateSubject` · `BindingSubject`).
     // dreamcatcher-subconscious-unit — SelfWarmupBuff(7): reserved. 핸들러 미구현
     // (BattleBridge 분기 유실, spec-review H4) — 어떤 카드도 사용 안 함. append-only 로 잔존.
     // dreamcatcher-placement-aura — PlacementAura(8): host 부착 스폰 오라. host·기존 유닛
@@ -48,52 +50,33 @@ namespace Wassup.Data
     // 가 authoring 계약(merge-refresh 유지) — 이탈/host 사망 시 TTL 자연 만료(revoke 없음).
     // dreamcatcher-new-abilities unit 0 — ApplyCcToTarget(N번째 공격이 맞은 적에게 CC),
     // ApplyStackToTarget(맞은 적에게 원소 스택/DoT) payloads.
-    public enum DcPayloadKind
-    {
-        None = 0,
-        ProjectileToTarget = 1,
-        SelfTileAoe = 2,
-        NextAttackDoubleFire = 3,
-        SelfBuffLethal = 4,
-        AreaBarrage = 5,
-        SelfBlink = 6,
-        SelfWarmupBuff = 7,
-        PlacementAura = 8,
-        AllyMoveSpeedAura = 9,
-        ApplyCcToTarget = 10,
-        ApplyStackToTarget = 11,
+    // ── 효과 종류 이력(옛 거울 enum `DcPayloadKind` 의 주석 · 정본 = 코어 `EffectKind` — 번호는 그 enum 에) ──
         // dreamcatcher-kill-and-threshold unit 0 — 발동 시 시전 유닛 자신에게 StatModifier
         // 부여(buffStat 선택자). last_stand(HealthThreshold×공격력) / devouring(OnKill×공속).
-        SelfStatBuff = 12,
         // dreamcatcher-heavy-strike unit 0 — 응축된 일격. AttackN(period=N) 으로 발동하는
         // 강공: 추가 캐리어를 발사하는 다른 payload 와 달리 그 발동 공격 자신의 출력
         // 데미지를 magnitude 배(2.0=×2)로 만든다. 전 victim(근접 cleave/splash/bounce)
         // 에 적용 — primary 한정인 끝을 보는 눈과 다르다. 발동은 unit 1(AttackSystem),
         // 적용은 unit 2(melee + ProjectileHitSystem, hit-site 배율).
-        HeavyStrike = 13,
         // subconscious-curse-expansion unit 0 — 호접몽. 즉발(trigger=None, no slot):
         // 부착 즉시 Sleep(duration 초, 기존 wake-on-hit 이 곧 리스크) + 완주 감시
         // (DreamCocoon 컴포넌트). 무피격 완주 시 self 영구 스탯버프, 피격 wake 시
         // 파탄(버프 없음). magnitude=버프 %(35=+35%), duration=잠 초(> 0.05 필수),
         // buffStat 재사용(SelfStatBuff 선례). append-only.
-        DreamCocoon = 14,
         // subconscious-curse-expansion unit 2 — 살찌운 제물. 적을 겨냥하는 최초의
         // 드림캐쳐(ApplyBountyMark 전용 — CommitAttach/defender 경로 유입 시 아래
         // trigger=None 가드로 무차감 거절). 표식 즉시: AwakeningReward ×magnitude
         // (각성 배율, >1 필수) 베이크 덮어쓰기 + 받는 피해 −tileRange %(0~99,
         // ApplyStackToTarget 의 tileRange 재사용 선례). 처치=배율 보상+회수,
         // 유출=무보상 회수(EnemyGone). append-only.
-        BountyMark = 15,
         // dreamcatcher-shield-break unit 1 — 실드 파열(OnShieldBreak) 시 N타일 내 가장 가까운
         // M명을 L초 수면. magnitude=M·tileRange=N·duration=L 재사용(신규 DcPayloadSpec 필드 0).
         // 옛 실행=BattleBridge.DrainShieldBreakEvents(이력 — 적 쿼리+AoeTargetCap+EnemyCcEvent{Sleep}). append-only.
-        AreaSleep = 16,
         // projectile-emission-pattern unit 3 — 발사 명세(ProjectilePatternData)를
         // 트리거한다. 이 payload 는 발사 내부를 모르고, emitter 는 드림캐쳐를 모른다 —
         // 접점은 "인스턴스 push" 하나다. 트리거가 사건이고 패턴이 그 한 번의 전개이므로
         // 반복 주기는 트리거 소유다(PeriodicTimer(0.5s) × 패턴(1발) = 0.5초 간격 사격).
         // append-only.
-        EmitProjectilePattern = 17,
         // ultimate-leap unit 0 — 이탈→예고→강습. 보스가 판을 떠나 화면 밖으로 사라지고,
         // 착지 셀 주변 slamTileRange 타일이 예고된 뒤 duration 초 후 착지해 슬램 피해.
         // 이탈 동안 공격·이동 불가(LeapFlight) + **피격 불가**(UltimateLeapState 축).
@@ -106,7 +89,6 @@ namespace Wassup.Data
         // 수학적으로 불가하다(HealthThresholdEval). 다른 보스 재사용 = 에셋 슬롯 한 줄.
         // 필드 재사용: duration=예고 초 · magnitude=밀집 탐색 반경 · tileRange=착지 링 상한 ·
         // slamDamage/slamTileRange=착지 피해와 예고 범위. 신규 슬롯 필드 0. append-only.
-        UltimateLeap = 18,
         // boss-mamemo unit 2 — 실드 부여. tileRange 0 = 자신만 / >0 = 반경 내 같은 진영
         // **유닛(host 제외)**. host 를 포함하면 안 되는 이유가 이 kind 하나로 두 능력을
         // 표현하기 때문이다: ShieldMath 가 `source` 를 병합 키로 쓰므로 「경계마다 자기
@@ -121,7 +103,6 @@ namespace Wassup.Data
         // caster·후보 양쪽 DefenderUnitTag 게이트)를 재사용하지 않고 그 아래층을 쓴다.
         // 병합(같은 출처 max · 교차 출처 합산)과 흡수는 DamageApplicationSystem 이 이미
         // 진영 중립으로 한다. append-only.
-        GrantShield = 19,
         // elite-enemy-tier unit 5 — 분열. `OnDeath` 트리거와만 쓴다(슬라임 엘리트).
         // magnitude = 자식 수 · splitUnit = 자식 SO.
         //
@@ -135,7 +116,6 @@ namespace Wassup.Data
         // DamageApplicationSystem 스탬프·OnDeath 의 적 개방이 전부 불필요하다.
         // 초판 설계는 그 다섯을 다 만들려 했고 리뷰(H2)가 걷어냈다.
         // append-only.
-        SplitOnDeath = 20,
         // elite-enemy-tier unit 4 — 화염 브레스. `AttackN` 과 쓴다(드래곤 3타).
         // 대상 방향 **부채꼴** 안의 후보 전원에게 즉발 피해. 투사체 캐리어를 만들지 않는다 —
         // `AttackSystem` 이 그 프레임에 이미 들고 있는 후보 배열 위에서 판정한다.
@@ -146,7 +126,6 @@ namespace Wassup.Data
         // 셀 대각선 경계에 정확히 걸려 부동소수 비교가 동전 던지기가 된다(결정론 요건).
         // 도달 = 후보 원(사거리 + 시전자 몸 + 대상 몸) AND 그 게이트(대상 몸 걸침) — 제약 13 · unified-effect-layer unit 7.
         // append-only.
-        AreaBreath = 21,
         // dreamcatcher-content-4 unit 0 — 궤도 화염구. host 셀 중심을 도는 투사체 1개를
         // `duration` 초 동안 띄우고, 스친 적에게 `magnitude` 피해를 준다(PathHit 스윕).
         //
@@ -162,7 +141,6 @@ namespace Wassup.Data
         //
         // 궤도 중심은 **발사 시점 고정점**이라 host 를 추적하지 않는다 — 방어유닛은 타일 고정이고,
         // 덕분에 host 가 죽거나 퇴근해도 이미 나간 화염구는 자기 수명을 산다. append-only.
-        SelfOrbitProjectile = 22,
         // on-place-skill-rework unit 4 — 범위 도발(배스티온 배치 스킬). host 반경 tileRange 안
         // 적 전원을 duration 초 동안 host 에게 어그로시킨다.
         //
@@ -172,7 +150,6 @@ namespace Wassup.Data
         // host 는 가디언(AggroCapacity 보유)이어야 한다 — 어그로는 그 컴포넌트가 곧 표식이다.
         // 실행은 어그로 획득 요청 큐(AggroAcquireEvent, kind=Taunt)로 넘기고 게이트 판정은
         // 전부 AggroStateSystem(Effects)이 소유한다 — 여기서 복제하면 둘이 갈린다. append-only.
-        AreaTaunt = 23,
         // dreamcatcher-content-5 unit 4 — 장판 설치(잿불). `OnKill` 과 쓴다 —
         // 처치한 **그 자리**에 해저드를 깐다(시체폭발 `OnKill × SelfTileAoe` 가 이미
         // 죽은 자리에서 터지는 선례와 같은 형태: 킬 이벤트 스탬프 → 브리지 드레인).
@@ -189,7 +166,6 @@ namespace Wassup.Data
         // ⚠ 스폰은 **브리지 전용 행위**다 — SO·머티리얼·뷰 프리팹이 필요해 sim 이 만들 수
         // 없다(SplitOnDeath 가 전용 큐·레지스트리를 전부 걷어낸 것과 같은 이유).
         // append-only.
-        SpawnHazard = 24,
         // dreamcatcher-retire-recall unit 0 — 인수인계. 이 유닛이 퇴근할 때, 같이 붙어 있던
         // **다른** 드림캐쳐를 부착한 순서 그대로 카드 큐 맨 앞으로 되돌린다(자기 자신은 맨 뒤).
         //
@@ -204,36 +180,23 @@ namespace Wassup.Data
         //
         // 이름에 "손패"를 넣지 않은 이유: 손패 = 큐 앞 N 이라는 사실은 DreamcatcherCycleDeck
         // 만 아는 것이고, 이 payload 가 말하는 것은 **부착분을 앞으로**다. append-only.
-        RecallAttachedToFront = 25,
-
         // skill-layer-migration unit 2b — 반경 안 대상에게 스탯 모디파이어를 TTL 로 얹는다.
         // 레거시 `BoostNearbyDefenders`(아군 공격력) · `BindNearby`(적 이동속도 감쇠)가
         // 여기로 수렴한다. **스탯은 `buffStat` 저작이 정하고 진영은 payload 가 정한다** —
         // 진영을 저작 필드로 두면 「아군을 감속시키는」 저작이 표현 가능해진다.
         // (기존 `AllyMoveSpeedAura`(9)는 이름이 이미 스탯을 말하므로 그대로 둔다.)
-        AllyStatAura = 26,
-        OpponentStatAura = 27,
-
         // skill-layer-migration unit 2c — **판 밖 런타임**을 바꾸는 둘. sim 상태를 하나도
         // 안 건드린다(코스트 잔량 · 액티브 쿨다운은 Mono 쪽 자원이다). 그래서 이 둘은
         // 큐를 안 타고 즉시 반영된다 — 큐에 실으면 코스트 획득이 한 프레임 늦는다.
-        GainCost = 28,
-        ReduceSkillCooldown = 29,
-
         // unit 2d — 반경 안 상대 전원에게 스택 도포(레거시 `ApplyStackNearby`).
         // ⚠ 단일 대상 `ApplyStackToTarget`(11)과 달리 **반경과 상한이 둘 다 필요**해서
         // 그쪽의 `tileRange` 겸직(반경 칸을 상한으로 씀)을 물려받을 수 없다.
         // 상한은 스택 종류가 갖는다(저작 필드가 아니다).
-        AreaApplyStack = 30,
-
         // unit 2e — 반경 안 상대 전원에 CC(+ 부수 피해). 레거시 `StunNearby`.
         // ⚠ **CC 가 있어야 성립한다** — 「지속 0 + 피해만」은 자기 자리 광역이 이미
         // 하는 일이라 조용히 소모된다(가드를 쪼개 문을 열면 저작 경로가 둘이 된다).
-        AreaCc = 31,
         // unit 2e — 반경 안 상대 전원에 지속 피해 + **자기 공격 대기**. 레거시 `DotNearby`.
         // 지속을 갖는 채널이라 그동안 유닛이 여기 묶이는 것이 사양이다.
-        AreaDot = 32,
-    }
 
     // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op) 카테고리.
     // 실행자가 시뮬레이션도 브리지도 아니고 `DreamcatcherHandController` 인 payload 들.
@@ -246,8 +209,8 @@ namespace Wassup.Data
     // 카드마다 `HasXxx()` 불리언을 늘리는 방식(HasBountyMark 선례)을 여기서 쓰지 않는 이유다.
     public static class DcPayloadKinds
     {
-        public static bool IsHandOp(DcPayloadKind kind)
-            => kind == DcPayloadKind.RecallAttachedToFront;
+        public static bool IsHandOp(EffectKind kind)
+            => kind == EffectKind.RecallAttachedToFront;
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
@@ -268,18 +231,16 @@ namespace Wassup.Data
     // 트리거 kind 는 "언제 평가하나"(사건), 게이트는 "발화를 허용하나"(상태 술어)로
     // 직교 분해된다 — 조합마다 kind 를 늘리지 않는다(kind 폭발 방지). 게이트 술어는
     // ECS sim 이 unmanaged 로 읽을 수 있는 상태만 가능(Mono 상태 불가 — README 계약).
-    // v1 어휘 = HpBelow 하나. append-only.
-    public enum DcGateKind { None, HpBelow }
+    // v1 어휘 = HpBelow 하나. append-only. (거울 `DcGateKind` 은퇴 — 코어 `GateKind`)
 
     // 게이트의 주어 — Self(호스트) / EventTarget(사건 상대: AttackN=피해자 등).
     // v1 배선 조합은 OnDamagedN×Self, AttackN×EventTarget 뿐 — 그 외는 bake 거절
-    // (배선 표의 단일 SoT = DcTrigger.GateComboSupported). append-only.
-    public enum DcGateSubject { Self, EventTarget }
+    // (배선 표의 단일 SoT = DcTrigger.GateComboSupported). append-only. (거울 `DcGateSubject` 은퇴 — 코어 `GateSubject`)
 
     [Serializable]
     public struct DcTriggerSpec
     {
-        public DcTriggerKind kind;
+        public TriggerKind kind;
         public int period; // AttackN: fire on every N-th attack resolve
         // nightmare-catcher unit 0 — PeriodicTimer: 주기 초. <=0 이면 트리거
         // 순수함수가 발동하지 않는다(kind 디스패치가 아닌 함수 내부 가드 —
@@ -293,23 +254,22 @@ namespace Wassup.Data
         // 기존 카드 무손상). gateValue 는 fraction 컨벤션(0~1, 예 0.30 = HP 30%).
         // 판정은 현재값/현재 max 기준(HealthThreshold 의 스폰 스냅샷과 다름) +
         // 카운트 게이트(통과 사건만 counter 증가) — README 계약.
-        public DcGateKind gate;
-        public DcGateSubject gateSubject;
+        public GateKind gate;
+        public GateSubject gateSubject;
         public float gateValue;
         // unified-effect-layer unit 5 — **누구의 사건을 듣나**(주체 축). 기본 `Self` = 기존 저작 전부(직렬화 기본값 0).
-        // `OthersPlacement` = 「남의 배치」 — 숙주가 살아 있는 동안 **새로 놓이는 아군마다** 그 유닛의 자리에서 발동한다
+        // `Any` = 「남의 배치」 — 숙주가 살아 있는 동안 **새로 놓이는 아군마다** 그 유닛의 자리에서 발동한다
         // (코어 `BindingSubject.Any` + `BindingSubjectFilter.PlacedDefender`). 배치(`OnPlace`) 에만 뜻이 있다 — 다른 트리거는
         // bake 가 거절한다(`EffectComboRule`). append-only.
-        public DcTriggerSubject subject;
+        public BindingSubject subject;
     }
 
-    // unified-effect-layer unit 5 — 트리거 주체 축. append-only(에셋이 int 로 직렬화).
-    public enum DcTriggerSubject { Self, OthersPlacement }
+    // unified-effect-layer unit 5 — 트리거 주체 축(옛 `DcTriggerSubject { Self, OthersPlacement }` = 코어 `BindingSubject { Self, Any }` · 같은 정수).
 
     [Serializable]
     public struct DcPayloadSpec
     {
-        public DcPayloadKind kind;
+        public EffectKind kind;
         // ProjectileToTarget: flat damage — attacker stat modifiers (damageMul)
         // are intentionally NOT applied (card values stay predictable).
         // nightmare-catcher unit 0 — AreaBarrage: 타일당 flat 데미지(동일 원칙).

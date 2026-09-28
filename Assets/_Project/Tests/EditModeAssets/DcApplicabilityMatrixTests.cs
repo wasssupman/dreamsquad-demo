@@ -4,6 +4,7 @@ using NUnit.Framework;
 using UnityEditor;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -116,12 +117,12 @@ namespace Wassup.Tests.EditMode
 
                         // unit 3·4 로 전 아키타입에 사건 지점이 생겼다 — 이제
                         // NoEventPoint 로 거절되는 AttackN 조합은 없어야 한다.
-                        if (m.trigger.kind == DcTriggerKind.AttackN
+                        if (m.trigger.kind == TriggerKind.AttackN
                             && reason == DcRejectReason.NoEventPoint)
                             log.AppendLine($"{card.id} × {unit.id}: AttackN 사건 지점이 없다 ({host.archetype})");
 
                         // 비수는 아군을 겨누는 host 에 붙으면 안 된다(영구).
-                        if (m.payload.kind == DcPayloadKind.ProjectileToTarget
+                        if (m.payload.kind == EffectKind.ProjectileToTarget
                             && !host.targetsEnemies && reason == DcRejectReason.None)
                             log.AppendLine($"{card.id} × {unit.id}: ally-targeting host 인데 통과했다");
                     }
@@ -173,7 +174,7 @@ namespace Wassup.Tests.EditMode
             var found = false;
             foreach (var m in card.mechanics)
             {
-                if (m.payload.kind != DcPayloadKind.ProjectileToTarget) continue;
+                if (m.payload.kind != EffectKind.ProjectileToTarget) continue;
                 found = true;
                 Assert.Greater(m.payload.tileRange, 0,
                     "폴백 탐색 반경이 0 이면 host 타겟이 없는 유닛에서 니들이 영영 안 나간다. "

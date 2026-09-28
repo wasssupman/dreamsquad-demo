@@ -4,6 +4,7 @@ using Wassup.Core;
 using Wassup.Data;
 using Wassup.Skills;
 using Wassup.Skills.Concrete;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -94,22 +95,22 @@ namespace Wassup.Tests.EditMode
             //   OnDeath  = 몸에서 나오는 것(죽은 그 유닛이 터진다) → host 몸이 붙는다
             //   OnRetire = 자리에 떨어지는 것(운석이 «비워진 칸» 에 내린다) → 칸 반폭
             // 종전엔 둘을 한 루프로 묶어 **둘 중 하나가 반드시 틀리는** 형태였다.
-            var death = DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, DcTriggerKind.OnDeath);
+            var death = DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, TriggerKind.OnDeath);
             Assert.AreEqual(DcRangeShape.Circle, death.shape);
             Assert.AreEqual(RangeMetric.SelfArea, death.metric, "사망 폭발은 그 몸이 터진다");
             Assert.AreEqual(3.5f, death.RadiusWithOrigin(1.5f), 1e-6f, "배스티온이 죽으면 1칸 넓다");
 
-            var retire = DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, DcTriggerKind.OnRetire);
+            var retire = DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, TriggerKind.OnRetire);
             Assert.AreEqual(DcRangeShape.Circle, retire.shape);
             Assert.AreEqual(RangeMetric.CellArea, retire.metric, "퇴근 운석은 «자리»에 떨어진다");
             Assert.AreEqual(2.5f, retire.RadiusWithOrigin(1.5f), 1e-6f,
                 "퇴근 운석은 host 몸에 반응하지 않는다 — 지정은 귀속이지 기하가 아니다");
 
-            foreach (var t in new[] { DcTriggerKind.OnDeath, DcTriggerKind.OnRetire })
+            foreach (var t in new[] { TriggerKind.OnDeath, TriggerKind.OnRetire })
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 0, t).shape, $"{t} 반경 0");
-            Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, DcTriggerKind.OnKill).shape,
+            Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, TriggerKind.OnKill).shape,
                 "처치는 죽인 적의 자리 — 부착 시점 미상, 미노출 유지");
-            Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteHazardSkill.Id, 2, DcTriggerKind.OnDeath).shape,
+            Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteHazardSkill.Id, 2, TriggerKind.OnDeath).shape,
                 "장판은 fail-closed 유지(카드 0장·값 의미 미검증)");
         }
 
@@ -121,7 +122,7 @@ namespace Wassup.Tests.EditMode
             {
                 card.mechanics = new[]
                 {
-                    Mechanic(DcTriggerKind.OnDamagedN, DcPayloadKind.SelfTileAoe, tileRange: 1),
+                    Mechanic(TriggerKind.OnDamagedN, EffectKind.SelfTileAoe, tileRange: 1),
                 };
                 var spec = DcRangeCatalog.ResolveCard(card);
                 Assert.AreEqual(DcRangeShape.Circle, spec.shape);
@@ -139,12 +140,12 @@ namespace Wassup.Tests.EditMode
             {
                 card.mechanics = new[]
                 {
-                    Mechanic(DcTriggerKind.OnKill, DcPayloadKind.SelfTileAoe, tileRange: 2),      // 죽인 적의 자리 — 위치 없음
-                    Mechanic(DcTriggerKind.AttackN, DcPayloadKind.SelfStatBuff, tileRange: 10),   // 누적 상한
+                    Mechanic(TriggerKind.OnKill, EffectKind.SelfTileAoe, tileRange: 2),      // 죽인 적의 자리 — 위치 없음
+                    Mechanic(TriggerKind.AttackN, EffectKind.SelfStatBuff, tileRange: 10),   // 누적 상한
                 };
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.ResolveCard(card).shape);
                 // 같은 concrete 라도 자기 사망 트리거면 그린다(사망폭발 — 사용자 결정 2026-09-03).
-                card.mechanics = new[] { Mechanic(DcTriggerKind.OnDeath, DcPayloadKind.SelfTileAoe, tileRange: 2) };
+                card.mechanics = new[] { Mechanic(TriggerKind.OnDeath, EffectKind.SelfTileAoe, tileRange: 2) };
                 Assert.AreEqual(DcRangeShape.Circle, DcRangeCatalog.ResolveCard(card).shape);
                 card.mechanics = null;
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.ResolveCard(card).shape, "메커닉 없는 카드");
@@ -153,7 +154,7 @@ namespace Wassup.Tests.EditMode
             finally { Object.DestroyImmediate(card); }
         }
 
-        private static DcMechanic Mechanic(DcTriggerKind trigger, DcPayloadKind kind, int tileRange)
+        private static DcMechanic Mechanic(TriggerKind trigger, EffectKind kind, int tileRange)
             => new DcMechanic
             {
                 trigger = new DcTriggerSpec { kind = trigger },

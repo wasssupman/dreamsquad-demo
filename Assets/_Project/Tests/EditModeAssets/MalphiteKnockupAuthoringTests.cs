@@ -2,6 +2,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -30,7 +31,7 @@ namespace Wassup.Tests.EditMode
             // 그 필드군 자체가 철거돼 켤 방법이 없다.
             var spec = unit.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
             Assert.IsNotNull(spec, "말파이트에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
-            Assert.AreEqual(DcPayloadKind.AreaCc, spec.Value.kind);
+            Assert.AreEqual(EffectKind.AreaCc, spec.Value.kind);
             Assert.AreEqual(DcCcKind.Stun, spec.Value.ccKind);
             float stunSec = spec.Value.duration;
 

@@ -123,10 +123,10 @@ namespace Wassup.Tests.EditModeAssets
             pattern.fanOutToAllCandidates = true;
             var m = new DcMechanic
             {
-                trigger = new DcTriggerSpec { kind = DcTriggerKind.OnPlace, subject = DcTriggerSubject.OthersPlacement },
+                trigger = new DcTriggerSpec { kind = TriggerKind.OnPlace, subject = BindingSubject.Any },
                 payload = new DcPayloadSpec
                 {
-                    kind = DcPayloadKind.EmitProjectilePattern, pattern = pattern,
+                    kind = EffectKind.EmitProjectilePattern, pattern = pattern,
                     tileRange = HardCaseUnifiedSkillProbeTests.N, magnitude = HardCaseUnifiedSkillProbeTests.Hit,
                 },
             };
@@ -149,10 +149,10 @@ namespace Wassup.Tests.EditModeAssets
             meteor.visualScale = 1f;
             var m = new DcMechanic
             {
-                trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 1 },
+                trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 1 },
                 payload = new DcPayloadSpec
                 {
-                    kind = DcPayloadKind.ProjectileToTarget, projectile = meteor,
+                    kind = EffectKind.ProjectileToTarget, projectile = meteor,
                     magnitude = HardCaseMeteorProbeTests.OnHitHit, tileRange = HardCaseMeteorProbeTests.N,
                     duration = HardCaseMeteorProbeTests.WarningSec, telegraph = true,
                 },

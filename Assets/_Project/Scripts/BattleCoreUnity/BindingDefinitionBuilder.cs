@@ -21,8 +21,8 @@ namespace Wassup.BattleCoreUnity
     // payload 별 저작 검증(`BindPayload` — 카드 빌더와 공용)은 전부 loud skip 이다 — 슬롯만 구워지고 발화하고 아무 일도 안 일어나는 것이 옛 전투가
     // 반복해서 당한 형태다. 「없음 = -1」 센티널 3축은 `BindingDef.Default()` 가 명시로 시작한다(S4).
     //
-    // ⚠ 저작 어휘는 **이름으로** 옮긴다(`CombatDefinitionBuilder` 매핑들과 같은 이유 — 두 어휘는 다른 어셈블리다).
-    // `CoreTriggerEnumPinTests` 가 이름·값·매핑을 고정한다.
+    // 트리거 · 효과 · 게이트 · 주체는 저작이 **코어 enum 을 직접** 든다(skill-data-table unit 4 — 거울 enum · 번역 함수 은퇴).
+    // 번호가 다른 어휘(CC · 스택 · 실드 필터 · 공격 수식자)만 아래에서 **이름으로** 옮긴다.
     public static class BindingDefinitionBuilder
     {
         /// <summary>
@@ -109,8 +109,9 @@ namespace Wassup.BattleCoreUnity
             {
                 var m = mechanics[i];
                 string label = $"{owner} mechanic {i}";
-                var trigger = ToCoreTrigger(m.trigger.kind);
-                var payload = ToCorePayload(m.payload.kind);
+                if (!KnownKinds(in m, label)) continue;
+                var trigger = m.trigger.kind;
+                var payload = m.payload.kind;
 
                 if (payload == EffectKind.None)
                 {
@@ -130,8 +131,8 @@ namespace Wassup.BattleCoreUnity
                 // unified-effect-layer unit 5 — 조합은 **검증 한 함수**(출처는 입력이 아니다). 유닛·적은 규칙을 들고 태어난다(놓인 뒤 붙지 않는다).
                 if (!CheckCombo(ComboOf(in m, trigger, payload, hostIsEnemy, bindsAfterPlacement: false,
                                         hostCannotHoldAggro: !hostIsGuardian), label)) continue;
-                var gate = ToCoreGate(m.trigger.gate);
-                var gateSubject = ToCoreGateSubject(m.trigger.gateSubject);
+                var gate = m.trigger.gate;
+                var gateSubject = m.trigger.gateSubject;
                 if (!TriggerValuesValid(in m, trigger, gate, gateSubject, label)) continue;
                 // 강공 — **어휘 밖**(그 공격의 성질). 규칙이 아니라 공격 수식자로 접는다.
                 if (payload == EffectKind.HeavyStrike)
@@ -225,7 +226,7 @@ namespace Wassup.BattleCoreUnity
             var c = new EffectCombo
             {
                 Trigger = trigger,
-                Subject = ToCoreSubject(m.trigger.subject),
+                Subject = m.trigger.subject,
                 Payload = payload,
                 HostIsEnemy = hostIsEnemy,
                 BindsAfterPlacement = bindsAfterPlacement,
@@ -246,9 +247,15 @@ namespace Wassup.BattleCoreUnity
             return c;
         }
 
-        /// <summary>저작 주체 축 → 코어. 「남의 배치」 = 판 위 누구의 사건이든(`Any`) — 필터는 `ApplyAuthoredAxes` 가 싣는다.</summary>
-        public static BindingSubject ToCoreSubject(DcTriggerSubject authored)
-            => authored == DcTriggerSubject.OthersPlacement ? BindingSubject.Any : BindingSubject.Self;
+        /// <summary>
+        /// 저작 트리거 · 효과 종류가 **정의된 값**인가(에셋 정수가 enum 밖이면 짖고 건너뛴다 — 옛 번역 함수의 「모르는 값 → 없음」 몫).
+        /// </summary>
+        internal static bool KnownKinds(in DcMechanic m, string label)
+        {
+            if (!System.Enum.IsDefined(typeof(TriggerKind), m.trigger.kind)) { Error($"{label}: 모르는 트리거({(int)m.trigger.kind}) — 건너뛴다."); return false; }
+            if (!System.Enum.IsDefined(typeof(EffectKind), m.payload.kind)) { Error($"{label}: 모르는 효과 종류({(int)m.payload.kind}) — 건너뛴다."); return false; }
+            return true;
+        }
 
         /// <summary>
         /// 두 빌더 공용 — 저작 축 둘(주체 · 예고)을 규칙 줄에 싣는다. 「남의 배치」 = `Any` + **판에 배치된 방어유닛**만
@@ -256,7 +263,7 @@ namespace Wassup.BattleCoreUnity
         /// </summary>
         internal static void ApplyAuthoredAxes(ref BindingDef b, ref EffectDef fx, in DcMechanic m)
         {
-            b.Subject = ToCoreSubject(m.trigger.subject);
+            b.Subject = m.trigger.subject;
             if (b.Subject == BindingSubject.Any)
             {
                 b.SubjectFilter = BindingSubjectFilter.PlacedDefender;
@@ -470,42 +477,7 @@ namespace Wassup.BattleCoreUnity
             return true;
         }
 
-        // ── 저작 어휘 → 코어 어휘(이름으로) ─────────────────────────────────
-
-        public static TriggerKind ToCoreTrigger(DcTriggerKind authored)
-        {
-            switch (authored)
-            {
-                case DcTriggerKind.None: return TriggerKind.None;
-                case DcTriggerKind.AttackN: return TriggerKind.AttackN;
-                case DcTriggerKind.OnDamagedN: return TriggerKind.OnDamagedN;
-                case DcTriggerKind.OnDeath: return TriggerKind.OnDeath;
-                case DcTriggerKind.PeriodicTimer: return TriggerKind.PeriodicTimer;
-                case DcTriggerKind.HealthThreshold: return TriggerKind.HealthThreshold;
-                case DcTriggerKind.OnKill: return TriggerKind.OnKill;
-                case DcTriggerKind.OnShieldBreak: return TriggerKind.OnShieldBreak;
-                case DcTriggerKind.OnRetire: return TriggerKind.OnRetire;
-                case DcTriggerKind.OnPlace: return TriggerKind.OnPlace;
-                default:
-                    Error($"모르는 트리거({authored}) — 없음으로 접는다(bake 가 건너뛴다).");
-                    return TriggerKind.None;
-            }
-        }
-
-        public static EffectKind ToCorePayload(DcPayloadKind authored)
-        {
-            // 33 값 — 이름으로 옮긴다(`System.Enum.TryParse` 는 이름 일치다. 번호 캐스트가 아니다).
-            if (System.Enum.TryParse(authored.ToString(), out EffectKind core)
-                && System.Enum.IsDefined(typeof(EffectKind), core)) return core;
-            Error($"모르는 페이로드({authored}) — 없음으로 접는다(bake 가 건너뛴다).");
-            return EffectKind.None;
-        }
-
-        public static GateKind ToCoreGate(DcGateKind authored)
-            => authored == DcGateKind.HpBelow ? GateKind.HpBelow : GateKind.None;
-
-        public static GateSubject ToCoreGateSubject(DcGateSubject authored)
-            => authored == DcGateSubject.EventTarget ? GateSubject.EventTarget : GateSubject.Self;
+        // ── 저작 어휘 → 코어 어휘(번호가 다른 것만 · 이름으로) ─────────────────────
 
         /// <summary>저작 CC(Stun·Impulse·Sleep) → 스킬 어휘. **번호가 다르다**(스킬 쪽은 Slow·Impulse·DoT·Stun·Sleep).</summary>
         public static SkillCcKind ToSkillCc(DcCcKind authored)

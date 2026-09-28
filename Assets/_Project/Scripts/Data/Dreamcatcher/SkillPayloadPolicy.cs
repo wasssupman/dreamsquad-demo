@@ -1,3 +1,4 @@
+using Wassup.BattleCore.Trigger;
 namespace Wassup.Data
 {
     // skill-layer-migration unit 8 — **「이 payload 는 스킬인가」의 단일 정본.**
@@ -15,31 +16,31 @@ namespace Wassup.Data
     {
         // 스킬이 **아닌** payload. 각각 이유가 다르므로 뭉뚱그리지 말 것 —
         // 다음 후보를 잘못 분류하게 된다.
-        public static bool IsSkill(DcPayloadKind kind)
+        public static bool IsSkill(EffectKind kind)
         {
             switch (kind)
             {
-                case DcPayloadKind.None:
+                case EffectKind.None:
                     return false;   // 센티넬
-                case DcPayloadKind.PlacementAura:
+                case EffectKind.PlacementAura:
                     // **발동 규칙**이다(시제). 지금 실행이 아니라 앞으로 일어날 배치에
                     // 적용될 규칙을 등록한다 — 등록·조회·해지 세 시점이라 영수증이 필요하고,
                     // 그것이 포트의 결함이 아니라 범주가 다르다는 신호다.
                     return false;
-                case DcPayloadKind.HeavyStrike:
+                case EffectKind.HeavyStrike:
                     // **그 공격의 성질**이다(자기참조). 자기를 부른 사건 자체를 바꾸는데,
                     // 스킬 seam 은 정의상 공격 해결 뒤라 늦다.
                     return false;
-                case DcPayloadKind.SplitOnDeath:
+                case EffectKind.SplitOnDeath:
                     // 슬롯을 안 쓴다 — 브리지 킬 드레인이 SO 를 직독한다.
                     // ⚠ 시제상으로는 스킬이다. 어휘 밖인 이유가 **배선이 다른 길**이라서지
                     // 범주가 달라서가 아니다(위 둘과 섞지 말 것).
                     return false;
-                case DcPayloadKind.RecallAttachedToFront:
+                case EffectKind.RecallAttachedToFront:
                     return false;   // 손패 UI 동작. 심이 아니다.
-                case DcPayloadKind.AreaBarrage:
+                case EffectKind.AreaBarrage:
                     return false;   // arm 철거됨 — 발사 명세로 이관(브리지가 거절 사유를 남긴다)
-                case DcPayloadKind.SelfWarmupBuff:
+                case EffectKind.SelfWarmupBuff:
                     return false;   // 죽은 값. warmup 개념이 Sleep 으로 승격되며 은퇴
                 default:
                     return true;
@@ -53,9 +54,9 @@ namespace Wassup.Data
         // 유닛 bake 에서 `trigger == None` 은 애초에 앞 게이트가 거절한다. 그래서 그
         // 면제가 실제로 통과시킨 것은 **`OnKill × DreamCocoon` 같은 비-None 조합**뿐이었고,
         // 그건 라우팅이 없어 슬롯만 구워지고 조용히 죽는다 — 정확히 이 게이트가 막으려던 것.
-        public static bool OnlyValidWithNoTrigger(DcPayloadKind kind)
-            => kind == DcPayloadKind.SelfBuffLethal
-            || kind == DcPayloadKind.DreamCocoon
-            || kind == DcPayloadKind.BountyMark;
+        public static bool OnlyValidWithNoTrigger(EffectKind kind)
+            => kind == EffectKind.SelfBuffLethal
+            || kind == EffectKind.DreamCocoon
+            || kind == EffectKind.BountyMark;
     }
 }

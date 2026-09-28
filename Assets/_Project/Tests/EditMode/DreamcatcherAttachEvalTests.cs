@@ -2,6 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -19,7 +20,7 @@ namespace Wassup.Tests.EditMode
             return c;
         }
 
-        private static DcMechanic Mech(DcPayloadKind kind) =>
+        private static DcMechanic Mech(EffectKind kind) =>
             new DcMechanic { payload = new DcPayloadSpec { kind = kind } };
 
         private static DcAttackModSpec Mod(DcAttackModKind kind, int count, float damageMul) =>
@@ -77,7 +78,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void HeavyStrike_NeedsDamageOutput()
         {
-            var card = UnitCard(mech: new[] { Mech(DcPayloadKind.HeavyStrike) });
+            var card = UnitCard(mech: new[] { Mech(EffectKind.HeavyStrike) });
             Assert.IsTrue(Eval(card, proj: false, dmg: true));
             Assert.IsFalse(Eval(card, proj: false, dmg: false));
         }
@@ -88,7 +89,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void PokeNeedle_OnEnemyTargetingUnit_Applies()
         {
-            var card = UnitCard(mech: new[] { Mech(DcPayloadKind.ProjectileToTarget) });
+            var card = UnitCard(mech: new[] { Mech(EffectKind.ProjectileToTarget) });
             Assert.IsTrue(Eval(card, proj: true, dmg: true), "원거리 유닛");
             Assert.IsTrue(Eval(card, proj: false, dmg: true), "근접 유닛도 5회째에 니들을 쏜다");
         }
@@ -96,7 +97,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void PokeNeedle_OnAllyTargetingUnit_Rejects()
         {
-            var card = UnitCard(mech: new[] { Mech(DcPayloadKind.ProjectileToTarget) });
+            var card = UnitCard(mech: new[] { Mech(EffectKind.ProjectileToTarget) });
             Assert.IsFalse(Eval(card, proj: false, dmg: false, targetsEnemies: false),
                 "힐러(아군 타겟)에 붙으면 니들이 아군을 때린다 — 부착 거절");
         }
@@ -107,8 +108,8 @@ namespace Wassup.Tests.EditMode
             // ProjectileToTarget 만 거절되고 카드 전체가 죽지는 않는다(부분 skip = apply 와 동일 결).
             var card = UnitCard(mech: new[]
             {
-                Mech(DcPayloadKind.ProjectileToTarget),
-                Mech(DcPayloadKind.SelfStatBuff),
+                Mech(EffectKind.ProjectileToTarget),
+                Mech(EffectKind.SelfStatBuff),
             });
             Assert.IsTrue(Eval(card, proj: false, dmg: false, targetsEnemies: false));
         }
@@ -117,7 +118,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void GenericMechanic_AppliesToAnyUnit()
         {
-            var card = UnitCard(mech: new[] { Mech(DcPayloadKind.SelfStatBuff) });
+            var card = UnitCard(mech: new[] { Mech(EffectKind.SelfStatBuff) });
             Assert.IsTrue(Eval(card, proj: false, dmg: false), "클래스 무관 mechanic 은 근접에도 기여");
         }
 
@@ -126,7 +127,7 @@ namespace Wassup.Tests.EditMode
         {
             // mechanic(무관) + ProjectileBounce(투사체 필요) 혼합 → 근접이어도 mechanic 이 살림.
             var card = UnitCard(
-                mech: new[] { Mech(DcPayloadKind.SelfStatBuff) },
+                mech: new[] { Mech(EffectKind.SelfStatBuff) },
                 mods: new[] { Mod(DcAttackModKind.ProjectileBounce, 2, 1f) });
             Assert.IsTrue(Eval(card, proj: false, dmg: false));
         }
@@ -135,7 +136,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void DupLethalTimer_RejectsWholeCard()
         {
-            var card = UnitCard(mech: new[] { Mech(DcPayloadKind.SelfBuffLethal) });
+            var card = UnitCard(mech: new[] { Mech(EffectKind.SelfBuffLethal) });
             Assert.IsFalse(Eval(card, proj: true, dmg: true, lethal: true), "이미 LethalTimer 면 거부");
             Assert.IsTrue(Eval(card, proj: true, dmg: true, lethal: false));
         }
@@ -162,7 +163,7 @@ namespace Wassup.Tests.EditMode
         private static DreamcatcherCard RequireCard(DcAttachType type, string value = null)
         {
             // 제한 외 조건은 통과하는 카드로 둔다(제한이 유일한 변수).
-            var c = UnitCard(mech: new[] { Mech(DcPayloadKind.SelfStatBuff) });
+            var c = UnitCard(mech: new[] { Mech(EffectKind.SelfStatBuff) });
             c.attachType = type;
             c.attachValue = value;
             return c;

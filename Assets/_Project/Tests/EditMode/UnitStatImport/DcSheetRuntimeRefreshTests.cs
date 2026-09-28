@@ -3,6 +3,7 @@ using UnityEngine;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Data.StatImport;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode.UnitStatImport
 {
@@ -143,8 +144,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 5 },
-                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfTileAoe, magnitude = 20, tileRange = 1 },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 5 },
+                    payload = new DcPayloadSpec { kind = EffectKind.SelfTileAoe, magnitude = 20, tileRange = 1 },
                 },
             };
             var catalog = ScriptableObject.CreateInstance<DreamcatcherCardCatalog>();

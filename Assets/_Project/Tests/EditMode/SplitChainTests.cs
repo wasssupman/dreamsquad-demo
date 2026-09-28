@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -24,10 +25,10 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnDeath },
+                    trigger = new DcTriggerSpec { kind = TriggerKind.OnDeath },
                     payload = new DcPayloadSpec
                     {
-                        kind = DcPayloadKind.SplitOnDeath,
+                        kind = EffectKind.SplitOnDeath,
                         magnitude = count,
                         splitUnit = child,
                     },

@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Wassup.Data.Authoring;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -202,33 +203,33 @@ namespace Wassup.Tests.EditMode
         public void GatePass_HpBelow_BoundaryIsInclusive()
         {
             // 30% 게이트: 정확히 경계값(30.0)은 통과(<=), 바로 위는 실패.
-            Assert.IsTrue(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, 29.9f, 100f), "29.9% 통과");
-            Assert.IsTrue(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, 30.0f, 100f), "정확히 30.0% 통과 (이하)");
-            Assert.IsFalse(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, 30.1f, 100f), "30.1% 실패");
-            Assert.IsTrue(DcTrigger.GatePass(Wassup.Data.DcGateKind.None, 0f, 100f, 100f), "None 게이트는 항상 통과");
+            Assert.IsTrue(DcTrigger.GatePass(GateKind.HpBelow, 0.30f, 29.9f, 100f), "29.9% 통과");
+            Assert.IsTrue(DcTrigger.GatePass(GateKind.HpBelow, 0.30f, 30.0f, 100f), "정확히 30.0% 통과 (이하)");
+            Assert.IsFalse(DcTrigger.GatePass(GateKind.HpBelow, 0.30f, 30.1f, 100f), "30.1% 실패");
+            Assert.IsTrue(DcTrigger.GatePass(GateKind.None, 0f, 100f, 100f), "None 게이트는 항상 통과");
         }
 
         [Test]
         public void GatePass_HpBelow_GuardsZeroValueAndUnbakedMax()
         {
-            Assert.IsFalse(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0f, 1f, 100f), "무값 카드(gateValue 0) 가드");
-            Assert.IsFalse(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, 1f, 0f), "미베이크(max 0) 가드");
+            Assert.IsFalse(DcTrigger.GatePass(GateKind.HpBelow, 0f, 1f, 100f), "무값 카드(gateValue 0) 가드");
+            Assert.IsFalse(DcTrigger.GatePass(GateKind.HpBelow, 0.30f, 1f, 0f), "미베이크(max 0) 가드");
         }
 
         [Test]
         public void GateComboSupported_WiredTableIsExact()
         {
             // 배선 2조합만 true (v1). gate=None 은 전 트리거 통과.
-            Assert.IsTrue(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDamagedN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.Self));
-            Assert.IsTrue(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.AttackN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.EventTarget));
-            Assert.IsTrue(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDeath, Wassup.Data.DcGateKind.None, Wassup.Data.DcGateSubject.Self), "None 은 항상 지원");
+            Assert.IsTrue(DcTrigger.GateComboSupported(TriggerKind.OnDamagedN, GateKind.HpBelow, GateSubject.Self));
+            Assert.IsTrue(DcTrigger.GateComboSupported(TriggerKind.AttackN, GateKind.HpBelow, GateSubject.EventTarget));
+            Assert.IsTrue(DcTrigger.GateComboSupported(TriggerKind.OnDeath, GateKind.None, GateSubject.Self), "None 은 항상 지원");
             // 퇴화/미배선 조합 — bake 거절 대상 (critic MED: 어서션 고정).
-            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDeath, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.Self), "OnDeath×HpBelow: 사망 시 항상 참 = 퇴화");
-            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.HealthThreshold, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.Self), "상태 트리거에 게이트 중첩 거절");
-            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnKill, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.EventTarget), "사망 대상 항상 참 = 퇴화");
-            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.AttackN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.Self), "미배선 (후속 후보)");
-            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDamagedN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.EventTarget), "미배선 (다중 source subject 규칙 미정)");
-            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDamagedN, (Wassup.Data.DcGateKind)999, Wassup.Data.DcGateSubject.Self), "미래 gate enum 은 명시 배선 전까지 거절");
+            Assert.IsFalse(DcTrigger.GateComboSupported(TriggerKind.OnDeath, GateKind.HpBelow, GateSubject.Self), "OnDeath×HpBelow: 사망 시 항상 참 = 퇴화");
+            Assert.IsFalse(DcTrigger.GateComboSupported(TriggerKind.HealthThreshold, GateKind.HpBelow, GateSubject.Self), "상태 트리거에 게이트 중첩 거절");
+            Assert.IsFalse(DcTrigger.GateComboSupported(TriggerKind.OnKill, GateKind.HpBelow, GateSubject.EventTarget), "사망 대상 항상 참 = 퇴화");
+            Assert.IsFalse(DcTrigger.GateComboSupported(TriggerKind.AttackN, GateKind.HpBelow, GateSubject.Self), "미배선 (후속 후보)");
+            Assert.IsFalse(DcTrigger.GateComboSupported(TriggerKind.OnDamagedN, GateKind.HpBelow, GateSubject.EventTarget), "미배선 (다중 source subject 규칙 미정)");
+            Assert.IsFalse(DcTrigger.GateComboSupported(TriggerKind.OnDamagedN, (GateKind)99, GateSubject.Self), "미래 gate enum 은 명시 배선 전까지 거절");
         }
 
         [Test]
@@ -244,7 +245,7 @@ namespace Wassup.Tests.EditMode
                 foreach (float hp in hpSeq)
                 {
                     ushort before = counter;
-                    bool pass = DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, hp, 100f);
+                    bool pass = DcTrigger.GatePass(GateKind.HpBelow, 0.30f, hp, 100f);
                     bool predicted = DcTrigger.WouldFire(counter, period) && pass;
                     bool fired = false;
                     if (pass) fired = DcTrigger.Tick(ref counter, period);

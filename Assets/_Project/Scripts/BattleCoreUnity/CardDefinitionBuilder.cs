@@ -76,7 +76,7 @@ namespace Wassup.BattleCoreUnity
                 {
                     if (c?.mechanics == null) continue;
                     foreach (var m in c.mechanics)
-                        if (m.payload.kind == DcPayloadKind.SpawnHazard && m.payload.hazard != null && !list.Contains(m.payload.hazard))
+                        if (m.payload.kind == EffectKind.SpawnHazard && m.payload.hazard != null && !list.Contains(m.payload.hazard))
                             list.Add(m.payload.hazard);
                 }
             return list.ToArray();
@@ -121,7 +121,7 @@ namespace Wassup.BattleCoreUnity
             for (int i = 0; i < mech.Length; i++)
             {
                 string label = $"카드 '{card.id}' mechanic {i}";
-                if (c.TargetsEnemies && mech[i].payload.kind != DcPayloadKind.BountyMark)
+                if (c.TargetsEnemies && mech[i].payload.kind != EffectKind.BountyMark)
                 {
                     Warn($"{label}: 적 표식 카드는 표식 메커닉만 쓴다(옛 `ApplyBountyMark`) — {mech[i].payload.kind} 는 건너뛴다.");
                     continue;
@@ -169,8 +169,9 @@ namespace Wassup.BattleCoreUnity
                                          HazardSO[] hazards, List<BindingDef> rows, List<EffectDef> effects, List<int> mine,
                                          List<AttackModDef> mods, ref bool aura, ref CardDef c, MatchViewAssets view)
         {
-            var trigger = BindingDefinitionBuilder.ToCoreTrigger(m.trigger.kind);
-            var payload = BindingDefinitionBuilder.ToCorePayload(m.payload.kind);
+            if (!BindingDefinitionBuilder.KnownKinds(in m, label)) return;
+            var trigger = m.trigger.kind;
+            var payload = m.payload.kind;
             var p = m.payload;
 
             // ── 트리거 없음 = 부착되는 순간(3장 + 배치 오라) ──
@@ -261,7 +262,7 @@ namespace Wassup.BattleCoreUnity
             if (payload == EffectKind.RecallAttachedToFront)
             {
                 if (trigger != TriggerKind.OnRetire) { Warn($"{label}: 인수인계는 OnRetire 에만 배선돼 있다(현재 {trigger}) — 건너뛴다."); return; }
-                if (m.trigger.gate != DcGateKind.None) { Warn($"{label}: 인수인계에는 게이트가 배선돼 있지 않다 — 건너뛴다."); return; }
+                if (m.trigger.gate != GateKind.None) { Warn($"{label}: 인수인계에는 게이트가 배선돼 있지 않다 — 건너뛴다."); return; }
                 c.DeclaresRetireRecall = true;
                 return;
             }
@@ -269,8 +270,8 @@ namespace Wassup.BattleCoreUnity
             // 자기 배치는 이미 지났다. 숙주는 부착 때 정해져 가디언 여부를 여기서 모른다(부착 판정 몫).
             if (!BindingDefinitionBuilder.CheckCombo(BindingDefinitionBuilder.ComboOf(in m, trigger, payload, hostIsEnemy: false,
                                                      bindsAfterPlacement: true, hostCannotHoldAggro: false), label)) return;
-            var gate = BindingDefinitionBuilder.ToCoreGate(m.trigger.gate);
-            var gateSubject = BindingDefinitionBuilder.ToCoreGateSubject(m.trigger.gateSubject);
+            var gate = m.trigger.gate;
+            var gateSubject = m.trigger.gateSubject;
             if (!BindingDefinitionBuilder.TriggerValuesValid(in m, trigger, gate, gateSubject, label)) return;
 
             // 강공 — 어휘 밖(그 공격의 성질). 공격 수식자로 접는다.

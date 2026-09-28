@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEditor;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
@@ -34,8 +35,8 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, parent.nightmareMechanics.Length, "메커니즘은 «특수 1개» 가 엘리트 컨셉이다");
 
             var m = parent.nightmareMechanics[0];
-            Assert.AreEqual(DcTriggerKind.OnDeath, m.trigger.kind);
-            Assert.AreEqual(DcPayloadKind.SplitOnDeath, m.payload.kind);
+            Assert.AreEqual(TriggerKind.OnDeath, m.trigger.kind);
+            Assert.AreEqual(EffectKind.SplitOnDeath, m.payload.kind);
             Assert.IsNotNull(m.payload.splitUnit, "splitUnit 이 비면 죽어도 안 갈라진다");
             Assert.GreaterOrEqual(m.payload.magnitude, 1f, "자식 수가 1 미만이면 분열이 소멸이다");
         }

@@ -1,4 +1,5 @@
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Core
 {
@@ -72,31 +73,31 @@ namespace Wassup.Core
         // 이 트리거가 실행 경로에 배선돼 있는가. **archetype 축은 없다** — unit 3·4 로
         // 전 아키타입이 자기 "공격 성립" 지점 1곳을 갖췄기 때문이다(계약 2 표):
         // Standard/FacingVolley = RESOLVE · BombThrow = 폭탄 발사 · HazardCast = 캐스트.
-        // 남은 역할은 하나뿐 — 새 DcTriggerKind 를 append 하고 arm 배선을 잊었을 때
+        // 남은 역할은 하나뿐 — 새 TriggerKind 를 append 하고 arm 배선을 잊었을 때
         // 조용히 통과시키지 않는 fail-closed 게이트.
-        public static bool IsTriggerWired(DcTriggerKind trigger)
+        public static bool IsTriggerWired(TriggerKind trigger)
         {
             switch (trigger)
             {
-                case DcTriggerKind.None:
-                case DcTriggerKind.AttackN:
-                case DcTriggerKind.OnDamagedN:
-                case DcTriggerKind.OnDeath:
-                case DcTriggerKind.PeriodicTimer:
-                case DcTriggerKind.HealthThreshold:
-                case DcTriggerKind.OnKill:
-                case DcTriggerKind.OnShieldBreak:
+                case TriggerKind.None:
+                case TriggerKind.AttackN:
+                case TriggerKind.OnDamagedN:
+                case TriggerKind.OnDeath:
+                case TriggerKind.PeriodicTimer:
+                case TriggerKind.HealthThreshold:
+                case TriggerKind.OnKill:
+                case TriggerKind.OnShieldBreak:
                 // dreamcatcher-content-4 unit 0 — 퇴근. 사건 지점은 AttackSystem 계열이 아니라
                 // **브리지의 퇴근 경로**(RetireDefender)다. 이 함수가 묻는 것은 "배선돼 있나"
                 // 뿐이고 배선 위치는 묻지 않는다 — OnDeath 가 UnitLifecycleSystem 에,
                 // OnShieldBreak 가 DamageApplicationSystem 에 있는 것과 같다.
-                case DcTriggerKind.OnRetire:
+                case TriggerKind.OnRetire:
                 // on-place-skill-rework unit 0 — 배치. 사건 지점은 브리지의 배치 확정 경로가
                 // 붙이는 `JustDeployed` 태그이고 소비는 BossPeriodicTriggerSystem 이다.
                 // ⚠ 이 함수는 "배선돼 있나"만 묻는다. **카드가 이 트리거를 쓸 수 있는지는 별개**이며,
                 // 카드 bake 가 loud 거절한다(카드는 배치 후에 붙어 영영 안 터진다) —
                 // 같은 자리에서 트리거 축 가드들이 하는 일과 동형이다.
-                case DcTriggerKind.OnPlace:
+                case TriggerKind.OnPlace:
                     return true;
                 default:
                     return false;
@@ -116,8 +117,8 @@ namespace Wassup.Core
             // **평가할 수단이 없다**. 폭탄맨/캐스터의 사건 지점은 RESOLVE 처럼 bestTarget
             // 을 들고 있지 않아서, 그대로 두면 게이트가 실패가 아니라 **없는 것처럼**
             // 무시되고 조건 없이 발동한다(사양 초과 — 조용한 무효보다 나쁘다).
-            if (trigger.gate != DcGateKind.None
-                && trigger.gateSubject == DcGateSubject.EventTarget
+            if (trigger.gate != GateKind.None
+                && trigger.gateSubject == GateSubject.EventTarget
                 && !HostProvidesTarget(host.archetype))
                 return DcRejectReason.NeedsTargetContext;
 
@@ -132,7 +133,7 @@ namespace Wassup.Core
                 // 비수 — 니들은 host 의 대상으로 날아가고(host 우선), host 가
                 // 대상을 못 고르면 자체 탐색한다. 어느 쪽이든 대상은 적이어야
                 // 하므로 아군을 겨누는 host(힐러)에서는 성립하지 않는다.
-                case DcPayloadKind.ProjectileToTarget:
+                case EffectKind.ProjectileToTarget:
                     if (!host.targetsEnemies) return DcRejectReason.NeedsEnemyTargeting;
                     // host 가 대상을 안 주는 부류면 폴백 반경이 유일한 수단이다.
                     return HostProvidesTarget(host.archetype) || payload.tileRange > 0
@@ -140,8 +141,8 @@ namespace Wassup.Core
 
                 // *그 공격의 대상*에 걸리는 페이로드 — 자체 탐색 폴백을 주지
                 // 않는다(spec 계약 9). 대상이 확정되지 않는 host 에선 영구 거절.
-                case DcPayloadKind.ApplyCcToTarget:
-                case DcPayloadKind.ApplyStackToTarget:
+                case EffectKind.ApplyCcToTarget:
+                case EffectKind.ApplyStackToTarget:
                     if (!host.targetsEnemies) return DcRejectReason.NeedsEnemyTargeting;
                     return HostProvidesTarget(host.archetype)
                         ? DcRejectReason.None : DcRejectReason.NeedsTargetContext;
@@ -149,96 +150,96 @@ namespace Wassup.Core
                 // 강공은 **그 공격의 출력 데미지**를 배율한다 → RESOLVE 에 도달하는 host
                 // 전용이다. 폭탄맨/캐스터에서 지금 거절되는 건 그 에셋들이 outputs 를
                 // 안 가진 우연일 뿐이라, 아키타입 축을 명시해 구조적으로 막는다.
-                case DcPayloadKind.HeavyStrike:
+                case EffectKind.HeavyStrike:
                     if (!HostProvidesTarget(host.archetype)) return DcRejectReason.NeedsTargetContext;
                     return host.hasDamageOutput
                         ? DcRejectReason.None : DcRejectReason.NeedsDamageOutput;
 
                 // 이중 상태 거부(기존 apply preflight 미러).
-                case DcPayloadKind.SelfBuffLethal:
+                case EffectKind.SelfBuffLethal:
                     return host.hasLethalTimer
                         ? DcRejectReason.DuplicateState : DcRejectReason.None;
-                case DcPayloadKind.DreamCocoon:
+                case EffectKind.DreamCocoon:
                     return host.hasDreamCocoon
                         ? DcRejectReason.DuplicateState : DcRejectReason.None;
 
                 // self / 오라 / 지역 계열 — host 의 공격 모델과 무관.
-                case DcPayloadKind.None:
-                case DcPayloadKind.SelfTileAoe:
-                case DcPayloadKind.NextAttackDoubleFire:
-                case DcPayloadKind.AreaBarrage:
-                case DcPayloadKind.SelfBlink:
+                case EffectKind.None:
+                case EffectKind.SelfTileAoe:
+                case EffectKind.NextAttackDoubleFire:
+                case EffectKind.AreaBarrage:
+                case EffectKind.SelfBlink:
                 // ultimate-leap unit 0 — self 계열이라 host 의 공격 모델과 무관하다.
                 // 실제로는 보스 bake 전용(BakeNightmareMechanics)이지만 그건 **authoring 사실**
                 // 이지 적용성 판정이 아니다 — 바로 위 SelfBlink 도 같은 처지로 여기 있다.
                 // "카드가 아니다" 를 이 레이어에서 표현하려 들면 Unclassified(=통합 버그)와
                 // 정상 거절이 섞인다.
-                case DcPayloadKind.UltimateLeap:
-                case DcPayloadKind.SelfWarmupBuff:
-                case DcPayloadKind.PlacementAura:
-                case DcPayloadKind.AllyMoveSpeedAura:
-                case DcPayloadKind.SelfStatBuff:
-                case DcPayloadKind.BountyMark:
-                case DcPayloadKind.AreaSleep:
+                case EffectKind.UltimateLeap:
+                case EffectKind.SelfWarmupBuff:
+                case EffectKind.PlacementAura:
+                case EffectKind.AllyMoveSpeedAura:
+                case EffectKind.SelfStatBuff:
+                case EffectKind.BountyMark:
+                case EffectKind.AreaSleep:
                 // boss-mamemo unit 2 — 실드 부여. self(tileRange 0) / 반경 아군(>0) 어느 쪽이든
                 // host 의 공격 모델과 무관하다. **어느 arm 이 잡느냐**(경계=self / 주기=반경)는
                 // authoring 사실이라 bake 가 판정하고, 여기선 적용성만 본다 — UltimateLeap 이
                 // 보스 전용인데도 여기 있는 것과 같은 이유다(위 주석).
-                case DcPayloadKind.GrantShield:
+                case EffectKind.GrantShield:
                 // 발사 명세(projectile-emission-pattern) — host 의 공격 모델과 직교다.
                 // 대상은 패턴의 selection 이 스스로 뽑고(host 가 대상을 줄 필요 없음),
                 // 진영은 host 진영의 반대로 자동 도출되며(spec README 계약 7), 데미지도
                 // 패턴이 자기 값을 갖는다 → targetsEnemies / HostProvidesTarget /
                 // hasDamageOutput 어느 축도 게이트가 아니다. 명세 자체의 유효성
                 // (pattern/barrel null)은 bake 가 최종 판정한다(위 주석의 분업).
-                case DcPayloadKind.EmitProjectilePattern:
+                case EffectKind.EmitProjectilePattern:
                 // elite-enemy-tier unit 5 — 분열. host 의 공격 모델과 완전히 무관하다(사망
                 // 사건만 쓴다). UltimateLeap·SelfBlink 와 같은 처지로 여기 둔다: 실제로는
                 // 적 SO 전용이고 **슬롯조차 만들지 않는다**(브리지 킬 드레인이 SO 를 직독) —
                 // 그건 authoring 사실이지 적용성 판정이 아니다. 자식 SO 유효성은 bake 가
                 // 최종 판정한다(위 주석의 분업).
-                case DcPayloadKind.SplitOnDeath:
+                case EffectKind.SplitOnDeath:
                 // elite-enemy-tier unit 4 — 화염 브레스. host 의 **공격 모델**과 무관하다(대상은
                 // AttackSystem 의 후보 배열에서 자기가 고르고, 진영은 host 의 targetMask 로 도출).
                 // 실제로는 적 SO 전용이지만 그건 authoring 사실이지 적용성 판정이 아니다 —
                 // SelfBlink·UltimateLeap 과 같은 처지(위 주석). 반각 정의역은 bake 가 판정한다.
-                case DcPayloadKind.AreaBreath:
+                case EffectKind.AreaBreath:
                 // on-place-skill-rework unit 4 — 범위 도발. host 의 **공격 모델**과 무관하다:
                 // 대상은 반경이 정하고(host 가 줄 필요 없음), 데미지 출력이 아예 없으며,
                 // 진영은 어그로 파이프라인이 고정한다 → targetsEnemies / HostProvidesTarget /
                 // hasDamageOutput 어느 축도 게이트가 아니다. 실제 유효성(가디언인가 ·
                 // duration/tileRange)은 bake 가 loud 로 판정한다(위 주석의 분업).
-                case DcPayloadKind.AreaTaunt:
+                case EffectKind.AreaTaunt:
                 // dreamcatcher-content-4 unit 0 — 궤도 화염구. host 의 공격 모델과 완전히
                 // 무관하다: 대상을 host 가 줄 필요가 없고(구슬이 스치는 적을 스스로 만난다),
                 // 데미지도 payload 가 자기 값을 가지며, 진영 축은 아예 없다(PathHit 후보 풀이
                 // AttackUnitTag 하드코딩이라 아군을 때리는 경로가 존재하지 않는다).
                 // 탄 SO null·값 유효성은 bake 가 최종 판정한다(위 주석의 분업).
-                case DcPayloadKind.SelfOrbitProjectile:
+                case EffectKind.SelfOrbitProjectile:
                 // dreamcatcher-content-5 unit 4 — 장판 설치(잿불). host 의 공격 모델과 무관하다:
                 // 사건(처치)이 위치를 주고, 피해·지속·모양은 전부 해저드 SO 가 가지며, 진영 축은
                 // 장판 파이프라인이 고정한다 → targetsEnemies / HostProvidesTarget /
                 // hasDamageOutput 어느 축도 게이트가 아니다. SO null·트리거 축은 bake 가
                 // 최종 판정한다(위 주석의 분업).
-                case DcPayloadKind.SpawnHazard:
+                case EffectKind.SpawnHazard:
                 // skill-layer-migration unit 2b — 스탯 오라 둘. host 의 **공격 모델**과
                 // 무관하다: 대상은 반경과 진영이 정하고(host 가 줄 필요 없음), 데미지 출력이
                 // 없으며, 진영은 payload kind 가 고정한다(저작이 아니다) → targetsEnemies /
                 // HostProvidesTarget / hasDamageOutput 어느 축도 게이트가 아니다.
                 // 스탯 축의 유효성(EffectiveHealth 미배선)은 bake 가 loud 로 판정한다.
-                case DcPayloadKind.AllyStatAura:
-                case DcPayloadKind.OpponentStatAura:
+                case EffectKind.AllyStatAura:
+                case EffectKind.OpponentStatAura:
                 // unit 2c — 판 밖 런타임(코스트·쿨다운). host 의 공격 모델은 물론 **판 자체와도**
                 // 무관하다: 대상도 진영도 데미지도 없다. 세 축 어느 것도 게이트가 아니다.
-                case DcPayloadKind.GainCost:
-                case DcPayloadKind.ReduceSkillCooldown:
+                case EffectKind.GainCost:
+                case EffectKind.ReduceSkillCooldown:
                 // unit 2d — 광역 스택 도포. 대상은 반경이 정하고 진영은 payload 가 고정하며
                 // 데미지 출력은 스택 파생이 갖는다 → 세 축 어느 것도 게이트가 아니다.
-                case DcPayloadKind.AreaApplyStack:
+                case EffectKind.AreaApplyStack:
                 // unit 2e — 광역 CC · 광역 지속 피해. 대상은 반경이 정하고 진영은 payload 가
                 // 고정하며, 피해는 payload 가 자기 값을 갖는다 → 세 축 어느 것도 게이트가 아니다.
-                case DcPayloadKind.AreaCc:
-                case DcPayloadKind.AreaDot:
+                case EffectKind.AreaCc:
+                case EffectKind.AreaDot:
                     return DcRejectReason.None;
 
                 default:

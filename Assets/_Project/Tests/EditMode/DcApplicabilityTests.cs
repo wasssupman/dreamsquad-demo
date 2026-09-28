@@ -2,11 +2,12 @@ using System;
 using NUnit.Framework;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.BattleCore.Trigger;
 
 namespace Wassup.Tests.EditMode
 {
     // dreamcatcher-attack-decoupling unit 0 — 지원 행렬의 회귀 핀.
-    // total 어서션이 핵심이다: 새 DcPayloadKind/DcAttackModKind 를 추가하고
+    // total 어서션이 핵심이다: 새 EffectKind/DcAttackModKind 를 추가하고
     // 행렬을 잊으면 여기서 먼저 실패한다(런타임에 조용히 무효가 되는 대신).
     public class DcApplicabilityTests
     {
@@ -25,9 +26,9 @@ namespace Wassup.Tests.EditMode
             };
 
         // 판정은 mechanic 전체를 받는다(게이트 축 + 반경 축). 기본 반경 4 = 폴백 있음.
-        private static DcMechanic Mech(DcPayloadKind kind, DcTriggerKind trigger,
-            int tileRange = 4, DcGateKind gate = DcGateKind.None,
-            DcGateSubject subject = DcGateSubject.Self) =>
+        private static DcMechanic Mech(EffectKind kind, TriggerKind trigger,
+            int tileRange = 4, GateKind gate = GateKind.None,
+            GateSubject subject = GateSubject.Self) =>
             new DcMechanic
             {
                 trigger = new DcTriggerSpec { kind = trigger, gate = gate, gateSubject = subject },
@@ -48,8 +49,8 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void EvaluateMechanic_IsTotalOverAllKindAndArchetypePairs()
         {
-            foreach (DcPayloadKind payload in Enum.GetValues(typeof(DcPayloadKind)))
-            foreach (DcTriggerKind trigger in Enum.GetValues(typeof(DcTriggerKind)))
+            foreach (EffectKind payload in Enum.GetValues(typeof(EffectKind)))
+            foreach (TriggerKind trigger in Enum.GetValues(typeof(TriggerKind)))
             foreach (DcHostArchetype archetype in Enum.GetValues(typeof(DcHostArchetype)))
             {
                 var reason = DcApplicability.EvaluateMechanic(Mech(payload, trigger), Host(archetype));
@@ -77,12 +78,12 @@ namespace Wassup.Tests.EditMode
         public void PokeNeedle_RejectsAllyTargetingHost()
         {
             Assert.AreEqual(DcRejectReason.NeedsEnemyTargeting,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN), Healer()),
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.ProjectileToTarget, TriggerKind.AttackN), Healer()),
                 "힐러는 아군을 겨눠 니들이 아군을 때린다");
             Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN), Archer()));
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.ProjectileToTarget, TriggerKind.AttackN), Archer()));
             Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN), Guardian()),
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.ProjectileToTarget, TriggerKind.AttackN), Guardian()),
                 "근접도 5회째에 니들을 쏜다");
         }
 
@@ -105,9 +106,9 @@ namespace Wassup.Tests.EditMode
         public void HeavyStrike_NeedsDamageOutput()
         {
             Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.HeavyStrike, DcTriggerKind.AttackN), Archer()));
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.HeavyStrike, TriggerKind.AttackN), Archer()));
             Assert.AreEqual(DcRejectReason.NeedsDamageOutput,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.HeavyStrike, DcTriggerKind.AttackN),
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.HeavyStrike, TriggerKind.AttackN),
                     Host(DcHostArchetype.Standard, hasDamageOutput: false)));
         }
 
@@ -115,10 +116,10 @@ namespace Wassup.Tests.EditMode
         public void DuplicateState_Rejects()
         {
             Assert.AreEqual(DcRejectReason.DuplicateState,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.SelfBuffLethal, DcTriggerKind.None),
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.SelfBuffLethal, TriggerKind.None),
                     Host(DcHostArchetype.Standard, lethal: true)));
             Assert.AreEqual(DcRejectReason.DuplicateState,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.DreamCocoon, DcTriggerKind.None),
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.DreamCocoon, TriggerKind.None),
                     Host(DcHostArchetype.Standard, cocoon: true)));
         }
 
@@ -129,7 +130,7 @@ namespace Wassup.Tests.EditMode
             foreach (DcHostArchetype archetype in Enum.GetValues(typeof(DcHostArchetype)))
                 Assert.AreEqual(DcRejectReason.None,
                     DcApplicability.EvaluateMechanic(
-                        Mech(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN), Host(archetype)),
+                        Mech(EffectKind.ProjectileToTarget, TriggerKind.AttackN), Host(archetype)),
                     $"{archetype} — 각 아키타입은 자기 '공격 성립' 지점에서 카운트한다");
         }
 
@@ -143,21 +144,21 @@ namespace Wassup.Tests.EditMode
             foreach (var host in new[] { BombMan(), Caster() })
                 Assert.AreEqual(DcRejectReason.NeedsTargetContext,
                     DcApplicability.EvaluateMechanic(
-                        Mech(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN,
-                             gate: DcGateKind.HpBelow, subject: DcGateSubject.EventTarget), host),
+                        Mech(EffectKind.ProjectileToTarget, TriggerKind.AttackN,
+                             gate: GateKind.HpBelow, subject: GateSubject.EventTarget), host),
                     "게이트를 평가할 수 없는 host — 무시하고 발동하느니 거절");
 
             Assert.AreEqual(DcRejectReason.None,
                 DcApplicability.EvaluateMechanic(
-                    Mech(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN,
-                         gate: DcGateKind.HpBelow, subject: DcGateSubject.EventTarget), Archer()),
+                    Mech(EffectKind.ProjectileToTarget, TriggerKind.AttackN,
+                         gate: GateKind.HpBelow, subject: GateSubject.EventTarget), Archer()),
                 "RESOLVE host 는 bestTarget 을 주므로 게이트 평가가 가능하다");
 
             // Self 주어는 host 가 대상을 안 줘도 평가할 수 있다(주어가 host 자신).
             Assert.AreEqual(DcRejectReason.None,
                 DcApplicability.EvaluateMechanic(
-                    Mech(DcPayloadKind.SelfStatBuff, DcTriggerKind.OnDamagedN,
-                         gate: DcGateKind.HpBelow, subject: DcGateSubject.Self), BombMan()));
+                    Mech(EffectKind.SelfStatBuff, TriggerKind.OnDamagedN,
+                         gate: GateKind.HpBelow, subject: GateSubject.Self), BombMan()));
         }
 
         // 강공은 RESOLVE 의 출력 데미지를 배율하므로 RESOLVE host 전용이다.
@@ -168,7 +169,7 @@ namespace Wassup.Tests.EditMode
         {
             Assert.AreEqual(DcRejectReason.NeedsTargetContext,
                 DcApplicability.EvaluateMechanic(
-                    Mech(DcPayloadKind.HeavyStrike, DcTriggerKind.AttackN),
+                    Mech(EffectKind.HeavyStrike, TriggerKind.AttackN),
                     Host(DcHostArchetype.BombThrow, DcProjectileRoute.Grenade)));
         }
 
@@ -178,10 +179,10 @@ namespace Wassup.Tests.EditMode
         {
             foreach (var host in new[] { BombMan(), Caster() })
                 Assert.AreEqual(DcRejectReason.NeedsFallbackRange,
-                    DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN, tileRange: 0), host),
+                    DcApplicability.EvaluateMechanic(Mech(EffectKind.ProjectileToTarget, TriggerKind.AttackN, tileRange: 0), host),
                     "반경 0 이면 니들이 영영 안 나간다 — 붙이면 안 된다");
             Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN, tileRange: 0), Archer()),
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.ProjectileToTarget, TriggerKind.AttackN, tileRange: 0), Archer()),
                 "host 가 대상을 주는 부류는 반경 0 이어도 정상(B안)");
         }
 
@@ -190,7 +191,7 @@ namespace Wassup.Tests.EditMode
         public void ApplyCcToTarget_StillRejectedOnBombThrow()
         {
             Assert.AreEqual(DcRejectReason.NeedsTargetContext,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.ApplyCcToTarget, DcTriggerKind.AttackN), BombMan()));
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.ApplyCcToTarget, TriggerKind.AttackN), BombMan()));
         }
 
         [Test]
@@ -199,9 +200,9 @@ namespace Wassup.Tests.EditMode
             // 사건 지점이 있어도(Standard/FacingVolley) 대상 문맥이 필요하다는 축은 별개다.
             // 폭탄맨/캐스터가 unit 3·4 로 열려도 이 페이로드는 영구 거절 대상(계약 9).
             Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.ApplyCcToTarget, DcTriggerKind.AttackN), MachineGunner()));
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.ApplyCcToTarget, TriggerKind.AttackN), MachineGunner()));
             Assert.AreEqual(DcRejectReason.NeedsEnemyTargeting,
-                DcApplicability.EvaluateMechanic(Mech(DcPayloadKind.ApplyStackToTarget, DcTriggerKind.AttackN), Healer()));
+                DcApplicability.EvaluateMechanic(Mech(EffectKind.ApplyStackToTarget, TriggerKind.AttackN), Healer()));
         }
 
         // ── 공격 경로와 무관한 트리거는 아키타입을 가리지 않는다 ───────────
@@ -210,8 +211,8 @@ namespace Wassup.Tests.EditMode
         {
             var nonAttack = new[]
             {
-                DcTriggerKind.OnDamagedN, DcTriggerKind.OnDeath, DcTriggerKind.PeriodicTimer,
-                DcTriggerKind.HealthThreshold, DcTriggerKind.OnKill, DcTriggerKind.OnShieldBreak,
+                TriggerKind.OnDamagedN, TriggerKind.OnDeath, TriggerKind.PeriodicTimer,
+                TriggerKind.HealthThreshold, TriggerKind.OnKill, TriggerKind.OnShieldBreak,
             };
             foreach (var trigger in nonAttack)
                 Assert.IsTrue(DcApplicability.IsTriggerWired(trigger), $"{trigger} 가 배선 밖으로 빠졌다");
@@ -242,17 +243,17 @@ namespace Wassup.Tests.EditMode
         {
             var selfKinds = new[]
             {
-                DcPayloadKind.SelfTileAoe, DcPayloadKind.SelfStatBuff,
-                DcPayloadKind.SelfBlink, DcPayloadKind.AreaSleep,
-                DcPayloadKind.PlacementAura, DcPayloadKind.AllyMoveSpeedAura,
+                EffectKind.SelfTileAoe, EffectKind.SelfStatBuff,
+                EffectKind.SelfBlink, EffectKind.AreaSleep,
+                EffectKind.PlacementAura, EffectKind.AllyMoveSpeedAura,
                 // content-4 unit 0 — 궤도 화염구도 self 계열이다: 대상을 host 가 줄 필요가
                 // 없고(구슬이 스치는 적을 스스로 만난다) 진영 축도 없다.
-                DcPayloadKind.SelfOrbitProjectile,
+                EffectKind.SelfOrbitProjectile,
             };
             foreach (DcHostArchetype archetype in Enum.GetValues(typeof(DcHostArchetype)))
             foreach (var kind in selfKinds)
                 Assert.AreEqual(DcRejectReason.None,
-                    DcApplicability.EvaluateMechanic(Mech(kind, DcTriggerKind.OnDeath), Host(archetype)),
+                    DcApplicability.EvaluateMechanic(Mech(kind, TriggerKind.OnDeath), Host(archetype)),
                     $"{kind} 는 host 공격 모델과 무관해야 한다 ({archetype})");
         }
     }

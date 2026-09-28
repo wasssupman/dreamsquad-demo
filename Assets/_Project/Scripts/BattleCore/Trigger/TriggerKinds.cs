@@ -2,15 +2,13 @@ namespace Wassup.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — 트리거 레이어의 어휘. **이 enum 들이 정본이다**(skill-data-table 2026-09-28).
     //
-    // 저작 enum(`Wassup.Data.DcTriggerKind` 10 · `DcPayloadKind` 33 · 게이트 2축)이 **같은 번호의 거울**이다 — 거꾸로가
-    // 아니다. `Wassup.Runtime` 은 이미 `Wassup.BattleCore` 를 참조하므로 저작이 이 타입을 직접 쓸 수 있고, 거울 · 번역
-    // 함수(`ToCore*`) · 번호 핀(`CoreTriggerEnumPinTests`)은 skill-data-table unit 4 에서 은퇴한다. 그때까지는 핀 테스트가
-    // 값·개수를 대조하고 변환은 `MatchDefinitionBuilder` 한 곳에서 **이름으로** 옮긴다(`PatternSelectionRule` 이 번호
-    // 캐스트로 12 중 11 을 오독한 선례).
+    // 저작(`Wassup.Data` — 카드 · 유닛 · 적 규칙 저작)이 **이 enum 들을 직접** 든다(skill-data-table unit 4 — 거울 enum
+    // `DcTriggerKind` · `DcPayloadKind` · `DcGateKind` · `DcGateSubject` · `DcTriggerSubject` 와 번역 함수 · 번호 핀 은퇴).
+    // 에셋은 정수로 직렬화하므로 번호가 곧 저장 형식이다.
     //
     // ⚠ append-only. 앞에 끼우면 저작 에셋의 byte 값이 다른 뜻으로 읽힌다.
 
-    /// <summary>「언제」 — 정본(저작 `DcTriggerKind` 가 거울).</summary>
+    /// <summary>「언제」 — 저작이 직접 든다.</summary>
     public enum TriggerKind : byte
     {
         /// <summary>트리거 없음 = **부착되는 순간**(카드 3장). 감지자가 아니라 부착 지점이 발화시킨다.</summary>
@@ -27,7 +25,7 @@ namespace Wassup.BattleCore.Trigger
         OnPlace = 9,
     }
 
-    /// <summary>「무엇을」 — 효과 종류(0~32 = 33값). 정본(저작 `DcPayloadKind` 가 거울). 옛 이름 `TriggerPayload`.</summary>
+    /// <summary>「무엇을」 — 효과 종류(0~32 = 33값). 저작이 직접 든다. 옛 이름 `TriggerPayload`.</summary>
     public enum EffectKind : byte
     {
         None = 0,
@@ -70,16 +68,16 @@ namespace Wassup.BattleCore.Trigger
         AreaDot = 32,
     }
 
-    /// <summary>게이트 종류 — 정본(저작 `DcGateKind` 가 거울).</summary>
+    /// <summary>게이트 종류 — 저작이 직접 든다.</summary>
     public enum GateKind : byte { None = 0, HpBelow = 1 }
 
-    /// <summary>게이트의 주어 — 정본(저작 `DcGateSubject` 가 거울).</summary>
+    /// <summary>게이트의 주어 — 저작이 직접 든다.</summary>
     public enum GateSubject : byte { Self = 0, EventTarget = 1 }
 
     /// <summary>
     /// 이 바인딩이 **누구의 사건**을 듣나. `Self` = 소유자 자신의 사건(유닛 스킬 전부) ·
     /// `Any` = 판 위 누구의 사건이든(배치 오라 · Squad 상속 — 7b). unified-effect-layer unit 5 부터 저작에 노출된다 —
-    /// `DcTriggerSpec.subject` 「남의 배치」 = `Any` + `BindingSubjectFilter.PlacedDefender`(빌더가 옮긴다 · 배치에만 뜻이 있다).
+    /// `DcTriggerSpec.subject` 「남의 배치」(`Any`) + `BindingSubjectFilter.PlacedDefender`(빌더가 옮긴다 · 배치에만 뜻이 있다).
     /// </summary>
     public enum BindingSubject : byte { Self = 0, Any = 1 }
 
