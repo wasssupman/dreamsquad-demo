@@ -15,7 +15,7 @@ namespace Wassup.Tests.EditMode.Core
     {
         private static BindingDef LastFlame()
         {
-            var r = CardRule(TriggerKind.None, TriggerPayload.SelfBuffLethal);
+            var r = CardRule(TriggerKind.None, EffectKind.SelfBuffLethal);
             r.Magnitude = 1.9f;   // 배율(bake 가 % → 배율로 바꿔 싣는다)
             r.Duration = 5f;
             r.FireCap = 1;
@@ -92,7 +92,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 부착_상한_셋은_Unit_카드와_Squad_카드가_같이_센다()
         {
             var def = CoreMatchFixtures.Definition();
-            var rule = CardRule(TriggerKind.OnKill, TriggerPayload.SelfStatBuff);
+            var rule = CardRule(TriggerKind.OnKill, EffectKind.SelfStatBuff);
             rule.Magnitude = 1.1f;
             int u1 = AddAttachCard(def, "u1", 1, rule);
             int u2 = AddAttachCard(def, "u2", 1, rule);
@@ -113,7 +113,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f);
             int blast = CoreTriggerFixtures.AddBlastProjectile(def);
-            var gift = CardRule(TriggerKind.OnDeath, TriggerPayload.SelfTileAoe);
+            var gift = CardRule(TriggerKind.OnDeath, EffectKind.SelfTileAoe);
             gift.Magnitude = 5f; gift.TileRange = 1; gift.DataIndex = blast;
             int a = AddAttachCard(def, "farewell_a", 1, gift);
             int b = AddAttachCard(def, "farewell_b", 1, gift);
@@ -135,7 +135,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f);
             int blast = CoreTriggerFixtures.AddBlastProjectile(def);
-            var corpse = CardRule(TriggerKind.OnKill, TriggerPayload.SelfTileAoe);
+            var corpse = CardRule(TriggerKind.OnKill, EffectKind.SelfTileAoe);
             corpse.Magnitude = 5f; corpse.TileRange = 1; corpse.DataIndex = blast;
             int a = AddAttachCard(def, "corpse_a", 1, corpse);
             int b = AddAttachCard(def, "corpse_b", 1, corpse);
@@ -158,7 +158,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreMatchFixtures.Definition();
             var probe = new CoreTriggerFixtures.ProbeSkill();
             var rule = CardProbe(TriggerKind.PeriodicTimer, probe);
-            rule.Payload = TriggerPayload.SelfOrbitProjectile;   // 불꽃 팽이 — 숙주 모델과 무관한 payload
+            rule.Payload = EffectKind.SelfOrbitProjectile;   // 불꽃 팽이 — 숙주 모델과 무관한 payload
             rule.PeriodSeconds = 6f;
             int c = AddAttachCard(def, "flame_spinner", 1, rule);
             var m = CardBattle(def);
@@ -194,7 +194,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 부착_핸들은_판_안에서_단조_증가하고_재사용되지_않는다()
         {
             var def = CoreMatchFixtures.Definition();
-            var rule = CardRule(TriggerKind.OnKill, TriggerPayload.SelfStatBuff);
+            var rule = CardRule(TriggerKind.OnKill, EffectKind.SelfStatBuff);
             rule.Magnitude = 1.1f;
             int card = AddAttachCard(def, "plain", 1, rule);
             var m = CardBattle(def);

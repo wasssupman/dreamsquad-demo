@@ -16,7 +16,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var cards = new CardDef[12];
             var attachRule = CoreCardFixtures.CardRule(Wassup.BattleCore.Trigger.TriggerKind.OnKill,
-                                                       Wassup.BattleCore.Trigger.TriggerPayload.SelfStatBuff);
+                                                       Wassup.BattleCore.Trigger.EffectKind.SelfStatBuff);
             attachRule.StatKind = (int)Wassup.Skills.SkillStatKind.DamageMul;
             attachRule.Magnitude = 1f;
             int attachRow = CoreTriggerFixtures.Add(def, attachRule)[0];

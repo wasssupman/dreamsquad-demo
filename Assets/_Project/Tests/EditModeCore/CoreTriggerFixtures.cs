@@ -14,12 +14,12 @@ namespace Wassup.Tests.EditMode.Core
     public static class CoreTriggerFixtures
     {
         /// <summary>라우팅 표로 실행자를 고른 규칙 한 줄(센티널 -1 로 시작).</summary>
-        public static BindingDef Rule(TriggerKind trigger, TriggerPayload payload)
+        public static BindingDef Rule(TriggerKind trigger, EffectKind payload)
         {
             var d = BindingDef.Default();
             d.Trigger = trigger;
             d.Payload = payload;
-            d.Effect = SkillRouting.Resolve(trigger, payload);
+            d.Skill = SkillRouting.Resolve(trigger, payload);
             d.Label = trigger + "×" + payload;
             return d;
         }
@@ -29,7 +29,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var d = BindingDef.Default();
             d.Trigger = trigger;
-            d.Effect = skill;
+            d.Skill = skill;
             d.Label = "probe×" + trigger;
             return d;
         }

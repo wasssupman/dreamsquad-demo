@@ -156,7 +156,7 @@ namespace Wassup.Tests.EditMode.Core
                 var m = Match();
                 var d = SpawnDefender(m, new int2(5, 2));
                 var ally = SpawnDefender(m, new int2(6, 2));
-                var rule = Rule(TriggerKind.PeriodicTimer, TriggerPayload.AllyStatAura);
+                var rule = Rule(TriggerKind.PeriodicTimer, EffectKind.AllyStatAura);
                 rule.PeriodSeconds = BattleMatch.Dt;
                 rule.Magnitude = 50f;          // +50%
                 rule.Duration = 99f;

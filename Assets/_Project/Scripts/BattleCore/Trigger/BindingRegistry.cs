@@ -138,7 +138,7 @@ namespace Wassup.BattleCore.Trigger
                 for (int i = 0; i < units.Count; i++)
                 {
                     _revoked.Clear();
-                    if (units[i].Modifiers.RevokeTag(Effects.SlotKind.Card, b.InstanceId, _revoked) == 0) continue;
+                    if (units[i].Modifiers.RevokeTag(Effects.SlotKind.BindingInstance, b.InstanceId, _revoked) == 0) continue;
                     for (int k = 0; k < _revoked.Count; k++)
                         _bus.Publish(CoreEvent.ModifierRevoked(tick, units[i], _revoked[k].Key.Source, _revoked[k].Key.Stat));
                 }
@@ -217,7 +217,7 @@ namespace Wassup.BattleCore.Trigger
                 // 스킬(스폰과 함께 시작)은 이 줄을 안 탄다.
                 if (b.Def.Trigger == TriggerKind.PeriodicTimer) b.Elapsed = b.Def.PeriodSeconds;
                 // 호접몽 완주 버프의 칸 판별자 = 그 규칙의 `InstanceId`(옛 `_dcStackCounter++` — 붙일 때마다 새 칸).
-                if (b.Def.Payload == TriggerPayload.DreamCocoon) b.Def.StackId = b.InstanceId;
+                if (b.Def.Payload == EffectKind.DreamCocoon) b.Def.StackId = b.InstanceId;
                 into.Add(b);
             }
         }

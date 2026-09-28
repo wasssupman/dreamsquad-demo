@@ -114,7 +114,7 @@ namespace Wassup.Tests.EditModeAssets
             for (int row = 0; row < def.Bindings.Length; row++)
             {
                 ref var b = ref def.Bindings[row];
-                if (b.Payload == TriggerPayload.AreaDot && b.DataIndex >= 0)
+                if (b.Payload == EffectKind.AreaDot && b.DataIndex >= 0)
                 {
                     Assert.IsNotNull(view.SkillVfx(b.DataIndex), $"'{b.Label}': 빔 번호가 뷰 표 밖을 가리킨다");
                     Assert.IsFalse(view.TryGetBindingAura(row, out _, out _),

@@ -144,14 +144,14 @@ namespace Wassup.BattleCoreUnity
             return c;
         }
 
-        private static BindingDef CardRow(string label, TriggerKind trigger, TriggerPayload payload)
+        private static BindingDef CardRow(string label, TriggerKind trigger, EffectKind payload)
         {
             var b = BindingDef.Default();
             b.Label = label;
             b.Trigger = trigger;
             b.Payload = payload;
             b.Origin = BindingOrigin.Card;
-            b.Effect = SkillRouting.Resolve(trigger, payload);
+            b.Skill = SkillRouting.Resolve(trigger, payload);
             return b;
         }
 
@@ -175,7 +175,7 @@ namespace Wassup.BattleCoreUnity
             {
                 switch (payload)
                 {
-                    case TriggerPayload.SelfBuffLethal:
+                    case EffectKind.SelfBuffLethal:
                     {
                         if (p.magnitude <= 0f || p.duration <= 0f) { Warn($"{label}: SelfBuffLethal magnitude/duration <= 0 — 건너뛴다."); return; }
                         var b = CardRow(label, trigger, payload);
@@ -185,7 +185,7 @@ namespace Wassup.BattleCoreUnity
                         Add(rows, mine, in b);
                         return;
                     }
-                    case TriggerPayload.DreamCocoon:
+                    case EffectKind.DreamCocoon:
                     {
                         if (p.magnitude <= 0f || p.duration <= ProgressiveStates.CocoonEpsilon) { Warn($"{label}: DreamCocoon magnitude <= 0 또는 duration <= ε — 건너뛴다(무수면 즉시 완주)."); return; }
                         if (!MapBuff(p.buffStat, p.magnitude, out var stat, out float mul)) { Warn($"{label}: DreamCocoon 스탯 {p.buffStat} 을 옮길 수 없다 — 건너뛴다."); return; }
@@ -197,7 +197,7 @@ namespace Wassup.BattleCoreUnity
                         Add(rows, mine, in b);
                         return;
                     }
-                    case TriggerPayload.BountyMark:
+                    case EffectKind.BountyMark:
                     {
                         if (p.magnitude <= 1f) { Warn($"{label}: BountyMark magnitude <= 1(현상금 없음) — 건너뛴다."); return; }
                         if (p.tileRange < 0 || p.tileRange >= 100) { Warn($"{label}: BountyMark tileRange(받는 피해 감소 %) [0,100) 밖 — 건너뛴다."); return; }
@@ -208,7 +208,7 @@ namespace Wassup.BattleCoreUnity
                         Add(rows, mine, in b);
                         return;
                     }
-                    case TriggerPayload.PlacementAura:
+                    case EffectKind.PlacementAura:
                     {
                         if (p.magnitude <= 0f) { Warn($"{label}: PlacementAura magnitude <= 0 — 건너뛴다."); return; }
                         // 카드당 하나(옛 review M1 — 둘째는 핸들이 덮여 누수됐다).
@@ -217,7 +217,7 @@ namespace Wassup.BattleCoreUnity
                         aura = true;
                         // **규칙 둘**(정정 3 · H6) — 공속은 숙주가 떠나면 소급 회수, 수면은 등록부에서만 빠진다.
                         var speed = CardRow(label + " 공속", TriggerKind.OnPlace, payload);
-                        speed.Effect = new SelfStatBuffSkill();
+                        speed.Skill = new SelfStatBuffSkill();
                         speed.Subject = BindingSubject.Any;
                         speed.SubjectClassMask = mask;
                         speed.SubjectCost = cost;
@@ -228,7 +228,7 @@ namespace Wassup.BattleCoreUnity
                         if (p.duration > 0f)
                         {
                             var sleep = CardRow(label + " 수면", TriggerKind.OnPlace, payload);
-                            sleep.Effect = new PlacementSleepSkill();
+                            sleep.Skill = new PlacementSleepSkill();
                             sleep.Subject = BindingSubject.Any;
                             sleep.SubjectClassMask = mask;
                             sleep.SubjectCost = cost;
@@ -244,13 +244,13 @@ namespace Wassup.BattleCoreUnity
                 }
             }
 
-            if (payload == TriggerPayload.None)
+            if (payload == EffectKind.None)
             {
                 Warn($"{label}: None 종류 — 건너뛴다.");
                 return;
             }
             // 손패 동작(인수인계) — 규칙이 아니라 퇴근 회수 규칙의 선언이다. **퇴근에만**, 게이트 없이.
-            if (payload == TriggerPayload.RecallAttachedToFront)
+            if (payload == EffectKind.RecallAttachedToFront)
             {
                 if (trigger != TriggerKind.OnRetire) { Warn($"{label}: 인수인계는 OnRetire 에만 배선돼 있다(현재 {trigger}) — 건너뛴다."); return; }
                 if (m.trigger.gate != DcGateKind.None) { Warn($"{label}: 인수인계에는 게이트가 배선돼 있지 않다 — 건너뛴다."); return; }
@@ -266,7 +266,7 @@ namespace Wassup.BattleCoreUnity
             if (!BindingDefinitionBuilder.TriggerValuesValid(in m, trigger, gate, gateSubject, label)) return;
 
             // 강공 — 어휘 밖(그 공격의 성질). 공격 수식자로 접는다.
-            if (payload == TriggerPayload.HeavyStrike)
+            if (payload == EffectKind.HeavyStrike)
             {
                 if (BindingDefinitionBuilder.TryHeavyStrike(in m, trigger, gate, label, out var heavy)) mods.Add(heavy);
                 return;
@@ -292,10 +292,10 @@ namespace Wassup.BattleCoreUnity
             if (!BindingDefinitionBuilder.BindPayload(ref r, in m, label, projectiles, patterns, hazards)) return;
             switch (payload)
             {
-                case TriggerPayload.SelfTileAoe:
+                case EffectKind.SelfTileAoe:
                     r.VisualScale = p.projectile.visualScale;   // 카드는 착탄 연출 배율을 싣는다(유닛 bake 는 0)
                     break;
-                case TriggerPayload.SelfStatBuff:
+                case EffectKind.SelfStatBuff:
                 {
                     // 카드 버프는 % 저작 → 배율(유닛 저작은 배율 그대로).
                     if (!MapBuff(p.buffStat, p.magnitude, out var stat, out float mul)) { Warn($"{label}: SelfStatBuff 스탯 {p.buffStat} 을 옮길 수 없다 — 건너뛴다."); return; }
@@ -307,7 +307,7 @@ namespace Wassup.BattleCoreUnity
                 }
             }
 
-            if (r.Effect == null) { Warn($"{label}: '{trigger} × {payload}' 조합에 라우팅이 없다 — 건너뛴다."); return; }
+            if (r.Skill == null) { Warn($"{label}: '{trigger} × {payload}' 조합에 라우팅이 없다 — 건너뛴다."); return; }
             Add(rows, mine, in r);
         }
 
@@ -323,7 +323,7 @@ namespace Wassup.BattleCoreUnity
                 var e = effects[i];
                 // `CostRate` 는 유닛 스탯이 아니다 — 카드 경로에서는 옛 전투도 무동작이었다(드림스톤 전용 · 판 진입 배율).
                 if (!MapBuff(e.kind, e.percent, out var stat, out float mul)) { Warn($"'{card.id}' effect {i}: {e.kind} 는 카드 스탯이 아니다 — 건너뛴다."); continue; }
-                var b = CardRow($"카드 '{card.id}' effect {i}", TriggerKind.OnPlace, TriggerPayload.SelfStatBuff);
+                var b = CardRow($"카드 '{card.id}' effect {i}", TriggerKind.OnPlace, EffectKind.SelfStatBuff);
                 b.Subject = BindingSubject.Any;
                 b.SubjectClassMask = mask;
                 b.SubjectCost = cost;
@@ -348,7 +348,7 @@ namespace Wassup.BattleCoreUnity
                 b.Label = $"드림스톤 '{s.id}'";
                 b.Trigger = TriggerKind.OnPlace;
                 b.Subject = BindingSubject.Any;          // 축 All(옛 `MatchesDcAxis(All)`)
-                b.Effect = new DreamstoneStatSkill();
+                b.Skill = new DreamstoneStatSkill();
                 b.StatKind = (int)stat;
                 b.Magnitude = mul;
                 b.Lifetime = BindingLifetime.Match;
@@ -398,7 +398,7 @@ namespace Wassup.BattleCoreUnity
                     return -1;
             }
             if (!SkillRouting.Registry.TryGet(id, out var skill)) { Error($"'{card.id}': 액티브 실행자({id})가 레지스트리에 없다."); return -1; }
-            b.Effect = skill;
+            b.Skill = skill;
             rows.Add(b);
             return rows.Count - 1;
         }

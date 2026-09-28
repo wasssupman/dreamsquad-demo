@@ -65,9 +65,9 @@ namespace Wassup.Tests.EditMode.Core
         {
             var set = new ModifierSet();
             set.Apply(new ModifierKey(Id(1), StatKind.DamageMul, CombineOp.Additive,
-                                      SlotTag.OfCard(11)), 0.2f, 5f);
+                                      SlotTag.OfBinding(11)), 0.2f, 5f);
             set.Apply(new ModifierKey(Id(1), StatKind.DamageMul, CombineOp.Additive,
-                                      SlotTag.OfCard(12)), 0.2f, 5f);
+                                      SlotTag.OfBinding(12)), 0.2f, 5f);
             Assert.AreEqual(2, set.Count, "같은 카드 두 장이 서로를 덮으면 안 된다");
             Assert.AreEqual(1.4f, set.Effective.DamageMul, 1e-4f);
         }
@@ -143,11 +143,11 @@ namespace Wassup.Tests.EditMode.Core
         public void 칸_단위_회수는_그_칸의_슬롯을_전부_지운다()
         {
             var set = new ModifierSet();
-            set.Apply(new ModifierKey(Id(1), StatKind.DamageMul, CombineOp.Additive, SlotTag.OfCard(3)), 0.2f, 5f);
-            set.Apply(new ModifierKey(Id(1), StatKind.MoveSpeedMul, CombineOp.Additive, SlotTag.OfCard(3)), 0.2f, 5f);
-            set.Apply(new ModifierKey(Id(1), StatKind.DamageMul, CombineOp.Additive, SlotTag.OfCard(4)), 0.2f, 5f);
+            set.Apply(new ModifierKey(Id(1), StatKind.DamageMul, CombineOp.Additive, SlotTag.OfBinding(3)), 0.2f, 5f);
+            set.Apply(new ModifierKey(Id(1), StatKind.MoveSpeedMul, CombineOp.Additive, SlotTag.OfBinding(3)), 0.2f, 5f);
+            set.Apply(new ModifierKey(Id(1), StatKind.DamageMul, CombineOp.Additive, SlotTag.OfBinding(4)), 0.2f, 5f);
 
-            Assert.AreEqual(2, set.RevokeTag(SlotKind.Card, 3));
+            Assert.AreEqual(2, set.RevokeTag(SlotKind.BindingInstance, 3));
             Assert.AreEqual(1, set.Count);
             Assert.AreEqual(1.2f, set.Effective.DamageMul, 1e-4f);
         }

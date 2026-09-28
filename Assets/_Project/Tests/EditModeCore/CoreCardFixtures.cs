@@ -15,7 +15,7 @@ namespace Wassup.Tests.EditMode.Core
     public static class CoreCardFixtures
     {
         /// <summary>카드 규칙 한 줄(출처 = 카드). 실행자는 라우팅 표가 고른다.</summary>
-        public static BindingDef CardRule(TriggerKind trigger, TriggerPayload payload)
+        public static BindingDef CardRule(TriggerKind trigger, EffectKind payload)
         {
             var d = CoreTriggerFixtures.Rule(trigger, payload);
             d.Origin = BindingOrigin.Card;
@@ -67,7 +67,7 @@ namespace Wassup.Tests.EditMode.Core
         public static int AddSquadCard(MatchDefinition def, string id, int cost, SkillStatKind stat, float mul,
                                        int classMask = 0, int subjectCost = 0)
         {
-            var rule = CardRule(TriggerKind.OnPlace, TriggerPayload.SelfStatBuff);
+            var rule = CardRule(TriggerKind.OnPlace, EffectKind.SelfStatBuff);
             rule.Subject = BindingSubject.Any;
             rule.SubjectClassMask = classMask;
             rule.SubjectCost = subjectCost;

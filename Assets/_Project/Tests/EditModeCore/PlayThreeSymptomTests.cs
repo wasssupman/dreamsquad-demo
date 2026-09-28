@@ -16,7 +16,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f, enemyDamage: 40f, enemyRange: 1.5f);
             int blast = CoreTriggerFixtures.AddBlastProjectile(def);
-            var rule = CardRule(TriggerKind.HealthThreshold, TriggerPayload.SelfTileAoe);
+            var rule = CardRule(TriggerKind.HealthThreshold, EffectKind.SelfTileAoe);
             rule.Fraction = 0.7f;      // 저작 = 「HP 30% 이하」
             rule.Magnitude = 15f;
             rule.TileRange = 1;

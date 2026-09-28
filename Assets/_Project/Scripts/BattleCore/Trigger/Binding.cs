@@ -18,7 +18,7 @@ namespace Wassup.BattleCore.Trigger
         public SimEntityId Owner = SimEntityId.None;
 
         /// <summary>
-        /// **판 안에서 단조 증가 · 재사용 없음**(F1). 억제 키(E2)이자 카드 슬롯 판별자(6a `SlotTag.OfCard`)다.
+        /// **판 안에서 단조 증가 · 재사용 없음**(F1). 억제 키(E2)이자 카드 슬롯 판별자(6a `SlotTag.OfBinding`)다.
         /// 재사용하면 낡은 핸들이 새 대상을 가리킨다.
         /// </summary>
         public int InstanceId;

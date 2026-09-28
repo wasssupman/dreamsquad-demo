@@ -35,7 +35,7 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test] public void 트리거_10() { Pin<DcTriggerKind, TriggerKind>(); Assert.AreEqual(10, Enum.GetValues(typeof(TriggerKind)).Length); PinMapping<DcTriggerKind, TriggerKind>(BindingDefinitionBuilder.ToCoreTrigger); }
-        [Test] public void 페이로드_33() { Pin<DcPayloadKind, TriggerPayload>(); Assert.AreEqual(33, Enum.GetValues(typeof(TriggerPayload)).Length); PinMapping<DcPayloadKind, TriggerPayload>(BindingDefinitionBuilder.ToCorePayload); }
+        [Test] public void 페이로드_33() { Pin<DcPayloadKind, EffectKind>(); Assert.AreEqual(33, Enum.GetValues(typeof(EffectKind)).Length); PinMapping<DcPayloadKind, EffectKind>(BindingDefinitionBuilder.ToCorePayload); }
         // unified-effect-layer unit 5 — 트리거 주체 축. 이름이 코어와 달라(「남의 배치」 ↔ `Any`) 값과 매핑을 손으로 고정한다.
         [Test]
         public void 트리거_주체()
@@ -120,7 +120,7 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(expected, got, enemies[i].name);
             }
             foreach (var b in def.Bindings)
-                Assert.IsNotNull(b.Effect, b.Label + " — 실행자 없는 규칙이 구워졌다");
+                Assert.IsNotNull(b.Skill, b.Label + " — 실행자 없는 규칙이 구워졌다");
         }
 
         [Test]
@@ -134,7 +134,7 @@ namespace Wassup.Tests.EditMode
             foreach (var b in def.Bindings)
             {
                 if (b.Trigger != TriggerKind.HealthThreshold) continue;
-                if (b.Payload == TriggerPayload.UltimateLeap) { ultimates++; Assert.AreEqual(1, b.FireCap, b.Label); }
+                if (b.Payload == EffectKind.UltimateLeap) { ultimates++; Assert.AreEqual(1, b.FireCap, b.Label); }
                 else { others++; Assert.AreEqual(0, b.FireCap, b.Label + " — 경계 규칙은 다회가 사양"); }
             }
             Assert.Greater(ultimates, 0, "라이브 궁극기가 없다면 테스트가 공허하다");
@@ -152,7 +152,7 @@ namespace Wassup.Tests.EditMode
             var def = MatchDefinitionBuilder.Build(defenders, Array.Empty<AttackUnitData>(), 1, ModeDef.Default());
             bool found = false;
             foreach (var b in def.Bindings)
-                if (b.Payload == TriggerPayload.EmitProjectilePattern && b.PatternDefIndex >= 0
+                if (b.Payload == EffectKind.EmitProjectilePattern && b.PatternDefIndex >= 0
                     && def.Patterns[b.PatternDefIndex].Id == cannon.id)
                 {
                     found = true;

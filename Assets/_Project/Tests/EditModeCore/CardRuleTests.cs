@@ -28,7 +28,7 @@ namespace Wassup.Tests.EditMode.Core
 
         private static BindingDef Blast(MatchDefinition def, TriggerKind trigger)
         {
-            var r = CardRule(trigger, TriggerPayload.SelfTileAoe);
+            var r = CardRule(trigger, EffectKind.SelfTileAoe);
             r.Magnitude = 5f;
             r.TileRange = 1;
             r.Period = 1;
@@ -121,7 +121,7 @@ namespace Wassup.Tests.EditMode.Core
             // last_flame — 치명 타이머의 끝은 **출처 없는 죽음**이다(옛 `LethalTimerSystem` 이 `DeadTag` 를 붙였다). 처치 사건이
             // 안 나므로 각성·점수를 주지 않는다. 7b 는 「타이머가 선다」까지만 봤다(`CardAttachTests`).
             var def = CoreMatchFixtures.Definition();
-            var rule = CardRule(TriggerKind.None, TriggerPayload.SelfBuffLethal);
+            var rule = CardRule(TriggerKind.None, EffectKind.SelfBuffLethal);
             rule.Magnitude = 1.9f;
             rule.Duration = 0.5f;
             rule.FireCap = 1;

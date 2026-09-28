@@ -18,7 +18,7 @@ namespace Wassup.Tests.EditModeAssets
     // 거절했기 때문이다. 검증이 한 함수가 된 뒤 같은 저작을 메모리 SO 로 만들어 카드 빌더에 넣으면 경고 0 으로 굽히고,
     // 굽힌 줄이 탐침의 손조립 줄과 **필드 동치**여야 한다. 에셋은 만들지 않는다(메모리에서 만들고 버린다).
     //
-    // 동치에서 빼는 것: 진단 이름(`Label`) · 실행자 참조(`Effect` — 같은 스킬 번호인지만 본다) · 코어 효과(카드는 안 든다).
+    // 동치에서 빼는 것: 진단 이름(`Label`) · 실행자 참조(`Skill` — 같은 스킬 번호인지만 본다) · 코어 효과(카드는 안 든다).
     // 빌더는 선택자 셋(CC · 스택 · 부채꼴)을 **명시 기본값**으로 옮긴다(`BindingDefinitionBuilder` 머리말 — 0 이 진짜처럼
     // 보이는 함정) — 두 효과는 그 셋을 안 읽으므로 기대값에 빌더의 기본값을 얹는다.
     public class UnifiedEffectBakeFixtureTests
@@ -95,7 +95,7 @@ namespace Wassup.Tests.EditModeAssets
             Assert.AreEqual(expected.SkillId, actual.SkillId, "실행자(스킬 번호)");
             foreach (var f in typeof(BindingDef).GetFields(BindingFlags.Public | BindingFlags.Instance))
             {
-                if (f.Name == nameof(BindingDef.Label) || f.Name == nameof(BindingDef.Effect) || f.Name == nameof(BindingDef.CoreEffect)) continue;
+                if (f.Name == nameof(BindingDef.Label) || f.Name == nameof(BindingDef.Skill) || f.Name == nameof(BindingDef.CoreSkill)) continue;
                 Assert.AreEqual(f.GetValue(expected), f.GetValue(actual), $"필드 {f.Name} 이 탐침의 손조립 줄과 다르다");
             }
         }

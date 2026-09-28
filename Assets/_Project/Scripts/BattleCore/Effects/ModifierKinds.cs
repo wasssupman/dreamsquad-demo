@@ -77,8 +77,8 @@ namespace Wassup.BattleCore.Effects
         OnPlace = 1,
         Tile = 2,
         AllyField = 3,
-        /// <summary>드림캐쳐 카드. 판별자 = 바인딩 `instanceId`(카드마다 자기 칸).</summary>
-        Card = 4,
+        /// <summary>규칙 인스턴스 소유 버프(오늘 = 드림캐쳐 카드). 판별자 = 바인딩 `instanceId`(인스턴스마다 자기 칸). 정수 4 유지.</summary>
+        BindingInstance = 4,
         /// <summary>스택 임계 파생. 판별자 = `StackKind`(불과 얼음이 서로 다른 칸).</summary>
         StackDerived = 5,
         Gimmick = 6,
@@ -114,8 +114,8 @@ namespace Wassup.BattleCore.Effects
         /// <summary>스택 임계 파생 — 종류마다 자기 칸(불 스택이 얼음 스택을 안 덮는다).</summary>
         public static SlotTag OfStack(StackKind kind) => new SlotTag(SlotKind.StackDerived, (int)kind);
 
-        /// <summary>카드 — 부착 인스턴스마다 자기 칸(같은 카드 두 장이 서로 안 덮는다).</summary>
-        public static SlotTag OfCard(int instanceId) => new SlotTag(SlotKind.Card, instanceId);
+        /// <summary>규칙 인스턴스 — 부착 인스턴스마다 자기 칸(같은 카드 두 장이 서로 안 덮는다).</summary>
+        public static SlotTag OfBinding(int instanceId) => new SlotTag(SlotKind.BindingInstance, instanceId);
 
         public bool Equals(SlotTag other) => Kind == other.Kind && Discriminator == other.Discriminator;
 

@@ -19,7 +19,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 드래곤_브레스는_N타마다_콘_안의_적만_태우고_발동_사건이_콘을_싣는다()
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f, enemyDamage: 1f, enemyRange: 3f, enemyHealth: 9999f);
-            var breath = Rule(TriggerKind.AttackN, TriggerPayload.AreaBreath);
+            var breath = Rule(TriggerKind.AttackN, EffectKind.AreaBreath);
             breath.Period = 1; breath.Magnitude = 50f; breath.TileRange = 3;
             breath.ConeHalfAngleDeg = 50f;
             breath.ConeSinHalf = math.sin(math.radians(50f)); breath.ConeCosHalf = math.cos(math.radians(50f));
@@ -47,7 +47,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 마메모_자장가는_주기마다_가까운_상대를_재운다()
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f);
-            var lullaby = Rule(TriggerKind.PeriodicTimer, TriggerPayload.AreaSleep);
+            var lullaby = Rule(TriggerKind.PeriodicTimer, EffectKind.AreaSleep);
             lullaby.PeriodSeconds = 0.5f; lullaby.Magnitude = 1f; lullaby.TileRange = 4; lullaby.Duration = 2f;
             GiveEnemy(def, 0, lullaby);
             var m = CoreMatchFixtures.BeginBattle(def);
@@ -64,7 +64,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             def.Units[0].Cost = 0;
-            var onPlace = Rule(TriggerKind.OnPlace, TriggerPayload.GrantShield);
+            var onPlace = Rule(TriggerKind.OnPlace, EffectKind.GrantShield);
             onPlace.Magnitude = 40f; onPlace.TileRange = 2;
             GiveUnit(def, 0, onPlace);
             var m = CoreMatchFixtures.BeginBattle(def);
@@ -82,9 +82,9 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             def.Units[0].Cost = 0;
-            var slow = Rule(TriggerKind.OnPlace, TriggerPayload.OpponentStatAura);
+            var slow = Rule(TriggerKind.OnPlace, EffectKind.OpponentStatAura);
             slow.Magnitude = -40f; slow.TileRange = 3; slow.Duration = 5f; slow.StatKind = (int)SkillStatKind.MoveSpeedMul;
-            var bleed = Rule(TriggerKind.OnPlace, TriggerPayload.AreaApplyStack);
+            var bleed = Rule(TriggerKind.OnPlace, EffectKind.AreaApplyStack);
             bleed.Magnitude = 2f; bleed.TileRange = 3; bleed.Duration = 4f; bleed.StackKind = (int)SkillStackKind.Bleed;
             GiveUnit(def, 0, slow, bleed);
             var m = CoreMatchFixtures.BeginBattle(def);
@@ -102,7 +102,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f, enemyHealth: 100f);
             int blast = AddBlastProjectile(def);
             def.Enemies[0].BodyRadius = 0.5f;
-            var quake = Rule(TriggerKind.HealthThreshold, TriggerPayload.SelfTileAoe);
+            var quake = Rule(TriggerKind.HealthThreshold, EffectKind.SelfTileAoe);
             quake.Fraction = 0.2f; quake.Magnitude = 60f; quake.TileRange = 2; quake.DataIndex = blast;
             GiveEnemy(def, 0, quake);
             var m = CoreMatchFixtures.BeginBattle(def);

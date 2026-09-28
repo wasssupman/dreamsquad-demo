@@ -83,7 +83,7 @@ namespace Wassup.Tests.EditMode.Core
             var (m, d, _, _) = Duel();
             var resolved = CoreCombatFixtures.Listen(m, CoreEventKind.AttackResolved);
             // 부여 — 스킬(`GrantSelfCharge`)이 의도를 낸다. 소비 규칙은 모른다.
-            var grant = SkillRouting.Resolve(TriggerKind.OnDamagedN, TriggerPayload.NextAttackDoubleFire);
+            var grant = SkillRouting.Resolve(TriggerKind.OnDamagedN, EffectKind.NextAttackDoubleFire);
             var rule = Probe(TriggerKind.None, grant);
             rule.Magnitude = 3f;
             var b = m.Bindings.Attach(d, in rule, -1, 0);

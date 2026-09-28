@@ -432,7 +432,7 @@ namespace Wassup.BattleCoreUnity.View
         // 옛 결정). 유닛 저작 스킬(배치 스킬 등)은 카드가 아니다 — 규칙 줄의 출처로 가른다.
         private void OnTriggerFired(CoreEvent e)
         {
-            if ((Wassup.BattleCore.Trigger.TriggerPayload)(int)e.Amount == Wassup.BattleCore.Trigger.TriggerPayload.AreaBreath
+            if ((Wassup.BattleCore.Trigger.EffectKind)(int)e.Amount == Wassup.BattleCore.Trigger.EffectKind.AreaBreath
                 && e.AttackShape.kind == Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind)
                 SpawnAreaBreath(e);
             var def = _driver != null ? _driver.Definition : null;

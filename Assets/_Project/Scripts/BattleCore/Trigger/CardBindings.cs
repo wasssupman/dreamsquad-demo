@@ -36,7 +36,7 @@ namespace Wassup.BattleCore.Trigger
                 if (IsMarked(host)) return RejectReason.DuplicateState;
                 var marks = card.Bindings;
                 for (int i = 0; marks != null && i < marks.Length; i++)
-                    if (InTable(def, marks[i]) && def.Bindings[marks[i]].Payload == TriggerPayload.BountyMark)
+                    if (InTable(def, marks[i]) && def.Bindings[marks[i]].Payload == EffectKind.BountyMark)
                         rows?.Add(marks[i]);
                 return rows != null && rows.Count > 0 ? RejectReason.None : RejectReason.NoContribution;
             }
@@ -95,7 +95,7 @@ namespace Wassup.BattleCore.Trigger
                 var b = att.Bindings[i];
                 if (b.Def.Trigger != TriggerKind.None) continue;
                 TriggerEvent e;
-                if (b.Def.Payload == TriggerPayload.BountyMark)
+                if (b.Def.Payload == EffectKind.BountyMark)
                 {
                     // 표식은 **플레이어가 건다** — 시전자가 없다(옛 `Caster = Entity.Null`). 대상 = 그 적.
                     e = new TriggerEvent
@@ -140,7 +140,7 @@ namespace Wassup.BattleCore.Trigger
             if (enemy == null) return false;
             var list = enemy.Bindings;
             for (int i = 0; i < list.Count; i++)
-                if (list[i].Def.Payload == TriggerPayload.BountyMark && list[i].Def.Origin == BindingOrigin.Card) return true;
+                if (list[i].Def.Payload == EffectKind.BountyMark && list[i].Def.Origin == BindingOrigin.Card) return true;
             return false;
         }
 

@@ -61,7 +61,7 @@ namespace Wassup.Tests.EditMode.Core
         /// <summary>짱쎈 행 55 — 경계 × 순간이동(착지 슬램 50 · 반경 1). 저작은 magnitude = 밀집 탐색 반경 · tileRange = 착지 링.</summary>
         private static BindingDef BlinkRow(int slamDef, float fraction = 0.5f)
         {
-            var r = Rule(TriggerKind.HealthThreshold, TriggerPayload.SelfBlink);
+            var r = Rule(TriggerKind.HealthThreshold, EffectKind.SelfBlink);
             r.Label = "짱쎈 순간이동(방어유닛 소유)";
             r.Fraction = fraction;
             r.Magnitude = 2f;
@@ -76,7 +76,7 @@ namespace Wassup.Tests.EditMode.Core
         /// <summary>짱쎈 행 56 — 경계 × 궁극기 도약(예고 2초 · 슬램 100 · 반경 2 · fireCap 1 = 빌더가 굽는 값).</summary>
         private static BindingDef UltRow(int slamDef, float fraction = 0.8f)
         {
-            var r = Rule(TriggerKind.HealthThreshold, TriggerPayload.UltimateLeap);
+            var r = Rule(TriggerKind.HealthThreshold, EffectKind.UltimateLeap);
             r.Label = "짱쎈 궁극기 도약(방어유닛 소유)";
             r.Fraction = fraction;
             r.Magnitude = 2f;
@@ -93,7 +93,7 @@ namespace Wassup.Tests.EditMode.Core
         /// <summary>짱쎈 행 54 — 경계 × 자기 자리 폭발.</summary>
         private static BindingDef QuakeRow(int slamDef)
         {
-            var r = Rule(TriggerKind.HealthThreshold, TriggerPayload.SelfTileAoe);
+            var r = Rule(TriggerKind.HealthThreshold, EffectKind.SelfTileAoe);
             r.Label = "짱쎈 지진(방어유닛 소유)";
             r.Fraction = 0.2f;
             r.Magnitude = 60f;
@@ -182,7 +182,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 방어유닛_숙주도_짱쎈_세_조합이_조합_검증을_통과하고_라우팅이_있다()
         {
             // 빌더가 방어유닛 능력에 부르는 그 검증(`hostIsEnemy: false`).
-            foreach (var payload in new[] { TriggerPayload.SelfBlink, TriggerPayload.UltimateLeap, TriggerPayload.SelfTileAoe })
+            foreach (var payload in new[] { EffectKind.SelfBlink, EffectKind.UltimateLeap, EffectKind.SelfTileAoe })
             {
                 var c = new EffectCombo { Trigger = TriggerKind.HealthThreshold, Payload = payload, HostIsEnemy = false };
                 Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(in c), $"{payload} × 방어유닛");

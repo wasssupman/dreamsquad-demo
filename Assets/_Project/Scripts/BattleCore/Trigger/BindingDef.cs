@@ -9,7 +9,7 @@ namespace Wassup.BattleCore.Trigger
     //
     // 옛 `DcTriggerSlot` 을 옮긴 것이 아니다 — 그것은 Burst 가 읽을 수 있는 **평평한 한 줄**이라
     // `tileRange` 한 칸이 7~13가지 뜻을 겸직했다(S24). 여기서는 ⑴ 실행자를 **concrete 참조**로 들고
-    // (`Effect`, 정적 라우팅 표가 bake 때 한 번 고른다) ⑵ 수치는 저작 이름 그대로 싣고, 이름 붙은 읽기는
+    // (`Skill`, 정적 라우팅 표가 bake 때 한 번 고른다) ⑵ 수치는 저작 이름 그대로 싣고, 이름 붙은 읽기는
     // `Wassup.Skills` 의 params 뷰가 한다(`AreaSleepParams.SleepCount` …) — 뷰는 그 어셈블리의 것이고
     // 손대지 않는다.
     //
@@ -22,7 +22,7 @@ namespace Wassup.BattleCore.Trigger
 
         // ── 사건(Event) ──
         public TriggerKind Trigger;
-        public TriggerPayload Payload;
+        public EffectKind Payload;
         public BindingSubject Subject;
         /// <summary>`Any` 바인딩의 주어 필터(직업 비트). 0 = 없음. 저작 노출 없음 — 7b 의 상속 바인딩이 쓴다.</summary>
         public int SubjectClassMask;
@@ -52,16 +52,16 @@ namespace Wassup.BattleCore.Trigger
 
         // ── 효과(Effect) ──
         /// <summary>실행자. **무상태** concrete 라 한 벌을 공유한다. null = 스킬 아님(bake 가 이미 거절했다).</summary>
-        public ISkill Effect;
+        public ISkill Skill;
 
         /// <summary>
         /// unit 7d — **코어가 직접 실행하는 효과**(시즌 기믹 4종). `Wassup.Skills` 의 의도 어휘에 없는 일
         /// (열기 한 걸음 · 피로 요청 · 픽업 놓기 · 사직서 떨어뜨리기)이라 `ISkill` 로 못 싣는다 — 그 어셈블리는
-        /// 무변이 계약이다(7a). 이 칸이 차 있으면 디스패처가 `Effect` 대신 이것을 부른다.
+        /// 무변이 계약이다(7a). 이 칸이 차 있으면 디스패처가 `Skill` 대신 이것을 부른다.
         /// ⚠ 정의표(`MatchDefinition.Bindings`)의 줄에는 **서지 않는다** — 판 규칙이 런타임에 조립하는 줄(`DefIndex = -1`)
         /// 만 든다. 그래서 해시에도 안 실린다(값은 이미 `GimmickDef` 가 싣는다).
         /// </summary>
-        public ICoreEffect CoreEffect;
+        public ICoreEffect CoreSkill;
 
         // 수치 — `SkillParams` 의 원시 칸과 같은 이름. 읽는 쪽이 payload 별 뷰로 이름을 붙인다.
         public float Magnitude;
@@ -122,10 +122,10 @@ namespace Wassup.BattleCore.Trigger
             Lifetime = BindingLifetime.Owner,
         };
 
-        public int SkillId => Effect != null ? Effect.SkillId : SkillRouting.NotRouted;
+        public int SkillId => Skill != null ? Skill.SkillId : SkillRouting.NotRouted;
 
         /// <summary>실행자가 있나 — 스킬이든 코어 효과든.</summary>
-        public bool HasEffect => Effect != null || CoreEffect != null;
+        public bool HasEffect => Skill != null || CoreSkill != null;
 
         /// <summary>
         /// 이번 발동의 params. 사건 스냅샷(층)은 호출부가 넘긴다 — **드레인 시점에 다시 읽지 않는다**.

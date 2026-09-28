@@ -214,10 +214,10 @@ namespace Wassup.Tests.EditModeAssets
             ref var card = ref _def.Cards[row];
             int rule = card.Kind == CardKind.Active ? card.ActiveBinding
                      : card.Bindings != null && card.Bindings.Length > 0 ? card.Bindings[0] : card.SquadBindings[0];
-            var effect = _def.Bindings[rule].Effect;
+            var effect = _def.Bindings[rule].Skill;
             try
             {
-                _def.Bindings[rule].Effect = null;
+                _def.Bindings[rule].Skill = null;
                 var unrouted = CardProbe.Run(_def, row);
                 TestContext.WriteLine("라우팅 제거 " + unrouted);
                 Assert.IsFalse(unrouted.Ok, "실행자를 뺐는데 ○: " + unrouted);
@@ -225,7 +225,7 @@ namespace Wassup.Tests.EditModeAssets
             }
             finally
             {
-                _def.Bindings[rule].Effect = effect;
+                _def.Bindings[rule].Skill = effect;
             }
         }
     }

@@ -243,8 +243,8 @@ namespace Wassup.BattleCore
             // 그 카드의 규칙 줄만 기록기로 감싼다(표는 복사본이다).
             var rows = (BindingDef[])source.Bindings.Clone();
             foreach (var r in Rows(source.Cards[cardRow]))
-                if (r >= 0 && r < rows.Length && rows[r].Effect != null && !(rows[r].Effect is RecordingSkill))
-                    rows[r].Effect = new RecordingSkill(rows[r].Effect, log);
+                if (r >= 0 && r < rows.Length && rows[r].Skill != null && !(rows[r].Skill is RecordingSkill))
+                    rows[r].Skill = new RecordingSkill(rows[r].Skill, log);
             def.Bindings = rows;
             def.ConfigHash = "";
             return def;

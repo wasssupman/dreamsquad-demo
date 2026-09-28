@@ -1,16 +1,16 @@
 namespace Wassup.BattleCore.Trigger
 {
-    // battle-core-rebuild unit 7a — 트리거 레이어의 **저작 어휘 미러**.
+    // battle-core-rebuild unit 7a — 트리거 레이어의 어휘. **이 enum 들이 정본이다**(skill-data-table 2026-09-28).
     //
-    // 저작 enum(`Wassup.Data.DcTriggerKind` 10 · `DcPayloadKind` 33 · 게이트 2축)은 시트가 **enum 값으로
-    // 왕복**하므로 append-only 다. 코어는 엔진을 모르는 어셈블리라 그 타입을 부를 수 없어 **같은 번호의
-    // 미러**를 든다. 어셈블리가 갈려 컴파일러가 못 잡으므로 `CoreTriggerEnumPinTests`(EditModeAssets —
-    // 저작 타입이 거기서만 보인다)가 값·개수를 모두 대조한다. 변환은 `MatchDefinitionBuilder` 한 곳이고
-    // **이름으로** 옮긴다(`PatternSelectionRule` 이 번호 캐스트로 12 중 11 을 오독한 선례).
+    // 저작 enum(`Wassup.Data.DcTriggerKind` 10 · `DcPayloadKind` 33 · 게이트 2축)이 **같은 번호의 거울**이다 — 거꾸로가
+    // 아니다. `Wassup.Runtime` 은 이미 `Wassup.BattleCore` 를 참조하므로 저작이 이 타입을 직접 쓸 수 있고, 거울 · 번역
+    // 함수(`ToCore*`) · 번호 핀(`CoreTriggerEnumPinTests`)은 skill-data-table unit 4 에서 은퇴한다. 그때까지는 핀 테스트가
+    // 값·개수를 대조하고 변환은 `MatchDefinitionBuilder` 한 곳에서 **이름으로** 옮긴다(`PatternSelectionRule` 이 번호
+    // 캐스트로 12 중 11 을 오독한 선례).
     //
     // ⚠ append-only. 앞에 끼우면 저작 에셋의 byte 값이 다른 뜻으로 읽힌다.
 
-    /// <summary>「언제」 — 저작 `DcTriggerKind` 미러.</summary>
+    /// <summary>「언제」 — 정본(저작 `DcTriggerKind` 가 거울).</summary>
     public enum TriggerKind : byte
     {
         /// <summary>트리거 없음 = **부착되는 순간**(카드 3장). 감지자가 아니라 부착 지점이 발화시킨다.</summary>
@@ -27,8 +27,8 @@ namespace Wassup.BattleCore.Trigger
         OnPlace = 9,
     }
 
-    /// <summary>「무엇을」 — 저작 `DcPayloadKind` 미러(0~32 = 33값).</summary>
-    public enum TriggerPayload : byte
+    /// <summary>「무엇을」 — 효과 종류(0~32 = 33값). 정본(저작 `DcPayloadKind` 가 거울). 옛 이름 `TriggerPayload`.</summary>
+    public enum EffectKind : byte
     {
         None = 0,
         ProjectileToTarget = 1,
@@ -70,10 +70,10 @@ namespace Wassup.BattleCore.Trigger
         AreaDot = 32,
     }
 
-    /// <summary>게이트 종류 — 저작 `DcGateKind` 미러.</summary>
+    /// <summary>게이트 종류 — 정본(저작 `DcGateKind` 가 거울).</summary>
     public enum GateKind : byte { None = 0, HpBelow = 1 }
 
-    /// <summary>게이트의 주어 — 저작 `DcGateSubject` 미러.</summary>
+    /// <summary>게이트의 주어 — 정본(저작 `DcGateSubject` 가 거울).</summary>
     public enum GateSubject : byte { Self = 0, EventTarget = 1 }
 
     /// <summary>

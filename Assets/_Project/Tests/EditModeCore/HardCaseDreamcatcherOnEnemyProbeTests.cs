@@ -60,7 +60,7 @@ namespace Wassup.Tests.EditMode.Core
         /// <summary>드림캐쳐 「별똥 타격」 카드 규칙 줄 — 하드 케이스 2 의 타격 운석과 같은 모양 + 낙하 0.5초.</summary>
         private static BindingDef StarfallRow()
         {
-            var r = CoreCardFixtures.CardRule(TriggerKind.AttackN, TriggerPayload.ProjectileToTarget);
+            var r = CoreCardFixtures.CardRule(TriggerKind.AttackN, EffectKind.ProjectileToTarget);
             r.Label = "별똥 타격(적 소유)";
             r.Subject = BindingSubject.Self;
             r.Period = 1;
@@ -126,7 +126,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             def.Mode.Cost = new CostDef { Start = 0f, Max = 100f, RegenPerSec = 0f };   // 재생 0 — 늘면 규칙 몫이다
-            var r = CoreCardFixtures.CardRule(TriggerKind.PeriodicTimer, TriggerPayload.GainCost);
+            var r = CoreCardFixtures.CardRule(TriggerKind.PeriodicTimer, EffectKind.GainCost);
             r.Label = "코스트 획득(적 소유)";
             r.PeriodSeconds = 1f;
             r.Magnitude = CostGain;
@@ -206,7 +206,7 @@ namespace Wassup.Tests.EditMode.Core
         /// <summary>개사기 카드 규칙 줄 — 하드 케이스 A/AA 의 `CardRow` 와 같은 모양(스코프 3).</summary>
         private static BindingDef GaesagiRow()
         {
-            var r = CoreCardFixtures.CardRule(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern);
+            var r = CoreCardFixtures.CardRule(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern);
             r.Label = "개사기(적 소유)";
             r.Subject = BindingSubject.Any;
             r.SubjectFilter = BindingSubjectFilter.PlacedDefender;
@@ -276,7 +276,7 @@ namespace Wassup.Tests.EditMode.Core
             // 검증과 코어가 어긋난다 — 라이브 영향 0(적이 카드 규칙을 드는 경로가 없다).
             var c = new EffectCombo
             {
-                Trigger = TriggerKind.OnPlace, Subject = BindingSubject.Any, Payload = TriggerPayload.EmitProjectilePattern,
+                Trigger = TriggerKind.OnPlace, Subject = BindingSubject.Any, Payload = EffectKind.EmitProjectilePattern,
                 HasProjectile = true, Binding = BindingClass.Entity, FanOut = true, HostIsEnemy = true,
             };
             Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(in c), "검증 = 영영 안 터짐");
@@ -302,7 +302,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var c = new EffectCombo
             {
-                Trigger = TriggerKind.OnPlace, Subject = BindingSubject.Self, Payload = TriggerPayload.EmitProjectilePattern,
+                Trigger = TriggerKind.OnPlace, Subject = BindingSubject.Self, Payload = EffectKind.EmitProjectilePattern,
                 HostIsEnemy = true,
             };
             Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(in c), "적 × OnPlace Self = 감지자 없음");

@@ -22,7 +22,7 @@ namespace Wassup.BattleCore.Trigger
         public TriggerKind Trigger;
         /// <summary>누구의 사건을 듣나(저작 주체 축 — `Self` 기본 · 「남의 배치」 = `Any`).</summary>
         public BindingSubject Subject;
-        public TriggerPayload Payload;
+        public EffectKind Payload;
         /// <summary>효과가 탄(직접 탄 · 발사 명세 탄)을 드나. 거짓이면 `Binding` 은 읽지 않는다.</summary>
         public bool HasProjectile;
         /// <summary>그 탄 궤적의 결합(대상 · 칸 · 방향).</summary>
@@ -62,7 +62,7 @@ namespace Wassup.BattleCore.Trigger
             // ⑥ 「반경 안 전원」은 대상 결합 탄만 — 칸 결합은 조준이 둘이고 방향 결합은 대상이 없다.
             if (c.FanOut && (!c.HasProjectile || c.Binding != BindingClass.Entity)) return ComboVerdict.NoOrigin;
             // ⑦ 도발은 어그로를 드는 몸에서 나온다 — 그 몸이 아니면 효과가 받을 원점이 아니다.
-            if (c.Payload == TriggerPayload.AreaTaunt && c.HostCannotHoldAggro) return ComboVerdict.ShapeMismatch;
+            if (c.Payload == EffectKind.AreaTaunt && c.HostCannotHoldAggro) return ComboVerdict.ShapeMismatch;
             return ComboVerdict.Allowed;
         }
 
@@ -83,10 +83,10 @@ namespace Wassup.BattleCore.Trigger
             => trigger == TriggerKind.OnDeath || trigger == TriggerKind.OnRetire;
 
         // 떠난 자리만으로 일하는 효과 — 자리 폭발(`DeathSiteBlastSkill`) · 자리 장판(`DeathSiteHazardSkill`) · 분열(7d) · 인수인계(손패 선언).
-        private static bool UsesOnlySite(TriggerPayload payload)
-            => payload == TriggerPayload.SelfTileAoe
-            || payload == TriggerPayload.SpawnHazard
-            || payload == TriggerPayload.SplitOnDeath
-            || payload == TriggerPayload.RecallAttachedToFront;
+        private static bool UsesOnlySite(EffectKind payload)
+            => payload == EffectKind.SelfTileAoe
+            || payload == EffectKind.SpawnHazard
+            || payload == EffectKind.SplitOnDeath
+            || payload == EffectKind.RecallAttachedToFront;
     }
 }

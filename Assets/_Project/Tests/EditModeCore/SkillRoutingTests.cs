@@ -12,20 +12,20 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         public void 트리거별_분기_일곱은_폴백과_다른_concrete_로_간다()
         {
-            Assert.AreEqual(DeathSiteBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnKill, TriggerPayload.SelfTileAoe), "시체 폭발");
-            Assert.AreEqual(DeathSiteHazardSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnKill, TriggerPayload.SpawnHazard), "잿불");
-            Assert.AreEqual(DeathSiteBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnDeath, TriggerPayload.SelfTileAoe), "작별 선물");
-            Assert.AreEqual(SelfAreaBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnDamagedN, TriggerPayload.SelfTileAoe), "피격 폭발");
-            Assert.AreEqual(SelfAreaBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnShieldBreak, TriggerPayload.SelfTileAoe), "파열 폭발");
-            Assert.AreEqual(AreaSleepSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnShieldBreak, TriggerPayload.AreaSleep), "파열 수면");
-            Assert.AreEqual(DeathSiteBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnRetire, TriggerPayload.SelfTileAoe), "퇴근 운석");
-            Assert.AreEqual(SelfBuffLethalSkill.Id, SkillRouting.SkillIdFor(TriggerKind.None, TriggerPayload.SelfBuffLethal));
-            Assert.AreEqual(DreamCocoonSkill.Id, SkillRouting.SkillIdFor(TriggerKind.None, TriggerPayload.DreamCocoon));
-            Assert.AreEqual(BountyMarkSkill.Id, SkillRouting.SkillIdFor(TriggerKind.None, TriggerPayload.BountyMark));
-            Assert.AreEqual(ThresholdSelfBuffSkill.Id, SkillRouting.SkillIdFor(TriggerKind.HealthThreshold, TriggerPayload.SelfStatBuff), "빈사 버프는 출처가 다르다");
+            Assert.AreEqual(DeathSiteBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnKill, EffectKind.SelfTileAoe), "시체 폭발");
+            Assert.AreEqual(DeathSiteHazardSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnKill, EffectKind.SpawnHazard), "잿불");
+            Assert.AreEqual(DeathSiteBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnDeath, EffectKind.SelfTileAoe), "작별 선물");
+            Assert.AreEqual(SelfAreaBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnDamagedN, EffectKind.SelfTileAoe), "피격 폭발");
+            Assert.AreEqual(SelfAreaBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnShieldBreak, EffectKind.SelfTileAoe), "파열 폭발");
+            Assert.AreEqual(AreaSleepSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnShieldBreak, EffectKind.AreaSleep), "파열 수면");
+            Assert.AreEqual(DeathSiteBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnRetire, EffectKind.SelfTileAoe), "퇴근 운석");
+            Assert.AreEqual(SelfBuffLethalSkill.Id, SkillRouting.SkillIdFor(TriggerKind.None, EffectKind.SelfBuffLethal));
+            Assert.AreEqual(DreamCocoonSkill.Id, SkillRouting.SkillIdFor(TriggerKind.None, EffectKind.DreamCocoon));
+            Assert.AreEqual(BountyMarkSkill.Id, SkillRouting.SkillIdFor(TriggerKind.None, EffectKind.BountyMark));
+            Assert.AreEqual(ThresholdSelfBuffSkill.Id, SkillRouting.SkillIdFor(TriggerKind.HealthThreshold, EffectKind.SelfStatBuff), "빈사 버프는 출처가 다르다");
             // 같은 payload 의 폴백은 살아 있는 시전자의 발밑이다
-            Assert.AreEqual(SelfAreaBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.HealthThreshold, TriggerPayload.SelfTileAoe));
-            Assert.AreEqual(SelfStatBuffSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnKill, TriggerPayload.SelfStatBuff));
+            Assert.AreEqual(SelfAreaBlastSkill.Id, SkillRouting.SkillIdFor(TriggerKind.HealthThreshold, EffectKind.SelfTileAoe));
+            Assert.AreEqual(SelfStatBuffSkill.Id, SkillRouting.SkillIdFor(TriggerKind.OnKill, EffectKind.SelfStatBuff));
         }
 
         [Test]
@@ -33,11 +33,11 @@ namespace Wassup.Tests.EditMode.Core
         {
             // 옛 전투에서 이 조합이 라우팅 0 을 받아 조용히 죽어 있었다(EditMode 는 전부 초록이었다).
             Assert.AreEqual(GrantSelfChargeSkill.Id,
-                SkillRouting.SkillIdFor(TriggerKind.OnPlace, TriggerPayload.NextAttackDoubleFire));
+                SkillRouting.SkillIdFor(TriggerKind.OnPlace, EffectKind.NextAttackDoubleFire));
             Assert.AreEqual(GrantSelfChargeSkill.Id,
-                SkillRouting.SkillIdFor(TriggerKind.OnDamagedN, TriggerPayload.NextAttackDoubleFire));
+                SkillRouting.SkillIdFor(TriggerKind.OnDamagedN, EffectKind.NextAttackDoubleFire));
             Assert.AreEqual(DeathSiteHazardSkill.Id,
-                SkillRouting.SkillIdFor(TriggerKind.PeriodicTimer, TriggerPayload.SpawnHazard),
+                SkillRouting.SkillIdFor(TriggerKind.PeriodicTimer, EffectKind.SpawnHazard),
                 "장판도 트리거 블록 밖에 둔다");
         }
 
@@ -45,7 +45,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 스킬인_payload_는_어느_트리거든_라우팅이_있다_아니면_부착_전용이다()
         {
             // 「스킬인데 라우팅 0」 = 발화하고도 아무 일이 안 일어나는 침묵. bake 가 거절하지만 표 자체도 닫는다.
-            foreach (TriggerPayload p in System.Enum.GetValues(typeof(TriggerPayload)))
+            foreach (EffectKind p in System.Enum.GetValues(typeof(EffectKind)))
             {
                 if (!SkillRouting.IsSkill(p)) continue;
                 foreach (TriggerKind t in System.Enum.GetValues(typeof(TriggerKind)))
@@ -68,9 +68,9 @@ namespace Wassup.Tests.EditMode.Core
         {
             var notSkills = new[]
             {
-                TriggerPayload.None, TriggerPayload.PlacementAura, TriggerPayload.HeavyStrike,
-                TriggerPayload.SplitOnDeath, TriggerPayload.RecallAttachedToFront,
-                TriggerPayload.AreaBarrage, TriggerPayload.SelfWarmupBuff,
+                EffectKind.None, EffectKind.PlacementAura, EffectKind.HeavyStrike,
+                EffectKind.SplitOnDeath, EffectKind.RecallAttachedToFront,
+                EffectKind.AreaBarrage, EffectKind.SelfWarmupBuff,
             };
             foreach (var p in notSkills)
             {
@@ -119,10 +119,10 @@ namespace Wassup.Tests.EditMode.Core
         {
             var selfArea = new[]
             {
-                TriggerPayload.SelfTileAoe, TriggerPayload.AreaSleep, TriggerPayload.AreaCc,
-                TriggerPayload.AreaDot, TriggerPayload.AreaApplyStack, TriggerPayload.AreaTaunt,
-                TriggerPayload.AllyMoveSpeedAura, TriggerPayload.AllyStatAura,
-                TriggerPayload.OpponentStatAura, TriggerPayload.GrantShield,
+                EffectKind.SelfTileAoe, EffectKind.AreaSleep, EffectKind.AreaCc,
+                EffectKind.AreaDot, EffectKind.AreaApplyStack, EffectKind.AreaTaunt,
+                EffectKind.AllyMoveSpeedAura, EffectKind.AllyStatAura,
+                EffectKind.OpponentStatAura, EffectKind.GrantShield,
             };
             foreach (var p in selfArea)
             {
@@ -136,21 +136,21 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         public void DeathSiteBlast_x_OnDeath_와_OnRetire_는_다른_형이다()
         {
-            var death = RangeCatalog.Resolve(TriggerKind.OnDeath, TriggerPayload.SelfTileAoe, 1);
-            var retire = RangeCatalog.Resolve(TriggerKind.OnRetire, TriggerPayload.SelfTileAoe, 1);
+            var death = RangeCatalog.Resolve(TriggerKind.OnDeath, EffectKind.SelfTileAoe, 1);
+            var retire = RangeCatalog.Resolve(TriggerKind.OnRetire, EffectKind.SelfTileAoe, 1);
             Assert.AreEqual(RangeMetric.SelfArea, death.Metric, "시체가 터진다 = 몸에서 나오는 것");
             Assert.AreEqual(RangeMetric.CellArea, retire.Metric, "운석이 비워진 칸에 내린다 = 자리에 떨어지는 것");
             Assert.AreEqual(2.5f, death.RadiusWithOrigin(1.5f), 1e-6f);
             Assert.AreEqual(1.5f, retire.RadiusWithOrigin(1.5f), 1e-6f, "퇴근한 유닛의 몸은 안 붙는다");
             Assert.AreEqual(RangeShape.None,
-                RangeCatalog.Resolve(TriggerKind.OnKill, TriggerPayload.SelfTileAoe, 1).Shape,
+                RangeCatalog.Resolve(TriggerKind.OnKill, EffectKind.SelfTileAoe, 1).Shape,
                 "처치 = 죽인 적의 자리 — 부착 시점엔 모른다");
         }
 
         [Test]
         public void 탄_비행_거리는_원점_항_0_이다()
         {
-            var spec = RangeCatalog.Resolve(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern, 4);
+            var spec = RangeCatalog.Resolve(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern, 4);
             Assert.AreEqual(RangeMetric.Euclidean, spec.Metric);
             Assert.AreEqual(4f, spec.RadiusWithOrigin(1.5f), 1e-6f);
         }
@@ -160,13 +160,13 @@ namespace Wassup.Tests.EditMode.Core
         {
             var none = new[]
             {
-                TriggerPayload.AreaBreath, TriggerPayload.SelfOrbitProjectile, TriggerPayload.ProjectileToTarget,
-                TriggerPayload.ApplyCcToTarget, TriggerPayload.SelfStatBuff, TriggerPayload.GainCost,
-                TriggerPayload.SelfBlink, TriggerPayload.SpawnHazard,
+                EffectKind.AreaBreath, EffectKind.SelfOrbitProjectile, EffectKind.ProjectileToTarget,
+                EffectKind.ApplyCcToTarget, EffectKind.SelfStatBuff, EffectKind.GainCost,
+                EffectKind.SelfBlink, EffectKind.SpawnHazard,
             };
             foreach (var p in none)
                 Assert.AreEqual(RangeShape.None, RangeCatalog.Resolve(TriggerKind.PeriodicTimer, p, 3).Shape, p.ToString());
-            Assert.AreEqual(RangeShape.None, RangeCatalog.Resolve(TriggerKind.OnPlace, TriggerPayload.GrantShield, 0).Shape,
+            Assert.AreEqual(RangeShape.None, RangeCatalog.Resolve(TriggerKind.OnPlace, EffectKind.GrantShield, 0).Shape,
                 "실드 반경 0 = 자기만");
             Assert.AreEqual(0f, RangeSpec.None.RadiusWithOrigin(1f), "None 은 안 그린다(fail-closed)");
         }

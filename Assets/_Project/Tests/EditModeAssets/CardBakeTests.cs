@@ -59,7 +59,7 @@ namespace Wassup.Tests.EditModeAssets
                 {
                     Assert.AreEqual(CardKind.Active, c.Kind);
                     Assert.GreaterOrEqual(c.ActiveBinding, 0, cards[i].id);
-                    Assert.IsNotNull(def.Bindings[c.ActiveBinding].Effect, cards[i].id + " — 실행자");
+                    Assert.IsNotNull(def.Bindings[c.ActiveBinding].Skill, cards[i].id + " — 실행자");
                     Assert.AreEqual(cards[i].skill.NeedsTwoTiles, c.NeedsTwoCells, cards[i].id);
                     continue;
                 }
@@ -69,7 +69,7 @@ namespace Wassup.Tests.EditModeAssets
                 foreach (int r in c.Bindings ?? System.Array.Empty<int>())
                 {
                     Assert.AreEqual(BindingOrigin.Card, def.Bindings[r].Origin);
-                    Assert.IsNotNull(def.Bindings[r].Effect, def.Bindings[r].Label);
+                    Assert.IsNotNull(def.Bindings[r].Skill, def.Bindings[r].Label);
                 }
             }
         }
@@ -94,7 +94,7 @@ namespace Wassup.Tests.EditModeAssets
                 Assert.AreEqual(TriggerKind.OnPlace, speed.Trigger);
                 Assert.IsTrue(speed.RevokeOnExpire, "공속 — 소급 중화");
                 Assert.IsFalse(sleep.RevokeOnExpire, "수면 — 등록부에서만 빠진다");
-                Assert.IsInstanceOf<PlacementSleepSkill>(sleep.Effect);
+                Assert.IsInstanceOf<PlacementSleepSkill>(sleep.Skill);
             }
             Assert.Greater(found, 0, "라이브에 배치 오라 카드가 있다(느린 각성)");
         }
@@ -111,7 +111,7 @@ namespace Wassup.Tests.EditModeAssets
                 Assert.IsTrue(def.Cards[i].TargetsEnemies);
                 foreach (int r in def.Cards[i].Bindings)
                 {
-                    Assert.AreEqual(TriggerPayload.BountyMark, def.Bindings[r].Payload);
+                    Assert.AreEqual(EffectKind.BountyMark, def.Bindings[r].Payload);
                     Assert.AreEqual(1, def.Bindings[r].FireCap, "fireCap 1 — 수명은 소유자 소멸(다른 축)");
                     Assert.Greater(def.Bindings[r].Magnitude, 1f);
                 }
@@ -153,7 +153,7 @@ namespace Wassup.Tests.EditModeAssets
             Assert.AreEqual(stat, def.MatchBindings.Length);
             Assert.AreEqual(1f + sum / 100f, CardDefinitionBuilder.CostRateOf(stones), 1e-5f);
             foreach (int r in def.MatchBindings)
-                Assert.IsInstanceOf<DreamstoneStatSkill>(def.Bindings[r].Effect, "출처가 드림스톤 — 강화 오라가 안 켜진다");
+                Assert.IsInstanceOf<DreamstoneStatSkill>(def.Bindings[r].Skill, "출처가 드림스톤 — 강화 오라가 안 켜진다");
         }
     }
 }

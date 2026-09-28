@@ -18,7 +18,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f, enemyHealth: bossHealth);
             slamDef = CoreTriggerFixtures.AddBlastProjectile(def);
-            var leap = CoreTriggerFixtures.Rule(TriggerKind.HealthThreshold, TriggerPayload.SelfBlink);
+            var leap = CoreTriggerFixtures.Rule(TriggerKind.HealthThreshold, EffectKind.SelfBlink);
             leap.Fraction = 0.3f;
             leap.Magnitude = 2f;     // 밀집 탐색 반경(칸) — `LeapParams` 가 이름을 붙인다
             leap.TileRange = 2;      // 착지 링 상한
@@ -94,7 +94,7 @@ namespace Wassup.Tests.EditMode.Core
 
         // ── fireCap ───────────────────────────────────────────────────────────
 
-        private static int FireCountOnThresholds(TriggerPayload payload, int fireCap)
+        private static int FireCountOnThresholds(EffectKind payload, int fireCap)
         {
             var def = CoreCombatFixtures.Definition(defenderDamage: 0f, enemyHealth: 100f);
             var probe = new CoreTriggerFixtures.ProbeSkill();
@@ -112,11 +112,11 @@ namespace Wassup.Tests.EditMode.Core
 
         [Test]
         public void 궁극기는_경계를_여러_번_넘어도_생존당_한_번이다_fireCap_1()
-            => Assert.AreEqual(1, FireCountOnThresholds(TriggerPayload.UltimateLeap, fireCap: 1));
+            => Assert.AreEqual(1, FireCountOnThresholds(EffectKind.UltimateLeap, fireCap: 1));
 
         [Test]
         public void 빈사폭주류_경계_규칙은_발동_상한이_없어_경계마다_난다()
-            => Assert.AreEqual(4, FireCountOnThresholds(TriggerPayload.SelfBuffLethal, fireCap: 0));
+            => Assert.AreEqual(4, FireCountOnThresholds(EffectKind.SelfBuffLethal, fireCap: 0));
 
         // ── 어그로 면역 ───────────────────────────────────────────────────────
 

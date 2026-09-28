@@ -66,82 +66,82 @@ namespace Wassup.BattleCore.Trigger
         }
 
         /// <summary>그 조합의 concrete. 없으면 null — 호출부가 loud 하게 거절한다.</summary>
-        public static ISkill Resolve(TriggerKind trigger, TriggerPayload payload)
+        public static ISkill Resolve(TriggerKind trigger, EffectKind payload)
         {
             int id = SkillIdFor(trigger, payload);
             return id != NotRouted && s_registry.TryGet(id, out var skill) ? skill : null;
         }
 
-        public static int SkillIdFor(TriggerKind trigger, TriggerPayload kind)
+        public static int SkillIdFor(TriggerKind trigger, EffectKind kind)
         {
             if (trigger == TriggerKind.OnKill)
             {
                 // 시체 폭발 — **죽인 적의 자리**에서 터진다. 누구의 자리인가는 감지자가 정한다.
-                if (kind == TriggerPayload.SelfTileAoe) return DeathSiteBlastSkill.Id;
-                if (kind == TriggerPayload.SpawnHazard) return DeathSiteHazardSkill.Id;
+                if (kind == EffectKind.SelfTileAoe) return DeathSiteBlastSkill.Id;
+                if (kind == EffectKind.SpawnHazard) return DeathSiteHazardSkill.Id;
             }
             // 작별 선물 — 같은 concrete, **죽은 나의 자리**. `ForPayload(SelfTileAoe)` 로 가면 안 된다 —
             // 그건 살아 있는 시전자 발밑을 묻는 `SelfAreaBlastSkill` 이고 드레인 시점엔 시전자가 없다.
-            if (trigger == TriggerKind.OnDeath && kind == TriggerPayload.SelfTileAoe)
+            if (trigger == TriggerKind.OnDeath && kind == EffectKind.SelfTileAoe)
                 return DeathSiteBlastSkill.Id;
             // 피격 N회 — 자기 자리 폭발은 **살아 있는 시전자 발밑**이다.
             // ⚠ `NextAttackDoubleFire` 는 여기가 아니라 폴백 표다 — 여기 두면 `OnPlace × 충전` 이
             // 라우팅 0 을 받아 조용히 죽는다(옛 unit 8 의 PlayMode 가 잡은 침묵).
-            if (trigger == TriggerKind.OnDamagedN && kind == TriggerPayload.SelfTileAoe)
+            if (trigger == TriggerKind.OnDamagedN && kind == EffectKind.SelfTileAoe)
                 return SelfAreaBlastSkill.Id;
             // 실드 파열 — 피격 N회와 같은 실행기. `AreaSleep` 은 「재우자마자 내가 깨울 자리」를
             // 뺀다(S9) — 그 규칙은 concrete 가 갖고, 재우는 **수**는 그대로다.
             if (trigger == TriggerKind.OnShieldBreak)
             {
-                if (kind == TriggerPayload.SelfTileAoe) return SelfAreaBlastSkill.Id;
-                if (kind == TriggerPayload.AreaSleep) return AreaSleepSkill.Id;
+                if (kind == EffectKind.SelfTileAoe) return SelfAreaBlastSkill.Id;
+                if (kind == EffectKind.AreaSleep) return AreaSleepSkill.Id;
             }
             // 퇴근 운석 — 죽은 자리 폭발과 같은 규칙, 자리의 주인은 **비워진 칸**(몸 0).
-            if (trigger == TriggerKind.OnRetire && kind == TriggerPayload.SelfTileAoe)
+            if (trigger == TriggerKind.OnRetire && kind == EffectKind.SelfTileAoe)
                 return DeathSiteBlastSkill.Id;
             // 부착되는 순간(트리거 없음) — 감지자가 아니라 부착 지점이 발화시킨다(7b).
             if (trigger == TriggerKind.None)
             {
-                if (kind == TriggerPayload.SelfBuffLethal) return SelfBuffLethalSkill.Id;
-                if (kind == TriggerPayload.DreamCocoon) return DreamCocoonSkill.Id;
-                if (kind == TriggerPayload.BountyMark) return BountyMarkSkill.Id;
+                if (kind == EffectKind.SelfBuffLethal) return SelfBuffLethalSkill.Id;
+                if (kind == EffectKind.DreamCocoon) return DreamCocoonSkill.Id;
+                if (kind == EffectKind.BountyMark) return BountyMarkSkill.Id;
             }
             // 경계에서 켜진 자기 버프는 **출처가 다르다**(「빈사에서 켜졌다」).
-            if (trigger == TriggerKind.HealthThreshold && kind == TriggerPayload.SelfStatBuff)
+            if (trigger == TriggerKind.HealthThreshold && kind == EffectKind.SelfStatBuff)
                 return ThresholdSelfBuffSkill.Id;
             return ForPayload(kind);
         }
 
         /// <summary>트리거 무관 표. concrete 가 없는 payload 는 `NotRouted`.</summary>
-        public static int ForPayload(TriggerPayload kind)
+        public static int ForPayload(EffectKind kind)
         {
             switch (kind)
             {
-                case TriggerPayload.AreaSleep: return AreaSleepSkill.Id;
-                case TriggerPayload.AllyMoveSpeedAura: return AllySpeedAuraSkill.Id;
-                case TriggerPayload.GrantShield: return GrantShieldSkill.Id;
-                case TriggerPayload.SelfTileAoe: return SelfAreaBlastSkill.Id;
-                case TriggerPayload.SelfBlink: return BlinkToClusterSkill.Id;
-                case TriggerPayload.UltimateLeap: return UltimateLeapSkill.Id;
-                case TriggerPayload.EmitProjectilePattern: return EmitPatternSkill.Id;
-                case TriggerPayload.AreaTaunt: return AreaTauntSkill.Id;
-                case TriggerPayload.AreaBreath: return ConeBreathSkill.Id;
+                case EffectKind.AreaSleep: return AreaSleepSkill.Id;
+                case EffectKind.AllyMoveSpeedAura: return AllySpeedAuraSkill.Id;
+                case EffectKind.GrantShield: return GrantShieldSkill.Id;
+                case EffectKind.SelfTileAoe: return SelfAreaBlastSkill.Id;
+                case EffectKind.SelfBlink: return BlinkToClusterSkill.Id;
+                case EffectKind.UltimateLeap: return UltimateLeapSkill.Id;
+                case EffectKind.EmitProjectilePattern: return EmitPatternSkill.Id;
+                case EffectKind.AreaTaunt: return AreaTauntSkill.Id;
+                case EffectKind.AreaBreath: return ConeBreathSkill.Id;
                 // 충전 부여는 **트리거를 모른다** — 무엇이 불렀든 「다음 공격」은 같은 일이다.
-                case TriggerPayload.NextAttackDoubleFire: return GrantSelfChargeSkill.Id;
+                case EffectKind.NextAttackDoubleFire: return GrantSelfChargeSkill.Id;
                 // 장판도 실려 온 자리에 깔린다 — OnKill 블록에만 두면 나머지 조합이 조용히 죽는다.
-                case TriggerPayload.SpawnHazard: return DeathSiteHazardSkill.Id;
-                case TriggerPayload.AllyStatAura: return AllyStatAuraSkill.Id;
-                case TriggerPayload.OpponentStatAura: return OpponentStatAuraSkill.Id;
-                case TriggerPayload.GainCost: return GainCostSkill.Id;
-                case TriggerPayload.ReduceSkillCooldown: return ReduceSkillCooldownSkill.Id;
-                case TriggerPayload.AreaApplyStack: return AreaStackSkill.Id;
-                case TriggerPayload.AreaCc: return AreaCcSkill.Id;
-                case TriggerPayload.AreaDot: return AreaDotSkill.Id;
-                case TriggerPayload.ApplyCcToTarget: return TargetCcSkill.Id;
-                case TriggerPayload.ApplyStackToTarget: return TargetStackSkill.Id;
-                case TriggerPayload.SelfStatBuff: return SelfStatBuffSkill.Id;
-                case TriggerPayload.ProjectileToTarget: return TargetProjectileSkill.Id;
-                case TriggerPayload.SelfOrbitProjectile: return OrbitProjectileSkill.Id;
+                case EffectKind.SpawnHazard: return DeathSiteHazardSkill.Id;
+                case EffectKind.AllyStatAura: return AllyStatAuraSkill.Id;
+                case EffectKind.OpponentStatAura: return OpponentStatAuraSkill.Id;
+                case EffectKind.GainCost: return GainCostSkill.Id;
+                case EffectKind.ReduceSkillCooldown: return ReduceSkillCooldownSkill.Id;
+                case EffectKind.AreaApplyStack: return AreaStackSkill.Id;
+                case EffectKind.AreaCc: return AreaCcSkill.Id;
+                case EffectKind.AreaDot: return AreaDotSkill.Id;
+                case EffectKind.ApplyCcToTarget: return TargetCcSkill.Id;
+                case EffectKind.ApplyStackToTarget: return TargetStackSkill.Id;
+                case EffectKind.SelfStatBuff: return SelfStatBuffSkill.Id;
+                case EffectKind.ProjectileToTarget: return TargetProjectileSkill.Id;
+                case EffectKind.SelfOrbitProjectile: return OrbitProjectileSkill.Id;
                 default: return NotRouted;
             }
         }
@@ -152,17 +152,17 @@ namespace Wassup.BattleCore.Trigger
         /// 「아무도 처리 안 함」으로 뒤집혀 `OnPlace × 충전` 이 조용히 죽어 있었다.
         /// 스킬이 아닌 것은 각자 이유가 다르다 — 뭉뚱그리지 말 것.
         /// </summary>
-        public static bool IsSkill(TriggerPayload kind)
+        public static bool IsSkill(EffectKind kind)
         {
             switch (kind)
             {
-                case TriggerPayload.None: return false;                    // 센티넬
-                case TriggerPayload.PlacementAura: return false;           // 발동 규칙(시제) — 7b 가 `Any` 바인딩 둘로 편다
-                case TriggerPayload.HeavyStrike: return false;             // 그 공격의 성질(자기참조) — `AttackMod`
-                case TriggerPayload.SplitOnDeath: return false;            // 배선이 다른 길(7d)
-                case TriggerPayload.RecallAttachedToFront: return false;   // 손패 동작
-                case TriggerPayload.AreaBarrage: return false;             // 발사 명세로 이관
-                case TriggerPayload.SelfWarmupBuff: return false;          // 죽은 값
+                case EffectKind.None: return false;                    // 센티넬
+                case EffectKind.PlacementAura: return false;           // 발동 규칙(시제) — 7b 가 `Any` 바인딩 둘로 편다
+                case EffectKind.HeavyStrike: return false;             // 그 공격의 성질(자기참조) — `AttackMod`
+                case EffectKind.SplitOnDeath: return false;            // 배선이 다른 길(7d)
+                case EffectKind.RecallAttachedToFront: return false;   // 손패 동작
+                case EffectKind.AreaBarrage: return false;             // 발사 명세로 이관
+                case EffectKind.SelfWarmupBuff: return false;          // 죽은 값
                 default: return true;
             }
         }
@@ -171,10 +171,10 @@ namespace Wassup.BattleCore.Trigger
         /// 부착 즉시(`trigger == None`) **에서만** 유효한 payload. ⚠ 면제가 아니라 **거절 사유**다 —
         /// 트리거에 매달면 라우팅이 없어 조용히 죽는다(옛 unit 8 리뷰 H-2).
         /// </summary>
-        public static bool OnlyValidWithNoTrigger(TriggerPayload kind)
-            => kind == TriggerPayload.SelfBuffLethal
-            || kind == TriggerPayload.DreamCocoon
-            || kind == TriggerPayload.BountyMark;
+        public static bool OnlyValidWithNoTrigger(EffectKind kind)
+            => kind == EffectKind.SelfBuffLethal
+            || kind == EffectKind.DreamCocoon
+            || kind == EffectKind.BountyMark;
 
         /// <summary>
         /// 이 조합을 **잡는 감지자가 있나**(← `DcTrigger.HasDetector`). `OnPlace`·`OnRetire` 는 적에게

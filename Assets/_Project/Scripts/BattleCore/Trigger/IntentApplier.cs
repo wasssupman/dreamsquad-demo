@@ -152,9 +152,9 @@ namespace Wassup.BattleCore.Trigger
         private SlotTag TagFor(in SimIntent i)
         {
             if (i.Origin == SkillModifierOrigin.Dreamcatcher && _binding != null)
-                return SlotTag.OfCard(_binding.InstanceId);
+                return SlotTag.OfBinding(_binding.InstanceId);
             if (_binding != null && _binding.Def.RevokeOnExpire)
-                return SlotTag.OfCard(_binding.InstanceId);   // 회수할 수 있어야 하는 칸
+                return SlotTag.OfBinding(_binding.InstanceId);   // 회수할 수 있어야 하는 칸
             return new SlotTag(SlotKind.OnPlace, i.StackId);
         }
 

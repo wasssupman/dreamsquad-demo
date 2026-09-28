@@ -43,7 +43,7 @@ namespace Wassup.BattleCore.Trigger
 
     public static class RangeCatalog
     {
-        public static RangeSpec Resolve(TriggerKind trigger, TriggerPayload payload, int tileRange)
+        public static RangeSpec Resolve(TriggerKind trigger, EffectKind payload, int tileRange)
             => Resolve(SkillRouting.SkillIdFor(trigger, payload), tileRange, trigger);
 
         public static RangeSpec Resolve(int skillId, int tileRange, TriggerKind trigger)

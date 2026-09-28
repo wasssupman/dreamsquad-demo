@@ -201,13 +201,13 @@ namespace Wassup.BattleCore
 
         /// <summary>
         /// 규칙이 **발동했다**(실행 직전). `A` = 소유자, `B` = 사건 대상, `Arg` = `InstanceId`,
-        /// `Amount` = `TriggerPayload`, `DefIndex` = 규칙 줄(-1 = 런타임 조립).
+        /// `Amount` = `EffectKind`, `DefIndex` = 규칙 줄(-1 = 런타임 조립).
         /// `SiteFired` = 시전자 몸(없으면 스냅샷) · `SiteTarget` = 사건 자리(0 몸 = 칸).
         /// ⚠ 화염 브레스(`AreaBreath`)는 **그 스킬의 콘**을 `AttackDir`·`AttackShape`·`AttackRange` 에
         /// 싣는다(6c 후속 3) — `AttackResolved` 의 도형은 **공격의** 도형이라 드래곤에서 브레스와 다르다.
         /// </summary>
         TriggerFired = 56,
-        /// <summary>규칙이 붙었다. `A` = 소유자, `Arg` = `InstanceId`, `Amount` = `TriggerPayload`, `DefIndex` = 줄.</summary>
+        /// <summary>규칙이 붙었다. `A` = 소유자, `Arg` = `InstanceId`, `Amount` = `EffectKind`, `DefIndex` = 줄.</summary>
         BindingAttached = 57,
         /// <summary>규칙이 떨어졌다. `A` = 소유자, `Arg` = `InstanceId`, `Amount` = `BindingDetachReason`.</summary>
         BindingDetached = 58,

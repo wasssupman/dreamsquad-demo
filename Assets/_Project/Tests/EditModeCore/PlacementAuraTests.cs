@@ -17,13 +17,13 @@ namespace Wassup.Tests.EditMode.Core
         private static int AuraCard(MatchDefinition def, float asMul, float sleepSec)
         {
             var speed = CardProbe(TriggerKind.OnPlace, new SelfStatBuffSkill());
-            speed.Payload = TriggerPayload.PlacementAura;
+            speed.Payload = EffectKind.PlacementAura;
             speed.Subject = BindingSubject.Any;
             speed.StatKind = (int)SkillStatKind.AttackSpeedMul;
             speed.Magnitude = asMul;
             speed.RevokeOnExpire = true;
             var sleep = CardProbe(TriggerKind.OnPlace, new PlacementSleepSkill());
-            sleep.Payload = TriggerPayload.PlacementAura;
+            sleep.Payload = EffectKind.PlacementAura;
             sleep.Subject = BindingSubject.Any;
             sleep.Duration = sleepSec;
             sleep.RevokeOnExpire = false;

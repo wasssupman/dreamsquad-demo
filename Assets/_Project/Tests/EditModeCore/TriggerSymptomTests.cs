@@ -21,7 +21,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = CoreCombatFixtures.Definition(defenderDamage: 10f, enemyHealth: 10f);
             def.Enemies[0].BodyRadius = 1f;                 // 큰 시체
             int blast = AddBlastProjectile(def);
-            var rule = Rule(TriggerKind.OnKill, TriggerPayload.SelfTileAoe);
+            var rule = Rule(TriggerKind.OnKill, EffectKind.SelfTileAoe);
             rule.Magnitude = 5f;
             rule.TileRange = 1;
             rule.DataIndex = blast;
@@ -50,7 +50,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             def.Units[0].Cost = 0;
-            var rule = Rule(TriggerKind.OnPlace, TriggerPayload.SelfStatBuff);
+            var rule = Rule(TriggerKind.OnPlace, EffectKind.SelfStatBuff);
             rule.Magnitude = 1.5f;
             rule.StatKind = (int)SkillStatKind.DamageMul;
             GiveUnit(def, 0, rule);
@@ -81,7 +81,7 @@ namespace Wassup.Tests.EditMode.Core
             var m = CoreMatchFixtures.BeginBattle(def);
             var d = SpawnDefender(m, new int2(5, 2));
             var e = SpawnEnemy(m, new int2(6, 2));
-            var gift = Rule(TriggerKind.OnDeath, TriggerPayload.SelfTileAoe);
+            var gift = Rule(TriggerKind.OnDeath, EffectKind.SelfTileAoe);
             gift.Magnitude = 7f;
             gift.TileRange = 1;
             gift.DataIndex = blast;
@@ -124,7 +124,7 @@ namespace Wassup.Tests.EditMode.Core
                     FanOutToAllCandidates = fanOut, FanOutStaggerSec = 0.08f,
                 },
             };
-            var rule = Rule(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern);
+            var rule = Rule(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern);
             rule.PatternDefIndex = 0;
             GiveUnit(def, 0, rule);
             var m = CoreMatchFixtures.BeginBattle(def);

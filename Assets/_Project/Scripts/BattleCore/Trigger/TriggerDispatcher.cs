@@ -471,12 +471,12 @@ namespace Wassup.BattleCore.Trigger
             // 떨어진 규칙은 버린다 — 단 **주인이 사라지는 사건**(자기 죽음 · 퇴근)은 떨어진 뒤가 정상이다.
             if (b.Detached && !e.SubjectGone) return;
             if (d.FireCap > 0 && b.FireCount >= d.FireCap) return;
-            if (d.CoreEffect != null)
+            if (d.CoreSkill != null)
             {
                 ExecuteCore(b, in e, ctx);
                 return;
             }
-            if (d.Effect == null)
+            if (d.Skill == null)
             {
                 Warn($"[Trigger] '{d.Label}' 에 실행자가 없다 — bake 가 거절했어야 한다. 발동을 버린다.");
                 return;
@@ -539,7 +539,7 @@ namespace Wassup.BattleCore.Trigger
             _skills.Begin(b, in e, caster.Faction, ctx);
             try
             {
-                d.Effect.Execute(caster, in target, in prm, _skills);
+                d.Skill.Execute(caster, in target, in prm, _skills);
             }
             catch (System.Exception ex)
             {
@@ -569,7 +569,7 @@ namespace Wassup.BattleCore.Trigger
             b.FireCount++;
             try
             {
-                d.CoreEffect.Fire(b, in e, ctx);
+                d.CoreSkill.Fire(b, in e, ctx);
             }
             catch (System.Exception ex)
             {
@@ -584,7 +584,7 @@ namespace Wassup.BattleCore.Trigger
             var casterSite = new Site(e.SubjectPos, e.SubjectBody);
             var targetSite = e.HasSite ? new Site(e.Site, e.SiteBody) : casterSite;
             ref var d = ref b.Def;
-            if (d.Payload == TriggerPayload.AreaBreath)
+            if (d.Payload == EffectKind.AreaBreath)
             {
                 // 브레스의 그림은 **이 스킬의 콘**이다(6c 후속 3) — 축 = 시전자→대상, 반각·사거리 = 저작.
                 var cone = new Combat.AttackShapeBaked

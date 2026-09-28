@@ -16,13 +16,13 @@ namespace Wassup.Tests.EditMode.Core
     public class EffectComboRuleTests
     {
         // 숙주 셋 — 출처가 아니라 사실이다. 카드는 「놓인 방어유닛에 뒤에 붙는다」, 유닛 능력은 「방어유닛이 들고 태어난다」, 악몽은 「적이 들고 태어난다」.
-        private static EffectCombo Attached(TriggerKind t, TriggerPayload p)
+        private static EffectCombo Attached(TriggerKind t, EffectKind p)
             => new EffectCombo { Trigger = t, Payload = p, BindsAfterPlacement = true };
 
-        private static EffectCombo Innate(TriggerKind t, TriggerPayload p)
+        private static EffectCombo Innate(TriggerKind t, EffectKind p)
             => new EffectCombo { Trigger = t, Payload = p };
 
-        private static EffectCombo Enemy(TriggerKind t, TriggerPayload p)
+        private static EffectCombo Enemy(TriggerKind t, EffectKind p)
             => new EffectCombo { Trigger = t, Payload = p, HostIsEnemy = true };
 
         private static EffectCombo WithShot(EffectCombo c, BindingClass b, bool fanOut = false)
@@ -36,52 +36,52 @@ namespace Wassup.Tests.EditMode.Core
         private static IEnumerable<TestCaseData> LiveCombos()
         {
             // 1a · 1b — 카드(부착)
-            yield return Case("카드 찌르기 바늘", WithShot(Attached(TriggerKind.AttackN, TriggerPayload.ProjectileToTarget), BindingClass.Entity));
-            yield return Case("카드 부메랑", WithShot(Attached(TriggerKind.AttackN, TriggerPayload.ProjectileToTarget), BindingClass.Direction));
-            yield return Case("카드 서리 화살", Attached(TriggerKind.AttackN, TriggerPayload.ApplyCcToTarget));
-            yield return Case("카드 잿불 물기", Attached(TriggerKind.AttackN, TriggerPayload.ApplyStackToTarget));
-            yield return Case("카드 광란", Attached(TriggerKind.AttackN, TriggerPayload.SelfStatBuff));
-            yield return Case("카드 작별 선물", Attached(TriggerKind.OnDeath, TriggerPayload.SelfTileAoe));
-            yield return Case("카드 시체 폭발", Attached(TriggerKind.OnKill, TriggerPayload.SelfTileAoe));
-            yield return Case("카드 퇴근 운석", Attached(TriggerKind.OnRetire, TriggerPayload.SelfTileAoe));
-            yield return Case("카드 인수인계", Attached(TriggerKind.OnRetire, TriggerPayload.RecallAttachedToFront));
-            yield return Case("카드 궁지 폭발", Attached(TriggerKind.OnDamagedN, TriggerPayload.SelfTileAoe));
-            yield return Case("카드 실드 파열", Attached(TriggerKind.OnShieldBreak, TriggerPayload.SelfTileAoe));
-            yield return Case("카드 진동 갑주", Attached(TriggerKind.HealthThreshold, TriggerPayload.SelfTileAoe));
-            yield return Case("카드 실드 자장가", Attached(TriggerKind.OnShieldBreak, TriggerPayload.AreaSleep));
-            yield return Case("카드 가시 갑옷", Attached(TriggerKind.OnDamagedN, TriggerPayload.NextAttackDoubleFire));
-            yield return Case("카드 최후의 저항", Attached(TriggerKind.HealthThreshold, TriggerPayload.SelfStatBuff));
-            yield return Case("카드 탐식", Attached(TriggerKind.OnKill, TriggerPayload.SelfStatBuff));
-            yield return Case("카드 잿불 장판", Attached(TriggerKind.OnKill, TriggerPayload.SpawnHazard));
-            yield return Case("카드 불꽃 회전", Attached(TriggerKind.PeriodicTimer, TriggerPayload.SelfOrbitProjectile));
-            yield return Case("카드 불나방떼", WithShot(Attached(TriggerKind.PeriodicTimer, TriggerPayload.EmitProjectilePattern), BindingClass.Entity));
+            yield return Case("카드 찌르기 바늘", WithShot(Attached(TriggerKind.AttackN, EffectKind.ProjectileToTarget), BindingClass.Entity));
+            yield return Case("카드 부메랑", WithShot(Attached(TriggerKind.AttackN, EffectKind.ProjectileToTarget), BindingClass.Direction));
+            yield return Case("카드 서리 화살", Attached(TriggerKind.AttackN, EffectKind.ApplyCcToTarget));
+            yield return Case("카드 잿불 물기", Attached(TriggerKind.AttackN, EffectKind.ApplyStackToTarget));
+            yield return Case("카드 광란", Attached(TriggerKind.AttackN, EffectKind.SelfStatBuff));
+            yield return Case("카드 작별 선물", Attached(TriggerKind.OnDeath, EffectKind.SelfTileAoe));
+            yield return Case("카드 시체 폭발", Attached(TriggerKind.OnKill, EffectKind.SelfTileAoe));
+            yield return Case("카드 퇴근 운석", Attached(TriggerKind.OnRetire, EffectKind.SelfTileAoe));
+            yield return Case("카드 인수인계", Attached(TriggerKind.OnRetire, EffectKind.RecallAttachedToFront));
+            yield return Case("카드 궁지 폭발", Attached(TriggerKind.OnDamagedN, EffectKind.SelfTileAoe));
+            yield return Case("카드 실드 파열", Attached(TriggerKind.OnShieldBreak, EffectKind.SelfTileAoe));
+            yield return Case("카드 진동 갑주", Attached(TriggerKind.HealthThreshold, EffectKind.SelfTileAoe));
+            yield return Case("카드 실드 자장가", Attached(TriggerKind.OnShieldBreak, EffectKind.AreaSleep));
+            yield return Case("카드 가시 갑옷", Attached(TriggerKind.OnDamagedN, EffectKind.NextAttackDoubleFire));
+            yield return Case("카드 최후의 저항", Attached(TriggerKind.HealthThreshold, EffectKind.SelfStatBuff));
+            yield return Case("카드 탐식", Attached(TriggerKind.OnKill, EffectKind.SelfStatBuff));
+            yield return Case("카드 잿불 장판", Attached(TriggerKind.OnKill, EffectKind.SpawnHazard));
+            yield return Case("카드 불꽃 회전", Attached(TriggerKind.PeriodicTimer, EffectKind.SelfOrbitProjectile));
+            yield return Case("카드 불나방떼", WithShot(Attached(TriggerKind.PeriodicTimer, EffectKind.EmitProjectilePattern), BindingClass.Entity));
             // 1c — 유닛 능력(타고남)
-            yield return Case("캐논 폭격", WithShot(Innate(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern), BindingClass.Entity, fanOut: true));
-            yield return Case("저격 배치 사격", WithShot(Innate(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern), BindingClass.Direction));
-            yield return Case("폭탄맨 통", WithShot(Innate(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern), BindingClass.Cell));
-            yield return Case("브루저 충격", Innate(TriggerKind.OnPlace, TriggerPayload.SelfTileAoe));
-            yield return Case("말파이트 지진", Innate(TriggerKind.OnPlace, TriggerPayload.AreaCc));
-            yield return Case("버스터즈 빔", Innate(TriggerKind.OnPlace, TriggerPayload.AreaDot));
-            yield return Case("난도질꾼 출혈", Innate(TriggerKind.OnPlace, TriggerPayload.AreaApplyStack));
-            yield return Case("배스티온 도발(가디언)", Innate(TriggerKind.OnPlace, TriggerPayload.AreaTaunt));
-            yield return Case("가디언 오라", Innate(TriggerKind.OnPlace, TriggerPayload.AllyStatAura));
-            yield return Case("궁수 감속 오라", Innate(TriggerKind.OnPlace, TriggerPayload.OpponentStatAura));
-            yield return Case("실드셔틀 광역 실드", Innate(TriggerKind.OnPlace, TriggerPayload.GrantShield));
-            yield return Case("정찰병 코스트", Innate(TriggerKind.OnPlace, TriggerPayload.GainCost));
-            yield return Case("레인저 쿨감", Innate(TriggerKind.OnPlace, TriggerPayload.ReduceSkillCooldown));
-            yield return Case("실드 캐스트", Innate(TriggerKind.PeriodicTimer, TriggerPayload.GrantShield));
+            yield return Case("캐논 폭격", WithShot(Innate(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern), BindingClass.Entity, fanOut: true));
+            yield return Case("저격 배치 사격", WithShot(Innate(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern), BindingClass.Direction));
+            yield return Case("폭탄맨 통", WithShot(Innate(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern), BindingClass.Cell));
+            yield return Case("브루저 충격", Innate(TriggerKind.OnPlace, EffectKind.SelfTileAoe));
+            yield return Case("말파이트 지진", Innate(TriggerKind.OnPlace, EffectKind.AreaCc));
+            yield return Case("버스터즈 빔", Innate(TriggerKind.OnPlace, EffectKind.AreaDot));
+            yield return Case("난도질꾼 출혈", Innate(TriggerKind.OnPlace, EffectKind.AreaApplyStack));
+            yield return Case("배스티온 도발(가디언)", Innate(TriggerKind.OnPlace, EffectKind.AreaTaunt));
+            yield return Case("가디언 오라", Innate(TriggerKind.OnPlace, EffectKind.AllyStatAura));
+            yield return Case("궁수 감속 오라", Innate(TriggerKind.OnPlace, EffectKind.OpponentStatAura));
+            yield return Case("실드셔틀 광역 실드", Innate(TriggerKind.OnPlace, EffectKind.GrantShield));
+            yield return Case("정찰병 코스트", Innate(TriggerKind.OnPlace, EffectKind.GainCost));
+            yield return Case("레인저 쿨감", Innate(TriggerKind.OnPlace, EffectKind.ReduceSkillCooldown));
+            yield return Case("실드 캐스트", Innate(TriggerKind.PeriodicTimer, EffectKind.GrantShield));
             // 1d — 악몽(적 타고남)
-            yield return Case("짱쎈 지진", Enemy(TriggerKind.HealthThreshold, TriggerPayload.SelfTileAoe));
-            yield return Case("짱쎈 도약", Enemy(TriggerKind.HealthThreshold, TriggerPayload.SelfBlink));
-            yield return Case("짱쎈 궁극기", Enemy(TriggerKind.HealthThreshold, TriggerPayload.UltimateLeap));
-            yield return Case("마메모 자장가", Enemy(TriggerKind.PeriodicTimer, TriggerPayload.AreaSleep));
-            yield return Case("마메모 자기 실드", Enemy(TriggerKind.HealthThreshold, TriggerPayload.GrantShield));
-            yield return Case("마메모 광역 실드", Enemy(TriggerKind.PeriodicTimer, TriggerPayload.GrantShield));
-            yield return Case("나이트메어 폭격", WithShot(Enemy(TriggerKind.PeriodicTimer, TriggerPayload.EmitProjectilePattern), BindingClass.Cell));
-            yield return Case("나이트메어 미사일", WithShot(Enemy(TriggerKind.PeriodicTimer, TriggerPayload.EmitProjectilePattern), BindingClass.Entity));
-            yield return Case("나이트메어 바람 오라", Enemy(TriggerKind.PeriodicTimer, TriggerPayload.AllyMoveSpeedAura));
-            yield return Case("드래곤 브레스", Enemy(TriggerKind.AttackN, TriggerPayload.AreaBreath));
-            yield return Case("슬라임 분열", Enemy(TriggerKind.OnDeath, TriggerPayload.SplitOnDeath));
+            yield return Case("짱쎈 지진", Enemy(TriggerKind.HealthThreshold, EffectKind.SelfTileAoe));
+            yield return Case("짱쎈 도약", Enemy(TriggerKind.HealthThreshold, EffectKind.SelfBlink));
+            yield return Case("짱쎈 궁극기", Enemy(TriggerKind.HealthThreshold, EffectKind.UltimateLeap));
+            yield return Case("마메모 자장가", Enemy(TriggerKind.PeriodicTimer, EffectKind.AreaSleep));
+            yield return Case("마메모 자기 실드", Enemy(TriggerKind.HealthThreshold, EffectKind.GrantShield));
+            yield return Case("마메모 광역 실드", Enemy(TriggerKind.PeriodicTimer, EffectKind.GrantShield));
+            yield return Case("나이트메어 폭격", WithShot(Enemy(TriggerKind.PeriodicTimer, EffectKind.EmitProjectilePattern), BindingClass.Cell));
+            yield return Case("나이트메어 미사일", WithShot(Enemy(TriggerKind.PeriodicTimer, EffectKind.EmitProjectilePattern), BindingClass.Entity));
+            yield return Case("나이트메어 바람 오라", Enemy(TriggerKind.PeriodicTimer, EffectKind.AllyMoveSpeedAura));
+            yield return Case("드래곤 브레스", Enemy(TriggerKind.AttackN, EffectKind.AreaBreath));
+            yield return Case("슬라임 분열", Enemy(TriggerKind.OnDeath, EffectKind.SplitOnDeath));
         }
 
         private static TestCaseData Case(string name, EffectCombo c) => new TestCaseData(c).SetName("라이브_" + name.Replace(' ', '_'));
@@ -94,43 +94,43 @@ namespace Wassup.Tests.EditMode.Core
         public void 옛_출처_관례_거절은_풀렸다()
         {
             // 타격 운석 — 칸 결합 탄 × 대상 탄(옛 카드 빌더 「셀 바인딩 탄은 미배선」).
-            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(WithShot(Attached(TriggerKind.AttackN, TriggerPayload.ProjectileToTarget), BindingClass.Cell)));
+            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(WithShot(Attached(TriggerKind.AttackN, EffectKind.ProjectileToTarget), BindingClass.Cell)));
             // AA — 카드 × 남의 배치 × 발사 명세(옛 「OnPlace 불가」 · 「발사 명세는 주기만」).
-            var aa = WithShot(Attached(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern), BindingClass.Entity, fanOut: true);
+            var aa = WithShot(Attached(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern), BindingClass.Entity, fanOut: true);
             aa.Subject = BindingSubject.Any;
             Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(in aa));
             // 발사 명세 × 타격 · 피격 · 처치 · 경계 · 실드 파열(카드도 유닛도).
             foreach (var t in new[] { TriggerKind.AttackN, TriggerKind.OnDamagedN, TriggerKind.OnKill, TriggerKind.HealthThreshold, TriggerKind.OnShieldBreak })
             {
-                Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(WithShot(Attached(t, TriggerPayload.EmitProjectilePattern), BindingClass.Entity)), t.ToString());
-                Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(WithShot(Innate(t, TriggerPayload.EmitProjectilePattern), BindingClass.Entity)), t.ToString());
+                Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(WithShot(Attached(t, EffectKind.EmitProjectilePattern), BindingClass.Entity)), t.ToString());
+                Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(WithShot(Innate(t, EffectKind.EmitProjectilePattern), BindingClass.Entity)), t.ToString());
             }
             // 피격 N × 아무 효과 · 장판 × 처치 밖 · 궤도 탄 × 주기 밖 · 실드 × 반경(트리거 무관).
-            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Attached(TriggerKind.OnDamagedN, TriggerPayload.AreaSleep)));
-            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Attached(TriggerKind.PeriodicTimer, TriggerPayload.SpawnHazard)));
-            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Innate(TriggerKind.AttackN, TriggerPayload.SelfOrbitProjectile)));
-            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Enemy(TriggerKind.HealthThreshold, TriggerPayload.GrantShield)));
+            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Attached(TriggerKind.OnDamagedN, EffectKind.AreaSleep)));
+            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Attached(TriggerKind.PeriodicTimer, EffectKind.SpawnHazard)));
+            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Innate(TriggerKind.AttackN, EffectKind.SelfOrbitProjectile)));
+            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Enemy(TriggerKind.HealthThreshold, EffectKind.GrantShield)));
         }
 
         [Test]
         public void 남은_거절은_사유_셋이다()
         {
             // 붙는 순간 이미 지난 자기 사건 · 사건이 없다.
-            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Attached(TriggerKind.OnPlace, TriggerPayload.SelfStatBuff)), "카드 × 자기 배치");
-            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Enemy(TriggerKind.OnPlace, TriggerPayload.AreaSleep)), "적 × 배치");
-            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Enemy(TriggerKind.OnRetire, TriggerPayload.SelfTileAoe)), "적 × 퇴근");
-            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Innate(TriggerKind.None, TriggerPayload.SelfStatBuff)), "트리거 없음");
+            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Attached(TriggerKind.OnPlace, EffectKind.SelfStatBuff)), "카드 × 자기 배치");
+            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Enemy(TriggerKind.OnPlace, EffectKind.AreaSleep)), "적 × 배치");
+            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Enemy(TriggerKind.OnRetire, EffectKind.SelfTileAoe)), "적 × 퇴근");
+            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Innate(TriggerKind.None, EffectKind.SelfStatBuff)), "트리거 없음");
             // 원점을 못 낸다.
-            var anyKill = Attached(TriggerKind.OnKill, TriggerPayload.SelfStatBuff);
+            var anyKill = Attached(TriggerKind.OnKill, EffectKind.SelfStatBuff);
             anyKill.Subject = BindingSubject.Any;
             Assert.AreEqual(ComboVerdict.NoOrigin, EffectComboRule.Check(in anyKill), "남의 사건은 배치만");
-            Assert.AreEqual(ComboVerdict.NoOrigin, EffectComboRule.Check(WithShot(Innate(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern), BindingClass.Cell, fanOut: true)), "전원 × 칸 결합");
-            Assert.AreEqual(ComboVerdict.NoOrigin, EffectComboRule.Check(WithShot(Innate(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern), BindingClass.Direction, fanOut: true)), "전원 × 방향 결합");
+            Assert.AreEqual(ComboVerdict.NoOrigin, EffectComboRule.Check(WithShot(Innate(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern), BindingClass.Cell, fanOut: true)), "전원 × 칸 결합");
+            Assert.AreEqual(ComboVerdict.NoOrigin, EffectComboRule.Check(WithShot(Innate(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern), BindingClass.Direction, fanOut: true)), "전원 × 방향 결합");
             // 효과가 그 원점 형을 못 받는다.
-            Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(Attached(TriggerKind.OnKill, TriggerPayload.BountyMark)), "부착 즉시 전용 × 사건");
-            Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(Attached(TriggerKind.OnRetire, TriggerPayload.SelfStatBuff)), "퇴근 × 자기 버프");
-            Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(Enemy(TriggerKind.OnDeath, TriggerPayload.AreaSleep)), "죽음 × 살아 있는 주체 효과");
-            var taunt = Innate(TriggerKind.OnPlace, TriggerPayload.AreaTaunt);
+            Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(Attached(TriggerKind.OnKill, EffectKind.BountyMark)), "부착 즉시 전용 × 사건");
+            Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(Attached(TriggerKind.OnRetire, EffectKind.SelfStatBuff)), "퇴근 × 자기 버프");
+            Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(Enemy(TriggerKind.OnDeath, EffectKind.AreaSleep)), "죽음 × 살아 있는 주체 효과");
+            var taunt = Innate(TriggerKind.OnPlace, EffectKind.AreaTaunt);
             taunt.HostCannotHoldAggro = true;
             Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(in taunt), "도발 × 가디언 아님");
         }
@@ -141,7 +141,7 @@ namespace Wassup.Tests.EditMode.Core
             // 전수: 트리거 × 주체 × 효과 × (탄 없음 · 결합 셋) × 전원. 숙주 사실 하나만 바꿨을 때 답이 갈리는 곳이
             // 그 사실의 규칙 자리뿐인가 — 새 분기가 몰래 한 숙주 사실에 기대면 여기서 빨개진다.
             var triggers = (TriggerKind[])System.Enum.GetValues(typeof(TriggerKind));
-            var payloads = (TriggerPayload[])System.Enum.GetValues(typeof(TriggerPayload));
+            var payloads = (EffectKind[])System.Enum.GetValues(typeof(EffectKind));
             var subjects = new[] { BindingSubject.Self, BindingSubject.Any };
             int checkedCombos = 0;
             foreach (var t in triggers)
@@ -159,7 +159,7 @@ namespace Wassup.Tests.EditMode.Core
 
                 var aggro = c; aggro.HostCannotHoldAggro = true;
                 if (EffectComboRule.Check(in aggro) != baseV)
-                    Assert.AreEqual(TriggerPayload.AreaTaunt, p, $"가디언 여부가 {t}×{p} 를 갈랐다");
+                    Assert.AreEqual(EffectKind.AreaTaunt, p, $"가디언 여부가 {t}×{p} 를 갈랐다");
 
                 var enemy = c; enemy.HostIsEnemy = true;
                 if (EffectComboRule.Check(in enemy) != baseV)

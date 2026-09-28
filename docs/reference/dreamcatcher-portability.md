@@ -53,7 +53,7 @@
 
 새 아키텍처에서 작성할 것은 **베이크 + arm + 소유권 배선**뿐.
 
-**지금(전투 코어)의 자리**: 베이크 = `CardDefinitionBuilder`(판 밖 1회 — 저작 검증 포함) · 부착 판정/즉발 = `CardBindings.Plan`·`FireOnAttach`(숙주 종속 판정은 `Applicability` 한 곳) · 트리거 감지 = 각 틱 단계가 사실을 올리는 `TriggerDispatcher`(seam 순서표 `SeamTickOrder`) · 실행 = `CardSkills`·`IntentApplier`. `Scripts/BattleCore/Trigger/`(`SeamTickOrder` 만 `Phases/`) 와 `Scripts/BattleCoreUnity/CardDefinitionBuilder.cs`.
+**지금(전투 코어)의 자리**: 베이크 = `CardDefinitionBuilder`(판 밖 1회 — 저작 검증 포함) · 부착 판정/즉발 = `CardBindings.Plan`·`FireOnAttach`(숙주 종속 판정은 `Applicability` 한 곳) · 트리거 감지 = 각 틱 단계가 사실을 올리는 `TriggerDispatcher`(seam 순서표 `SeamTickOrder`) · 실행 = `CoreSkills`·`IntentApplier`. `Scripts/BattleCore/Trigger/`(`SeamTickOrder` 만 `Phases/`) 와 `Scripts/BattleCoreUnity/CardDefinitionBuilder.cs`.
 
 아래는 **(이력 — 옛 ECS 전투, unit 9 에서 제거)** 하이브리드 ECS 시절의 레퍼런스다. 심볼은 더 이상 없지만, 무엇을 새로 써야 했는지의 지도로 남긴다:
 

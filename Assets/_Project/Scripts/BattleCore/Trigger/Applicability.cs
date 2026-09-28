@@ -101,45 +101,45 @@ namespace Wassup.BattleCore.Trigger
             switch (d.Payload)
             {
                 // 비수 — 숙주의 대상으로 날아가고, 숙주가 대상을 못 주면 폴백 반경으로 스스로 찾는다.
-                case TriggerPayload.ProjectileToTarget:
+                case EffectKind.ProjectileToTarget:
                     if (!host.TargetsEnemies) return RejectReason.NeedsEnemyTargeting;
                     return HostProvidesTarget(host.Archetype) || d.TileRange > 0
                         ? RejectReason.None : RejectReason.NeedsFallbackRange;
                 // 「그 공격의 대상」에 걸리는 것 — 폴백이 없다.
-                case TriggerPayload.ApplyCcToTarget:
-                case TriggerPayload.ApplyStackToTarget:
+                case EffectKind.ApplyCcToTarget:
+                case EffectKind.ApplyStackToTarget:
                     if (!host.TargetsEnemies) return RejectReason.NeedsEnemyTargeting;
                     return HostProvidesTarget(host.Archetype) ? RejectReason.None : RejectReason.NeedsTargetContext;
                 // 이중 상태 — 덮어쓰면 원래 타이머가 리셋되고 멀티 메커닉 카드가 부분 적용된다(카드 전체 거절).
-                case TriggerPayload.SelfBuffLethal:
+                case EffectKind.SelfBuffLethal:
                     return host.HasLethalTimer ? RejectReason.DuplicateState : RejectReason.None;
-                case TriggerPayload.DreamCocoon:
+                case EffectKind.DreamCocoon:
                     return host.HasDreamCocoon ? RejectReason.DuplicateState : RejectReason.None;
                 // 표식 — 적 전용(적 판별·이중 표식은 `CardBindings` 가 숙주 종류로 본다).
-                case TriggerPayload.BountyMark:
+                case EffectKind.BountyMark:
                     return RejectReason.None;
                 // self · 오라 · 지역 · 판 밖 — 숙주의 공격 모델과 무관(옛 목록 그대로).
-                case TriggerPayload.SelfTileAoe:
-                case TriggerPayload.NextAttackDoubleFire:
-                case TriggerPayload.SelfBlink:
-                case TriggerPayload.UltimateLeap:
-                case TriggerPayload.PlacementAura:
-                case TriggerPayload.AllyMoveSpeedAura:
-                case TriggerPayload.SelfStatBuff:
-                case TriggerPayload.AreaSleep:
-                case TriggerPayload.GrantShield:
-                case TriggerPayload.EmitProjectilePattern:
-                case TriggerPayload.AreaBreath:
-                case TriggerPayload.AreaTaunt:
-                case TriggerPayload.SelfOrbitProjectile:
-                case TriggerPayload.SpawnHazard:
-                case TriggerPayload.AllyStatAura:
-                case TriggerPayload.OpponentStatAura:
-                case TriggerPayload.GainCost:
-                case TriggerPayload.ReduceSkillCooldown:
-                case TriggerPayload.AreaApplyStack:
-                case TriggerPayload.AreaCc:
-                case TriggerPayload.AreaDot:
+                case EffectKind.SelfTileAoe:
+                case EffectKind.NextAttackDoubleFire:
+                case EffectKind.SelfBlink:
+                case EffectKind.UltimateLeap:
+                case EffectKind.PlacementAura:
+                case EffectKind.AllyMoveSpeedAura:
+                case EffectKind.SelfStatBuff:
+                case EffectKind.AreaSleep:
+                case EffectKind.GrantShield:
+                case EffectKind.EmitProjectilePattern:
+                case EffectKind.AreaBreath:
+                case EffectKind.AreaTaunt:
+                case EffectKind.SelfOrbitProjectile:
+                case EffectKind.SpawnHazard:
+                case EffectKind.AllyStatAura:
+                case EffectKind.OpponentStatAura:
+                case EffectKind.GainCost:
+                case EffectKind.ReduceSkillCooldown:
+                case EffectKind.AreaApplyStack:
+                case EffectKind.AreaCc:
+                case EffectKind.AreaDot:
                     return RejectReason.None;
                 default:
                     // 배선 누락은 정상 거절과 섞지 않는다 — 전용 사유(fail-closed).

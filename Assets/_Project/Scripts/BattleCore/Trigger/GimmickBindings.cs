@@ -107,7 +107,7 @@ namespace Wassup.BattleCore.Trigger
             if (period <= 0f) return;   // 잘못 저작된 SO — 옛 self-gate(`interval <= 0 → return`)
             var list = u.Bindings;
             for (int i = 0; i < list.Count; i++)
-                if (ReferenceEquals(list[i].Def.CoreEffect, fx)) return;   // 활성화 경로가 둘이다(즉시 · 모션 뒤)
+                if (ReferenceEquals(list[i].Def.CoreSkill, fx)) return;   // 활성화 경로가 둘이다(즉시 · 모션 뒤)
             var d = Row(kind == GimmickKind.Onsen ? "기믹 온천 · 열기" : "기믹 번아웃 · 피로",
                         TriggerKind.PeriodicTimer, fx);
             d.PeriodSeconds = period;
@@ -122,7 +122,7 @@ namespace Wassup.BattleCore.Trigger
             var d = BindingDef.Default();
             d.Label = label;
             d.Trigger = trigger;
-            d.CoreEffect = fx;
+            d.CoreSkill = fx;
             d.Origin = BindingOrigin.Gimmick;
             return d;
         }

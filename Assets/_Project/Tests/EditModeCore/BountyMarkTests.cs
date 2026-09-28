@@ -12,7 +12,7 @@ namespace Wassup.Tests.EditMode.Core
     {
         private static int Bounty(MatchDefinition def, float rewardMul = 3f, float dmgTakenMul = 0.7f)
         {
-            var rule = CardRule(TriggerKind.None, TriggerPayload.BountyMark);
+            var rule = CardRule(TriggerKind.None, EffectKind.BountyMark);
             rule.Magnitude = rewardMul;
             rule.HitThreshold = dmgTakenMul;   // bake 가 「받는 피해 −30%」를 배율로 싣는다
             rule.FireCap = 1;
@@ -79,7 +79,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 표식은_부착_상한_밖이다()
         {
             var def = CoreMatchFixtures.Definition();
-            var rule = CardRule(TriggerKind.OnKill, TriggerPayload.SelfStatBuff);
+            var rule = CardRule(TriggerKind.OnKill, EffectKind.SelfStatBuff);
             rule.Magnitude = 1.1f;
             int u1 = AddAttachCard(def, "u1", 1, rule);
             int mark = Bounty(def);

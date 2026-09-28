@@ -32,13 +32,13 @@ namespace Wassup.Tests.EditMode.Core
         public void 대상을_안_주는_숙주에는_대상_효과가_안_붙는다()
         {
             var host = new HostProfile { Archetype = HostArchetype.BombThrow, Route = HostRoute.Grenade, TargetsEnemies = true, HasDamageOutput = true };
-            var cc = BindingDef.Default(); cc.Payload = TriggerPayload.ApplyCcToTarget;
+            var cc = BindingDef.Default(); cc.Payload = EffectKind.ApplyCcToTarget;
             Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in cc, in host));
-            var dagger = BindingDef.Default(); dagger.Payload = TriggerPayload.ProjectileToTarget;
+            var dagger = BindingDef.Default(); dagger.Payload = EffectKind.ProjectileToTarget;
             Assert.AreEqual(RejectReason.NeedsFallbackRange, Applicability.Evaluate(in dagger, in host));
             dagger.TileRange = 4;
             Assert.AreEqual(RejectReason.None, Applicability.Evaluate(in dagger, in host), "폴백 반경이 있으면 스스로 찾는다");
-            var gated = BindingDef.Default(); gated.Payload = TriggerPayload.SelfTileAoe;
+            var gated = BindingDef.Default(); gated.Payload = EffectKind.SelfTileAoe;
             gated.Gate = GateKind.HpBelow; gated.GateSubject = GateSubject.EventTarget;
             Assert.AreEqual(RejectReason.NeedsTargetContext, Applicability.Evaluate(in gated, in host),
                 "평가할 수단이 없는 게이트는 조건 없는 발동이 된다 — 거절");
@@ -64,7 +64,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var def = CoreMatchFixtures.Definition();
             var cards = new List<int>();
-            var stack = CardRule(TriggerKind.AttackN, TriggerPayload.ApplyStackToTarget);
+            var stack = CardRule(TriggerKind.AttackN, EffectKind.ApplyStackToTarget);
             stack.Period = 3; stack.Magnitude = 1f;
             cards.Add(AddAttachCard(def, "ember_bite", 1, stack));
             var bounce = CardDef.Default();
@@ -75,7 +75,7 @@ namespace Wassup.Tests.EditMode.Core
             req.Id = "guardian_only"; req.Kind = CardKind.Attach; req.Cost = 1; req.DeclaresRetireRecall = true;
             req.Requirement = new AttachRequirementDef { Kind = AttachRequirementKind.Class, Role = 2 };
             cards.Add(AddCard(def, req));
-            var mark = CardRule(TriggerKind.None, TriggerPayload.BountyMark);
+            var mark = CardRule(TriggerKind.None, EffectKind.BountyMark);
             mark.Magnitude = 2f; mark.FireCap = 1;
             int markCard = AddAttachCard(def, "mark", 1, mark);
             def.Cards[markCard].TargetsEnemies = true;

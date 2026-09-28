@@ -89,7 +89,7 @@ namespace Wassup.Tests.EditMode.Core
         /// <summary>드림캐쳐 「타격 운석」 규칙 — 매 타격 · 대상에게 탄(같은 운석 줄). 빌더 픽스처(`UnifiedEffectBakeFixtureTests`)가 굽힌 줄과 대조한다.</summary>
         public static BindingDef OnHitMeteorRule(int tiles = N, MovementKind movement = 0, PayloadKind payload = 0)
         {
-            var r = CoreCardFixtures.CardRule(TriggerKind.AttackN, TriggerPayload.ProjectileToTarget);
+            var r = CoreCardFixtures.CardRule(TriggerKind.AttackN, EffectKind.ProjectileToTarget);
             r.Label = "타격 운석";
             r.Subject = BindingSubject.Self;
             r.Period = 1;

@@ -90,7 +90,7 @@ namespace Wassup.Tests.EditMode.Core
         /// <summary>A·AA 가 공유하는 효과 부분(트리거 = 배치). 다른 것은 주어·수명·출처뿐이다.</summary>
         private static BindingDef Effect()
         {
-            var r = Rule(TriggerKind.OnPlace, TriggerPayload.EmitProjectilePattern);
+            var r = Rule(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern);
             r.PatternDefIndex = 0;
             r.TileRange = N;          // 조준 후보 반경 = 탄 최대 거리(`EmitPatternParams.Range`)
             r.Magnitude = Hit;        // ⚠ 패턴 경로는 이 값을 읽지 않는다 — `패턴_경로의_피해는_…` 참조
@@ -320,7 +320,7 @@ namespace Wassup.Tests.EditMode.Core
             var card = CardRow();
             var rows = Add(def, unit, card);
             Assert.AreEqual(def.Bindings[rows[0]].PatternDefIndex, def.Bindings[rows[1]].PatternDefIndex, "같은 명세 줄을 가리킨다");
-            Assert.AreSame(def.Bindings[rows[0]].Effect, def.Bindings[rows[1]].Effect, "실행자는 무상태 한 벌(라우팅 표)");
+            Assert.AreSame(def.Bindings[rows[0]].Skill, def.Bindings[rows[1]].Skill, "실행자는 무상태 한 벌(라우팅 표)");
 
             def.Units[0].Bindings = new[] { rows[0] };
             def.ConfigHash = def.ComputeConfigHash();

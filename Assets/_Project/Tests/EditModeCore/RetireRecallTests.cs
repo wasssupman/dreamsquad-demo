@@ -13,7 +13,7 @@ namespace Wassup.Tests.EditMode.Core
         private static (BattleMatch m, Unit host, int plainA, int plainB, int handover) Setup()
         {
             var def = CoreMatchFixtures.Definition();
-            var rule = CardRule(TriggerKind.OnKill, TriggerPayload.SelfStatBuff);
+            var rule = CardRule(TriggerKind.OnKill, EffectKind.SelfStatBuff);
             rule.Magnitude = 1.1f;
             int a = AddAttachCard(def, "plain_a", 1, rule);
             int b = AddAttachCard(def, "plain_b", 1, rule);

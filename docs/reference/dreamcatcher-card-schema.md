@@ -2,7 +2,7 @@
 
 > `DreamcatcherCard` SO 하나가 **3가지 카드 타입(Squad / Unit / Active)** 을 담는 union 구조다.
 > `type` 에 따라 서로 다른 효과 필드가 활성화된다. 이 문서는 **정의 계층(순수 데이터)** 의 스키마만 다룬다.
-> 해석·실행(SO → plain 정의표 → 전투 코어)은 Unity 층 `CardDefinitionBuilder`(`Scripts/BattleCoreUnity/`)와 코어 트리거 레이어(`Scripts/BattleCore/Trigger/` — `CardBindings`·`CardSkills`·`TriggerDispatcher`) 소관이며 여기에 포함하지 않는다.
+> 해석·실행(SO → plain 정의표 → 전투 코어)은 Unity 층 `CardDefinitionBuilder`(`Scripts/BattleCoreUnity/`)와 코어 트리거 레이어(`Scripts/BattleCore/Trigger/` — `CardBindings`·`CoreSkills`·`TriggerDispatcher`) 소관이며 여기에 포함하지 않는다.
 >
 > 앵커 파일:
 > - `Assets/_Project/Scripts/Data/Dreamcatcher/DreamcatcherCard.cs`

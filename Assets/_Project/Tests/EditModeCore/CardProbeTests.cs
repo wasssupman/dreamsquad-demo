@@ -17,19 +17,19 @@ namespace Wassup.Tests.EditMode.Core
         private static MatchDefinition Deck(out int lastFlame, out int frostArrow, out int farewell)
         {
             var def = CoreMatchFixtures.Definition();
-            var lf = CardRule(TriggerKind.None, TriggerPayload.SelfBuffLethal);
+            var lf = CardRule(TriggerKind.None, EffectKind.SelfBuffLethal);
             lf.Magnitude = 1.9f;
             lf.Duration = 5f;
             lf.FireCap = 1;
             lastFlame = AddAttachCard(def, "fixture_last_flame", 1, lf);
 
-            var fa = CardRule(TriggerKind.AttackN, TriggerPayload.ApplyCcToTarget);
+            var fa = CardRule(TriggerKind.AttackN, EffectKind.ApplyCcToTarget);
             fa.Period = 3;
             fa.CcKind = (int)SkillCcKind.Stun;
             fa.Duration = 1f;
             frostArrow = AddAttachCard(def, "fixture_frost_arrow", 1, fa);
 
-            var fw = CardRule(TriggerKind.OnDeath, TriggerPayload.SelfTileAoe);
+            var fw = CardRule(TriggerKind.OnDeath, EffectKind.SelfTileAoe);
             fw.Magnitude = 7f;
             fw.TileRange = 1;
             fw.DataIndex = CoreTriggerFixtures.AddBlastProjectile(def);
@@ -76,13 +76,13 @@ namespace Wassup.Tests.EditMode.Core
             var def = Deck(out int lastFlame, out _, out _);
             string hash = def.ComputeConfigHash();
             int row = def.Cards[lastFlame].Bindings[0];
-            var effect = def.Bindings[row].Effect;
+            var effect = def.Bindings[row].Skill;
 
             Probe.RunAll(def);
             Assert.AreEqual(hash, def.ComputeConfigHash(), "프로브는 복사본에서 돈다");
-            Assert.AreSame(effect, def.Bindings[row].Effect, "원본 규칙의 실행자를 감싸지 않았다");
+            Assert.AreSame(effect, def.Bindings[row].Skill, "원본 규칙의 실행자를 감싸지 않았다");
 
-            def.Bindings[row].Effect = null;
+            def.Bindings[row].Skill = null;
             var r = Probe.Run(def, lastFlame);
             Assert.IsFalse(r.Baked, r.ToString());
             Assert.IsFalse(r.Ok);

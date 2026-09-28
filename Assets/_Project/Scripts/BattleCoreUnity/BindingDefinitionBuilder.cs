@@ -71,8 +71,8 @@ namespace Wassup.BattleCoreUnity
             var b = BindingDef.Default();
             b.Label = d.name + " 실드 캐스트";
             b.Trigger = TriggerKind.PeriodicTimer;
-            b.Payload = TriggerPayload.GrantShield;
-            b.Effect = SkillRouting.Resolve(b.Trigger, b.Payload);
+            b.Payload = EffectKind.GrantShield;
+            b.Skill = SkillRouting.Resolve(b.Trigger, b.Payload);
             b.PeriodSeconds = a.cooldown;
             b.Magnitude = a.amount;
             b.TileRange = SkillMath.RangeToTiles(d.attackRange);
@@ -96,13 +96,13 @@ namespace Wassup.BattleCoreUnity
                 var trigger = ToCoreTrigger(m.trigger.kind);
                 var payload = ToCorePayload(m.payload.kind);
 
-                if (payload == TriggerPayload.None)
+                if (payload == EffectKind.None)
                 {
                     Warn($"{label}: None 종류 — 건너뛴다.");
                     continue;
                 }
                 // 분열은 **의도적 무항목**(S8) — 그릇(적 줄)은 서고 항목만 건너뛴다. 실행은 7d(`OnSlain`).
-                if (trigger == TriggerKind.OnDeath && payload == TriggerPayload.SplitOnDeath)
+                if (trigger == TriggerKind.OnDeath && payload == EffectKind.SplitOnDeath)
                 {
                     if (m.payload.splitUnit == null) Error($"{label}: SplitOnDeath 인데 splitUnit 이 비었다 — 죽어도 안 갈라진다.");
                     else if (m.payload.magnitude < 1f) Error($"{label}: SplitOnDeath magnitude({m.payload.magnitude}) < 1 — 자식이 0기다.");
@@ -118,12 +118,12 @@ namespace Wassup.BattleCoreUnity
                 var gateSubject = ToCoreGateSubject(m.trigger.gateSubject);
                 if (!TriggerValuesValid(in m, trigger, gate, gateSubject, label)) continue;
                 // 강공 — **어휘 밖**(그 공격의 성질). 규칙이 아니라 공격 수식자로 접는다.
-                if (payload == TriggerPayload.HeavyStrike)
+                if (payload == EffectKind.HeavyStrike)
                 {
                     if (TryHeavyStrike(in m, trigger, gate, label, out var heavy)) mods.Add(heavy);
                     continue;
                 }
-                if (payload == TriggerPayload.AreaBarrage)
+                if (payload == EffectKind.AreaBarrage)
                 {
                     // 이관(안내 유지 — `BattleBridge.cs:10290` 과 같은 뜻).
                     Warn($"{label}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — 건너뛴다. 패턴 asset 을 지정하라.");
@@ -146,7 +146,7 @@ namespace Wassup.BattleCoreUnity
                 b.Label = label;
                 b.Trigger = trigger;
                 b.Payload = payload;
-                b.Effect = effect;
+                b.Skill = effect;
                 b.Period = Mathf.Clamp(m.trigger.period, 0, ushort.MaxValue);
                 b.PeriodSeconds = m.trigger.periodSeconds;
                 b.Fraction = m.trigger.fraction;
@@ -176,7 +176,7 @@ namespace Wassup.BattleCoreUnity
                 //   빔이 숙주에 기본 방향으로 박혀 떠 있게 된다. 빔 쪽만 옮긴다(7c 이식 제외).
                 if (view != null && m.payload.auraPrefab != null)
                 {
-                    if (b.Payload == TriggerPayload.AreaDot) b.DataIndex = view.RegisterSkillVfx(m.payload.auraPrefab);
+                    if (b.Payload == EffectKind.AreaDot) b.DataIndex = view.RegisterSkillVfx(m.payload.auraPrefab);
                     else view.SetBindingAura(rows.Count, m.payload.auraPrefab, m.payload.auraScale);
                 }
 
@@ -192,7 +192,7 @@ namespace Wassup.BattleCoreUnity
         // 그건 각 빌더가 이 함수들 뒤에 덧씌운다 — 효과 값 정본 통일은 후속(H4 + 시트 Effects 탭).
 
         /// <summary>저작 메커닉 하나의 조합 입력. 탄 결합은 직접 탄(대상 탄) 또는 발사 명세 탄에서 읽는다.</summary>
-        internal static EffectCombo ComboOf(in DcMechanic m, TriggerKind trigger, TriggerPayload payload, bool hostIsEnemy,
+        internal static EffectCombo ComboOf(in DcMechanic m, TriggerKind trigger, EffectKind payload, bool hostIsEnemy,
                                             bool bindsAfterPlacement, bool hostCannotHoldAggro)
         {
             var c = new EffectCombo
@@ -205,8 +205,8 @@ namespace Wassup.BattleCoreUnity
                 HostCannotHoldAggro = hostCannotHoldAggro,
             };
             ProjectileData shot = null;
-            if (payload == TriggerPayload.ProjectileToTarget) shot = m.payload.projectile;
-            else if (payload == TriggerPayload.EmitProjectilePattern && m.payload.pattern != null)
+            if (payload == EffectKind.ProjectileToTarget) shot = m.payload.projectile;
+            else if (payload == EffectKind.EmitProjectilePattern && m.payload.pattern != null)
             {
                 shot = m.payload.pattern.barrel;
                 c.FanOut = shot != null && m.payload.pattern.fanOutToAllCandidates;
@@ -297,7 +297,7 @@ namespace Wassup.BattleCoreUnity
             var p = m.payload;
             switch (b.Payload)
             {
-                case TriggerPayload.ProjectileToTarget:
+                case EffectKind.ProjectileToTarget:
                 {
                     if (p.projectile == null || p.magnitude <= 0f) { Warn($"{label}: ProjectileToTarget 탄 없음 / magnitude <= 0 — 건너뛴다."); return false; }
                     var (mv, pl) = CombatDefinitionBuilder.Translate(p.projectile.flightMode);
@@ -313,7 +313,7 @@ namespace Wassup.BattleCoreUnity
                     b.ProjectilePayload = (int)pl;
                     return true;
                 }
-                case TriggerPayload.SelfOrbitProjectile:
+                case EffectKind.SelfOrbitProjectile:
                     if (p.projectile == null || p.magnitude <= 0f || p.duration <= 0f || p.tileRange <= 0
                         || p.projectile.speed <= 0f || p.projectile.hitThreshold <= 0f)
                     { Warn($"{label}: SelfOrbitProjectile 탄·피해·지속·반경·속도·굵기 중 빈 것이 있다 — 건너뛴다."); return false; }
@@ -324,7 +324,7 @@ namespace Wassup.BattleCoreUnity
                     b.Period = Mathf.Clamp(p.orbitCount <= 0 ? 1 : p.orbitCount, 1, 16);   // 구슬 개수(옛 슬롯 period 재사용)
                     if (b.Trigger == TriggerKind.PeriodicTimer && m.trigger.periodSeconds < p.duration) Warn($"{label}: 주기 < 지속 — 화염구가 겹쳐 쌓인다.");
                     return true;
-                case TriggerPayload.AreaBreath:
+                case EffectKind.AreaBreath:
                     // 판정 게이트(`SkillMath.SectorGate`)는 볼록 쐐기(반각 < 90°)만 잰다 — 그 이상은 반평면·reflex 라
                     // 조용히 다른 도형이 된다. 거절(`AttackShapeBake` 가 reflex 를 거절하는 것과 같은 규율).
                     if (p.coneHalfAngleDeg >= 90f) { Error($"{label}: AreaBreath 반각({p.coneHalfAngleDeg}°) >= 90 — 부채꼴 게이트의 정의역(볼록 쐐기) 밖이다. 건너뛴다."); return false; }
@@ -332,51 +332,51 @@ namespace Wassup.BattleCoreUnity
                     if (p.tileRange <= 0) Warn($"{label}: AreaBreath 사거리가 0 — 같은 셀만 맞는다.");
                     if (p.magnitude <= 0f) Warn($"{label}: AreaBreath 피해가 0 이하 — 발동해도 아무 일이 없다.");
                     return true;
-                case TriggerPayload.EmitProjectilePattern:
+                case EffectKind.EmitProjectilePattern:
                     return BindPattern(ref b, p.pattern, p.tileRange, label, projectiles, patterns);
-                case TriggerPayload.SelfTileAoe:
-                case TriggerPayload.UltimateLeap:
+                case EffectKind.SelfTileAoe:
+                case EffectKind.UltimateLeap:
                     // 폭발·착지 슬램이 탄 요청 하나로 표현된다 — 탄이 없으면 **피해까지** 사라진다.
                     if (p.projectile == null)
                     {
                         Warn($"{label}: {b.Payload} 에 ProjectileData 가 없어 요청이 드롭된다 — 건너뛴다. payload.projectile 을 지정하라.");
                         return false;
                     }
-                    if (b.Payload == TriggerPayload.SelfTileAoe && p.magnitude <= 0f) { Warn($"{label}: SelfTileAoe magnitude <= 0 — 건너뛴다."); return false; }
+                    if (b.Payload == EffectKind.SelfTileAoe && p.magnitude <= 0f) { Warn($"{label}: SelfTileAoe magnitude <= 0 — 건너뛴다."); return false; }
                     b.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
                     b.VisualScale = 0f;   // 유닛 bake 는 탄 배율을 안 실었다(0 = 뷰가 1 로 읽는다) — 카드는 빌더가 덧씌운다
                     // unit 7d — 「생존당 1회」는 **`fireCap 1`** 이다(정정 5 의 짝). 옛 전투는 `fraction ≥ 0.5` 라 둘째 경계가
                     // 음수가 되어 **우연히** 1회였다 — 값 한 칸이 0.4 가 되면 조용히 2회가 된다. ⚠ **궁극기에만** 준다 —
                     // 같은 경계 트리거를 빈사폭주·진동갑주·가호가 쓰고 그쪽은 다회 발동이 사양이다.
-                    if (b.Payload == TriggerPayload.UltimateLeap) b.FireCap = 1;
+                    if (b.Payload == EffectKind.UltimateLeap) b.FireCap = 1;
                     return true;
-                case TriggerPayload.SelfBlink:
-                case TriggerPayload.AllyMoveSpeedAura:
-                case TriggerPayload.AreaSleep:
+                case EffectKind.SelfBlink:
+                case EffectKind.AllyMoveSpeedAura:
+                case EffectKind.AreaSleep:
                     // 연출용 탄(퍼프·펄스) — **선택**이다. 없으면 연출만 없다.
                     if (p.projectile != null) b.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
-                    if (b.Payload == TriggerPayload.AreaSleep)
+                    if (b.Payload == EffectKind.AreaSleep)
                     {
                         if (p.magnitude < 1f || p.duration <= 0f) { Warn($"{label}: AreaSleep 에 인원(>=1)·수면 초(>0)가 없다 — 매 주기 no-op. 건너뛴다."); return false; }
                         if (p.tileRange <= 0) { Warn($"{label}: AreaSleep 의 tileRange 가 0 이라 host 셀만 본다 — 건너뛴다."); return false; }
                         if (b.Trigger == TriggerKind.PeriodicTimer && p.duration >= m.trigger.periodSeconds)
                             Warn($"{label}: AreaSleep duration({p.duration}) >= periodSeconds({m.trigger.periodSeconds}) — 수면이 끊기지 않아 대상이 생존 내내 고착한다.");
                     }
-                    if (b.Payload == TriggerPayload.AllyMoveSpeedAura && p.duration <= m.trigger.periodSeconds)
+                    if (b.Payload == EffectKind.AllyMoveSpeedAura && p.duration <= m.trigger.periodSeconds)
                         Warn($"{label}: AllyMoveSpeedAura duration({p.duration}) <= periodSeconds({m.trigger.periodSeconds}) — 펄스 사이에 만료(점멸)한다.");
                     return true;
-                case TriggerPayload.ApplyCcToTarget:
+                case EffectKind.ApplyCcToTarget:
                     if (p.duration <= 0f) { Warn($"{label}: ApplyCcToTarget duration <= 0 — 건너뛴다."); return false; }
                     return true;
-                case TriggerPayload.ApplyStackToTarget:
+                case EffectKind.ApplyStackToTarget:
                     if (p.magnitude < 1f) { Warn($"{label}: ApplyStackToTarget magnitude < 1(스택 없음) — 건너뛴다."); return false; }
                     return true;
-                case TriggerPayload.AreaDot:
+                case EffectKind.AreaDot:
                     // 틱 간격(0 이면 magnitude 가 DPS). 빔 프리팹은 뷰의 것(7c) — 여기선 index 를 안 싣는다(무연출).
                     b.Speed = Mathf.Max(0f, p.tickIntervalSec);
                     return true;
-                case TriggerPayload.AllyStatAura:
-                case TriggerPayload.OpponentStatAura:
+                case EffectKind.AllyStatAura:
+                case EffectKind.OpponentStatAura:
                     if (p.buffStat == CardBuffKind.EffectiveHealth)
                     {
                         // 번역 산식이 역수(1/(1+p/100))라 오라 concrete 의 (1+p/100) 과 갈린다 — 조용히 틀린 배율보다 거절.
@@ -385,16 +385,16 @@ namespace Wassup.BattleCoreUnity
                     }
                     if (!TryToSkillStat(p.buffStat, out _)) { Warn($"{label}: 오라 스탯 {p.buffStat} 을 옮길 수 없다 — 건너뛴다."); return false; }
                     return true;
-                case TriggerPayload.GrantShield:
+                case EffectKind.GrantShield:
                     // 트리거 × 반경 블랙리스트는 은퇴(unit 5) — concrete 가 자기(반경 0)·주변(반경 > 0)을 둘 다 받는다.
                     if (p.magnitude <= 0f) { Warn($"{label}: GrantShield 에 실드량(>0)이 없다 — 매 발동 no-op. 건너뛴다."); return false; }
                     if (p.duration > 0f) Warn($"{label}: GrantShield 의 duration({p.duration}) 은 무시된다 — 실드는 시간이 아니라 피해로만 사라진다.");
                     return true;
-                case TriggerPayload.AreaTaunt:
+                case EffectKind.AreaTaunt:
                     // 가디언 여부는 조합 검증(`EffectComboRule` ⑦)이 본다.
                     if (p.duration <= 0f || p.tileRange <= 0) { Warn($"{label}: AreaTaunt 에 도발 초·반경이 없다 — 매 발동 no-op. 건너뛴다."); return false; }
                     return true;
-                case TriggerPayload.SpawnHazard:
+                case EffectKind.SpawnHazard:
                     int h = hazards != null && p.hazard != null ? System.Array.IndexOf(hazards, p.hazard) : -1;
                     if (h < 0) { Warn($"{label}: SpawnHazard 의 장판이 이 판의 장판 표에 없다 — 건너뛴다(카드면 `WithCardHazards` 를 거쳤나)."); return false; }
                     b.HazardDefIndex = h;
@@ -453,13 +453,13 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
-        public static TriggerPayload ToCorePayload(DcPayloadKind authored)
+        public static EffectKind ToCorePayload(DcPayloadKind authored)
         {
             // 33 값 — 이름으로 옮긴다(`System.Enum.TryParse` 는 이름 일치다. 번호 캐스트가 아니다).
-            if (System.Enum.TryParse(authored.ToString(), out TriggerPayload core)
-                && System.Enum.IsDefined(typeof(TriggerPayload), core)) return core;
+            if (System.Enum.TryParse(authored.ToString(), out EffectKind core)
+                && System.Enum.IsDefined(typeof(EffectKind), core)) return core;
             Error($"모르는 페이로드({authored}) — 없음으로 접는다(bake 가 건너뛴다).");
-            return TriggerPayload.None;
+            return EffectKind.None;
         }
 
         public static GateKind ToCoreGate(DcGateKind authored)

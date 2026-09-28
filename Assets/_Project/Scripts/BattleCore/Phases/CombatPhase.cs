@@ -1421,7 +1421,7 @@ namespace Wassup.BattleCore
                 EffectApply.Stat(ctx, u.Id, u, u, (StatKind)pg.CocoonStat, op, mag, float.PositiveInfinity,
                                  // unit 7b — 칸 판별자 = 그 카드 규칙의 `InstanceId`(카드 칸 — 붙일 때마다 새 칸, 옛 `_dcStackCounter++`).
                                  // 배치 칸(`OnPlace`)에 두면 유닛 저작 스택 id 와 같은 번호판을 써 서로를 덮는다.
-                                 SlotTag.OfCard(pg.CocoonStackId), 0f, ModifierOrigin.Dreamcatcher);
+                                 SlotTag.OfBinding(pg.CocoonStackId), 0f, ModifierOrigin.Dreamcatcher);
             }
         }
 
