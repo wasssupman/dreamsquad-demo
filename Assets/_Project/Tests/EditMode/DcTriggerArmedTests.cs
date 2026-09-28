@@ -107,6 +107,8 @@ namespace Wassup.Tests.EditMode
                 { TriggerKind.OnDeath,        (true,  true)  },
                 { TriggerKind.OnPlace,        (false, true)  },
                 { TriggerKind.OnRetire,       (false, true)  },
+                // skill-data-table unit 4 — 시전(액티브 카드 · 플레이어 입력)은 사건이 아니다 — 어느 진영에도 감지자가 없다.
+                { TriggerKind.Cast,           (false, false) },
             };
 
             var unclassified = new List<string>();

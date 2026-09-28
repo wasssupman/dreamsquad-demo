@@ -128,6 +128,10 @@ namespace Wassup.Core
             // 두 번째 손패 op 가 와도 이 줄은 그대로다 — 트리거 축은 bake 가 최종 판정한다.
             if (DcPayloadKinds.IsHandOp(payload.kind)) return DcRejectReason.None;
 
+            // skill-data-table unit 4 — 액티브 시전 효과는 숙주에 붙는 규칙이 아니다(시전 = 플레이어 입력 · 사건 지점 없음).
+            // 이 파일은 죽은 사본(census B21 — 4-정리에서 삭제)이라 전수성만 맞춘다.
+            if (SkillRouting.IsActiveCast(payload.kind)) return DcRejectReason.NoEventPoint;
+
             switch (payload.kind)
             {
                 // 비수 — 니들은 host 의 대상으로 날아가고(host 우선), host 가
