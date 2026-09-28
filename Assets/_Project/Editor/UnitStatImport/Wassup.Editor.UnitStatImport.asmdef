@@ -3,6 +3,7 @@
     "rootNamespace": "Wassup.Editor.UnitStatImport",
     "references": [
         "Wassup.Runtime",
+        "Wassup.BattleCore",
         "Wassup.SheetSync"
     ],
     "includePlatforms": [
