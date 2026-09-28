@@ -9,7 +9,7 @@
 - `TriggerDispatcher` · `IntentApplier` · `CoreSkillContext` — 효과 값을 효과 표에서 읽는다(`BindingDef.ToParams` 자리).
 - 빌더(`BindingDefinitionBuilder` · `CardDefinitionBuilder`) — 이 unit 에서는 **오늘 저작을 그대로** 효과 표로 번역(같은 값 = 같은 줄 dedupe, id = 저작 경로에서 파생한 임시 id). 저작 형식 통합은 unit 4.
 - **1a**(컴파일 안전): 효과 표 + 읽기 접근자만. 옛 효과 칸은 남기고 소비처 전부를 접근자로 — 목록 밖 소비처 포함: `CombatPhase` · `CoreEvent` · `CommandPhase` · `Applicability` · `RangeCatalog` · `CardProbe` · 뷰(`CoreVfxSpawner` · `CoreCardDragSlot`).
-- **1b**: 옛 칸 제거 · 효과 칸을 직접 채우는 테스트(약 21 파일) 이전 · **패턴·장판·슬램 피해를 효과 줄로(U10)**.
+- **1b**: 옛 칸 제거 · 효과 칸을 직접 채우는 테스트(약 21 파일) 이전 · **패턴·장판·슬램·길막 폭발 피해를 효과 줄로(U10 · `tables.md` §6 — 디버그 장판 스폰 명령이 피해를 싣는다)**.
 - 인스턴스 값은 효과 표로 올리지 않는다: 호접몽 `StackId = InstanceId`(`BindingRegistry.cs:220`) · 부착 캐스트 FireCap/Lifetime 은 **규칙 인스턴스**에 남긴다.
 - 런타임 조립 기믹 줄(`CoreEffect` · `DefIndex=-1`)은 효과 표 밖 — 지금 경로 유지(범위 밖 명시).
 - 해시: README 계약 8(해석된 값만 · id·순서 제외) — 목표 재베이크 0.

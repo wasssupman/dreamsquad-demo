@@ -1,7 +1,7 @@
 # 4 — 저작 한 형식 (저작 · Unity)
 
 ## 목적
-카드 · 방어유닛 · 적이 같은 저작 형식으로 효과를 참조한다(계약 2). 오늘 세 저장처(`DreamcatcherCard.mechanics` · `UnitSkillAbility` · `AttackUnitData.nightmareMechanics`)를 하나로 합친다.
+카드 · 방어유닛 · 적이 같은 저작 형식으로 효과를 참조한다(계약 2). 오늘 네 저장처(`DreamcatcherCard.mechanics` · `UnitSkillAbility` · `AttackUnitData.nightmareMechanics` · 코드가 굽는 `ShieldCastAbility` — `BindingDefinitionBuilder.BakeShieldCast`)를 하나로 합친다. `SplitOnDeath` 는 소유 줄이 아니라 적 고유 값(`Enemies.split_*` — `tables.md` §8)으로 옮긴다.
 
 ## 변경 대상
 - 효과 SO(`Scripts/Data/Effects/`) — unit 0 의 Effects 표 한 줄 = SO 하나(에디터에서 참조가 보인다).
