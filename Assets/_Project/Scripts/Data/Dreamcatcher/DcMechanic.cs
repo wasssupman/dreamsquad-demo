@@ -297,7 +297,15 @@ namespace Wassup.Data
         public DcGateKind gate;
         public DcGateSubject gateSubject;
         public float gateValue;
+        // unified-effect-layer unit 5 — **누구의 사건을 듣나**(주체 축). 기본 `Self` = 기존 저작 전부(직렬화 기본값 0).
+        // `OthersPlacement` = 「남의 배치」 — 숙주가 살아 있는 동안 **새로 놓이는 아군마다** 그 유닛의 자리에서 발동한다
+        // (코어 `BindingSubject.Any` + `BindingSubjectFilter.PlacedDefender`). 배치(`OnPlace`) 에만 뜻이 있다 — 다른 트리거는
+        // bake 가 거절한다(`EffectComboRule`). append-only.
+        public DcTriggerSubject subject;
     }
+
+    // unified-effect-layer unit 5 — 트리거 주체 축. append-only(에셋이 int 로 직렬화).
+    public enum DcTriggerSubject { Self, OthersPlacement }
 
     [Serializable]
     public struct DcPayloadSpec
@@ -401,6 +409,9 @@ namespace Wassup.Data
         // 겸직하면 «시간인 줄 알고» 읽는 코드가 생긴다(slamDamage 가 명시 필드가 된 선례와 같은
         // 판단). 0 = bake 경고. 다른 kind 는 무시. append-only.
         public float coneHalfAngleDeg;
+        // unified-effect-layer unit 5 — **착탄 예고**(사용자 결정 U1 — 효과 파라미터 · 기본 꺼짐). 칸 결합 탄(타격 운석 등)이
+        // 떨어질 자리를 비행 시간 동안 미리 보인다. false = 기존 저작 전부 무변. append-only.
+        public bool telegraph;
     }
 
     [Serializable]

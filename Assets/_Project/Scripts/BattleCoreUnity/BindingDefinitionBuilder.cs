@@ -166,6 +166,7 @@ namespace Wassup.BattleCoreUnity
                 float c = Mathf.Cos(Mathf.Deg2Rad * Mathf.Max(0f, m.payload.coneHalfAngleDeg));
                 b.ConeCosSq = c * c;
                 b.Origin = BindingOrigin.UnitAuthored;
+                ApplyAuthoredAxes(ref b, in m);
 
                 if (!BindPayload(ref b, in m, label, projectiles, patterns, hazards)) continue;
 
@@ -199,7 +200,7 @@ namespace Wassup.BattleCoreUnity
             var c = new EffectCombo
             {
                 Trigger = trigger,
-                Subject = BindingSubject.Self,
+                Subject = ToCoreSubject(m.trigger.subject),
                 Payload = payload,
                 HostIsEnemy = hostIsEnemy,
                 BindsAfterPlacement = bindsAfterPlacement,
@@ -218,6 +219,25 @@ namespace Wassup.BattleCoreUnity
                 c.Binding = MovementBinding.Of(CombatDefinitionBuilder.Translate(shot.flightMode).Item1);
             }
             return c;
+        }
+
+        /// <summary>저작 주체 축 → 코어. 「남의 배치」 = 판 위 누구의 사건이든(`Any`) — 필터는 `ApplyAuthoredAxes` 가 싣는다.</summary>
+        public static BindingSubject ToCoreSubject(DcTriggerSubject authored)
+            => authored == DcTriggerSubject.OthersPlacement ? BindingSubject.Any : BindingSubject.Self;
+
+        /// <summary>
+        /// 두 빌더 공용 — 저작 축 둘(주체 · 예고)을 규칙 줄에 싣는다. 「남의 배치」 = `Any` + **판에 배치된 방어유닛**만
+        /// (순찰 소환물·거점 제외) · 수명 = 숙주(`Owner` — 숙주가 떠나면 같이 떨어진다).
+        /// </summary>
+        internal static void ApplyAuthoredAxes(ref BindingDef b, in DcMechanic m)
+        {
+            b.Subject = ToCoreSubject(m.trigger.subject);
+            if (b.Subject == BindingSubject.Any)
+            {
+                b.SubjectFilter = BindingSubjectFilter.PlacedDefender;
+                b.Lifetime = BindingLifetime.Owner;
+            }
+            b.Telegraph = m.payload.telegraph;
         }
 
         /// <summary>조합 검증 — 거절이면 사유 셋 중 하나로 짖는다.</summary>

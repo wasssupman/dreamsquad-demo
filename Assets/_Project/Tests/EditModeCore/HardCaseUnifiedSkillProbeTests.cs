@@ -31,8 +31,8 @@ namespace Wassup.Tests.EditMode.Core
     [TestFixture]
     public class HardCaseUnifiedSkillProbeTests
     {
-        private const int N = 2;
-        private const float Hit = 100f;
+        public const int N = 2;
+        public const float Hit = 100f;
         private const int Ticks = 90;
 
         // 판 12×5(`CoreMatchFixtures.Board`). 스폰은 x=0 — 웨이브 적은 거기 멈춰 선다(속도 0) → 어느 스코프에도 안 든다.
@@ -106,7 +106,8 @@ namespace Wassup.Tests.EditMode.Core
             return r;
         }
 
-        private static BindingDef CardRow()
+        /// <summary>AA 규칙 줄 — 빌더 픽스처(`UnifiedEffectBakeFixtureTests`)가 굽힌 줄과 대조한다.</summary>
+        public static BindingDef CardRow()
         {
             var r = Effect();
             r.Label = "AA 배치 상속 융단폭격";

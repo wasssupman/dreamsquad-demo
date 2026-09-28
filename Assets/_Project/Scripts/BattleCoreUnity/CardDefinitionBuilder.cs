@@ -288,6 +288,7 @@ namespace Wassup.BattleCoreUnity
             float cone = Mathf.Cos(Mathf.Deg2Rad * Mathf.Max(0f, p.coneHalfAngleDeg));
             r.ConeHalfAngleDeg = p.coneHalfAngleDeg;
             r.ConeCosSq = cone * cone;
+            BindingDefinitionBuilder.ApplyAuthoredAxes(ref r, in m);
 
             // 값 가드 · 표 참조는 두 빌더 공용(`BindingDefinitionBuilder.BindPayload`). 아래 둘은 **카드 저작 인코딩**이다(H4 후속).
             if (!BindingDefinitionBuilder.BindPayload(ref r, in m, label, projectiles, patterns, hazards)) return;

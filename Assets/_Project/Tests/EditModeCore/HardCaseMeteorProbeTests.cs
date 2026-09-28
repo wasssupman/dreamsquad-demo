@@ -30,11 +30,11 @@ namespace Wassup.Tests.EditMode.Core
     [TestFixture]
     public class HardCaseMeteorProbeTests
     {
-        private const int N = 1;
+        public const int N = 1;
         private const float ActiveHit = 100f;
-        private const float OnHitHit = 30f;
+        public const float OnHitHit = 30f;
         private const float MeleeHit = 1f;       // D 의 평타(운석 피해와 금액으로 가른다)
-        private const float WarningSec = 0.5f;   // 액티브 낙하 예고 = 비행 시간(30 틱)
+        public const float WarningSec = 0.5f;   // 액티브 낙하 예고 = 비행 시간(30 틱)
 
         // 판 12×5(`CoreCombatFixtures.Definition`). 적은 속도 0 — 제자리에 선다.
         // 자리형 도달 = N + 칸 반폭 0.5 + 대상 몸 0.25 = 1.75 칸.
@@ -86,8 +86,8 @@ namespace Wassup.Tests.EditMode.Core
             return r;
         }
 
-        /// <summary>드림캐쳐 「타격 운석」 규칙 — 매 타격 · 대상에게 탄(같은 운석 줄).</summary>
-        private static BindingDef OnHitMeteorRule(int tiles = N, MovementKind movement = 0, PayloadKind payload = 0)
+        /// <summary>드림캐쳐 「타격 운석」 규칙 — 매 타격 · 대상에게 탄(같은 운석 줄). 빌더 픽스처(`UnifiedEffectBakeFixtureTests`)가 굽힌 줄과 대조한다.</summary>
+        public static BindingDef OnHitMeteorRule(int tiles = N, MovementKind movement = 0, PayloadKind payload = 0)
         {
             var r = CoreCardFixtures.CardRule(TriggerKind.AttackN, TriggerPayload.ProjectileToTarget);
             r.Label = "타격 운석";

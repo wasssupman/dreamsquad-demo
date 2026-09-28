@@ -36,6 +36,20 @@ namespace Wassup.Tests.EditMode
 
         [Test] public void 트리거_10() { Pin<DcTriggerKind, TriggerKind>(); Assert.AreEqual(10, Enum.GetValues(typeof(TriggerKind)).Length); PinMapping<DcTriggerKind, TriggerKind>(BindingDefinitionBuilder.ToCoreTrigger); }
         [Test] public void 페이로드_33() { Pin<DcPayloadKind, TriggerPayload>(); Assert.AreEqual(33, Enum.GetValues(typeof(TriggerPayload)).Length); PinMapping<DcPayloadKind, TriggerPayload>(BindingDefinitionBuilder.ToCorePayload); }
+        // unified-effect-layer unit 5 — 트리거 주체 축. 이름이 코어와 달라(「남의 배치」 ↔ `Any`) 값과 매핑을 손으로 고정한다.
+        [Test]
+        public void 트리거_주체()
+        {
+            Assert.AreEqual(0, (int)DcTriggerSubject.Self, "기본값 0 = 기존 저작 전부");
+            Assert.AreEqual(1, (int)DcTriggerSubject.OthersPlacement);
+            Assert.AreEqual(2, Enum.GetValues(typeof(DcTriggerSubject)).Length, "값이 늘면 매핑도 늘린다");
+            Assert.AreEqual(BindingSubject.Self, BindingDefinitionBuilder.ToCoreSubject(DcTriggerSubject.Self));
+            Assert.AreEqual(BindingSubject.Any, BindingDefinitionBuilder.ToCoreSubject(DcTriggerSubject.OthersPlacement));
+            Assert.AreEqual(0, (int)BindingSubject.Self);
+            Assert.AreEqual(1, (int)BindingSubject.Any);
+            Assert.AreEqual(1, (int)BindingSubjectFilter.PlacedDefender);
+        }
+
         [Test] public void 게이트() { Pin<DcGateKind, GateKind>(); Pin<DcGateSubject, GateSubject>(); PinMapping<DcGateKind, GateKind>(BindingDefinitionBuilder.ToCoreGate); PinMapping<DcGateSubject, GateSubject>(BindingDefinitionBuilder.ToCoreGateSubject); }
 
         [Test]

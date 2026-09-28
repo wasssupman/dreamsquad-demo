@@ -10,6 +10,7 @@
         "Wassup.Editor.MobileBuild",
         "Wassup.SheetSync",
         "Wassup.Tests.EditMode",
+        "Wassup.Tests.EditMode.Core",
         "Unity.Collections",
         "Unity.Mathematics",
         "Unity.TextMeshPro",

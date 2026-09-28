@@ -32,7 +32,8 @@ namespace Wassup.BattleCore.Trigger
         /// </summary>
         public int SubjectCost;
         /// <summary>
-        /// unit 7d — `Any` 바인딩의 코어 내부 주어 필터(저작 노출 없음). 위 둘과 곱(∧). `None` = 없음.
+        /// unit 7d — `Any` 바인딩의 주어 필터. 위 둘과 곱(∧). `None` = 없음. 저작 「남의 배치」(unified-effect-layer unit 5)가
+        /// `PlacedDefender` 를 싣는다 — 그 밖엔 기믹 코드만 쓴다.
         /// </summary>
         public BindingSubjectFilter SubjectFilter;
 
@@ -95,7 +96,7 @@ namespace Wassup.BattleCore.Trigger
         public int ProjectilePayload;
         /// <summary>
         /// unified-effect-layer unit 2 — 칸 결합 탄의 **착탄 예고**(사용자 결정 U1 — 효과 파라미터 · 기본 꺼짐).
-        /// 저작 칸은 unit 5 에서 열린다 — 그 전엔 빌더가 안 채워 늘 false(라이브 무변).
+        /// 저작 칸 = `DcPayloadSpec.telegraph`(unit 5 · 기본 false — 기존 저작 무변).
         /// </summary>
         public bool Telegraph;
 

@@ -78,7 +78,8 @@ namespace Wassup.BattleCore.Trigger
 
     /// <summary>
     /// 이 바인딩이 **누구의 사건**을 듣나. `Self` = 소유자 자신의 사건(유닛 스킬 전부) ·
-    /// `Any` = 판 위 누구의 사건이든(배치 오라 · Squad 상속 — 7b). 저작 노출이 없는 코어 축이다.
+    /// `Any` = 판 위 누구의 사건이든(배치 오라 · Squad 상속 — 7b). unified-effect-layer unit 5 부터 저작에 노출된다 —
+    /// `DcTriggerSpec.subject` 「남의 배치」 = `Any` + `BindingSubjectFilter.PlacedDefender`(빌더가 옮긴다 · 배치에만 뜻이 있다).
     /// </summary>
     public enum BindingSubject : byte { Self = 0, Any = 1 }
 
@@ -102,7 +103,7 @@ namespace Wassup.BattleCore.Trigger
     }
 
     /// <summary>
-    /// unit 7d — `Any` 바인딩의 **주어 필터**(코어 내부 축 · 저작 노출 없음 — rev 3 §1). 직업·코스트 필터
+    /// unit 7d — `Any` 바인딩의 **주어 필터**(코어 축 · unified-effect-layer unit 5 부터 저작 「남의 배치」가 이 값을 싣는다 — rev 3 §1). 직업·코스트 필터
     /// (`SubjectClassMask`·`SubjectCost`)와 **곱(∧)** 으로 읽는다. 닫힌 집합이라 제약 8 에 맞는다.
     /// ⚠ append-only(트레이스·해시에 번호로 실린다).
     /// </summary>
