@@ -39,11 +39,11 @@ namespace Wassup.BattleCore.Trigger
         public IntentApplier Applier => _applier;
 
         /// <summary>한 발동의 문맥을 연다 — 쓰기 표면이 「누가 · 어느 규칙이」를 안다(칸 판별자·발사 명세 슬롯).</summary>
-        internal void Begin(Binding b, in TriggerEvent e, Faction casterFaction, TickContext ctx)
+        internal void Begin(Binding b, in TriggerEvent e, in EffectDef effect, Faction casterFaction, TickContext ctx)
         {
             _warnedMetric = false;
             _warnedOverflow = false;
-            _applier.Begin(b, casterFaction, ctx);
+            _applier.Begin(b, in effect, casterFaction, ctx);
         }
 
         internal void End() => _applier.End();

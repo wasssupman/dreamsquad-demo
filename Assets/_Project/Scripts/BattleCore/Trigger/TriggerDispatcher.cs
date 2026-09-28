@@ -167,6 +167,7 @@ namespace Wassup.BattleCore.Trigger
         {
             var e = SubjectOf(dying, Seam.Lifecycle, TriggerKind.OnDeath);
             e.SubjectGone = true;
+            e.SubjectAttack = EffectMagnitude.BasisOf(dying, BasisStat.Attack);   // 비율형 기준 스냅샷(계약 9)
             e.HasSite = true; e.Site = dying.Position; e.SiteBody = dying.HitRadius;   // 자리의 주인 = 죽은 나
             Collect(in e, dying, includeDetached: false);
         }
@@ -180,6 +181,7 @@ namespace Wassup.BattleCore.Trigger
         {
             var e = SubjectOf(u, Seam.Immediate, TriggerKind.OnRetire);
             e.SubjectGone = true;
+            e.SubjectAttack = EffectMagnitude.BasisOf(u, BasisStat.Attack);   // 비율형 기준 스냅샷(계약 9)
             e.SubjectBody = 0f;
             e.HasSite = true; e.Site = vacatedCenter; e.SiteBody = 0f;
             Collect(in e, u, includeDetached: false);
@@ -531,12 +533,17 @@ namespace Wassup.BattleCore.Trigger
             var target = new SkillTarget(targetUnit != null ? CoreSkillContext.ToSkill(targetUnit.Id) : SkillEntityId.None,
                                          in origin, e.CellB, e.HasCellB, e.Direction);
 
-            var prm = d.ToParams(in b.Effect, e.TargetLayers);
+            // skill-data-table unit 3 — **시전 순간**(README 계약 9) = 이 드레인. 비율형 수치를 여기서 **한 번** 고정값으로 풀어
+            // 실행에 넘긴다 — 탄 · 발사 명세(버스트 전 발) · 장판 · 도약 슬램은 이 값을 실어 나르고 착탄 때 주인을 되묻지 않는다.
+            var fx = b.Effect;
+            if (fx.MagnitudeMode == MagnitudeMode.OwnerStatRatio)
+                fx = EffectMagnitude.Resolve(in fx, CastBasis(fx.BasisStat, owner, in e, d.Label));
+            var prm = d.ToParams(in fx, e.TargetLayers);
 
             b.FireCount++;
             PublishFired(b, in e, ctx.Tick, targetUnit);
 
-            _skills.Begin(b, in e, caster.Faction, ctx);
+            _skills.Begin(b, in e, in fx, caster.Faction, ctx);
             try
             {
                 d.Skill.Execute(caster, in target, in prm, _skills);
@@ -553,6 +560,17 @@ namespace Wassup.BattleCore.Trigger
 
             if (d.Lifetime == BindingLifetime.UntilFireCap && d.FireCap > 0 && b.FireCount >= d.FireCap)
                 _registry.Detach(b, BindingDetachReason.FireCapReached, ctx.Tick);
+        }
+
+        // skill-data-table unit 3 — 비율형의 기준값. 주인이 판에 있으면 **지금**(최종 스탯) · 떠났으면(죽음 · 퇴근) 감지 순간
+        // 스냅샷. 주인 없는 시전(판 · 액티브 · 드림스톤 — 사건 주체 `Match`)은 기준이 없다 — 검증(`EffectComboRule`)이 거절했어야
+        // 한다. 조용히 넘기지 않고 말한 뒤 0 으로 푼다(효과는 헛발).
+        private float CastBasis(BasisStat stat, Unit owner, in TriggerEvent e, string label)
+        {
+            if (owner != null && !e.SubjectGone) return EffectMagnitude.BasisOf(owner, stat);
+            if (e.SubjectGone) return stat == BasisStat.MaxHealth ? e.SubjectMaxHp : e.SubjectAttack;
+            Warn($"[Trigger] '{label}' 비율형 수치인데 주인이 없다(주인 없는 시전) — 검증이 거절했어야 한다. 값 0 으로 푼다.");
+            return 0f;
         }
 
         // unit 7d — 코어 효과(시즌 기믹). 레일(감지·카운터·줄·수명·발동 상한)은 스킬과 같고 실행자만 다르다.

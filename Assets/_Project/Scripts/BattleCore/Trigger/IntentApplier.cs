@@ -31,6 +31,9 @@ namespace Wassup.BattleCore.Trigger
 
         // 한 발동의 문맥 — 칸 판별자(카드 = InstanceId)·발사 명세 슬롯·시전자 진영(주인이 없어도).
         private Binding _binding;
+        // skill-data-table unit 3 — 이번 발동의 **해석된** 효과 값(비율형은 시전 순간 고정값 · 계약 9). `_binding.Effect` 는 저작값이라
+        // 실행 중 효과 값은 이것만 읽는다.
+        private EffectDef _effect = EffectDef.Default();
         private Faction _casterFaction = Faction.DefenderUnit;
         private TickContext _ctx;
 
@@ -53,15 +56,20 @@ namespace Wassup.BattleCore.Trigger
         internal void Bind(TickContext ctx) { _home = ctx; if (_ctx == null) _ctx = ctx; }
         private TickContext _home;
 
-        /// <summary>한 발동의 문맥을 연다(디스패처 · 7b 액티브). `ctx` 가 null 이면 판의 문맥을 쓴다.</summary>
+        /// <summary>한 발동의 문맥을 연다(직접 적용 — 효과 값 = 그 규칙의 저작값). `ctx` 가 null 이면 판의 문맥을 쓴다.</summary>
         public void Begin(Binding b, Faction casterFaction, TickContext ctx)
+            => Begin(b, b != null ? b.Effect : EffectDef.Default(), casterFaction, ctx);
+
+        /// <summary>같은 문맥 + 이번 발동의 **해석된** 효과 값(디스패처 드레인 — 비율형은 시전 순간 고정값).</summary>
+        public void Begin(Binding b, in EffectDef effect, Faction casterFaction, TickContext ctx)
         {
             _binding = b;
+            _effect = effect;
             _casterFaction = casterFaction;
             _ctx = ctx ?? _home;
         }
 
-        public void End() { _binding = null; _casterFaction = Faction.DefenderUnit; _ctx = _home ?? _ctx; }
+        public void End() { _binding = null; _effect = EffectDef.Default(); _casterFaction = Faction.DefenderUnit; _ctx = _home ?? _ctx; }
 
         private int Tick => _ctx != null ? _ctx.Tick : 0;
         private float TileSize => _map != null ? _map.TileSize : 1f;
@@ -331,7 +339,7 @@ namespace Wassup.BattleCore.Trigger
             inst.PatternDefIndex = pat;
             inst.LockedTarget = SimEntityId.None;
             // ⚠ 스킬 경로의 탄 피해 = **효과 줄의 피해**(U10 — 명세는 모양만. 평타 연발은 공격 실효값을 쓴다).
-            inst.Damage = _binding.Effect.Damage;
+            inst.Damage = _effect.Damage;   // 버스트 개시 순간 한 번 — 전 발이 공유한다(계약 9)
             inst.FromSkill = true;
             // 조준이 필요한 패턴(방향 바인딩)은 스킬이 정한 방향·사거리로 나간다(옛 템플릿 origin/direction/maxDistance).
             inst.AimDirection = i.DirectionXZ;
@@ -360,7 +368,7 @@ namespace Wassup.BattleCore.Trigger
             // U10 — 장판의 DoT 피해 = 까는 효과 줄의 피해(장판 줄은 모양·비피해 수치만).
             var h = HazardSpawn.Spawn(_world, _map, _def, i.DataIndex, i.Cell, Id(i.Source),
                                       src != null ? src.Faction : _casterFaction, i.TargetTraversalLayers, Tick,
-                                      _binding != null ? _binding.Effect.Damage : 0f);
+                                      _binding != null ? _effect.Damage : 0f);
             if (h == null) Warn($"[Intent] 장판 줄 {i.DataIndex} 이 없다 — 깔지 않는다.");
         }
 

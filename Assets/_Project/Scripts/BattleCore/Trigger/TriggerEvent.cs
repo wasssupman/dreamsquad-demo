@@ -32,6 +32,12 @@ namespace Wassup.BattleCore.Trigger
         public float SubjectHp;
         public float SubjectMaxHp;
         /// <summary>
+        /// skill-data-table unit 3 — 주인의 기준 스탯 「공격력」(`EffectMagnitude.BasisOf`) **감지 순간 스냅샷**. 주인이 떠나는
+        /// 사건(자기 죽음 · 퇴근)만 싣는다 — 드레인 시점엔 주인이 없어 비율형 수치를 되물을 수 없다(몸 스냅샷 선례 · 계약 9).
+        /// 최대 체력은 위 `SubjectMaxHp` 가 같은 스냅샷이다. 그 밖의 사건은 0 — 드레인이 살아 있는 주인을 직접 읽는다.
+        /// </summary>
+        public float SubjectAttack;
+        /// <summary>
         /// unit 7d — 주인의 **점유 앵커**(min 코너 칸) 스냅샷. 점유가 없는 주인(적·순찰·Match)은 `HasSubjectAnchor = false`.
         /// 사직서가 그 방어유닛의 **배치 칸**에 떨어진다(옛 `DefenderFootprint.anchor`) — 드레인 시점엔 주인이 없어 되물을 수 없다.
         /// ⚠ 발밑 좌표(`SubjectPos`)에서 되짚지 말 것 — 2칸 폭이면 발밑이 두 칸 사이에 서서 칸이 한 칸 밀린다.
