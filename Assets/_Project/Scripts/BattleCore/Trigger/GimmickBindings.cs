@@ -64,7 +64,7 @@ namespace Wassup.BattleCore.Trigger
                 var d = Row("기믹 레드불 · 픽업 주기", TriggerKind.PeriodicTimer, _redBull);
                 d.PeriodSeconds = rb.RedBull.SpawnInterval;
                 d.Lifetime = BindingLifetime.Match;
-                _registry.Attach(null, in d, -1, tick);
+                _registry.Attach(null, in d, -1, tick, BattleMatch.PlayerFaction);   // 판 기믹 = 플레이어 판의 규칙
             }
             if (_gimmick.TryActive(GimmickKind.ClockOut, out _))
             {
@@ -72,7 +72,7 @@ namespace Wassup.BattleCore.Trigger
                 d.Subject = BindingSubject.Any;
                 d.SubjectFilter = BindingSubjectFilter.PlacedDefender;
                 d.Lifetime = BindingLifetime.Match;
-                _registry.Attach(null, in d, -1, tick);
+                _registry.Attach(null, in d, -1, tick, BattleMatch.PlayerFaction);
             }
         }
 

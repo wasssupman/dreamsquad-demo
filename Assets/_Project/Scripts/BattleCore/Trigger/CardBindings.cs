@@ -97,11 +97,11 @@ namespace Wassup.BattleCore.Trigger
                 TriggerEvent e;
                 if (b.Effect.Kind == EffectKind.BountyMark)
                 {
-                    // 표식은 **플레이어가 건다** — 시전자가 없다(옛 `Caster = Entity.Null`). 대상 = 그 적.
+                    // 표식은 **카드를 쓴 쪽이 건다** — 시전자가 없다(옛 `Caster = Entity.Null`) · 진영 = 규칙 인스턴스의 시전 진영. 대상 = 그 적.
                     e = new TriggerEvent
                     {
                         Seam = Seam.Immediate, Kind = TriggerKind.None,
-                        Subject = SimEntityId.Match, SubjectFaction = Faction.DefenderUnit,
+                        Subject = SimEntityId.Match, SubjectFaction = b.CastFaction,
                         Target = host.Id, TargetHp = host.Health, TargetMaxHp = host.MaxHealth,
                         HasSite = true, Site = host.Position, SiteBody = host.HitRadius,
                     };
@@ -124,12 +124,12 @@ namespace Wassup.BattleCore.Trigger
             }
         }
 
-        /// <summary>액티브 시전의 사건 — 시전자 없음(판) · 칸 조준.</summary>
-        public static TriggerEvent CastEvent(int2 cellA, int2 cellB, bool hasCellB)
+        /// <summary>액티브 시전의 사건 — 시전자 없음(판) · 진영 = 그 규칙 인스턴스의 시전 진영 · 칸 조준.</summary>
+        public static TriggerEvent CastEvent(Binding cast, int2 cellA, int2 cellB, bool hasCellB)
             => new TriggerEvent
             {
                 Seam = Seam.Immediate, Kind = TriggerKind.None,
-                Subject = SimEntityId.Match, SubjectFaction = Faction.DefenderUnit,
+                Subject = SimEntityId.Match, SubjectFaction = cast.CastFaction,
                 Target = SimEntityId.None,
                 HasCellAim = true, CellA = cellA, CellB = cellB, HasCellB = hasCellB,
             };

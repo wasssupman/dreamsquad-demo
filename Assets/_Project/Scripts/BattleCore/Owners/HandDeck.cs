@@ -300,7 +300,7 @@ namespace Wassup.BattleCore
                 Report?.Invoke($"[HandDeck] 규칙 등록부가 없다 — '{_def.Cards[cardIndex].Id}' 의 규칙을 붙이지 않는다.");
                 return RejectReason.None;
             }
-            group = _registry.AttachCard(host, entryId, cardIndex, _planRows, _planSquad, _planMods, tick);
+            group = _registry.AttachCard(host, entryId, cardIndex, _planRows, _planSquad, _planMods, BattleMatch.PlayerFaction, tick);
             CardBindings.FireOnAttach(_triggers, _world, _def, group, host);
             return RejectReason.None;
         }
@@ -326,9 +326,9 @@ namespace Wassup.BattleCore
                 Report?.Invoke($"[HandDeck] 규칙 레이어가 없다 — '{card.Id}' 시전을 실행하지 않는다.");
                 return RejectReason.None;
             }
-            var b = _registry.AttachCast(row, entryId, cardIndex, CenterOf(cellA), CenterOf(cellB), tick);
+            var b = _registry.AttachCast(row, entryId, cardIndex, CenterOf(cellA), CenterOf(cellB), BattleMatch.PlayerFaction, tick);
             if (b == null) return RejectReason.Unclassified;
-            var e = CardBindings.CastEvent(cellA, cellB, hasCellB);
+            var e = CardBindings.CastEvent(b, cellA, cellB, hasCellB);
             _triggers.RaiseFor(b, in e);
             return RejectReason.None;
         }

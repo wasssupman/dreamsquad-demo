@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Wassup.Skills;
 
 namespace Wassup.BattleCore.Trigger
 {
@@ -22,6 +23,13 @@ namespace Wassup.BattleCore.Trigger
 
         /// <summary>소유자. `SimEntityId.Match`(0) = 판 호스트.</summary>
         public SimEntityId Owner = SimEntityId.None;
+
+        /// <summary>
+        /// skill-data-table unit 2 — **이 규칙을 건 쪽의 진영**. 붙인 쪽이 채운다(유닛 저작 = 그 유닛 · 카드·액티브·드림스톤 =
+        /// 손패의 주인 = 플레이어). 주체 없는 시전(판 시전 · 판 주기 · 표식 — 사건 주체가 `SimEntityId.Match`)의 시전 진영은
+        /// 이 값에서만 나온다 — 감지자·드레인이 진영을 손으로 박지 않는다.
+        /// </summary>
+        public Faction CastFaction = Faction.None;
 
         /// <summary>
         /// **판 안에서 단조 증가 · 재사용 없음**(F1). 억제 키(E2)이자 카드 슬롯 판별자(6a `SlotTag.OfBinding`)다.

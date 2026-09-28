@@ -175,7 +175,7 @@ namespace Wassup.BattleCore
                     : new Trigger.TriggerEvent
                     {
                         Seam = Seam.Immediate, Kind = b.Def.Trigger, Subject = SimEntityId.Match,
-                        SubjectFaction = Wassup.Skills.Faction.DefenderUnit, Target = SimEntityId.None,
+                        SubjectFaction = b.CastFaction, Target = SimEntityId.None,
                     };
                 if (owner?.Attack != null) e.TargetLayers = owner.Attack.TargetLayers;
                 triggers.RaiseFor(b, in e);

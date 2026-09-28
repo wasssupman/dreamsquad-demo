@@ -21,6 +21,12 @@ namespace Wassup.BattleCore
         /// <summary>고정 틱. 코어에는 가변 dt 가 없다 — 슬로모·정지는 틱 발행률이다(계약 5).</summary>
         public const float Dt = 1f / 60f;
 
+        /// <summary>
+        /// skill-data-table unit 2 — **플레이어가 조종하는 편의 유닛 진영**. 플레이어가 거는 규칙(카드 · 액티브 · 드림스톤 · 판 기믹)이
+        /// 규칙 인스턴스에 싣는 시전 진영(`Binding.CastFaction`)의 정본이다.
+        /// </summary>
+        public const Wassup.Skills.Faction PlayerFaction = Wassup.Skills.Faction.DefenderUnit;
+
         private readonly MatchDefinition _def;
         private readonly EventBus _bus;
         private readonly BattleWorld _world;
@@ -285,7 +291,7 @@ namespace Wassup.BattleCore
                          System.Math.Max(1, _def.Map.Spawns.Length), _ctx.Report);
             _hand.Begin(null, _def.Seed, in mode.Awakening, mode.HandSize, mode.AttachCap);
             // unit 7b — 판 호스트의 판 수명 규칙(드림스톤 — 판 진입 장비). 배치 사건으로 상속된다.
-            _bindings.AttachMatchRows(_def.MatchBindings, 0);
+            _bindings.AttachMatchRows(_def.MatchBindings, PlayerFaction, 0);
             _gimmick.Begin(mode.GimmickEnabled, _def.Seed);
             // unit 7d — 판 호스트 기믹 규칙은 **고른 뒤** 판 시작 1회(구현 6). 유닛 호스트 규칙은 스폰·활성화 사건이 붙인다.
             _gimmickRules.Begin(0);

@@ -58,7 +58,7 @@ namespace Wassup.BattleCore.Trigger
             {
                 int r = rows[i];
                 if (r < 0 || r >= _def.Bindings.Length) { Warn($"[Binding] 유닛 {u.Id} 의 규칙 줄 {r} 이 표 밖이다 — 건너뛴다."); continue; }
-                Attach(u, in _def.Bindings[r], r, tick);
+                Attach(u, in _def.Bindings[r], r, tick, u.Faction);
             }
         }
 
@@ -78,10 +78,17 @@ namespace Wassup.BattleCore.Trigger
         }
 
         /// <summary>
-        /// 규칙 하나를 붙인다. `owner == null` 이면 판 호스트(`SimEntityId.Match`)에 붙는다.
-        /// 상한을 넘으면 null + `Report`(조용한 폐기 금지).
+        /// 규칙 하나를 붙인다 — 시전 진영 = 소유자 진영(판 호스트면 플레이어). 진영을 따로 정하는 쪽(카드 · 액티브 · 드림스톤)은
+        /// 진영을 받는 겹본을 부른다.
         /// </summary>
         public Binding Attach(Unit owner, in BindingDef def, int defIndex, int tick)
+            => Attach(owner, in def, defIndex, tick, owner != null ? owner.Faction : BattleMatch.PlayerFaction);
+
+        /// <summary>
+        /// 규칙 하나를 붙인다. `owner == null` 이면 판 호스트(`SimEntityId.Match`)에 붙는다. `castFaction` = 이 규칙을 건 쪽의
+        /// 진영(`Binding.CastFaction` — 붙인 쪽이 정한다). 상한을 넘으면 null + `Report`(조용한 폐기 금지).
+        /// </summary>
+        public Binding Attach(Unit owner, in BindingDef def, int defIndex, int tick, Faction castFaction)
         {
             var list = owner != null ? owner.Bindings : _match;
             int cap = owner != null ? MaxPerUnit : MaxMatch;
@@ -96,6 +103,7 @@ namespace Wassup.BattleCore.Trigger
                 Effect = _def != null ? _def.EffectOf(in def) : EffectDef.Default(),
                 DefIndex = defIndex,
                 Owner = owner != null ? owner.Id : SimEntityId.Match,
+                CastFaction = castFaction,
                 InstanceId = _nextInstanceId++,
                 Seq = _seq++,
                 MaxHpRef = owner != null ? owner.MaxHealth : 0f,
@@ -179,10 +187,11 @@ namespace Wassup.BattleCore.Trigger
 
         /// <summary>
         /// 카드 한 장을 숙주에 붙인다(행과 수식자는 `CardBindings.Plan` 이 이미 골랐다). 사건 `CardAttached` 1건 +
-        /// 규칙마다 `BindingAttached`. 반환 = 묶음(떼기의 핸들).
+        /// 규칙마다 `BindingAttached`. 반환 = 묶음(떼기의 핸들). `castFaction` = 카드를 쓴 쪽(숙주가 적이어도 — 표식).
         /// </summary>
         public CardAttachment AttachCard(Unit host, int entryId, int cardIndex,
-                                         List<int> rows, List<int> squadRows, List<Combat.AttackModDef> mods, int tick)
+                                         List<int> rows, List<int> squadRows, List<Combat.AttackModDef> mods,
+                                         Faction castFaction, int tick)
         {
             var att = new CardAttachment
             {
@@ -191,8 +200,8 @@ namespace Wassup.BattleCore.Trigger
                 CardIndex = cardIndex,
                 Host = host.Id,
             };
-            AttachRows(host, rows, att.Bindings, tick);
-            AttachRows(host, squadRows, att.SquadBindings, tick);
+            AttachRows(host, rows, att.Bindings, castFaction, tick);
+            AttachRows(host, squadRows, att.SquadBindings, castFaction, tick);
             if (mods != null && host.Attack != null)
                 for (int i = 0; i < mods.Count; i++)
                 {
@@ -204,14 +213,14 @@ namespace Wassup.BattleCore.Trigger
             return att;
         }
 
-        private void AttachRows(Unit host, List<int> rows, List<Binding> into, int tick)
+        private void AttachRows(Unit host, List<int> rows, List<Binding> into, Faction castFaction, int tick)
         {
             if (rows == null) return;
             for (int i = 0; i < rows.Count; i++)
             {
                 int r = rows[i];
                 if (r < 0 || r >= _def.Bindings.Length) { Warn($"[Binding] 카드 규칙 줄 {r} 이 표 밖이다 — 건너뛴다."); continue; }
-                var b = Attach(host, in _def.Bindings[r], r, tick);
+                var b = Attach(host, in _def.Bindings[r], r, tick, castFaction);
                 if (b == null) continue;
                 // **카드의 주기 규칙은 붙는 순간 첫 발동한다**(사용자 결정 2026-08-16 — 옛 `elapsed = periodSeconds`).
                 // 카드는 전투 중에 붙는다 — 붙이자마자 주기만큼 아무 일도 없으면 「안 붙었다」로 읽힌다. 유닛 저작
@@ -240,14 +249,14 @@ namespace Wassup.BattleCore.Trigger
         }
 
         /// <summary>
-        /// 액티브 시전 — 판 호스트에 규칙 하나를 **발동 1회 수명**으로 붙인다(시전자가 없다 — 진영은 플레이어로 접힌다).
+        /// 액티브 시전 — 판 호스트에 규칙 하나를 **발동 1회 수명**으로 붙인다(시전자가 없다 — 진영은 쓴 쪽 `castFaction`).
         /// 드레인이 발동하면 `FireCapReached` 로 떨어진다. 사건 `CardCast` 1건.
         /// </summary>
         public Binding AttachCast(int row, int entryId, int cardIndex, Unity.Mathematics.float3 cellA,
-                                  Unity.Mathematics.float3 cellB, int tick)
+                                  Unity.Mathematics.float3 cellB, Faction castFaction, int tick)
         {
             if (row < 0 || row >= _def.Bindings.Length) { Warn($"[Binding] 액티브 규칙 줄 {row} 이 표 밖이다."); return null; }
-            var b = Attach(null, in _def.Bindings[row], row, tick);
+            var b = Attach(null, in _def.Bindings[row], row, tick, castFaction);
             if (b == null) return null;
             b.Def.FireCap = 1;
             b.Def.Lifetime = BindingLifetime.UntilFireCap;
@@ -256,14 +265,14 @@ namespace Wassup.BattleCore.Trigger
         }
 
         /// <summary>판 호스트의 판 수명 규칙(드림스톤 — 판 진입 장비). `BattleMatch.Begin` 이 한 번 부른다.</summary>
-        internal void AttachMatchRows(int[] rows, int tick)
+        internal void AttachMatchRows(int[] rows, Faction castFaction, int tick)
         {
             if (rows == null) return;
             for (int i = 0; i < rows.Length; i++)
             {
                 int r = rows[i];
                 if (r < 0 || r >= _def.Bindings.Length) { Warn($"[Binding] 판 규칙 줄 {r} 이 표 밖이다 — 건너뛴다."); continue; }
-                Attach(null, in _def.Bindings[r], r, tick);
+                Attach(null, in _def.Bindings[r], r, tick, castFaction);
             }
         }
 

@@ -437,7 +437,7 @@ namespace Wassup.BattleCore.Trigger
                 Enqueue(b, new TriggerEvent
                 {
                     Seam = Seam.Periodic, Kind = TriggerKind.PeriodicTimer,
-                    Subject = SimEntityId.Match, SubjectFaction = Faction.DefenderUnit, Target = SimEntityId.None,
+                    Subject = SimEntityId.Match, SubjectFaction = b.CastFaction, Target = SimEntityId.None,
                 });
             }
         }
@@ -507,7 +507,7 @@ namespace Wassup.BattleCore.Trigger
                 launchSite = e.SubjectPos;
                 launchBody = e.SubjectBody;
                 caster = new CasterRef(SkillEntityId.None,
-                                       e.SubjectFaction != Faction.None ? e.SubjectFaction : Faction.DefenderUnit,
+                                       e.SubjectFaction != Faction.None ? e.SubjectFaction : b.CastFaction,
                                        launchBody);
             }
 
