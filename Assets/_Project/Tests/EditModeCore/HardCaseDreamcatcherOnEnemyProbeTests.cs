@@ -142,23 +142,13 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
-        public void 현행_적이_든_코스트_획득은_플레이어_코스트를_늘린다()
-        {
-            // `GainCostSkill`(`MetaSkills.cs:26-30`)은 시전자를 안 싣는 `MetaIntent`(`SkillIntent.cs:216-220` — Kind · Amount 뿐)를
-            // 내고, 적용(`IntentApplier.cs:558-559`)은 숙주 진영을 묻지 않고 판의 유일한 코스트 담당자(플레이어)에 더한다.
-            var m = CostArena(out var fired);
-            Assert.Greater(fired.Count, 0, "적 숙주에서도 주기 규칙이 발화한다");
-            Assert.AreEqual(CostGain * fired.Count, m.Cost.Current, 1e-3f, "발화마다 **플레이어** 코스트 +2");
-        }
-
-        [Test]
-        [Ignore("성립하지 않는다 · 사용자 결정 필요(설계 구멍 — 미결) — 코스트는 플레이어 자원이고 적(숙주)에게는 자원 개념이 없다. "
-              + "`MetaIntent`(`SkillIntent.cs:216-220`)는 시전자·진영을 안 싣고 `IntentApplier.cs:558-559` 가 무조건 `CostLedger.Gain` "
-              + "(`CostLedger.cs:98`)으로 보낸다. 적이 들면 «무효 / 플레이어 코스트를 뺏는다 / 적 전용 자원» 중 무엇인지 정해지지 않았다.")]
         public void 적이_든_코스트_획득은_플레이어_코스트를_늘리지_않는다()
         {
-            var m = CostArena(out _);
-            Assert.AreEqual(0f, m.Cost.Current, 1e-6f);
+            // skill-data-table unit 2(U4) — 코스트는 플레이어 자원이다. 적이 든 메타 효과는 **무효**(`IntentApplier.Apply(MetaIntent)` 의
+            // 진영 게이트). 규칙 자체는 발화한다 — 막는 곳은 감지·부착이 아니라 자원 쪽이다.
+            var m = CostArena(out var fired);
+            Assert.Greater(fired.Count, 0, "적 숙주에서도 주기 규칙이 발화한다");
+            Assert.AreEqual(0f, m.Cost.Current, 1e-6f, "플레이어 코스트 무변");
         }
 
         // ── 3. 개사기(남의 배치 상속 융단폭격) ─────────────────────────────

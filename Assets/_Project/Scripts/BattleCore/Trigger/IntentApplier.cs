@@ -555,6 +555,10 @@ namespace Wassup.BattleCore.Trigger
 
         public void Apply(in MetaIntent i)
         {
+            // skill-data-table unit 2 (U4) — 코스트·손패 대기는 **플레이어 자원**이다. 시전자가 플레이어 편이 아니면(적이 든 규칙)
+            // **무효** — 적에게는 그 자원이 없다(플레이어 것을 뺏거나 적 전용 자원으로 바꾸지 않는다). 주체 없는 시전(판 · 액티브)의
+            // 진영은 발동 문맥(`Begin`)이 싣는다. 오류가 아니라 규칙이라 말하지 않는다.
+            if (((int)_casterFaction & Factions.AnyDefender) == 0) return;
             switch (i.Kind)
             {
                 case MetaIntentKind.GainCost:
