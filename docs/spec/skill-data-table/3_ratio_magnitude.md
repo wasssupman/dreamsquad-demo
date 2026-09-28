@@ -15,3 +15,5 @@
 - 라이브 전량 `Flat` → 굽기 스냅샷 무변.
 - 새 테스트: 비율형 피해가 시전 순간 최종 스탯을 따른다(버프 전후 비교) · **발사 뒤** 걸린 버프는 착탄 피해에 반영되지 **않는다** · 비행 중 소유자가 사라져도 피해는 그대로.
 - 헤드리스 · EditMode 3 · 골든 11 · core-reviewer.
+- 3 구현 2026-09-28 · `9c3d0a4e5`(방식 · 기준 · 순수 함수 `EffectMagnitude` · 검증 사유 `NoRatioBasis` · `NoRatioField`) · `74af83ff2`(시전 순간 해석 · 스냅샷 · 테스트 15) — 헤드리스 1030/4(+15). 시전 순간 = `TriggerDispatcher.Execute` 드레인 한 곳(해석된 사본이 `ToParams` · `IntentApplier` 로 — 발사 명세 버스트 · 장판 피해도 그 사본). 사망·퇴근 = `RaiseDeath` · `RaiseRetire` 가 `SubjectAttack` 스냅샷(최대 체력은 기존 `SubjectMaxHp`). 빌더는 전량 `Flat`(저작 칸은 unit 4) → 해시·굽기 스냅샷 무변(기본값 미기록). Unity EditMode 3 · 골든 11 · core-reviewer 는 대기.
+- ⚠ **사용자 확인 대기**: 「남의 배치」(주체 `Any`) × 비율형은 발동 주체(놓인 유닛)와 규칙 소유자(숙주)가 갈려 **누구의 스탯인지** 결정이 없다 — 임시로 `NoRatioBasis` 거절. 결정 후 `EffectComboRule` ⑧ 한 줄 + `TriggerDispatcher.CastBasis`(오늘 = 발동 주체) 를 맞춘다.
