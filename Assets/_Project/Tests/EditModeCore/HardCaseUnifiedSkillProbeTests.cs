@@ -93,7 +93,7 @@ namespace Wassup.Tests.EditMode.Core
             var r = Rule(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern);
             r.Effect.PatternDefIndex = 0;
             r.Effect.TileRange = N;          // 조준 후보 반경 = 탄 최대 거리(`EmitPatternParams.Range`)
-            r.Effect.Magnitude = Hit;        // ⚠ 패턴 경로는 이 값을 읽지 않는다 — `패턴_경로의_피해는_…` 참조
+            // Magnitude 는 비운다 — 이 종류에서 소비처 0(U10 뒤 피해 = Damage · `EffectSlots` 표의 magnitude 칸 없음). 저작 형식도 안 옮긴다(skill-data-table 4).
             r.Effect.Damage = Hit;           // U10 — 탄 피해의 정본 = 효과 줄의 피해(명세 줄은 모양만)
             return r;
         }
@@ -314,10 +314,10 @@ namespace Wassup.Tests.EditMode.Core
         public void 패턴_경로의_피해는_Magnitude_가_아니라_효과_줄_Damage_다()
         {
             // 두 규칙 줄(A · AA)이 공유하는 것은 index 둘(탄 0 · 명세 0)뿐이다. 피해는 **효과 줄의 `Damage`** 에서 나온다
-            // (skill-data-table 1b · U10 — `IntentApplier.EmitPattern`) — Magnitude 를 0 으로 해도 100.
+            // (skill-data-table 1b · U10 — `IntentApplier.EmitPattern`) — Magnitude 에 엉뚱한 값을 넣어도 100.
             var def = Definition();
             var unit = UnitSkillRow();
-            unit.Effect.Magnitude = 0f;
+            unit.Effect.Magnitude = Hit * 7f;   // 소비처 0 인 칸 — 읽히면 피해가 갈린다
             var card = CardRow();
             var rows = Add(def, unit, card);
             Assert.AreEqual(def.EffectOf(in def.Bindings[rows[0]]).PatternDefIndex, def.EffectOf(in def.Bindings[rows[1]]).PatternDefIndex, "같은 명세 줄을 가리킨다");
@@ -329,7 +329,7 @@ namespace Wassup.Tests.EditMode.Core
             o.Hits = CoreCombatFixtures.Listen(o.M, CoreEventKind.DamageApplied);
             o.Caster = Place(o.M, PlaceCell);
             CoreCombatFixtures.Tick(o.M, Ticks);
-            foreach (var e in o.In) Assert.AreEqual(Hit, o.DamageTo(e), 1e-3f, "Magnitude 0 이어도 100 — 피해의 정본은 효과 줄 Damage");
+            foreach (var e in o.In) Assert.AreEqual(Hit, o.DamageTo(e), 1e-3f, "Magnitude 가 무엇이든 100 — 피해의 정본은 효과 줄 Damage");
         }
 
         // ── 6. 버스트 수명 = 발동 주체 ∧ 바인딩을 든 자(U2) · 킬 귀속(U3) · 캐논 회귀 ─────────
