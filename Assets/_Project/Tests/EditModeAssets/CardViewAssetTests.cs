@@ -11,7 +11,7 @@ using Wassup.Skills;
 
 namespace Wassup.Tests.EditModeAssets
 {
-    // battle-core-rebuild unit 7c — **카드 화면이 읽는 뷰 표**가 번호를 매긴 순회와 같은가 + 카드 단위 범위 도형이 옛 것과 같은가.
+    // battle-core-rebuild unit 7c — **카드 화면이 읽는 뷰 표**가 번호를 매긴 순회와 같은가 + 카드 단위 범위 도형이 고정 표와 같은가.
     //
     // 빌더 매핑 누락은 조용히 죽는다(인계 함정 8) — 카드 에셋 목록의 번호가 하나 밀리면 손패가 **다른 카드의 문안**을 그리고,
     // 빔 번호가 안 실리면 버스터즈 개시 빔이 **요청조차 안 된다**(`AreaDotSkill` 은 `HasData` 일 때만 빔을 낸다).
@@ -59,11 +59,25 @@ namespace Wassup.Tests.EditModeAssets
                 Assert.AreEqual(def.Cards[i].Id, view.Card(i).id, $"카드 줄 {i} 의 에셋이 다른 카드다 — 손패가 남의 문안을 그린다");
         }
 
-        [Test]
-        public void 카드_단위_범위_도형은_옛_카탈로그와_같다()
+        // skill-data-table 4-정리(B21) — 옛 카탈로그(`DcRangeCatalog.ResolveCard`) 삭제 전 **Unity 실측으로 고정한 표**(2026-09-29 ·
+        // 옛 ↔ 새 대조가 초록이던 판에서 옛 쪽 값). 여기 없는 카드 = 범위 도형 없음(원). 카드가 늘거나 값이 바뀌면 이 표를 고친다 —
+        // 표가 곧 「카드가 그리는 범위」의 기대값이다(값 = 도형 반경 N + 원점 항의 형 · 원 하나).
+        private static readonly Dictionary<string, (float radius, RangeMetric metric)> ExpectedCardRange = new Dictionary<string, (float, RangeMetric)>
         {
-            // 옛 `DcRangeCatalog.ResolveCard`(managed SO 를 돌며 첫 공간 도형) ↔ 새 `CoreCardDragSlot.CardRangeOf`(정의표 규칙 줄을 돌며
-            // `RangeCatalog.Resolve`). 둘 다 **도형 반경 N + 형**만 담는다 — 원점 항은 host 를 아는 자리가 같은 함수로 더한다.
+            { "calamity_heart", (2f, RangeMetric.SelfArea) },
+            { "cornered_burst", (1f, RangeMetric.SelfArea) },
+            { "farewell", (2f, RangeMetric.SelfArea) },
+            { "severance_meteor", (1f, RangeMetric.CellArea) },
+            { "shield_burst", (1f, RangeMetric.SelfArea) },
+            { "shield_lull", (1f, RangeMetric.SelfArea) },
+            { "tremor_plate", (1f, RangeMetric.SelfArea) },
+        };
+
+        [Test]
+        public void 카드_단위_범위_도형은_고정_표와_같다()
+        {
+            // 새 `CoreCardDragSlot.CardRangeOf`(정의표 규칙 줄을 돌며 `RangeCatalog.Resolve`) ↔ 고정 표. 도형 반경 N + 형만 본다 —
+            // 원점 항은 host 를 아는 자리가 같은 함수로 더한다.
             var cards = LiveCards();
             var def = new MatchDefinition();
             UnityEngine.TestTools.LogAssert.ignoreFailingMessages = true;
@@ -78,19 +92,16 @@ namespace Wassup.Tests.EditModeAssets
             for (int i = 0; i < cards.Count; i++)
             {
                 if (cards[i].type == CardType.Active) continue;
-                var old = DcRangeCatalog.ResolveCard(cards[i]);
                 var now = CoreCardDragSlot.CardRangeOf(def, i);
-                bool oldHas = old.shape != DcRangeShape.None;
-                bool nowHas = now.Shape != RangeShape.None;
-                Assert.AreEqual(oldHas, nowHas, $"'{cards[i].id}': 옛 카탈로그와 범위 유무가 다르다");
-                // skill-data-table 4-정리(B21) — 옛 카탈로그 삭제 전 기대값 고정용 실측 줄. 형식: `[B21] id|shape|radius|metric`.
-                TestContext.WriteLine($"[B21] {cards[i].id}|{(oldHas ? old.shape.ToString() : "None")}|{old.radiusTiles}|{old.metric}");
-                if (!oldHas) continue;
+                bool want = ExpectedCardRange.TryGetValue(cards[i].id, out var e);
+                Assert.AreEqual(want, now.Shape != RangeShape.None, $"'{cards[i].id}': 범위 유무가 고정 표와 다르다");
+                if (!want) continue;
                 spatial++;
-                Assert.AreEqual(old.radiusTiles, now.RadiusTiles, 1e-5f, $"'{cards[i].id}': 도형 반경이 다르다");
-                Assert.AreEqual(old.metric, now.Metric, $"'{cards[i].id}': 형(원점 항)이 다르다");
+                Assert.AreEqual(RangeShape.Circle, now.Shape, cards[i].id);
+                Assert.AreEqual(e.radius, now.RadiusTiles, 1e-5f, $"'{cards[i].id}': 도형 반경이 다르다");
+                Assert.AreEqual(e.metric, now.Metric, $"'{cards[i].id}': 형(원점 항)이 다르다");
             }
-            Assert.Greater(spatial, 0, "공간 도형 카드가 하나도 없다 — 이 대조가 아무것도 증언하지 않는다");
+            Assert.AreEqual(ExpectedCardRange.Count, spatial, "고정 표의 카드가 라이브에 다 있어야 한다(없어진 카드면 표에서 뺀다)");
         }
 
         [Test]
