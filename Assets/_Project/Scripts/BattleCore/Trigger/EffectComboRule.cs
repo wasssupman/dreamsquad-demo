@@ -49,7 +49,10 @@ namespace Wassup.BattleCore.Trigger
         public static ComboVerdict Check(in EffectCombo c)
         {
             // ① 그 숙주에게 그 사건이 없다(적 × 배치·퇴근 · 트리거 없음) — 감지자 표가 정본이다.
-            if (!SkillRouting.HasDetector(c.Trigger, c.HostIsEnemy)) return ComboVerdict.NeverFires;
+            //    ⚠ 주체 `Any` 의 사건 주인은 숙주가 아니라 **남**(배치된 방어유닛)이다 — 숙주 종류로 감지자를 묻지 않는다
+            //    (skill-data-table unit 2 — 적 숙주의 「남의 배치」를 영영 안 터진다고 오판하던 결함. 코어는 터진다).
+            bool eventOwnerIsEnemy = c.Subject != BindingSubject.Any && c.HostIsEnemy;
+            if (!SkillRouting.HasDetector(c.Trigger, eventOwnerIsEnemy)) return ComboVerdict.NeverFires;
             // ② 자기 배치는 붙기 전에 지났다 — 남의 배치(`Any`)는 앞으로 온다.
             if (c.Trigger == TriggerKind.OnPlace && c.Subject == BindingSubject.Self && c.BindsAfterPlacement)
                 return ComboVerdict.NeverFires;

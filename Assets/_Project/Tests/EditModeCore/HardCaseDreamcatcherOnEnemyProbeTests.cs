@@ -260,17 +260,17 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
-        public void 현행_조합_검증은_적_숙주의_남의_배치_규칙을_영영_안_터진다고_답한다_코어는_터진다()
+        public void 조합_검증은_적_숙주의_남의_배치_규칙을_허용하고_코어도_터진다()
         {
-            // 검증의 ①(`EffectComboRule.cs:52` → `SkillRouting.HasDetector` `SkillRouting.cs:196-198` — 적 × OnPlace = 감지자 없음)이
-            // 주체 축(`Any`)을 보기 **전에** 거절한다. 그러나 `Any` 의 사건은 숙주가 아니라 남(방어유닛)의 배치라 코어는 발화한다(위).
-            // 검증과 코어가 어긋난다 — 라이브 영향 0(적이 카드 규칙을 드는 경로가 없다).
+            // skill-data-table unit 2 — 검증이 주체 축(`Any`)을 숙주 종류 감지자 판정(`SkillRouting.HasDetector` — 적 × OnPlace = 없음)보다
+            // **먼저** 본다. `Any` 의 사건은 숙주가 아니라 남(방어유닛)의 배치라 코어는 발화한다 — 검증과 코어가 같은 답을 낸다.
+            // 저작 게이트(적 숙주에 카드를 붙일 수 있나)는 카드 `HostKinds`(unit 4) 몫이다.
             var c = new EffectCombo
             {
                 Trigger = TriggerKind.OnPlace, Subject = BindingSubject.Any, Payload = EffectKind.EmitProjectilePattern,
                 HasProjectile = true, Binding = BindingClass.Entity, FanOut = true, HostIsEnemy = true,
             };
-            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(in c), "검증 = 영영 안 터짐");
+            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(in c), "검증 = 허용");
             var o = RunBarrage();
             Assert.Greater(o.Spawned.Count, 0, "코어 = 터진다");
         }
