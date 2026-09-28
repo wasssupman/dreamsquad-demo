@@ -1,6 +1,6 @@
 # unified-effect-layer — 통합 효과 층
 
-> **상태: 구현 완료 2026-09-28 · 사용자 플레이 확인 대기.** 인계 = `6_handoff_summary.md`. 탐침 보류 5건 전부 해제 · core-reviewer 3회 APPROVE(unit 1 · 묶음 A · 묶음 B). 출발 맥락 = `docs/spec/battle-core-rebuild/12_next_unified_effect_layer_guide.md`(하드 케이스 실측 · 코드 지도). 계약의 근원 = 그 spec README 「조각 E 사용자 결정」 ⑪ + 아래 U1~U3.
+> **상태: 완료 2026-09-28**(사용자 플레이 확인 — 실사용 카드 개사기 · 별똥 타격 `1824f1fd2`). 인계 = `6_handoff_summary.md`. 탐침 보류 5건 전부 해제 · core-reviewer 3회 APPROVE(unit 1 · 묶음 A · 묶음 B). 출발 맥락 = `docs/spec/battle-core-rebuild/12_next_unified_effect_layer_guide.md`(하드 케이스 실측 · 코드 지도). 계약의 근원 = 그 spec README 「조각 E 사용자 결정」 ⑪ + 아래 U1~U3.
 
 ## 상위 목표
 
