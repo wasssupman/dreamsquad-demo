@@ -69,7 +69,7 @@
 | 저작 SO | `ProjectileData` · 발사 명세 `ProjectilePatternData` | 착탄 효과(부여·스택)는 탄 SO |
 | 정의표 행 | `CombatDefinitionBuilder.ToDef` → `ProjectileDef` · `PatternDef` | 선정 규칙 열거 번호 어긋남(12 중 11 오독) 선례 — `CombatDefinitionBuilder.ToCoreSelection` 핀 테스트 |
 | 코어 스폰 · 사건 | `BattleWorld.SpawnProjectile` → `ProjectileSpawned`(10) · `ProjectileHit`(12) · `ProjectileDespawned`(11) · 착탄 예고 = `ProjectileSpawned` 의 비행 시간·반경 | 즉발 폭발도 탄 파이프라인을 탈 수 있다 — 판정 원점의 몸은 사건이 실어 온다(제약 13) |
-| 뷰 풀 | `CoreProjectileViewPool` · 총구·착탄 VFX `CoreVfxSpawner` · 착탄 예고 링 `CoreMapOverlay.ShowTelegraph` | |
+| 뷰 풀 | `CoreProjectileViewPool` · 총구·착탄 VFX `CoreVfxSpawner` · 착탄 예고 링 `CoreMapOverlay.ShowTelegraph` | 탄 종류는 `ProjectileSpawned.DefIndex` 로 — **월드 탄을 되묻지 않는다**(제약 4). 생성 사건은 보류했다가 같은 배달 묶음에 `ProjectileDespawned` 가 오면 버린다(즉발 탄 = 비행 그림 없음 · `unified-effect-layer` unit 4) |
 | 뷰 순서 | `ViewOrder.Projectile` · VFX `ViewOrder.Effect` | 유닛 뷰가 선 뒤라야 총구 앵커를 묻는다 |
 | 소멸 회수 | `ProjectileDespawned`(11) | |
 | 씬 배선 | `CoreProjectileViewPool` · `MatchViewAssets` | |

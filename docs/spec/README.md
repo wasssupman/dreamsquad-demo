@@ -106,7 +106,7 @@ code + git history        구현 상세
 
 ## 진행 중 spec
 
-- `unified-effect-layer/` — **통합 효과 층**(트리거 검사·효과 발동이 출처와 무관하게 한 경로). unit 0 전수 표 `census.md` · 작업 단위 1~6.
+- `unified-effect-layer/` — **통합 효과 층**(트리거 검사·효과 발동이 출처와 무관하게 한 경로). **구현 완료 2026-09-28 · 사용자 플레이 확인 대기** · 인계 `6_handoff_summary.md` · 전수 표 `census.md`.
 
 ## 은퇴한 spec
 
@@ -123,7 +123,7 @@ code + git history        구현 상세
 
 ### 전투 코어 전환 — 남은 것 (`battle-core-rebuild` — **spec 완료 2026-09-25**, 머지 `fecb0fef3`)
 
-**후속 spec 「통합 효과 층」 = [`unified-effect-layer/`](unified-effect-layer/README.md)** (진행 중 · 전수 표 `census.md`). 출발 맥락 = `battle-core-rebuild/12_next_unified_effect_layer_guide.md`(결정 ⑪ · 탐침 보류 5건 = 완료 기준 · 코드 지도).
+**후속 spec 「통합 효과 층」 = [`unified-effect-layer/`](unified-effect-layer/README.md)** (구현 완료 2026-09-28 · 플레이 확인 대기 · 전수 표 `census.md` · 인계 `6_handoff_summary.md`). 출발 맥락 = `battle-core-rebuild/12_next_unified_effect_layer_guide.md`(결정 ⑪ · 탐침 보류 5건 = 완료 기준 · 코드 지도).
 
 - **효과 정체(H4) + 시트 Effects 탭** — `unified-effect-layer` 에서 뺀 후속(그 README 「후속 후보」). 효과 SO 참조와 시트 Effects 탭을 한 spec 으로(참조만 먼저 두면 시트 정본이 뒤집힌다) · 소유자 탭 열 스키마 통일 · 임포터 → 출처 꼬리표 · 아래 감사의 죽은 컬럼·거짓 문안 정리. 대상 = 카드 52 · 유닛 능력 18 · 악몽 저작 6.
 
