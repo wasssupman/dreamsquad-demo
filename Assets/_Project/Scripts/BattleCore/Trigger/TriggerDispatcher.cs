@@ -537,7 +537,7 @@ namespace Wassup.BattleCore.Trigger
             // 실행에 넘긴다 — 탄 · 발사 명세(버스트 전 발) · 장판 · 도약 슬램은 이 값을 실어 나르고 착탄 때 주인을 되묻지 않는다.
             var fx = b.Effect;
             if (fx.MagnitudeMode == MagnitudeMode.OwnerStatRatio)
-                fx = EffectMagnitude.Resolve(in fx, CastBasis(fx.BasisStat, owner, in e, d.Label));
+                fx = EffectMagnitude.Resolve(in fx, CastBasis(fx.BasisStat, b, owner, in e));
             var prm = d.ToParams(in fx, e.TargetLayers);
 
             b.FireCount++;
@@ -565,11 +565,24 @@ namespace Wassup.BattleCore.Trigger
         // skill-data-table unit 3 — 비율형의 기준값. 주인이 판에 있으면 **지금**(최종 스탯) · 떠났으면(죽음 · 퇴근) 감지 순간
         // 스냅샷. 주인 없는 시전(판 · 액티브 · 드림스톤 — 사건 주체 `Match`)은 기준이 없다 — 검증(`EffectComboRule`)이 거절했어야
         // 한다. 조용히 넘기지 않고 말한 뒤 0 으로 푼다(효과는 헛발).
-        private float CastBasis(BasisStat stat, Unit owner, in TriggerEvent e, string label)
+        //
+        // U17 — 「남의 사건」(`Any` — 남의 배치)의 기준은 **규칙 소유자(숙주)** 의 지금 최종 스탯이다(사건 주체 = 놓인 유닛은
+        // 발사 자리 · 킬 귀속만 — U3). 소유자가 사라진 경우의 스냅샷은 없다 — 필요가 없다: `Any` 는 배치(주체가 살아 있는
+        // 사건)만 듣고, 소유자 소멸은 규칙을 떼며(`BindingRegistry.OnOwnerRemoved`), 떨어진 규칙의 주체가 안 떠난 발동은
+        // `Execute` 첫 줄이 버린다. 그래서 여기까지 온 `Any` 발동의 소유자는 판 위에 있다(없으면 판 호스트 소유 = 주인 없는 시전).
+        private float CastBasis(BasisStat stat, Binding b, Unit owner, in TriggerEvent e)
         {
-            if (owner != null && !e.SubjectGone) return EffectMagnitude.BasisOf(owner, stat);
-            if (e.SubjectGone) return stat == BasisStat.MaxHealth ? e.SubjectMaxHp : e.SubjectAttack;
-            Warn($"[Trigger] '{label}' 비율형 수치인데 주인이 없다(주인 없는 시전) — 검증이 거절했어야 한다. 값 0 으로 푼다.");
+            if (b.Def.Subject == BindingSubject.Any)
+            {
+                var holder = _world.Find(b.Owner);
+                if (holder != null) return EffectMagnitude.BasisOf(holder, stat);
+            }
+            else
+            {
+                if (owner != null && !e.SubjectGone) return EffectMagnitude.BasisOf(owner, stat);
+                if (e.SubjectGone) return stat == BasisStat.MaxHealth ? e.SubjectMaxHp : e.SubjectAttack;
+            }
+            Warn($"[Trigger] '{b.Def.Label}' 비율형 수치인데 주인이 없다(주인 없는 시전) — 검증이 거절했어야 한다. 값 0 으로 푼다.");
             return 0f;
         }
 

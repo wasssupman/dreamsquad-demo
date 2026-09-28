@@ -14,7 +14,7 @@ namespace Wassup.BattleCore.Trigger
         ShapeMismatch = 2,
         /// <summary>영영 안 터진다 — 붙는 순간 이미 지난 자기 사건이거나 그 숙주에게 사건 자체가 없다.</summary>
         NeverFires = 3,
-        /// <summary>비율 기준이 없다 — 비율형 수치인데 스탯을 읽을 주인이 없거나(주인 없는 시전) 누구의 스탯인지 정해지지 않았다(남의 사건).</summary>
+        /// <summary>비율 기준이 없다 — 비율형 수치인데 스탯을 읽을 주인이 없다(주인 없는 시전 — 판 · 액티브 · 드림스톤 · 판 주기).</summary>
         NoRatioBasis = 4,
         /// <summary>그 효과 종류에 비율 칸이 없다(`tables.md` §9 — 비율은 피해 · 실드량에만).</summary>
         NoRatioField = 5,
@@ -80,11 +80,11 @@ namespace Wassup.BattleCore.Trigger
             // ⑦ 도발은 어그로를 드는 몸에서 나온다 — 그 몸이 아니면 효과가 받을 원점이 아니다.
             if (c.Payload == EffectKind.AreaTaunt && c.HostCannotHoldAggro) return ComboVerdict.ShapeMismatch;
             // ⑧ 비율형 수치(skill-data-table unit 3 · `tables.md` §9) — 비율 칸이 있는 종류만 · 기준 스탯을 읽을 주인이 있을 때만.
-            //    「남의 배치」(`Any`)는 발동 주체(놓인 유닛)와 규칙 소유자(숙주)가 갈린다 — 누구의 스탯인지는 사용자 결정 전이라 거절한다.
+            //    「남의 배치」(`Any`)는 기준 = **규칙 소유자(숙주)** 의 스탯이다(U17) — 발사 자리 · 킬 귀속만 놓인 유닛(U3)이라 허용한다.
             if (c.Magnitude == MagnitudeMode.OwnerStatRatio)
             {
                 if (!EffectMagnitude.AcceptsRatio(c.Payload)) return ComboVerdict.NoRatioField;
-                if (c.CastHasNoOwner || c.Subject == BindingSubject.Any) return ComboVerdict.NoRatioBasis;
+                if (c.CastHasNoOwner) return ComboVerdict.NoRatioBasis;
             }
             return ComboVerdict.Allowed;
         }
@@ -97,7 +97,7 @@ namespace Wassup.BattleCore.Trigger
                 case ComboVerdict.NoOrigin: return "원점을 못 낸다";
                 case ComboVerdict.ShapeMismatch: return "효과가 그 원점 형을 못 받는다";
                 case ComboVerdict.NeverFires: return "붙는 순간 이미 지난 자기 사건이거나 사건이 없다(영영 안 터짐)";
-                case ComboVerdict.NoRatioBasis: return "비율 기준이 없다(주인 없는 시전 · 남의 사건)";
+                case ComboVerdict.NoRatioBasis: return "비율 기준이 없다(주인 없는 시전)";
                 case ComboVerdict.NoRatioField: return "그 효과에는 비율 칸이 없다(피해 · 실드량만)";
                 default: return "허용";
             }

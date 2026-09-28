@@ -23,7 +23,8 @@ namespace Wassup.BattleCore.Trigger
     //
     // 세 가지만 안다: ① 종류마다 비율이 들어가는 칸(`tables.md` §9 — 피해 · 실드량) ② 기준 스탯 「공격력」의 산식
     // ③ 해석(비율형 효과 줄 → 고정값이 실린 사본). 「언제 · 누구의 스탯으로」는 호출부가 정한다 — 시전 순간은 디스패처
-    // 드레인(`TriggerDispatcher.Execute`), 주인이 떠난 사건은 감지자 스냅샷(`TriggerEvent.SubjectAttack` · `SubjectMaxHp`).
+    // 드레인(`TriggerDispatcher.Execute`), 주인이 떠난 사건은 감지자 스냅샷(`TriggerEvent.SubjectAttack` · `SubjectMaxHp`),
+    // 「남의 사건」(`Any`)의 주인은 사건 주체가 아니라 규칙 소유자(숙주 — U17).
     //
     // ⚠ 「공격력」은 `CombatPhase.ShotDamage` 를 재사용하지 않는다 — 그 함수는 피해자를 받아 대 CC 배율을 곱한다.
     //    강타(`AttackMod.HeavyStrike`)도 부르지 않는다 — 그 함수는 카운터를 전진시킨다. 여기는 상태를 읽기만 한다.

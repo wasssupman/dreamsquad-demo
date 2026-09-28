@@ -310,10 +310,55 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsTrue(warns.Exists(w => w.Contains("비율형")), "검증이 거절했어야 한다고 말한다");
         }
 
+        // ── 남의 사건(U17) ────────────────────────────────────────────────────
+
+        // 「남의 배치」 규칙을 든 숙주(종류 0 · 평타 Base)와 놓이는 유닛(종류 1 · 평타 Base×7 · 체력 900).
+        // 기준이 놓인 유닛에서 나오면 값이 7배 / 900 기준으로 갈린다.
+        [TestCase(BasisStat.Attack, 1f)]
+        [TestCase(BasisStat.Attack, 2f)]
+        [TestCase(BasisStat.MaxHealth, 1f)]
+        public void 남의_배치_비율형은_규칙_소유자의_스탯을_기준으로_한다(BasisStat basis, float hostMul)
+        {
+            const float ratio = 1.5f;
+            var def = CoreMatchFixtures.Definition();
+            def.Units[0].Cost = 0;
+            def.Units[0].Attack.Outputs = new[] { new AttackOutputDef { Kind = AttackOutputKind.Damage, Magnitude = Base } };
+            var placedType = CoreMatchFixtures.Defender("placed");
+            placedType.Cost = 0;
+            placedType.Health = 900f;
+            placedType.Attack.Outputs = new[] { new AttackOutputDef { Kind = AttackOutputKind.Damage, Magnitude = Base * 7f } };
+            def.Units = new[] { def.Units[0], placedType };
+            def.Roster = new[] { 0, 1 };
+            var seen = new List<float>();
+            var casters = new List<int>();
+            var row = Probe(TriggerKind.OnPlace, new ProbeSkill { OnExecute = (c, t, p, ctx) => { seen.Add(p.Magnitude); casters.Add(c.Unit.Value); } });
+            row.Rule.Subject = BindingSubject.Any;
+            row.Rule.SubjectFilter = BindingSubjectFilter.PlacedDefender;
+            row.Effect.Kind = EffectKind.ProjectileToTarget;
+            row.Effect.Magnitude = 777f;   // 비율형에서는 읽지 않는다
+            int idx = Add(def, Ratio(row, basis, ratio))[0];
+            def.ConfigHash = def.ComputeConfigHash();
+            var m = CoreMatchFixtures.BeginBattle(def);
+            var host = SpawnDefender(m, new int2(3, 1));
+            CoreCombatFixtures.Tick(m, 3);   // 숙주 자신의 등장 사건을 흘려보낸다 — 규칙은 그 뒤에 붙는다(부착 카드)
+            Assert.IsNotNull(m.Bindings.Attach(host, in def.Bindings[idx], idx, m.Clock.Tick));
+            if (basis == BasisStat.Attack) Buff(host, StatKind.DamageMul, hostMul);
+            float hostMax = host.MaxHealth;
+
+            Assert.AreEqual(RejectReason.None, m.Apply(Command.PlaceDefender(1, new int2(7, 3))).Reason, "배치");
+            var placed = m.World.Units[m.World.Units.Count - 1];
+            Buff(placed, StatKind.DamageMul, 3f);   // 놓인 유닛의 스탯은 무관해야 한다
+            CoreCombatFixtures.Tick(m, 3);
+
+            float expected = (basis == BasisStat.Attack ? Base * hostMul : hostMax) * ratio;
+            CollectionAssert.AreEqual(new[] { expected }, seen, "기준 = 숙주(놓인 유닛이면 70·210 / 900)");
+            CollectionAssert.AreEqual(new[] { CoreSkillContext.ToSkill(placed.Id).Value }, casters, "발동 주체는 놓인 유닛 그대로(U3)");
+        }
+
         // ── 검증 · 해시 ───────────────────────────────────────────────────────
 
         [Test]
-        public void 검증은_주인_없는_시전과_남의_사건과_비율_칸_없는_종류의_비율형을_거절한다()
+        public void 검증은_주인_없는_시전과_비율_칸_없는_종류의_비율형을_거절하고_남의_사건은_허용한다()
         {
             var ok = new EffectCombo { Trigger = TriggerKind.AttackN, Payload = EffectKind.ProjectileToTarget, Magnitude = MagnitudeMode.OwnerStatRatio };
             Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(in ok), "소유자가 시전 · 비율 칸 있음");
@@ -327,7 +372,9 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(in flatOwnerless), "고정은 주인이 없어도 된다");
 
             var any = ok; any.Trigger = TriggerKind.OnPlace; any.Subject = BindingSubject.Any; any.Payload = EffectKind.SelfTileAoe;
-            Assert.AreEqual(ComboVerdict.NoRatioBasis, EffectComboRule.Check(in any), "남의 사건 — 누구의 스탯인지 미정");
+            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(in any), "남의 사건 — 기준 = 규칙 소유자(숙주 · U17)");
+            var anyOwnerless = any; anyOwnerless.CastHasNoOwner = true;
+            Assert.AreEqual(ComboVerdict.NoRatioBasis, EffectComboRule.Check(in anyOwnerless), "판 호스트 소유 남의 사건은 여전히 기준 없음");
 
             var buff = ok; buff.Payload = EffectKind.SelfStatBuff;
             Assert.AreEqual(ComboVerdict.NoRatioField, EffectComboRule.Check(in buff));
