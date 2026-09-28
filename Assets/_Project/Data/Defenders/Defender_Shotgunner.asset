@@ -64,7 +64,6 @@ MonoBehaviour:
   targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: a1464923e05914c5dbda52d6a5821d3b, type: 2}
-  - {fileID: 11400000, guid: 2c3c30da54184eba8cfca12d8a66fd62, type: 2}
   bindings:
   - trigger:
       kind: 9

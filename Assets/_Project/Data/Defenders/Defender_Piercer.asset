@@ -61,8 +61,7 @@ MonoBehaviour:
   targetAllies: 0
   attackTargetLayers: 6
   targetFactions: 98
-  abilities:
-  - {fileID: 11400000, guid: e4688f94787c46bc8285d23c356dc719, type: 2}
+  abilities: []
   bindings:
   - trigger:
       kind: 9
