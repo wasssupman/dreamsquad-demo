@@ -52,9 +52,12 @@ namespace Wassup.Skills
         public readonly bool IncludesSelf;
         public readonly float Speed;
         public readonly float HitThreshold;
-        // 부채꼴 반각의 cos². `HitThreshold`(투사체 도달 반경)와 **별개 축**이다 —
+        // 부채꼴 반각의 (sin, cos). `HitThreshold`(투사체 도달 반경)와 **별개 축**이다 —
         // 겸직시키면 콘을 쏘는 투사체가 생기는 순간 한 필드가 두 뜻으로 갈린다.
-        public readonly float ConeCosSq;
+        // unified-effect-layer unit 7 — cos² 에서 (sin, cos) 로 바뀌었다: 판정이 `SkillMath.SectorGate`
+        // (다른 방향 도형과 같은 게이트 · 대상 몸 걸침)를 부르고, 그 게이트가 이 둘을 받는다.
+        public readonly float ConeSinHalf;
+        public readonly float ConeCosHalf;
         // unified-effect-layer unit 2 — **착탄 예고를 켜나**(사용자 결정 U1 — 예고는 효과 파라미터 · 기본 꺼짐).
         // 칸 결합 탄(타격 운석)만 읽는다 — 켜면 착탄 전에 반경 링이 뜬다. 저작 칸은 unit 5 에서 열린다(그 전엔
         // 빌더가 늘 false 로 굽는다 → 라이브 무변). 액티브 메테오는 이 값을 안 읽는다(그 스킬의 판단이다).
@@ -75,7 +78,7 @@ namespace Wassup.Skills
             byte targetTraversalLayers = 0,
             int hazardDataIndex = NoDataIndex,
             int count = 0, bool includesSelf = false, int selector2 = 0,
-            float coneCosSq = 0f, bool telegraph = false)
+            float coneSinHalf = 0f, float coneCosHalf = 0f, bool telegraph = false)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
@@ -87,7 +90,7 @@ namespace Wassup.Skills
             TargetTraversalLayers = targetTraversalLayers;
             HazardDataIndex = hazardDataIndex;
             Count = count; IncludesSelf = includesSelf; Selector2 = selector2;
-            ConeCosSq = coneCosSq; Telegraph = telegraph;
+            ConeSinHalf = coneSinHalf; ConeCosHalf = coneCosHalf; Telegraph = telegraph;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.

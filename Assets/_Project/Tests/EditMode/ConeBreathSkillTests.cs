@@ -8,15 +8,21 @@ namespace Wassup.Tests.EditMode
     // skill-layer-migration unit 8 — 화염 브레스. arm 에서 concrete 로 온 규칙을 고정한다.
     //
     // 레거시 arm 의 필터는 넷이었다(진영 · 통행 층 · 자기 제외 · 부채꼴). 앞의 셋은
-    // 후보 질의로 접혔고 **부채꼴만 이 클래스가 직접 본다** — 사거리가 «반경» 이 아니라
-    // «콘» 이라 질의에 못 맡긴다. 그래서 그물도 그 넷째에 집중한다.
+    // 후보 질의로 접혔다. unified-effect-layer unit 7 부터 **길이도 질의의 원**(사거리 + 시전자 몸 + 대상 몸)이고
+    // 이 클래스는 방향 게이트(`SkillMath.SectorGate` · 대상 몸 걸침)만 곱한다 — 제약 13.
     public class ConeBreathSkillTests
     {
-        private const float HalfAngle50CosSq = 0.413175f;   // cos²(50°)
+        // 반각 50° 의 (sin, cos) — bake 가 저작 각도에서 1회 만드는 값.
+        private static readonly float Sin50 = math.sin(math.radians(50f));
+        private static readonly float Cos50 = math.cos(math.radians(50f));
 
-        private static SkillParams P(float damage, int tiles, float coneCosSq)
+        private static SkillParams P(float damage, int tiles)
             => new SkillParams(damage, 0, tiles, 0, SkillParams.NoDataIndex, 0, 0, 0, 0, 0, 0,
-                               coneCosSq: coneCosSq);
+                               coneSinHalf: Sin50, coneCosHalf: Cos50);
+
+        private static int[] Hits(TestSkillContext ctx)
+            => ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage)
+                             .ConvertAll(i => i.Target.Value).ToArray();
 
         // unified-effect-layer unit 2 — 브레스는 **발사 자리**(①)에서 편다. 드레인이 채우는 원점을 페이크가 만든다.
         private static SkillTarget Aim(TestSkillContext ctx, CasterRef caster, float2 dir)
@@ -34,7 +40,7 @@ namespace Wassup.Tests.EditMode
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
             new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
-                P(30f, 5, HalfAngle50CosSq), ctx);
+                P(30f, 5), ctx);
 
             var hits = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage)
                                      .ConvertAll(i => i.Target.Value);
@@ -51,7 +57,7 @@ namespace Wassup.Tests.EditMode
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
             new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
-                P(30f, 5, HalfAngle50CosSq), ctx);
+                P(30f, 5), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage).Count);
         }
@@ -67,7 +73,7 @@ namespace Wassup.Tests.EditMode
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
             new ConeBreathSkill().Execute(caster, Aim(ctx, caster, float2.zero),
-                P(30f, 5, HalfAngle50CosSq), ctx);
+                P(30f, 5), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count, "축이 없으면 임의 방향을 지어내지 않는다");
         }
@@ -83,7 +89,7 @@ namespace Wassup.Tests.EditMode
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
 
             new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
-                P(30f, 5, HalfAngle50CosSq), ctx);
+                P(30f, 5), ctx);
 
             var hits = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage)
                                      .ConvertAll(i => i.Target.Value);
@@ -100,7 +106,7 @@ namespace Wassup.Tests.EditMode
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
             new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
-                P(0f, 5, HalfAngle50CosSq), ctx);
+                P(0f, 5), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.Count);
         }
@@ -121,7 +127,7 @@ namespace Wassup.Tests.EditMode
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
 
             new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
-                P(30f, 5, HalfAngle50CosSq), ctx);
+                P(30f, 5), ctx);
 
             var hits = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage)
                                      .ConvertAll(i => i.Target.Value);
@@ -140,10 +146,61 @@ namespace Wassup.Tests.EditMode
             var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
 
             new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)),
-                P(30f, 5, HalfAngle50CosSq), ctx);
+                P(30f, 5), ctx);
 
             Assert.AreEqual(0, ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.DealDamage).Count,
                 "시전자도 같은 편도 자기 브레스에 타면 안 된다");
+        }
+        // ── unified-effect-layer unit 7 — 도달은 정본 자(제약 13) ──────────────────────────
+        // 옛 판정(`SkillCone.IsInCone`)은 몸 없는 중심 거리로 길이를 다시 자르고 각도를 중심점으로만 봤다.
+        // 아래 셋이 그 두 결함과, 넓어진 뒤에도 지켜야 하는 등 뒤 경계를 고정한다. 각 케이스는 몸 0 짝을 같이
+        // 둬서 «몸이 판정을 바꿨다»를 보인다.
+
+        // 몸 큰 적이 사거리 끝에 몸만 걸치면 맞는다 — 중심 3.4 > 사거리 3 이지만 3 + 몸 0.5 ≥ 3.4.
+        [Test]
+        public void BigBody_JustPastRange_ButBodyOverlapping_IsHit()
+        {
+            var ctx = new TestSkillContext();
+            ctx.Add(100, new float3(5f, 0, 5f), Faction.DefenderUnit);
+            ctx.Add(1, new float3(8.4f, 0, 5f), Faction.EnemyUnit, u => u.BodyRadius = 0.5f);   // 몸이 걸친다
+            ctx.Add(2, new float3(8.4f, 0, 5.01f), Faction.EnemyUnit);                           // 같은 자리 · 몸 0
+            var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
+
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)), P(30f, 3), ctx);
+
+            CollectionAssert.AreEqual(new[] { 1 }, Hits(ctx), "길이는 후보 원 하나 — 중심 거리로 다시 자르면 몸 큰 적이 빠진다");
+        }
+
+        // 부채꼴 가장자리 밖(60° · 반각 50°)에 중심이 있어도 몸이 걸치면 맞는다 — 가장자리 거리 2·sin10° ≈ 0.35 ≤ 몸 0.5.
+        [Test]
+        public void CenterOutsideConeEdge_ButBodyOverlapping_IsHit()
+        {
+            var ctx = new TestSkillContext();
+            ctx.Add(100, new float3(5f, 0, 5f), Faction.DefenderUnit);
+            float a = math.radians(60f);
+            var at60 = new float3(5f + 2f * math.cos(a), 0, 5f + 2f * math.sin(a));
+            ctx.Add(1, at60, Faction.EnemyUnit, u => u.BodyRadius = 0.5f);   // 몸이 가장자리에 걸친다
+            ctx.Add(2, new float3(5f + 2f * math.cos(a), 0, 5f - 2f * math.sin(a)), Faction.EnemyUnit);   // 반대편 60° · 몸 0
+            var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
+
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)), P(30f, 3), ctx);
+
+            CollectionAssert.AreEqual(new[] { 1 }, Hits(ctx), "각도는 대상 몸 걸침 — 중심점만 보면 가장자리의 큰 적을 놓친다");
+        }
+
+        // 등 뒤는 몸 반경을 넘으면 안 맞는다 — 꼭짓점 거리로 잰다(가장자리 근사면 sinθ 배 관대해져 샌다).
+        [Test]
+        public void BehindApex_BeyondBodyRadius_IsMiss_WithinBodyRadius_IsHit()
+        {
+            var ctx = new TestSkillContext();
+            ctx.Add(100, new float3(5f, 0, 5f), Faction.DefenderUnit);
+            ctx.Add(1, new float3(4.4f, 0, 5f), Faction.EnemyUnit, u => u.BodyRadius = 0.5f);   // 0.6 뒤 > 몸 0.5
+            ctx.Add(2, new float3(4.6f, 0, 5.001f), Faction.EnemyUnit, u => u.BodyRadius = 0.5f);   // 0.4 뒤 < 몸 0.5 — 꼭짓점에 걸친다
+            var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
+
+            new ConeBreathSkill().Execute(caster, Aim(ctx, caster, new float2(1f, 0f)), P(30f, 3), ctx);
+
+            CollectionAssert.AreEqual(new[] { 2 }, Hits(ctx), "등 뒤는 꼭짓점 거리 ≤ 몸 일 때만");
         }
 }
 }

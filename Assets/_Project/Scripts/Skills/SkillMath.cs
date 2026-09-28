@@ -244,7 +244,7 @@ namespace Wassup.Skills
         //
         // 프레임은 **+X 고정**이다: `along` = 주 대상 방향 성분, `across` = 그 수직 성분. 회전은 호출부
         // (`AttackReach.InReachShaped`)가 방향 단위벡터 u 로 `along = u·Δ`, `across = u×Δ` 를 만들어 넘긴다.
-        // 단위는 타일. sqrt·삼각함수 0 — 각도는 bake 1회에 `(sin, cos)` 가 된다(`SkillCone.cosSq` 선례).
+        // 단위는 타일. sqrt·삼각함수 0 — 각도는 bake 1회에 `(sin, cos)` 가 된다(`AttackShapeBake` · 브레스 `BindingDefinitionBuilder.BakeCone`).
 
         // 주 대상 쪽 부채꼴. 반각 θ ≤ 90°(전체각 ≤ 180°) — 볼록 쐐기라 SDF 가 세 영역으로 끝난다.
         //   중심이 안 → true · 가장자리에 투영되면 가장자리 거리 ≤ 몸 · 그 외(꼭짓점 뒤)는 꼭짓점 거리 ≤ 몸.

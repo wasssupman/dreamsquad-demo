@@ -58,7 +58,7 @@ namespace Wassup.Tests.EditMode
             var m = Load(DragonPath).nightmareMechanics[0];
             Assert.Greater(m.payload.coneHalfAngleDeg, 0f);
             Assert.Less(m.payload.coneHalfAngleDeg, 90f,
-                "반각 >= 90 은 제곱 비교의 정의역 밖 — cos²θ = cos²(180−θ) 라 조용히 (180−각) 콘이 된다");
+                "반각 >= 90 은 부채꼴 게이트(`SkillMath.SectorGate` · 볼록 쐐기)의 정의역 밖 — bake 가 거절한다");
             Assert.AreNotEqual(45f, m.payload.coneHalfAngleDeg,
                 "45° 는 셀 대각선 경계에 정확히 걸린다 — 부동소수 비교가 플랫폼별로 갈릴 수 있다");
         }

@@ -81,13 +81,13 @@ namespace Wassup.Tests.EditModeAssets
             return def.Bindings[def.Cards[0].Bindings[0]];
         }
 
-        // 빌더가 규칙 줄에 명시로 옮기는 선택자 기본값(저작 기본 = Stun · Bleed · 반각 0 → cos² 1).
+        // 빌더가 규칙 줄에 명시로 옮기는 선택자 기본값(저작 기본 = Stun · Bleed · 반각 0 → (sin, cos) = (0, 1)).
         private static void WithBuilderSelectorDefaults(ref BindingDef b)
         {
             b.CcKind = (int)BindingDefinitionBuilder.ToSkillCc(default(DcCcKind));
             b.StackKind = (int)BindingDefinitionBuilder.ToSkillStack(default(DcStackKind));
             b.StatKind = (int)(BindingDefinitionBuilder.TryToSkillStat(default(CardBuffKind), out var st) ? st : SkillStatKind.DamageMul);
-            b.ConeCosSq = 1f;
+            b.ConeSinHalf = 0f; b.ConeCosHalf = 1f;
         }
 
         private static void AssertFieldEqual(BindingDef expected, BindingDef actual)

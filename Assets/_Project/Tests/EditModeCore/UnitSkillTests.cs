@@ -22,7 +22,7 @@ namespace Wassup.Tests.EditMode.Core
             var breath = Rule(TriggerKind.AttackN, TriggerPayload.AreaBreath);
             breath.Period = 1; breath.Magnitude = 50f; breath.TileRange = 3;
             breath.ConeHalfAngleDeg = 50f;
-            float c = math.cos(math.radians(50f)); breath.ConeCosSq = c * c;
+            breath.ConeSinHalf = math.sin(math.radians(50f)); breath.ConeCosHalf = math.cos(math.radians(50f));
             GiveEnemy(def, 0, breath);
             var m = CoreMatchFixtures.BeginBattle(def);
             var front = SpawnDefender(m, new int2(4, 2));

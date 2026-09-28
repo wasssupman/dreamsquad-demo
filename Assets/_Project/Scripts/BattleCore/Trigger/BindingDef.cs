@@ -86,9 +86,11 @@ namespace Wassup.BattleCore.Trigger
         public float Speed;
         public float HitThreshold;
         public float VisualScale;
-        /// <summary>부채꼴 반각(도). 판정은 `ConeCosSq`, 그림(브레스)은 이 값 — bake 가 둘 다 싣는다.</summary>
+        /// <summary>부채꼴 반각(도). 판정·그림은 아래 (sin, cos) — bake 가 이 저작값에서 1회 변환해 둘 다 싣는다.</summary>
         public float ConeHalfAngleDeg;
-        public float ConeCosSq;
+        /// <summary>반각의 (sin, cos) — `SkillMath.SectorGate` 의 인자(unified-effect-layer unit 7 · 옛 cos² 대체).</summary>
+        public float ConeSinHalf;
+        public float ConeCosHalf;
         public float SlamDamage;
         public int SlamTileRange;
         public int StackId;
@@ -136,7 +138,7 @@ namespace Wassup.BattleCore.Trigger
                 CcKind, Speed, HitThreshold, SlamDamage, SlamTileRange, StackId, VisualScale,
                 PatternDefIndex, StatKind, StackKind, ProjectileMovement, ProjectilePayload,
                 targetLayers, HazardDefIndex,
-                ShieldTargetCount, ShieldIncludesSelf, ShieldFilter, ConeCosSq, Telegraph);
+                ShieldTargetCount, ShieldIncludesSelf, ShieldFilter, ConeSinHalf, ConeCosHalf, Telegraph);
 
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
@@ -171,7 +173,7 @@ namespace Wassup.BattleCore.Trigger
             MatchDefinition.Put(sb, "hitThreshold", HitThreshold, inv);
             MatchDefinition.Put(sb, "visualScale", VisualScale, inv);
             MatchDefinition.Put(sb, "coneDeg", ConeHalfAngleDeg, inv);
-            MatchDefinition.Put(sb, "coneCosSq", ConeCosSq, inv);
+            MatchDefinition.Put(sb, "coneSinCos", ConeSinHalf.ToString("R", inv) + "," + ConeCosHalf.ToString("R", inv));
             MatchDefinition.Put(sb, "slam", SlamDamage.ToString("R", inv) + "," + SlamTileRange.ToString(inv));
             MatchDefinition.Put(sb, "stackId", StackId, inv);
             MatchDefinition.Put(sb, "projAxes", ProjectileMovement.ToString(inv) + "," + ProjectilePayload.ToString(inv));

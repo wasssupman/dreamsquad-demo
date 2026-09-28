@@ -141,11 +141,10 @@ namespace Wassup.Data
         // `AttackSystem` 이 그 프레임에 이미 들고 있는 후보 배열 위에서 판정한다.
         // 필드: magnitude = 피해 · tileRange = 사거리(타일) · coneHalfAngleDeg = 반각.
         //
-        // ⚠ 반각 정의역은 **(0°, 90°)** 다. 판정이 `normalize` 없는 제곱 비교라 부호 가드가
-        // 필요하고(없으면 등 뒤에 대칭 콘), 그 가드가 90° 에서 정의역을 자른다. 게다가
-        // cos²θ = cos²(180−θ) 라 저작 120° 는 **조용히 60° 콘으로 동작**한다 → bake 가 >= 90 을
-        // loud 거절한다. 저작 초기값 50° — 45° 는 셀 대각선 경계에 정확히 걸려 부동소수 비교가
-        // 동전 던지기가 된다(결정론 요건). 판정 자체는 `Wassup.Skills.SkillCone.IsInCone`.
+        // ⚠ 반각 정의역은 **(0°, 90°)** 다. 판정 게이트(`Wassup.Skills.SkillMath.SectorGate`)가 볼록 쐐기만
+        // 재서, 그 이상은 조용히 다른 도형이 된다 → bake 가 >= 90 을 loud 거절한다. 저작 초기값 50° — 45° 는
+        // 셀 대각선 경계에 정확히 걸려 부동소수 비교가 동전 던지기가 된다(결정론 요건).
+        // 도달 = 후보 원(사거리 + 시전자 몸 + 대상 몸) AND 그 게이트(대상 몸 걸침) — 제약 13 · unified-effect-layer unit 7.
         // append-only.
         AreaBreath = 21,
         // dreamcatcher-content-4 unit 0 — 궤도 화염구. host 셀 중심을 도는 투사체 1개를

@@ -285,9 +285,7 @@ namespace Wassup.BattleCoreUnity
             r.CcKind = (int)BindingDefinitionBuilder.ToSkillCc(p.ccKind);
             r.StackKind = (int)BindingDefinitionBuilder.ToSkillStack(p.stackKind);
             r.StatKind = (int)(BindingDefinitionBuilder.TryToSkillStat(p.buffStat, out var st) ? st : SkillStatKind.DamageMul);
-            float cone = Mathf.Cos(Mathf.Deg2Rad * Mathf.Max(0f, p.coneHalfAngleDeg));
-            r.ConeHalfAngleDeg = p.coneHalfAngleDeg;
-            r.ConeCosSq = cone * cone;
+            BindingDefinitionBuilder.BakeCone(ref r, p.coneHalfAngleDeg);
             BindingDefinitionBuilder.ApplyAuthoredAxes(ref r, in m);
 
             // 값 가드 · 표 참조는 두 빌더 공용(`BindingDefinitionBuilder.BindPayload`). 아래 둘은 **카드 저작 인코딩**이다(H4 후속).

@@ -162,9 +162,7 @@ namespace Wassup.BattleCoreUnity
                 b.StatKind = (int)(TryToSkillStat(m.payload.buffStat, out var stat) ? stat : SkillStatKind.DamageMul);
                 b.SlamDamage = Mathf.Max(0f, m.payload.slamDamage);
                 b.SlamTileRange = Mathf.Max(0, m.payload.slamTileRange);
-                b.ConeHalfAngleDeg = m.payload.coneHalfAngleDeg;
-                float c = Mathf.Cos(Mathf.Deg2Rad * Mathf.Max(0f, m.payload.coneHalfAngleDeg));
-                b.ConeCosSq = c * c;
+                BakeCone(ref b, m.payload.coneHalfAngleDeg);
                 b.Origin = BindingOrigin.UnitAuthored;
                 ApplyAuthoredAxes(ref b, in m);
 
@@ -241,6 +239,17 @@ namespace Wassup.BattleCoreUnity
         }
 
         /// <summary>조합 검증 — 거절이면 사유 셋 중 하나로 짖는다.</summary>
+        // unified-effect-layer unit 7 — 부채꼴 반각(도) → (sin, cos) **bake 1회**(`AttackShapeBake` 선례 — sim 은 삼각함수를
+        // 부르지 않는다). 두 빌더(유닛 · 카드)가 같은 변환을 이 한 곳에서 부른다 — 사본이 갈리면 같은 저작 각도가
+        // 유닛과 카드에서 다른 콘이 된다. 정의역 거절(반각 ≥ 90)은 `BindPayload` 의 몫이다.
+        internal static void BakeCone(ref BindingDef b, float halfAngleDeg)
+        {
+            float rad = Mathf.Deg2Rad * Mathf.Max(0f, halfAngleDeg);
+            b.ConeHalfAngleDeg = halfAngleDeg;
+            b.ConeSinHalf = Mathf.Sin(rad);
+            b.ConeCosHalf = Mathf.Cos(rad);
+        }
+
         internal static bool CheckCombo(in EffectCombo c, string label)
         {
             var v = EffectComboRule.Check(in c);
@@ -316,8 +325,9 @@ namespace Wassup.BattleCoreUnity
                     if (b.Trigger == TriggerKind.PeriodicTimer && m.trigger.periodSeconds < p.duration) Warn($"{label}: 주기 < 지속 — 화염구가 겹쳐 쌓인다.");
                     return true;
                 case TriggerPayload.AreaBreath:
-                    // 판정이 부호 가드 있는 제곱 비교라 90° 에서 정의역이 잘리고 120° 는 조용히 60° 콘이 된다 — 거절.
-                    if (p.coneHalfAngleDeg >= 90f) { Error($"{label}: AreaBreath 반각({p.coneHalfAngleDeg}°) >= 90 — 조용히 (180−각) 콘이 된다. 건너뛴다."); return false; }
+                    // 판정 게이트(`SkillMath.SectorGate`)는 볼록 쐐기(반각 < 90°)만 잰다 — 그 이상은 반평면·reflex 라
+                    // 조용히 다른 도형이 된다. 거절(`AttackShapeBake` 가 reflex 를 거절하는 것과 같은 규율).
+                    if (p.coneHalfAngleDeg >= 90f) { Error($"{label}: AreaBreath 반각({p.coneHalfAngleDeg}°) >= 90 — 부채꼴 게이트의 정의역(볼록 쐐기) 밖이다. 건너뛴다."); return false; }
                     if (p.coneHalfAngleDeg <= 0f) Warn($"{label}: AreaBreath 반각이 0 이하 — 정면 한 줄만 맞는다.");
                     if (p.tileRange <= 0) Warn($"{label}: AreaBreath 사거리가 0 — 같은 셀만 맞는다.");
                     if (p.magnitude <= 0f) Warn($"{label}: AreaBreath 피해가 0 이하 — 발동해도 아무 일이 없다.");

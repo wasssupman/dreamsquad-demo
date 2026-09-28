@@ -587,12 +587,11 @@ namespace Wassup.BattleCore.Trigger
             if (d.Payload == TriggerPayload.AreaBreath)
             {
                 // 브레스의 그림은 **이 스킬의 콘**이다(6c 후속 3) — 축 = 시전자→대상, 반각·사거리 = 저작.
-                float cosSq = math.clamp(d.ConeCosSq, 0f, 1f);
                 var cone = new Combat.AttackShapeBaked
                 {
                     kind = Combat.AttackShapeBaked.SectorKind,
-                    cosHalf = math.sqrt(cosSq),
-                    sinHalf = math.sqrt(1f - cosSq),
+                    cosHalf = d.ConeCosHalf,
+                    sinHalf = d.ConeSinHalf,
                 };
                 _bus.Publish(CoreEvent.TriggerFired(tick, b, e.Target, casterSite, targetSite, e.SubjectFaction,
                                                     e.Direction, cone, d.TileRange));
