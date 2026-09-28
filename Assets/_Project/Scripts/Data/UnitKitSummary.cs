@@ -96,11 +96,11 @@ namespace Wassup.Data
         // 만들지 않는다** — 문안이 자기 숫자를 갖는 순간 저작값과 갈린다.
         private static string OnPlaceRuleClause(DefenderUnitData u)
         {
-            var ability = u.GetAbility<UnitSkillAbility>();
-            if (ability?.mechanics == null) return "";
-            for (int i = 0; i < ability.mechanics.Length; i++)
+            // skill-data-table unit 4 — 방어유닛 소유 줄(`bindings`)을 옛 메커닉 모양으로 읽는다(값 동치 — `BindingSpecView`).
+            var rules = u.RuleView();
+            for (int i = 0; i < rules.Length; i++)
             {
-                var m = ability.mechanics[i];
+                var m = rules[i];
                 if (m.trigger.kind != TriggerKind.OnPlace) continue;
                 switch (m.payload.kind)
                 {

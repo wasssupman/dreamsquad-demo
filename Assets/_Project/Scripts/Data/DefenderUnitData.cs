@@ -252,6 +252,8 @@ namespace Wassup.Data
         // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄). 비어 있지 않으면 굽기가 이것만 읽고 규칙 레일 능력 둘
         // (`UnitSkillAbility` · `ShieldCastAbility`)은 안 읽는다(이전 과도기 — 둘은 4-정리에서 은퇴). 평타 경로 능력은 `abilities` 그대로.
         public BindingSpec[] bindings;
+        /// <summary>소유 줄을 옛 메커닉 모양으로(진단 — `BindingSpecView`). 매 프레임 금지.</summary>
+        public DcMechanic[] RuleView() => BindingSpecView.Of(bindings);
 
         // 첫 매치 or null. null 원소(리스트 빈 슬롯)는 스킵.
         public T GetAbility<T>() where T : DefenderAbilityData

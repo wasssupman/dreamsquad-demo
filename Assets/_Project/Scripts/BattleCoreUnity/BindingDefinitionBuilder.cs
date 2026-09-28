@@ -10,11 +10,12 @@ using Wassup.Skills;
 namespace Wassup.BattleCoreUnity
 {
     // battle-core-rebuild unit 7a — SO → **규칙(바인딩) 정의표**(← 옛 `BattleBridge.BakeUnitMechanics` ·
-    // `BakeNightmareMechanics` · 실드 캐스트 bake). 여기가 `DcMechanic` 을 아는 마지막 자리다.
+    // `BakeNightmareMechanics` · 실드 캐스트 bake).
     //
-    // **진영 중립 단일 bake** — 적 악몽(`nightmareMechanics`) · 방어유닛 능력(`UnitSkillAbility`) · 실드 캐스트
-    // (`ShieldCastAbility` → 주기 × 실드)가 같은 함수를 지난다. 다른 것은 「적인가」 하나(감지자 표가 그걸로
-    // 배치·퇴근을 닫는다).
+    // skill-data-table unit 4 — 방어유닛 · 적은 **소유 줄(`bindings` → 효과 에셋)** 만 굽는다(`BindingSpecBuilder` — 카드와 같은 한 경로).
+    // 옛 저장처(적 `nightmareMechanics` · 방어유닛 `UnitSkillAbility` · 코드가 굽던 `ShieldCastAbility`)는 이전됐다. 이 파일에 남은 것은
+    // 두 빌더가 같이 쓰는 잎 함수(조합 · 트리거 가드 · 강공 · 종류별 값 가드 · 연출 · 줄 싣기)와 번호가 다른 어휘의 번역이다.
+    // 잎 함수는 아직 옛 메커닉 모양(`DcMechanic` — `BindingSpecView` 가 소유 줄에서 비춘 것)을 받는다.
     //
     // **침묵보다 거절**(구현 12): 조합 검증(`EffectComboRule` — 감지자 없음 · 부착 전용 payload 를 트리거에 매닮 · 떠난 자리 ·
     // 전원 × 결합 · 도발 × 가디언, unified-effect-layer unit 5 · 카드 빌더와 **같은 함수**) · 라우팅 없음 ·
@@ -41,21 +42,13 @@ namespace Wassup.BattleCoreUnity
                 if (d == null) continue;
                 var mods = new List<AttackModDef>();
                 var mine = new List<int>();
+                // skill-data-table unit 4 — 소유 줄(`bindings`)만 읽는다(규칙 레일 능력 둘 · 옛 칸은 이전됐다).
                 if (d.bindings != null && d.bindings.Length > 0)
                 {
-                    // skill-data-table unit 4 — 새 저작 형식(소유 줄)이 있으면 그것만 — 규칙 레일 능력 둘(유닛 스킬 · 실드 캐스트)은 안 읽는다.
                     bool unusedRecall = false;
                     BindingSpecBuilder.Bake(d.bindings, new RuleOwner { Origin = BindingOrigin.UnitAuthored, Label = d.name,
                                                                         HostIsGuardian = d.aggroCapacity > 0 },
                                             projectiles, patterns, hazards, rows, effects, mine, mods, ref unusedRecall, view);
-                }
-                else
-                {
-                    var skill = d.GetAbility<UnitSkillAbility>();
-                    if (skill?.mechanics != null)
-                        Bake(skill.mechanics, hostIsEnemy: false, d.name, def.Units[i].Id, d.aggroCapacity > 0, null,
-                             projectiles, patterns, hazards, rows, effects, mine, mods, def.Movement.SplitMaxChildren, view);
-                    BakeShieldCast(d, def.Units[i].Id, rows, effects, mine);
                 }
                 if (mine.Count > 0) def.Units[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Units[i].Attack.Mods = mods.ToArray();
@@ -65,19 +58,12 @@ namespace Wassup.BattleCoreUnity
                 var e = enemies[i];
                 if (e == null) continue;
                 if (e.splitUnit != null) ValidateSplit(e, def.Movement.SplitMaxChildren);
-                bool authoredNew = e.bindings != null && e.bindings.Length > 0;
-                if (!authoredNew && (e.nightmareMechanics == null || e.nightmareMechanics.Length == 0)) continue;
+                if (e.bindings == null || e.bindings.Length == 0) continue;
                 var mods = new List<AttackModDef>();
                 var mine = new List<int>();
-                if (authoredNew)
-                {
-                    bool unusedRecall = false;
-                    BindingSpecBuilder.Bake(e.bindings, new RuleOwner { Origin = BindingOrigin.UnitAuthored, Label = e.name, IsEnemy = true },
-                                            projectiles, patterns, hazards, rows, effects, mine, mods, ref unusedRecall, view);
-                }
-                else
-                    Bake(e.nightmareMechanics, hostIsEnemy: true, e.name, def.Enemies[i].Id, false, e,
-                         projectiles, patterns, hazards, rows, effects, mine, mods, def.Movement.SplitMaxChildren, view);
+                bool unusedRecall = false;
+                BindingSpecBuilder.Bake(e.bindings, new RuleOwner { Origin = BindingOrigin.UnitAuthored, Label = e.name, IsEnemy = true },
+                                        projectiles, patterns, hazards, rows, effects, mine, mods, ref unusedRecall, view);
                 if (mine.Count > 0) def.Enemies[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Enemies[i].Attack.Mods = mods.ToArray();
             }
@@ -87,8 +73,8 @@ namespace Wassup.BattleCoreUnity
 
         /// <summary>
         /// skill-data-table unit 1a·1b — 규칙 줄 하나를 싣는다(두 빌더 공용): 효과 줄을 **효과 표**에 넣고(`EffectDef.Intern` —
-        /// 같은 id · 같은 값이면 그 줄) 규칙 줄이 그 번호를 가리키게 한 뒤 소유자 목록에 단다. id = `{소유자}.{자리}`
-        /// (저작 경로에서 파생한 임시 id — 저작 효과 id 는 unit 4).
+        /// 같은 id · 같은 값이면 그 줄) 규칙 줄이 그 번호를 가리키게 한 뒤 소유자 목록에 단다. id = 효과 에셋 id(unit 4 — 서버 어휘) ·
+        /// 빌더가 펴는 둘째 줄(배치 오라 수면 · 스쿼드 · 드림스톤)만 파생 id.
         /// </summary>
         internal static void AddRow(List<BindingDef> rows, List<EffectDef> effects, List<int> mine,
                                     BindingDef b, EffectDef fx, string id)
@@ -106,129 +92,6 @@ namespace Wassup.BattleCoreUnity
             if (e.splitCount < 1) Error($"{label}: splitCount({e.splitCount}) < 1 — 자식이 0기다.");
             else if (e.splitCount > splitCap) Error($"{label}: splitCount({e.splitCount}) > {splitCap} — {splitCap}기로 잘린다.");
             else if (!SplitChain.Validate(e, out string splitError)) Error($"{label}: {splitError}");
-        }
-
-        // 실드 캐스트 능력 — 저작은 그대로, **주기 × 실드 규칙**으로 굽는다(옛 전용 상태·시스템 은퇴).
-        // 첫 캐스트 = 배치 A초 뒤(누적 0 에서 A 초). 범위 = 유닛 사거리 재사용(계약 5) · **자기 포함**(셔틀엔 겹칠 상대가 없다).
-        private static void BakeShieldCast(DefenderUnitData d, string ownerId, List<BindingDef> rows, List<EffectDef> effects, List<int> mine)
-        {
-            var a = d.GetAbility<ShieldCastAbility>();
-            if (a == null || a.cooldown <= 0f || a.amount <= 0f) return;
-            var b = BindingDef.Default();
-            var fx = EffectDef.Default();
-            b.Label = d.name + " 실드 캐스트";
-            b.Trigger = TriggerKind.PeriodicTimer;
-            fx.Kind = EffectKind.GrantShield;
-            b.Skill = SkillRouting.Resolve(b.Trigger, fx.Kind);
-            b.PeriodSeconds = a.cooldown;
-            fx.Magnitude = a.amount;
-            fx.TileRange = SkillMath.RangeToTiles(d.attackRange);
-            fx.ShieldFilter = (int)ToSkillShieldFilter(a.filter);
-            fx.ShieldIncludesSelf = true;
-            fx.ShieldTargetCount = Mathf.Max(1, a.targetCount);
-            AddRow(rows, effects, mine, b, fx, ownerId + "." + mine.Count);
-        }
-
-        private static void Bake(DcMechanic[] mechanics, bool hostIsEnemy, string owner, string ownerId, bool hostIsGuardian,
-                                 AttackUnitData enemyOwner,
-                                 List<ProjectileData> projectiles, List<ProjectilePatternData> patterns,
-                                 HazardSO[] hazards, List<BindingDef> rows, List<EffectDef> effects, List<int> mine, List<AttackModDef> mods,
-                                 int splitCap, MatchViewAssets view = null)
-        {
-            for (int i = 0; i < mechanics.Length; i++)
-            {
-                var m = mechanics[i];
-                string label = $"{owner} mechanic {i}";
-                if (!KnownKinds(in m, label)) continue;
-                var trigger = m.trigger.kind;
-                var payload = m.payload.kind;
-
-                if (payload == EffectKind.None)
-                {
-                    Warn($"{label}: None 종류 — 건너뛴다.");
-                    continue;
-                }
-                // 분열은 **의도적 무항목**(S8) — 그릇(적 줄)은 서고 항목만 건너뛴다. 실행은 7d(`OnSlain`).
-                if (trigger == TriggerKind.OnDeath && payload == EffectKind.SplitOnDeath)
-                {
-                    if (m.payload.splitUnit == null) Error($"{label}: SplitOnDeath 인데 splitUnit 이 비었다 — 죽어도 안 갈라진다.");
-                    else if (m.payload.magnitude < 1f) Error($"{label}: SplitOnDeath magnitude({m.payload.magnitude}) < 1 — 자식이 0기다.");
-                    // 상한 = 정의표(`MovementTuningDef.SplitMaxChildren` — 저작 사고 방어선). 빌더·코어가 같은 값으로 자른다.
-                    else if (m.payload.magnitude > splitCap) Error($"{label}: SplitOnDeath magnitude({m.payload.magnitude}) > {splitCap} — {splitCap}기로 잘린다.");
-                    else if (enemyOwner != null && !SplitChain.Validate(enemyOwner, out string splitError)) Error($"{label}: {splitError}");
-                    continue;
-                }
-                // unified-effect-layer unit 5 — 조합은 **검증 한 함수**(출처는 입력이 아니다). 유닛·적은 규칙을 들고 태어난다(놓인 뒤 붙지 않는다).
-                if (!CheckCombo(ComboOf(in m, trigger, payload, hostIsEnemy, bindsAfterPlacement: false,
-                                        hostCannotHoldAggro: !hostIsGuardian), label)) continue;
-                var gate = m.trigger.gate;
-                var gateSubject = m.trigger.gateSubject;
-                if (!TriggerValuesValid(in m, trigger, gate, gateSubject, label)) continue;
-                // 강공 — **어휘 밖**(그 공격의 성질). 규칙이 아니라 공격 수식자로 접는다.
-                if (payload == EffectKind.HeavyStrike)
-                {
-                    if (TryHeavyStrike(in m, trigger, gate, label, out var heavy)) mods.Add(heavy);
-                    continue;
-                }
-                if (payload == EffectKind.AreaBarrage)
-                {
-                    // 이관(안내 유지 — `BattleBridge.cs:10290` 과 같은 뜻).
-                    Warn($"{label}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — 건너뛴다. 패턴 asset 을 지정하라.");
-                    continue;
-                }
-                // 스킬인데 라우팅이 없다.
-                var effect = SkillRouting.Resolve(trigger, payload);
-                if (SkillRouting.IsSkill(payload) && effect == null)
-                {
-                    Warn($"{label}: '{trigger} × {payload}' 조합에 라우팅이 없다 — 발화하고도 아무 일이 안 일어난다. 건너뛴다.");
-                    continue;
-                }
-                if (effect == null)
-                {
-                    Warn($"{label}: '{payload}' 는 이 레이어의 규칙이 아니다(7b/7d) — 건너뛴다.");
-                    continue;
-                }
-
-                var b = BindingDef.Default();
-                var fx = EffectDef.Default();
-                b.Label = label;
-                b.Trigger = trigger;
-                fx.Kind = payload;
-                b.Skill = effect;
-                b.Period = Mathf.Clamp(m.trigger.period, 0, ushort.MaxValue);
-                b.PeriodSeconds = m.trigger.periodSeconds;
-                b.Fraction = m.trigger.fraction;
-                b.Gate = gate;
-                b.GateSubject = gateSubject;
-                b.GateValue = m.trigger.gateValue;
-                fx.Magnitude = m.payload.magnitude;
-                fx.TileRange = Mathf.Max(0, m.payload.tileRange);
-                fx.Duration = Mathf.Max(0f, m.payload.duration);
-                // ⚠ 저작 선택자 셋은 **기본값이 진짜처럼 보이는** 함정이다(0 = 감속 · 공격력 · 없음) — 명시로 옮긴다.
-                fx.CcKind = (int)ToSkillCc(m.payload.ccKind);
-                fx.StackKind = (int)ToSkillStack(m.payload.stackKind);
-                fx.StatKind = (int)(TryToSkillStat(m.payload.buffStat, out var stat) ? stat : SkillStatKind.DamageMul);
-                // skill-data-table 1b(U10) — 착지 슬램 피해 = 효과 줄의 피해. 도약 2종만 쓴다 — 그 밖의 종류에서는 옛날에도
-                // 읽는 곳이 없던 값이라(`SkillParams.SlamDamage` 소비처 = 도약 concrete 둘) 피해 칸으로 옮기지 않는다.
-                if (payload == EffectKind.SelfBlink || payload == EffectKind.UltimateLeap) fx.Damage = Mathf.Max(0f, m.payload.slamDamage);
-                else if (m.payload.slamDamage > 0f) Warn($"{label}: slamDamage 는 도약(SelfBlink · UltimateLeap) 전용 — {payload} 에서는 무시한다.");
-                fx.SlamTileRange = Mathf.Max(0, m.payload.slamTileRange);
-                BakeCone(ref fx, m.payload.coneHalfAngleDeg);
-                b.Origin = BindingOrigin.UnitAuthored;
-                ApplyAuthoredAxes(ref b, ref fx, in m);
-
-                if (!BindPayload(ref b, ref fx, in m, label, projectiles, patterns, hazards)) continue;
-
-                // unit 7c — 메커닉이 선언한 연출 프리팹(옛 `BakeUnitMechanics` 의 두 갈래). 규칙이 아니라 **뷰 표**이고,
-                // 규칙 줄에는 빔의 번호만 싣는다(`SkillVisual.DefIndex` — 스킬이 `HasData` 일 때만 빔을 요청한다).
-                //   · 지속 피해(`AreaDot`)의 `auraPrefab` = **빔**(옛 `GetOrCreateSkillVfxIndex`). 빔은 선택이다 — 없으면 무연출.
-                //   · 그 밖의 `auraPrefab` = 숙주를 따라다니는 **부착 오라**(옛 `DcAuraVisualPool.Register`, kind 무관).
-                //   ⚠ 옛 bake 는 `AreaDot` 의 빔 프리팹도 오라로 **같이** 등록했다(두 갈래가 한 필드를 겸한 뒤 가드가 안 생겼다) —
-                //   빔이 숙주에 기본 방향으로 박혀 떠 있게 된다. 빔 쪽만 옮긴다(7c 이식 제외).
-                BakeAuthoredVisual(ref fx, in m, rows.Count, view);
-
-                AddRow(rows, effects, mine, b, fx, ownerId + "." + mine.Count);
-            }
         }
 
         /// <summary>
@@ -508,29 +371,6 @@ namespace Wassup.BattleCoreUnity
         }
 
         // ── 저작 어휘 → 코어 어휘(번호가 다른 것만 · 이름으로) ─────────────────────
-
-        /// <summary>저작 CC(Stun·Impulse·Sleep) → 스킬 어휘. **번호가 다르다**(스킬 쪽은 Slow·Impulse·DoT·Stun·Sleep).</summary>
-        public static SkillCcKind ToSkillCc(DcCcKind authored)
-        {
-            switch (authored)
-            {
-                case DcCcKind.Impulse: return SkillCcKind.Impulse;
-                case DcCcKind.Sleep: return SkillCcKind.Sleep;
-                default: return SkillCcKind.Stun;   // 옛 `MapDcCc` 의 기본 = 기절
-            }
-        }
-
-        /// <summary>저작 스택(Fire·Ice·Bleed·Poison) → 스킬 어휘(None 이 0 이라 번호가 하나 밀린다).</summary>
-        public static SkillStackKind ToSkillStack(DcStackKind authored)
-        {
-            switch (authored)
-            {
-                case DcStackKind.Fire: return SkillStackKind.Fire;
-                case DcStackKind.Ice: return SkillStackKind.Ice;
-                case DcStackKind.Poison: return SkillStackKind.Poison;
-                default: return SkillStackKind.Bleed;   // 옛 `MapDcStack` 의 기본 = 출혈
-            }
-        }
 
         /// <summary>저작 버프 축 → 스탯(옛 `MapDcBuff` 의 스탯 부분). `CostRate` 는 스탯이 아니다(7b 메타 의도).</summary>
         public static bool TryToSkillStat(CardBuffKind authored, out SkillStatKind stat)

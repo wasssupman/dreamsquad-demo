@@ -21,19 +21,9 @@ namespace Wassup.Tests.EditMode
 
         private static void SetSplit(AttackUnitData host, AttackUnitData child, float count = 2f)
         {
-            host.nightmareMechanics = new[]
-            {
-                new DcMechanic
-                {
-                    trigger = new TriggerSpec { kind = TriggerKind.OnDeath },
-                    payload = new DcPayloadSpec
-                    {
-                        kind = EffectKind.SplitOnDeath,
-                        magnitude = count,
-                        splitUnit = child,
-                    },
-                },
-            };
+            // skill-data-table unit 4 — 분열 = 적 고유 값(옛 `OnDeath × SplitOnDeath` 메커닉은 이전됐다).
+            host.splitUnit = child;
+            host.splitCount = (int)count;
         }
 
         [Test]

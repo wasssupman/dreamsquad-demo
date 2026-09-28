@@ -183,11 +183,9 @@ namespace Wassup.UI
                 }
             }
 
-            if (card.mechanics != null)
-            {
-                foreach (var mechanic in card.mechanics)
-                    if (!TryAppendMechanic(lines, mechanic)) supported = false;
-            }
+            // skill-data-table unit 4 — 소유 줄(`bindings`)을 옛 메커닉 모양으로 읽는다(값 동치 — `BindingSpecView` · 문안 무변).
+            foreach (var mechanic in card.RuleView())
+                if (!TryAppendMechanic(lines, mechanic)) supported = false;
 
             return supported;
         }

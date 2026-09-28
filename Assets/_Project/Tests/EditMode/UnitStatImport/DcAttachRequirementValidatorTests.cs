@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.Tests.EditMode;
 using Wassup.Editor.UnitStatImport;
 using Wassup.BattleCore.Trigger;
 
@@ -22,9 +23,9 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             c.type = type;
             c.attachType = attachType;
             c.attachValue = value;
-            c.mechanics = bountyMark
+            TestBindings.Attach(c, bountyMark
                 ? new[] { new DcMechanic { payload = new DcPayloadSpec { kind = EffectKind.BountyMark } } }
-                : new[] { new DcMechanic { payload = new DcPayloadSpec { kind = EffectKind.SelfStatBuff } } };
+                : new[] { new DcMechanic { payload = new DcPayloadSpec { kind = EffectKind.SelfStatBuff } } });
             return c;
         }
 

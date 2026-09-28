@@ -33,7 +33,7 @@ namespace Wassup.Tests.EditMode
             var u = Load();
 
             Assert.AreEqual(EnemyTier.Elite, u.tier, "Whirlpot 은 엘리트다");
-            Assert.IsTrue(u.nightmareMechanics == null || u.nightmareMechanics.Length == 0,
+            Assert.IsTrue((u.bindings == null || u.bindings.Length == 0) && u.splitUnit == null,
                 "★이 엘리트의 능력은 메커닉이 아니라 저작된 공격 축이다(README 계약 1). "
                 + "메커닉을 붙이면 DcTriggerSlot 버퍼까지 따라붙어 설계 의도가 흐려진다");
         }

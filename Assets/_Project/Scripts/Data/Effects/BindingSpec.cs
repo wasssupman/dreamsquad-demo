@@ -28,4 +28,55 @@ namespace Wassup.Data
         Defender = 1,
         Enemy = 2,
     }
+
+    /// <summary>
+    /// skill-data-table unit 4 — 소유 줄을 **옛 메커닉 모양으로 보는 창**(이전 뒤 과도기). 문안(`DreamcatcherCardText`) · 진단(`UnitKitSummary`) ·
+    /// 굽기의 잎 검증 함수가 아직 옛 칸 이름(magnitude · tileRange · duration)으로 읽는다 — 그 읽기를 소유 줄 위로 옮기되 **값은 같게**
+    /// (`EffectSlots` 표 하나 · 라이브 왕복 = 이전 dry-run 이 확인). 저장 형식이 아니다(에셋에 안 쓴다).
+    /// ⚠ 소유자별 인코딩은 싣지 않는다 — 효과 값은 소유자 무관(예: 자기 버프 = %).
+    /// </summary>
+    public static class BindingSpecView
+    {
+        public static DcMechanic ToMechanic(in BindingSpec s)
+        {
+            var e = s.effect;
+            if (e == null) return new DcMechanic { trigger = s.trigger };
+            var p = EffectSlots.ToLegacy(in e.values);
+            return new DcMechanic
+            {
+                trigger = s.trigger,
+                payload = new DcPayloadSpec
+                {
+                    kind = p.Kind,
+                    magnitude = p.Magnitude,
+                    tileRange = p.TileRange,
+                    duration = p.Duration,
+                    projectile = e.projectile,
+                    pattern = e.pattern,
+                    hazard = e.hazard,
+                    auraPrefab = e.auraPrefab,
+                    auraScale = e.auraScale,
+                    stackModifier = e.stackModifier,
+                    ccKind = EffectSlots.CcToLegacy(e.values.ccKind),
+                    stackKind = EffectSlots.StackToLegacy(e.values.stackKind),
+                    buffStat = p.BuffStat,
+                    slamDamage = p.SlamDamage,
+                    slamTileRange = p.SlamTileRange,
+                    tickIntervalSec = p.TickIntervalSec,
+                    orbitCount = p.OrbitCount,
+                    coneHalfAngleDeg = p.ConeHalfAngleDeg,
+                    telegraph = p.Telegraph,
+                },
+            };
+        }
+
+        /// <summary>소유 줄 배열 전부(null = 빈 배열). 관리 배열을 새로 만든다 — 굽기 · UI 시점 전용, 매 프레임 금지.</summary>
+        public static DcMechanic[] Of(BindingSpec[] bindings)
+        {
+            if (bindings == null || bindings.Length == 0) return Array.Empty<DcMechanic>();
+            var r = new DcMechanic[bindings.Length];
+            for (int i = 0; i < r.Length; i++) r[i] = ToMechanic(in bindings[i]);
+            return r;
+        }
+    }
 }

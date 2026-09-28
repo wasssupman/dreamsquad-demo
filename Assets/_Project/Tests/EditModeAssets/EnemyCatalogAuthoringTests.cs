@@ -37,7 +37,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(EnemyTier.Boss, unit.tier,
                 $"{unit.displayName}: tier 가 Boss 가 아니다 — BossTag 가 안 붙어 CC·어그로 면역과 " +
                 "등장경보가 통째로 사라진다");
-            Assert.IsTrue(unit.nightmareMechanics != null && unit.nightmareMechanics.Length > 0,
+            Assert.IsTrue(unit.bindings != null && unit.bindings.Length > 0,
                 $"{unit.displayName}: 보스인데 메커닉이 없다");
         }
 

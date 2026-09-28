@@ -83,8 +83,8 @@ namespace Wassup.Tests.EditMode
                 foreach (var card in cards)
                 {
                     if (card.type != CardType.Unit) continue;
-                    if (card.mechanics != null)
-                        foreach (var m in card.mechanics)
+                    if (card.RuleView() != null)
+                        foreach (var m in card.RuleView())
                             Assert.AreNotEqual(DcRejectReason.Unclassified,
                                 DcApplicability.EvaluateMechanic(m, host),
                                 $"미분류: {card.id} × {unit.id} ({m.payload.kind})");
@@ -110,8 +110,8 @@ namespace Wassup.Tests.EditMode
                 var host = ProfileOf(unit);
                 foreach (var card in cards)
                 {
-                    if (card.type != CardType.Unit || card.mechanics == null) continue;
-                    foreach (var m in card.mechanics)
+                    if (card.type != CardType.Unit || card.RuleView() == null) continue;
+                    foreach (var m in card.RuleView())
                     {
                         var reason = DcApplicability.EvaluateMechanic(m, host);
 
@@ -172,7 +172,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsNotNull(card, "Card_PokeNeedle.asset 을 찾지 못했다");
 
             var found = false;
-            foreach (var m in card.mechanics)
+            foreach (var m in card.RuleView())
             {
                 if (m.payload.kind != EffectKind.ProjectileToTarget) continue;
                 found = true;

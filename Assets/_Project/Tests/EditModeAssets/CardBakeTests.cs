@@ -81,9 +81,9 @@ namespace Wassup.Tests.EditModeAssets
             int found = 0;
             for (int i = 0; i < cards.Count; i++)
             {
-                if (cards[i].mechanics == null) continue;
+                if (cards[i].RuleView() == null) continue;
                 bool aura = false;
-                foreach (var m in cards[i].mechanics) if (m.payload.kind == EffectKind.PlacementAura) aura = true;
+                foreach (var m in cards[i].RuleView()) if (m.payload.kind == EffectKind.PlacementAura) aura = true;
                 if (!aura) continue;
                 found++;
                 var rows = def.Cards[i].Bindings;
@@ -126,8 +126,8 @@ namespace Wassup.Tests.EditModeAssets
             for (int i = 0; i < cards.Count; i++)
             {
                 bool declares = false;
-                if (cards[i].type == CardType.Unit && cards[i].mechanics != null)
-                    foreach (var m in cards[i].mechanics)
+                if (cards[i].type == CardType.Unit && cards[i].RuleView() != null)
+                    foreach (var m in cards[i].RuleView())
                         if (m.payload.kind == EffectKind.RecallAttachedToFront && m.trigger.kind == TriggerKind.OnRetire)
                             declares = true;
                 Assert.AreEqual(declares, def.Cards[i].DeclaresRetireRecall, cards[i].id + " — 옛 `DeclaresRetireRecall` 과 같은 판정");

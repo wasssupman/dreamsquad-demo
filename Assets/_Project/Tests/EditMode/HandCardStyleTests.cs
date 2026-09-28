@@ -74,10 +74,10 @@ namespace Wassup.Tests.EditMode
         {
             // 적 지정은 전용 필드가 없다 — mechanics 의 BountyMark payload 파생(조준 라우팅과 동일 판별).
             var card = MakeCard(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic { payload = new DcPayloadSpec { kind = EffectKind.BountyMark } },
-            };
+            });
             Assert.AreEqual("적 지정", CardCategoryStyle.TargetTag(card));
         }
 

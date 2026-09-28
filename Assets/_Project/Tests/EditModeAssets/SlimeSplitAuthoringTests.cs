@@ -31,14 +31,10 @@ namespace Wassup.Tests.EditMode
             var parent = Load(ParentPath);
 
             Assert.AreEqual(EnemyTier.Elite, parent.tier, "슬라임은 엘리트다");
-            Assert.IsNotNull(parent.nightmareMechanics);
-            Assert.AreEqual(1, parent.nightmareMechanics.Length, "메커니즘은 «특수 1개» 가 엘리트 컨셉이다");
-
-            var m = parent.nightmareMechanics[0];
-            Assert.AreEqual(TriggerKind.OnDeath, m.trigger.kind);
-            Assert.AreEqual(EffectKind.SplitOnDeath, m.payload.kind);
-            Assert.IsNotNull(m.payload.splitUnit, "splitUnit 이 비면 죽어도 안 갈라진다");
-            Assert.GreaterOrEqual(m.payload.magnitude, 1f, "자식 수가 1 미만이면 분열이 소멸이다");
+            // skill-data-table unit 4 — 분열은 소유 줄이 아니라 적 고유 값(`splitUnit` · `splitCount`)이다. 특수는 그 하나뿐(소유 줄 0).
+            Assert.IsTrue(parent.bindings == null || parent.bindings.Length == 0, "분열 외 특수 규칙이 없다 — «특수 1개» 가 엘리트 컨셉이다");
+            Assert.IsNotNull(parent.splitUnit, "splitUnit 이 비면 죽어도 안 갈라진다");
+            Assert.GreaterOrEqual(parent.splitCount, 1, "자식 수가 1 미만이면 분열이 소멸이다");
         }
 
         // 2단계 분열: 슬라임 → 중간 ×2 → 작은 ×4. **배선과 출력 형상**만 못 박는다.
@@ -79,8 +75,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(SplitChain.Validate(Load(ParentPath), out string err), err);
 
             var small = Load(ChildPath);
-            Assert.IsTrue(small.nightmareMechanics == null || small.nightmareMechanics.Length == 0,
-                "마지막 단계가 메커니즘을 가지면 사슬이 안 끝난다");
+            Assert.IsNull(small.splitUnit, "마지막 단계가 분열을 가지면 사슬이 안 끝난다");
             Assert.AreEqual(EnemyTier.Normal, small.tier, "분열체는 일반 등급이다");
             Assert.AreEqual(EnemyTier.Normal, Load(MidPath).tier, "분열체는 일반 등급이다");
         }

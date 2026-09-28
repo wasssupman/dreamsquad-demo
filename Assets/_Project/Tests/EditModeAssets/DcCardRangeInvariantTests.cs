@@ -42,9 +42,9 @@ namespace Wassup.Tests.EditModeAssets
             foreach (var card in LoadCards())
             {
                 var distinct = new HashSet<(DcRangeShape, float)>();
-                if (card.mechanics != null)
+                if (card.RuleView() != null)
                 {
-                    foreach (var m in card.mechanics)
+                    foreach (var m in card.RuleView())
                     {
                         int skillId = DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind);
                         var spec = DcRangeCatalog.Resolve(skillId, m.payload.tileRange, m.trigger.kind);
@@ -67,7 +67,7 @@ namespace Wassup.Tests.EditModeAssets
             // 팅김 반경(bouncy_bead 3) 등은 착탄점 기준이라 host 중심 범위가 아니다.
             foreach (var card in LoadCards())
             {
-                bool mechanicsEmpty = card.mechanics == null || card.mechanics.Length == 0;
+                bool mechanicsEmpty = card.RuleView() == null || card.RuleView().Length == 0;
                 bool hasAttackMods = card.attackMods != null && card.attackMods.Length > 0;
                 if (!mechanicsEmpty || !hasAttackMods) continue;
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.ResolveCard(card).shape,

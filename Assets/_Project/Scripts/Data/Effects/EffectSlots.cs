@@ -266,6 +266,29 @@ namespace Wassup.Data
                 includesSelf = true,
             };
 
+        /// <summary>스킬 어휘 CC → 옛 `DcCcKind`(문안 · 진단의 옛 칸 보기). 옛 저작이 못 고르던 값(둔화 · DoT)은 기절(옛 기본).</summary>
+        public static DcCcKind CcToLegacy(CcKind kind)
+        {
+            switch (kind)
+            {
+                case CcKind.Impulse: return DcCcKind.Impulse;
+                case CcKind.Sleep: return DcCcKind.Sleep;
+                default: return DcCcKind.Stun;
+            }
+        }
+
+        /// <summary>스킬 어휘 스택 → 옛 `DcStackKind`. 옛 저작이 못 고르던 값(None · Fatigue)은 출혈(옛 번역 기본).</summary>
+        public static DcStackKind StackToLegacy(StackKind kind)
+        {
+            switch (kind)
+            {
+                case StackKind.Fire: return DcStackKind.Fire;
+                case StackKind.Ice: return DcStackKind.Ice;
+                case StackKind.Poison: return DcStackKind.Poison;
+                default: return DcStackKind.Bleed;
+            }
+        }
+
         /// <summary>옛 `DcCcKind { Stun, Impulse, Sleep }` 정수 → 스킬 어휘(`Stun 0→3 · Impulse 1→1 · Sleep 2→4`). 모르는 값 = 기절(옛 번역의 기본).</summary>
         public static CcKind CcFromLegacy(int dcCcKind)
         {

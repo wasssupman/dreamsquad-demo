@@ -97,7 +97,8 @@ namespace Wassup.Core
             if (card.type == CardType.Squad) return true;
             if (card.type != CardType.Unit) return false;
 
-            bool hasMech = card.mechanics != null && card.mechanics.Length > 0;
+            var mech = card.RuleView();   // skill-data-table unit 4 — 소유 줄 보기
+            bool hasMech = mech.Length > 0;
             bool hasMods = card.attackMods != null && card.attackMods.Length > 0;
             if (!hasMech && !hasMods) return false;
 
@@ -105,15 +106,15 @@ namespace Wassup.Core
             {
                 // 이중 상태 거부만 카드 '전체' 거부다(apply preflight 가 -1 을 반환하는
                 // 유일한 host 사유 — 부분 적용이 원래 상태를 리셋하기 때문).
-                for (int i = 0; i < card.mechanics.Length; i++)
+                for (int i = 0; i < mech.Length; i++)
                 {
-                    var m = card.mechanics[i];
+                    var m = mech[i];
                     if (DcApplicability.EvaluateMechanic(m, host)
                         == DcRejectReason.DuplicateState) return false;
                 }
-                for (int i = 0; i < card.mechanics.Length; i++)
+                for (int i = 0; i < mech.Length; i++)
                 {
-                    var m = card.mechanics[i];
+                    var m = mech[i];
                     if (m.payload.kind == EffectKind.None) continue;
                     if (DcApplicability.EvaluateMechanic(m, host)
                         == DcRejectReason.None) return true;

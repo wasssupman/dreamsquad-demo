@@ -35,13 +35,13 @@ namespace Wassup.BattleCoreUnity
     // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄 `BindingSpec`)을 굽는 한 경로. 카드 · 방어유닛 · 적이 같은 함수를
     // 지나고, 소유자마다 다른 것은 `RuleOwner` 의 파생 사실뿐이다.
     //
-    // 이전 과도기(옛 칸이 남아 있는 동안)의 모양: 소유 줄 하나를 **옛 메커닉 값으로 비춰**(`Legacy` — `EffectSlots.ToLegacy`) 두 빌더가 이미
+    // 소유 줄 하나를 **옛 메커닉 모양으로 비춰**(`Legacy` — `BindingSpecView`) 두 빌더가
     // 공유하는 잎 함수(조합 `ComboOf` · 트리거 가드 `TriggerValuesValid` · 강공 · 종류별 값 가드와 표 참조 `BindPayload` · 연출)를 그대로
     // 부른다 — 검증 사본이 갈리지 않게. 새 형식에만 있는 것(CC · 스택 새 번호 · U10 피해 · 실드 대상 셋 · 발동 상한 · 수치 방식 · 효과 id)은
-    // 여기서 직접 싣는다. 옛 몸통(카드 `BakeMechanic` · 유닛 `Bake`)은 옛 칸 전용으로 남고 4-정리에서 이 함수로 합쳐진다.
+    // 여기서 직접 싣는다. 옛 몸통 둘(카드 `BakeMechanic` · 유닛 `Bake`)은 이전 뒤 은퇴했다(4-정리).
     //
-    // ⚠ 라이브 굽기 동치는 이전 dry-run(`EffectSlots.FromLegacy` 와 같은 표) + 굽기 스냅샷이 증명한다. 옛 몸통과 **순서가 다른 한 곳**:
-    //    카드 줄도 라우팅 확인을 표 참조(`BindPayload` — 탄 · 명세 표 등록) **앞**에 한다(유닛 몸통 순서). 건너뛸 줄이 표에 탄을 등록하지 않는다.
+    // ⚠ 라이브 굽기 동치 = 이전 커밋의 굽기 스냅샷(`eacbae0ce` — 깃발 3 만 바뀌었다). 옛 카드 몸통과 **순서가 다른 한 곳**:
+    //    카드 줄도 라우팅 확인을 표 참조(`BindPayload` — 탄 · 명세 표 등록) **앞**에 한다. 건너뛸 줄이 표에 탄을 등록하지 않는다.
     internal static class BindingSpecBuilder
     {
         /// <summary>소유 줄 전부를 싣는다(카드 부착 줄 · 유닛 · 적). 액티브 시전 줄은 `CardDefinitionBuilder` 가 따로 굽는다.</summary>
@@ -172,39 +172,8 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
-        /// <summary>
-        /// 소유 줄 하나를 옛 메커닉 값으로 비춘다(잎 검증 함수들이 아직 옛 칸을 읽는다 — 4-정리까지). CC · 스택은 싣지 않는다 — 잎 함수가
-        /// 안 읽고, 굽기는 효과 값의 새 번호를 직접 쓴다.
-        /// </summary>
-        internal static DcMechanic Legacy(in BindingSpec s)
-        {
-            var e = s.effect;
-            var p = EffectSlots.ToLegacy(in e.values);
-            return new DcMechanic
-            {
-                trigger = s.trigger,
-                payload = new DcPayloadSpec
-                {
-                    kind = p.Kind,
-                    magnitude = p.Magnitude,
-                    tileRange = p.TileRange,
-                    duration = p.Duration,
-                    projectile = e.projectile,
-                    pattern = e.pattern,
-                    hazard = e.hazard,
-                    auraPrefab = e.auraPrefab,
-                    auraScale = e.auraScale,
-                    stackModifier = e.stackModifier,
-                    buffStat = p.BuffStat,
-                    slamDamage = p.SlamDamage,
-                    slamTileRange = p.SlamTileRange,
-                    tickIntervalSec = p.TickIntervalSec,
-                    orbitCount = p.OrbitCount,
-                    coneHalfAngleDeg = p.ConeHalfAngleDeg,
-                    telegraph = p.Telegraph,
-                },
-            };
-        }
+        /// <summary>소유 줄 하나를 옛 메커닉 모양으로 비춘다(잎 검증 함수들이 아직 그 모양을 읽는다 — `BindingSpecView`).</summary>
+        internal static DcMechanic Legacy(in BindingSpec s) => BindingSpecView.ToMechanic(in s);
 
         /// <summary>조합 검증 — 카드는 **켜진 숙주 종류마다**(U5 · 계약 4) 한 번씩, 유닛 · 적은 한 번. 하나라도 거절이면 거절.</summary>
         private static bool CombosAllow(in DcMechanic m, TriggerKind trigger, EffectKind kind, MagnitudeMode mode, in RuleOwner o, string label)

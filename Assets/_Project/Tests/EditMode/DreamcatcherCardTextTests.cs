@@ -91,7 +91,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_FormatsTriggerPayloadAndNumbers()
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -104,7 +104,7 @@ namespace Wassup.Tests.EditMode
                         stackKind = DcStackKind.Bleed,
                     },
                 },
-            };
+            });
 
             StringAssert.Contains(
                 "3번째 공격마다 → 대상에게 출혈 1스택 · 4초",
@@ -115,7 +115,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_FormatsImpulseDuration()
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -128,7 +128,7 @@ namespace Wassup.Tests.EditMode
                         duration = 0.5f,
                     },
                 },
-            };
+            });
 
             StringAssert.Contains(
                 "3번째 공격마다 → 대상에게 넉백 속도 4 · 0.5초",
@@ -139,7 +139,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_FormatsSleepWithWakeNote()
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -151,7 +151,7 @@ namespace Wassup.Tests.EditMode
                         duration = 2.5f,
                     },
                 },
-            };
+            });
 
             StringAssert.Contains(
                 "5번째 공격마다 → 대상에게 수면 2.5초 (피격 시 해제)",
@@ -163,7 +163,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_FormatsGatePrefix_ForWiredCombos()
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -183,7 +183,7 @@ namespace Wassup.Tests.EditMode
                     },
                     payload = new DcPayloadSpec { kind = EffectKind.SelfTileAoe, magnitude = 20f, tileRange = 1 },
                 },
-            };
+            });
 
             string body = DreamcatcherCardText.Body(card);
             StringAssert.Contains("HP 25% 이하인 적에게 공격마다 → 피해 x2", body);
@@ -194,7 +194,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_UnsupportedGateCombo_UsesDescriptionFallback()
         {
             var card = Card(CardType.Unit, description: "미지원 게이트 설명");
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -205,7 +205,7 @@ namespace Wassup.Tests.EditMode
                     },
                     payload = new DcPayloadSpec { kind = EffectKind.SelfTileAoe, magnitude = 20f, tileRange = 1 },
                 },
-            };
+            });
 
             string body = DreamcatcherCardText.Body(card);
             StringAssert.Contains("미지원 게이트 설명", body);
@@ -216,7 +216,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_FormatsThresholdAndPermanentEffect()
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -232,7 +232,7 @@ namespace Wassup.Tests.EditMode
                         buffStat = CardBuffKind.AttackDamage,
                     },
                 },
-            };
+            });
 
             StringAssert.Contains(
                 "HP 30% 이하 → 공격력 +30% · 전투 중 1회",
@@ -282,7 +282,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_FormatsSelfOrbitProjectile()
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -295,7 +295,7 @@ namespace Wassup.Tests.EditMode
                         tileRange = 1,
                     },
                 },
-            };
+            });
 
             StringAssert.Contains(
                 "6초마다 → 주위를 도는 화염구 3초 · 스치는 적에게 피해 20",
@@ -309,7 +309,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_FormatsOnRetireMeteor_AndIsNotDeathWording()
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -322,7 +322,7 @@ namespace Wassup.Tests.EditMode
                         duration = 0.8f, // 낙하 예고
                     },
                 },
-            };
+            });
 
             string body = DreamcatcherCardText.Body(card);
             StringAssert.Contains("이 유닛이 철수하면 → 0.8초 후 반경 1칸 피해 120", body);
@@ -336,7 +336,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_FormatsRetireRecall_AndSaysOthersOnly()
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -349,7 +349,7 @@ namespace Wassup.Tests.EditMode
                         tileRange = 3,
                     },
                 },
-            };
+            });
 
             string body = DreamcatcherCardText.Body(card);
             StringAssert.Contains("이 유닛이 철수하면 → 함께 붙은 다른 드림캐쳐가 손패 맨 앞으로", body);
@@ -363,7 +363,7 @@ namespace Wassup.Tests.EditMode
         public void UnitMechanic_SelfTileAoe_WithoutDuration_KeepsLegacyWording()
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -375,7 +375,7 @@ namespace Wassup.Tests.EditMode
                         tileRange = 1,
                     },
                 },
-            };
+            });
 
             StringAssert.Contains(
                 "이 유닛이 사망하면 → 반경 1칸 피해 50",
@@ -432,7 +432,7 @@ namespace Wassup.Tests.EditMode
         public void UnsupportedMechanic_UsesDescriptionFallbackInsteadOfPartialSummary()
         {
             var card = Card(CardType.Unit, description: "구형 설명 fallback");
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -450,7 +450,7 @@ namespace Wassup.Tests.EditMode
                     trigger = new TriggerSpec { kind = TriggerKind.None },
                     payload = new DcPayloadSpec { kind = EffectKind.SelfWarmupBuff },
                 },
-            };
+            });
 
             string body = DreamcatcherCardText.Body(card);
             StringAssert.Contains("구형 설명 fallback", body);
@@ -542,7 +542,7 @@ namespace Wassup.Tests.EditMode
         private DreamcatcherCard StackCard(DcStackKind stackKind, StackModifierSO so)
         {
             var card = Card(CardType.Unit);
-            card.mechanics = new[]
+            TestBindings.Attach(card, new[]
             {
                 new DcMechanic
                 {
@@ -556,7 +556,7 @@ namespace Wassup.Tests.EditMode
                         stackModifier = so,
                     },
                 },
-            };
+            });
             return card;
         }
 

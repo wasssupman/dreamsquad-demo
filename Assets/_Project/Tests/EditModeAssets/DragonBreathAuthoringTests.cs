@@ -41,10 +41,10 @@ namespace Wassup.Tests.EditMode
         public void Dragon_DeclaresExactlyOneMechanic_AreaBreathOnEveryThirdAttack()
         {
             var d = Load(DragonPath);
-            Assert.IsNotNull(d.nightmareMechanics);
-            Assert.AreEqual(1, d.nightmareMechanics.Length, "엘리트는 특수 메커니즘 1개다");
+            Assert.IsNotNull(d.RuleView());
+            Assert.AreEqual(1, d.RuleView().Length, "엘리트는 특수 메커니즘 1개다");
 
-            var m = d.nightmareMechanics[0];
+            var m = d.RuleView()[0];
             Assert.AreEqual(TriggerKind.AttackN, m.trigger.kind);
             Assert.AreEqual(3, m.trigger.period, "«3회 기본공격 이후» 가 저작 의도다");
             Assert.AreEqual(EffectKind.AreaBreath, m.payload.kind);
@@ -56,7 +56,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Dragon_ConeHalfAngle_IsInsideDomain_AndOffTheDiagonalKnifeEdge()
         {
-            var m = Load(DragonPath).nightmareMechanics[0];
+            var m = Load(DragonPath).RuleView()[0];
             Assert.Greater(m.payload.coneHalfAngleDeg, 0f);
             Assert.Less(m.payload.coneHalfAngleDeg, 90f,
                 "반각 >= 90 은 부채꼴 게이트(`SkillMath.SectorGate` · 볼록 쐐기)의 정의역 밖 — bake 가 거절한다");

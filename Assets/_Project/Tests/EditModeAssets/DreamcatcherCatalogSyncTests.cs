@@ -119,8 +119,8 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CardTargetAxis.All, butterfly.axis);
             Assert.IsEmpty(butterfly.effects);
             Assert.IsEmpty(butterfly.attackMods);
-            Assert.AreEqual(1, butterfly.mechanics.Length);
-            var m = butterfly.mechanics[0];
+            Assert.AreEqual(1, butterfly.RuleView().Length);
+            var m = butterfly.RuleView()[0];
             Assert.AreEqual(TriggerKind.None, m.trigger.kind);
             Assert.AreEqual(EffectKind.DreamCocoon, m.payload.kind);
             // magnitude·duration 은 DcSheet(mechanics 행) 소유 — 값은 자유 튜닝, 구조만 잠근다
@@ -147,7 +147,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CardBuffKind.AttackDamage, pact.effects[0].kind);
             Assert.Greater(pact.effects[0].percent, 0f,
                 "percent 는 DcSheet 소유 — 여기서는 버프 부호(+)만 잠근다. 값은 자유 튜닝 (unit 1)");
-            Assert.IsEmpty(pact.mechanics);
+            Assert.IsEmpty(pact.RuleView());
             Assert.IsEmpty(pact.attackMods);
             Assert.AreEqual(1, pact.leakAllowanceCost, "유출 허용치 선불 1");
         }
@@ -167,8 +167,8 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CardTargetAxis.All, offering.axis);
             Assert.IsEmpty(offering.effects);
             Assert.IsEmpty(offering.attackMods);
-            Assert.AreEqual(1, offering.mechanics.Length);
-            var m = offering.mechanics[0];
+            Assert.AreEqual(1, offering.RuleView().Length);
+            var m = offering.RuleView()[0];
             Assert.AreEqual(TriggerKind.None, m.trigger.kind);
             Assert.AreEqual(EffectKind.BountyMark, m.payload.kind);
             // magnitude(각성 배율)·tileRange(받는 피해 감소 % 로 재해석) 는 DcSheet 소유 (unit 1).
@@ -194,29 +194,29 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CardCategory.Subconscious, heart.category);
             Assert.AreEqual(CardTargetAxis.All, heart.axis);
             Assert.IsEmpty(heart.effects);
-            Assert.AreEqual(3, heart.mechanics.Length);
+            Assert.AreEqual(3, heart.RuleView().Length);
             // 수치(magnitude·duration·period·tileRange)는 DcSheet 소유 — 자유 튜닝.
             // 여기서는 3-메커닉 구성(kind·trigger)과 부호·배율 구조만 잠근다 (unit 1).
-            Assert.AreEqual(EffectKind.SelfBuffLethal, heart.mechanics[0].payload.kind);
-            Assert.Greater(heart.mechanics[0].payload.magnitude, 0f);
-            Assert.Greater(heart.mechanics[0].payload.duration, 0f);
-            Assert.AreEqual(TriggerKind.AttackN, heart.mechanics[1].trigger.kind);
-            Assert.Greater(heart.mechanics[1].trigger.period, 0, "AttackN 주기 0 이면 트리거가 죽는다");
-            Assert.AreEqual(EffectKind.HeavyStrike, heart.mechanics[1].payload.kind);
-            Assert.Greater(heart.mechanics[1].payload.magnitude, 1f, "강타 배율이 1 이하면 강타가 아니다");
-            Assert.AreEqual(TriggerKind.OnDeath, heart.mechanics[2].trigger.kind);
-            Assert.AreEqual(EffectKind.SelfTileAoe, heart.mechanics[2].payload.kind);
-            Assert.Greater(heart.mechanics[2].payload.magnitude, 0f);
-            Assert.Greater(heart.mechanics[2].payload.tileRange, 0);
-            Assert.AreSame(byId["farewell"].mechanics[0].payload.projectile,
-                heart.mechanics[2].payload.projectile);
+            Assert.AreEqual(EffectKind.SelfBuffLethal, heart.RuleView()[0].payload.kind);
+            Assert.Greater(heart.RuleView()[0].payload.magnitude, 0f);
+            Assert.Greater(heart.RuleView()[0].payload.duration, 0f);
+            Assert.AreEqual(TriggerKind.AttackN, heart.RuleView()[1].trigger.kind);
+            Assert.Greater(heart.RuleView()[1].trigger.period, 0, "AttackN 주기 0 이면 트리거가 죽는다");
+            Assert.AreEqual(EffectKind.HeavyStrike, heart.RuleView()[1].payload.kind);
+            Assert.Greater(heart.RuleView()[1].payload.magnitude, 1f, "강타 배율이 1 이하면 강타가 아니다");
+            Assert.AreEqual(TriggerKind.OnDeath, heart.RuleView()[2].trigger.kind);
+            Assert.AreEqual(EffectKind.SelfTileAoe, heart.RuleView()[2].payload.kind);
+            Assert.Greater(heart.RuleView()[2].payload.magnitude, 0f);
+            Assert.Greater(heart.RuleView()[2].payload.tileRange, 0);
+            Assert.AreSame(byId["farewell"].RuleView()[0].payload.projectile,
+                heart.RuleView()[2].payload.projectile);
             Assert.AreEqual("dreamcatcher_card_24", heart.art.name);
 
             var grail = byId["cracked_grail"];
             Assert.AreEqual(CardType.Squad, grail.type);
             Assert.AreEqual(CardCategory.Subconscious, grail.category);
             Assert.AreEqual(CardTargetAxis.All, grail.axis);
-            Assert.IsEmpty(grail.mechanics);
+            Assert.IsEmpty(grail.RuleView());
             Assert.AreEqual(2, grail.effects.Length);
             Assert.AreEqual(CardBuffKind.AttackDamage, grail.effects[0].kind);
             Assert.AreEqual(CardBuffKind.EffectiveHealth, grail.effects[1].kind);

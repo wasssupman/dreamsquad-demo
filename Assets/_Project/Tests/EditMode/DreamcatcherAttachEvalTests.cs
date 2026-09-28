@@ -15,7 +15,7 @@ namespace Wassup.Tests.EditMode
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
             c.type = CardType.Unit;
-            c.mechanics = mech;
+            TestBindings.Attach(c, mech);
             c.attackMods = mods;
             return c;
         }

@@ -120,10 +120,10 @@ namespace Wassup.Tests.EditMode
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
             try
             {
-                card.mechanics = new[]
+                TestBindings.Attach(card, new[]
                 {
                     Mechanic(TriggerKind.OnDamagedN, EffectKind.SelfTileAoe, tileRange: 1),
-                };
+                });
                 var spec = DcRangeCatalog.ResolveCard(card);
                 Assert.AreEqual(DcRangeShape.Circle, spec.shape);
                 Assert.AreEqual(1f, spec.radiusTiles, 1e-6f, "spec 은 도형 반경만 담는다(unit 23a)");
@@ -138,16 +138,16 @@ namespace Wassup.Tests.EditMode
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
             try
             {
-                card.mechanics = new[]
+                TestBindings.Attach(card, new[]
                 {
                     Mechanic(TriggerKind.OnKill, EffectKind.SelfTileAoe, tileRange: 2),      // 죽인 적의 자리 — 위치 없음
                     Mechanic(TriggerKind.AttackN, EffectKind.SelfStatBuff, tileRange: 10),   // 누적 상한
-                };
+                });
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.ResolveCard(card).shape);
                 // 같은 concrete 라도 자기 사망 트리거면 그린다(사망폭발 — 사용자 결정 2026-09-03).
-                card.mechanics = new[] { Mechanic(TriggerKind.OnDeath, EffectKind.SelfTileAoe, tileRange: 2) };
+                TestBindings.Attach(card, new[] { Mechanic(TriggerKind.OnDeath, EffectKind.SelfTileAoe, tileRange: 2) });
                 Assert.AreEqual(DcRangeShape.Circle, DcRangeCatalog.ResolveCard(card).shape);
-                card.mechanics = null;
+                TestBindings.Attach(card, null);
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.ResolveCard(card).shape, "메커닉 없는 카드");
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.ResolveCard(null).shape, "null 카드");
             }

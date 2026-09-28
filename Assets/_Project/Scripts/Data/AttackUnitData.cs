@@ -243,6 +243,8 @@ namespace Wassup.Data
         // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄). 비어 있지 않으면 굽기가 이것만 읽는다(이전 과도기 —
         // `nightmareMechanics` 는 4-정리에서 걷는다).
         public BindingSpec[] bindings;
+        /// <summary>소유 줄을 옛 메커닉 모양으로(진단 — `BindingSpecView`). 매 프레임 금지.</summary>
+        public DcMechanic[] RuleView() => BindingSpecView.Of(bindings);
         // 분열은 소유 줄이 아니라 **적 고유 값**이다(`tables.md` §8 · 옛 `SplitOnDeath` 메커닉 — 빌더가 규칙 줄을 안 만들었다).
         // `splitUnit` 이 있으면 `SplitChain` 이 이것을 읽는다(없으면 옛 메커닉). 사슬 끝 = 마지막 단계의 `splitUnit` 을 비운다.
         public AttackUnitData splitUnit;

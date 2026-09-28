@@ -7,6 +7,7 @@ using Wassup.BattleCore;
 using Wassup.BattleCore.Trigger;
 using Wassup.BattleCoreUnity;
 using Wassup.Data;
+using Wassup.Tests.EditMode;
 using Wassup.Skills;
 using Wassup.Tests.EditMode.Core;
 
@@ -52,13 +53,13 @@ namespace Wassup.Tests.EditModeAssets
             var card = Make<DreamcatcherCard>();
             card.id = "fixture_card";
             card.type = CardType.Unit;
-            card.mechanics = new[] { mechanic };
+            TestBindings.Attach(card, new[] { mechanic });
             var cards = new List<DreamcatcherCard> { card };
             var def = new MatchDefinition();
             var lines = new List<string>();
             void Tap(string message, string stack, LogType type)
             {
-                if (message.StartsWith("[CardDefinitionBuilder]") || message.StartsWith("[BindingDefinitionBuilder]"))
+                if (message.StartsWith("[CardDefinitionBuilder]") || message.StartsWith("[BindingDefinitionBuilder]") || message.StartsWith("[BindingSpecBuilder]"))
                     lines.Add(type + " " + message);
             }
             Application.logMessageReceived += Tap;
@@ -86,8 +87,9 @@ namespace Wassup.Tests.EditModeAssets
         // 빌더가 효과 줄에 명시로 옮기는 선택자 기본값(저작 기본 = Stun · Bleed · 반각 0 → (sin, cos) = (0, 1)).
         private static void WithBuilderSelectorDefaults(ref RuleRow r)
         {
-            r.Effect.CcKind = (int)BindingDefinitionBuilder.ToSkillCc(default(DcCcKind));
-            r.Effect.StackKind = (int)BindingDefinitionBuilder.ToSkillStack(default(DcStackKind));
+            // skill-data-table unit 4 — 픽스처는 소유 줄로 옮겨 굽는다(`TestBindings`) — 옛 기본 선택자(Stun · Fire 번호 0)가 이전 표를 지나 스킬 번호가 된다.
+            r.Effect.CcKind = (int)EffectSlots.CcFromLegacy((int)default(DcCcKind));
+            r.Effect.StackKind = (int)EffectSlots.StackFromLegacy((int)default(DcStackKind));
             r.Effect.StatKind = (int)(BindingDefinitionBuilder.TryToSkillStat(default(CardBuffKind), out var st) ? st : SkillStatKind.DamageMul);
             r.Effect.ConeSinHalf = 0f; r.Effect.ConeCosHalf = 1f;
         }

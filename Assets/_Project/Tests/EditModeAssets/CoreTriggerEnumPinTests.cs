@@ -32,11 +32,17 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 군중_제어_스택_실드_필터는_번호가_달라_이름으로_옮긴다()
         {
-            Assert.AreEqual(SkillCcKind.Stun, BindingDefinitionBuilder.ToSkillCc(DcCcKind.Stun));
-            Assert.AreEqual(SkillCcKind.Impulse, BindingDefinitionBuilder.ToSkillCc(DcCcKind.Impulse));
-            Assert.AreEqual(SkillCcKind.Sleep, BindingDefinitionBuilder.ToSkillCc(DcCcKind.Sleep));
+            // skill-data-table unit 4 — CC · 스택은 효과 값이 스킬 번호를 직접 든다. 옛 번호 ↔ 새 번호 변환은 `EffectSlots` 가 한 곳에서.
+            Assert.AreEqual((int)SkillCcKind.Stun, (int)EffectSlots.CcFromLegacy((int)DcCcKind.Stun));
+            Assert.AreEqual((int)SkillCcKind.Impulse, (int)EffectSlots.CcFromLegacy((int)DcCcKind.Impulse));
+            Assert.AreEqual((int)SkillCcKind.Sleep, (int)EffectSlots.CcFromLegacy((int)DcCcKind.Sleep));
+            foreach (DcCcKind c in Enum.GetValues(typeof(DcCcKind)))
+                Assert.AreEqual(c, EffectSlots.CcToLegacy(EffectSlots.CcFromLegacy((int)c)), c + " 왕복");
             foreach (DcStackKind s in Enum.GetValues(typeof(DcStackKind)))
-                Assert.AreEqual(s.ToString(), BindingDefinitionBuilder.ToSkillStack(s).ToString());
+            {
+                Assert.AreEqual(s.ToString(), EffectSlots.StackFromLegacy((int)s).ToString());
+                Assert.AreEqual(s, EffectSlots.StackToLegacy(EffectSlots.StackFromLegacy((int)s)), s + " 왕복");
+            }
             Assert.AreEqual(SkillShieldFilter.MostHurt, BindingDefinitionBuilder.ToSkillShieldFilter(ShieldTargetFilter.MinHealth));
         }
 
@@ -63,10 +69,8 @@ namespace Wassup.Tests.EditMode
             int authoredDefender = 0, bakedDefender = 0;
             for (int i = 0; i < defenders.Length; i++)
             {
-                var skill = defenders[i].GetAbility<UnitSkillAbility>();
-                int expected = skill?.mechanics != null ? skill.mechanics.Length : 0;
-                var shield = defenders[i].GetAbility<ShieldCastAbility>();
-                if (shield != null && shield.cooldown > 0f && shield.amount > 0f) expected++;
+                // skill-data-table unit 4 — 소유 줄(`bindings`) 한 줄 = 규칙 한 줄(실드 캐스트도 소유 줄로 이전됐다).
+                int expected = defenders[i].bindings != null ? defenders[i].bindings.Length : 0;
                 int got = def.Units[i].Bindings != null ? def.Units[i].Bindings.Length : 0;
                 Assert.AreEqual(expected, got, defenders[i].name + " — 저작 규칙이 조용히 빠졌다");
                 authoredDefender += expected;
@@ -76,11 +80,8 @@ namespace Wassup.Tests.EditMode
 
             for (int i = 0; i < enemies.Length; i++)
             {
-                var mech = enemies[i].nightmareMechanics;
-                if (mech == null) continue;
-                int expected = 0;
-                foreach (var m in mech)
-                    if (m.payload.kind != EffectKind.SplitOnDeath) expected++;   // 분열 = 무항목(S8, 7d)
+                // 분열은 적 고유 값이라 소유 줄에 없다(이전 — `splitUnit` · `splitCount`).
+                int expected = enemies[i].bindings != null ? enemies[i].bindings.Length : 0;
                 int got = def.Enemies[i].Bindings != null ? def.Enemies[i].Bindings.Length : 0;
                 Assert.AreEqual(expected, got, enemies[i].name);
             }

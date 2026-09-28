@@ -93,8 +93,8 @@ namespace Wassup.Tests.EditModeAssets
                                               new List<ProjectilePatternData>(), System.Array.Empty<HazardSO>(), new MatchViewAssets());
             }
             finally { UnityEngine.TestTools.LogAssert.ignoreFailingMessages = false; }
-            foreach (var u in units) Check(def, u.name, u.GetAbility<UnitSkillAbility>()?.mechanics, seen);
-            foreach (var e in enemies) Check(def, e.name, e.nightmareMechanics, seen);
+            foreach (var u in units) Check(def, u.name, u.RuleView(), seen);
+            foreach (var e in enemies) Check(def, e.name, e.RuleView(), seen);
 
             var cards = CardEffectWitnessTests.Cards();
             var cardDef = new MatchDefinition();
@@ -106,7 +106,7 @@ namespace Wassup.Tests.EditModeAssets
                                            CardDefinitionBuilder.WithCardHazards(null, cards));
             }
             finally { UnityEngine.TestTools.LogAssert.ignoreFailingMessages = false; }
-            foreach (var c in cards) Check(cardDef, $"카드 '{c.id}'", c.mechanics, seen);
+            foreach (var c in cards) Check(cardDef, $"카드 '{c.id}'", c.RuleView(), seen);
 
             // 공허하지 않게 — 라이브에 넷 다 있다(캐논 등 명세 · 폭탄맨 배럴 · 불씨 장판 · 짱쎈 도약).
             foreach (var s in new[] { Source.Pattern, Source.Blocker, Source.Hazard, Source.Slam })

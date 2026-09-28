@@ -29,8 +29,8 @@ namespace Wassup.Tests.EditMode
 
             // unit 2g — 「레거시 배치 필드가 꺼져 있다」 단언은 은퇴했다.
             // 그 필드군 자체가 철거돼 켤 방법이 없다.
-            var spec = unit.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
-            Assert.IsNotNull(spec, "말파이트에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
+            var spec = (unit.RuleView().Length > 0 ? unit.RuleView()[0].payload : (DcPayloadSpec?)null);
+            Assert.IsNotNull(spec, "말파이트에 배치 스킬(소유 줄)이 배선돼야 한다");
             Assert.AreEqual(EffectKind.AreaCc, spec.Value.kind);
             Assert.AreEqual(DcCcKind.Stun, spec.Value.ccKind);
             float stunSec = spec.Value.duration;

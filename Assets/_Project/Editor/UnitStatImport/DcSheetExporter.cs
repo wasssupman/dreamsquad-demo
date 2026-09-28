@@ -69,9 +69,11 @@ namespace Wassup.Editor.UnitStatImport
                     effectRows.Add(new DcCardEffectDto
                     { cardId = so.id, slot = i, kind = e.kind, percent = e.percent });
                 }
-                for (int i = 0; i < (so.mechanics?.Length ?? 0); i++)
+                // skill-data-table unit 4 — 소유 줄 보기(값 동치 · 액티브의 시전 줄은 DcSkills 몫이라 뺀다). 새 시트 형식은 unit 5.
+                var rules = so.type == CardType.Active ? System.Array.Empty<DcMechanic>() : so.RuleView();
+                for (int i = 0; i < rules.Length; i++)
                 {
-                    var m = so.mechanics[i];
+                    var m = rules[i];
                     // dreamcatcher-data-hygiene unit 1 — payload discriminators are
                     // only meaningful for the kind that consumes them; export blank
                     // (null → key omitted) on other rows so the sheet stops showing

@@ -28,7 +28,7 @@ namespace Wassup.Tests.EditMode
                 bool hasStructuredData = card.type == CardType.Squad
                     ? card.effects != null && card.effects.Length > 0
                     : card.type == CardType.Unit
-                        ? (card.mechanics != null && card.mechanics.Length > 0)
+                        ? (card.RuleView() != null && card.RuleView().Length > 0)
                           || (card.attackMods != null && card.attackMods.Length > 0)
                         : card.skill != null;
                 if (!hasStructuredData) { unstructured.Add(card.name); continue; }
@@ -63,7 +63,7 @@ namespace Wassup.Tests.EditMode
                 var path = $"Assets/_Project/Data/Dreamcatcher/{id}.asset";
                 var card = AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(path);
                 Assert.IsNotNull(card, $"{path} 로드 실패");
-                Assert.IsNotNull(card.mechanics[0].payload.stackModifier,
+                Assert.IsNotNull(card.RuleView()[0].payload.stackModifier,
                     $"{id} 의 payload.stackModifier 미연결");
                 StringAssert.Contains("중첩", DreamcatcherCardText.EffectOnly(card),
                     $"{id} 문안에 임계 요약이 없다");

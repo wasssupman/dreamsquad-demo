@@ -54,7 +54,7 @@ namespace Wassup.Tests.EditModeAssets
 
             private void OnLog(string message, string stack, LogType type)
             {
-                if (message.StartsWith("[BindingDefinitionBuilder]") || message.StartsWith("[CardDefinitionBuilder]"))
+                if (message.StartsWith("[BindingDefinitionBuilder]") || message.StartsWith("[CardDefinitionBuilder]") || message.StartsWith("[BindingSpecBuilder]"))
                     Lines.Add("[log " + type + "] " + message.Replace("\n", " / "));
             }
 

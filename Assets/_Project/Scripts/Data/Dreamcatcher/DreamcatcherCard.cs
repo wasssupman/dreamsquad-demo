@@ -122,7 +122,10 @@ namespace Wassup.Data
         public float cooldownSec;
         public bool needsTwoTiles;
 
-        // 적 지정 판별 — 전용 필드 없이 mechanics 파생(BountyMark payload 보유 = 적 타겟).
+        /// <summary>소유 줄을 옛 메커닉 모양으로(문안 · 진단 — `BindingSpecView`). 매 프레임 금지(배열을 새로 만든다).</summary>
+        public DcMechanic[] RuleView() => BindingSpecView.Of(bindings);
+
+        // 적 지정 판별 — 전용 필드 없이 소유 줄 파생(BountyMark 효과 참조 = 적 타겟 · skill-data-table unit 4 에서 mechanics → bindings).
         // 조준 라우팅(DreamcatcherCardDragSlot.Classify)과 손패 태그 칩
         // (CardCategoryStyle.TargetTag)이 공유하는 단일 소스. 관리 배열 순회 —
         // bake/UI 시점 전용, per-frame 호출 금지(mechanics 주석과 동일 규칙).
@@ -131,9 +134,9 @@ namespace Wassup.Data
         // 실제 비용이 있는 작업을 넣으면 인스펙터가 그 비용을 매 프레임 문다.
         public bool HasBountyMark()
         {
-            if (mechanics == null) return false;
-            for (int i = 0; i < mechanics.Length; i++)
-                if (mechanics[i].payload.kind == EffectKind.BountyMark) return true;
+            if (bindings == null) return false;
+            for (int i = 0; i < bindings.Length; i++)
+                if (bindings[i].effect != null && bindings[i].effect.values.kind == EffectKind.BountyMark) return true;
             return false;
         }
     }

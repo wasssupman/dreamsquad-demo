@@ -120,11 +120,12 @@ namespace Wassup.Core
 
         public static DcRangeSpec ResolveCard(DreamcatcherCard card)
         {
-            if (card == null || card.mechanics == null) return DcRangeSpec.None;
+            if (card == null) return DcRangeSpec.None;
+            var mech = card.RuleView();   // skill-data-table unit 4 — 소유 줄 보기
             var first = DcRangeSpec.None;
-            for (int i = 0; i < card.mechanics.Length; i++)
+            for (int i = 0; i < mech.Length; i++)
             {
-                var m = card.mechanics[i];
+                var m = mech[i];
                 var spec = Resolve(DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind), m.payload.tileRange, m.trigger.kind);
                 if (spec.shape == DcRangeShape.None) continue;
                 if (first.shape == DcRangeShape.None) { first = spec; continue; }

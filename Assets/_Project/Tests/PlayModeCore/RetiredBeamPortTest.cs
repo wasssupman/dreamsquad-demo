@@ -250,9 +250,8 @@ namespace Wassup.Tests.PlayMode.Core
 
         private static DcPayloadSpec? BarrageSpecOrNull(DefenderUnitData u)
         {
-            var ab = u.GetAbility<UnitSkillAbility>();
-            if (ab == null || ab.mechanics == null) return null;
-            foreach (var m in ab.mechanics)
+            // skill-data-table unit 4 — 방어유닛 소유 줄(`bindings`)의 보기(옛 메커닉 모양 · 값 동치).
+            foreach (var m in u.RuleView())
                 if (m.payload.kind == EffectKind.AreaDot) return m.payload;
             return null;
         }

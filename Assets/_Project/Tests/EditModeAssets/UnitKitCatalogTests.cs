@@ -52,10 +52,8 @@ namespace Wassup.Tests.EditMode
             foreach (var unit in catalog.units)
             {
                 if (unit == null) continue;
-                var ability = unit.GetAbility<UnitSkillAbility>();
-                if (ability?.mechanics == null) continue;
                 bool hasOnPlaceRule = false;
-                foreach (var m in ability.mechanics)
+                foreach (var m in unit.RuleView())   // skill-data-table unit 4 — 소유 줄 보기
                     if (m.trigger.kind == TriggerKind.OnPlace) hasOnPlaceRule = true;
                 if (!hasOnPlaceRule) continue;
 
