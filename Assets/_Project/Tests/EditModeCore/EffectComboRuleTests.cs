@@ -175,7 +175,10 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual("원점을 못 낸다", EffectComboRule.Describe(ComboVerdict.NoOrigin));
             Assert.AreEqual("효과가 그 원점 형을 못 받는다", EffectComboRule.Describe(ComboVerdict.ShapeMismatch));
             StringAssert.StartsWith("붙는 순간 이미 지난 자기 사건", EffectComboRule.Describe(ComboVerdict.NeverFires));
-            Assert.AreEqual(4, System.Enum.GetValues(typeof(ComboVerdict)).Length, "허용 + 사유 셋");
+            // skill-data-table unit 3 — 비율형 수치 사유 둘이 뒤에 붙었다(append-only).
+            StringAssert.StartsWith("비율 기준이 없다", EffectComboRule.Describe(ComboVerdict.NoRatioBasis));
+            StringAssert.StartsWith("그 효과에는 비율 칸이 없다", EffectComboRule.Describe(ComboVerdict.NoRatioField));
+            Assert.AreEqual(6, System.Enum.GetValues(typeof(ComboVerdict)).Length, "허용 + 원점 사유 셋 + 비율 사유 둘");
         }
     }
 }

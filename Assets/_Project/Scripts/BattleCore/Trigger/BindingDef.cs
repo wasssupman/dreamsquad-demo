@@ -158,6 +158,13 @@ namespace Wassup.BattleCore.Trigger
             MatchDefinition.Put(sb, "projAxes", e.ProjectileMovement.ToString(inv) + "," + e.ProjectilePayload.ToString(inv));
             // unified-effect-layer unit 2 — 기본값이면 안 쓴다(unit 1 까지의 규칙 줄 해시 무변).
             if (e.Telegraph) MatchDefinition.Put(sb, "telegraph", 1, inv);
+            // skill-data-table unit 3 — 기본값(`Flat`)이면 안 쓴다(계약 8 — 라이브 전량 `Flat` → 해시 무변).
+            if (e.MagnitudeMode != MagnitudeMode.Flat)
+            {
+                MatchDefinition.Put(sb, "magnitudeMode", (int)e.MagnitudeMode, inv);
+                MatchDefinition.Put(sb, "basisStat", (int)e.BasisStat, inv);
+                MatchDefinition.Put(sb, "ratio", e.Ratio, inv);
+            }
             MatchDefinition.Put(sb, "fireCap", FireCap, inv);
             MatchDefinition.Put(sb, "lifetime", (int)Lifetime, inv);
             MatchDefinition.Put(sb, "lifetimeSec", LifetimeSeconds, inv);
@@ -219,6 +226,16 @@ namespace Wassup.BattleCore.Trigger
         public int ProjectilePayload;
         /// <summary>칸 결합 탄의 착탄 예고(사용자 결정 U1 · 기본 꺼짐).</summary>
         public bool Telegraph;
+
+        /// <summary>
+        /// skill-data-table unit 3(U7) — 수치 방식. `Flat`(기본) = 위 칸 그대로 · `OwnerStatRatio` = 그 종류의 비율 칸
+        /// (`EffectMagnitude` — 피해 · 실드량)을 **시전 순간** 소유자 `BasisStat` 최종값 × `Ratio` 로 채운다(계약 9 ·
+        /// 드레인이 해석한 사본만 실행에 간다 — 이 줄은 안 바뀐다). 기본값이면 해시에 안 쓴다(계약 8).
+        /// </summary>
+        public MagnitudeMode MagnitudeMode;
+        public BasisStat BasisStat;
+        /// <summary>비율(> 0). `Flat` 에서는 읽지 않는다.</summary>
+        public float Ratio;
 
         public static EffectDef Default() => new EffectDef
         {

@@ -2,7 +2,9 @@ using Wassup.BattleCore.Combat.Projectile;
 
 namespace Wassup.BattleCore.Trigger
 {
-    /// <summary>조합 검증의 답. 거절 사유는 셋뿐이다(unified-effect-layer 계약 5).</summary>
+    /// <summary>
+    /// 조합 검증의 답. 원점 사유 셋(unified-effect-layer 계약 5) + 비율형 수치 사유 둘(skill-data-table unit 3 · append-only).
+    /// </summary>
     public enum ComboVerdict : byte
     {
         Allowed = 0,
@@ -12,6 +14,10 @@ namespace Wassup.BattleCore.Trigger
         ShapeMismatch = 2,
         /// <summary>영영 안 터진다 — 붙는 순간 이미 지난 자기 사건이거나 그 숙주에게 사건 자체가 없다.</summary>
         NeverFires = 3,
+        /// <summary>비율 기준이 없다 — 비율형 수치인데 스탯을 읽을 주인이 없거나(주인 없는 시전) 누구의 스탯인지 정해지지 않았다(남의 사건).</summary>
+        NoRatioBasis = 4,
+        /// <summary>그 효과 종류에 비율 칸이 없다(`tables.md` §9 — 비율은 피해 · 실드량에만).</summary>
+        NoRatioField = 5,
     }
 
     /// <summary>
@@ -35,6 +41,13 @@ namespace Wassup.BattleCore.Trigger
         public bool BindsAfterPlacement;
         /// <summary>숙주가 어그로를 들 수 없다고 **굽는 시점에 안다**(가디언 아님). 숙주를 모르면 거짓 — 부착 판정 몫이다.</summary>
         public bool HostCannotHoldAggro;
+        /// <summary>skill-data-table unit 3 — 효과의 수치 방식. 기본 `Flat` = 비율 규칙을 안 본다.</summary>
+        public MagnitudeMode Magnitude;
+        /// <summary>
+        /// 규칙이 **주인 없이** 시전된다(판 시전 · 액티브 · 드림스톤 · 판 주기 — 사건 주체 `Match`). 비율형의 기준 스탯이 없다(계약 9).
+        /// ⚠ 주인이 떠나는 사건(죽음 · 퇴근)은 여기 들지 않는다 — 감지자가 스탯을 스냅샷한다.
+        /// </summary>
+        public bool CastHasNoOwner;
     }
 
     // unified-effect-layer unit 5 — **저작 조합 검증 한 함수**(H5). 카드 빌더 · 유닛/악몽 빌더가 같은 (트리거 × 주체 × 효과 × 탄 결합)에
@@ -66,6 +79,13 @@ namespace Wassup.BattleCore.Trigger
             if (c.FanOut && (!c.HasProjectile || c.Binding != BindingClass.Entity)) return ComboVerdict.NoOrigin;
             // ⑦ 도발은 어그로를 드는 몸에서 나온다 — 그 몸이 아니면 효과가 받을 원점이 아니다.
             if (c.Payload == EffectKind.AreaTaunt && c.HostCannotHoldAggro) return ComboVerdict.ShapeMismatch;
+            // ⑧ 비율형 수치(skill-data-table unit 3 · `tables.md` §9) — 비율 칸이 있는 종류만 · 기준 스탯을 읽을 주인이 있을 때만.
+            //    「남의 배치」(`Any`)는 발동 주체(놓인 유닛)와 규칙 소유자(숙주)가 갈린다 — 누구의 스탯인지는 사용자 결정 전이라 거절한다.
+            if (c.Magnitude == MagnitudeMode.OwnerStatRatio)
+            {
+                if (!EffectMagnitude.AcceptsRatio(c.Payload)) return ComboVerdict.NoRatioField;
+                if (c.CastHasNoOwner || c.Subject == BindingSubject.Any) return ComboVerdict.NoRatioBasis;
+            }
             return ComboVerdict.Allowed;
         }
 
@@ -77,6 +97,8 @@ namespace Wassup.BattleCore.Trigger
                 case ComboVerdict.NoOrigin: return "원점을 못 낸다";
                 case ComboVerdict.ShapeMismatch: return "효과가 그 원점 형을 못 받는다";
                 case ComboVerdict.NeverFires: return "붙는 순간 이미 지난 자기 사건이거나 사건이 없다(영영 안 터짐)";
+                case ComboVerdict.NoRatioBasis: return "비율 기준이 없다(주인 없는 시전 · 남의 사건)";
+                case ComboVerdict.NoRatioField: return "그 효과에는 비율 칸이 없다(피해 · 실드량만)";
                 default: return "허용";
             }
         }
