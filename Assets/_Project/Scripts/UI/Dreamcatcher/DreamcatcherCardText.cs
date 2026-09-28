@@ -455,7 +455,7 @@ namespace Wassup.UI
             }
         }
 
-        private static bool TryFormatTrigger(DcTriggerSpec trigger, out string text)
+        private static bool TryFormatTrigger(TriggerSpec trigger, out string text)
         {
             // trigger-gates unit 1 — 게이트 접두는 트리거 문안에 직교 합성 (조립 위치 고정).
             // 표시 가능한 조합도 bake 와 같은 배선 표를 소비해 "보이지만 무효"인 카드를 막는다.
@@ -472,7 +472,7 @@ namespace Wassup.UI
             return true;
         }
 
-        private static bool TryFormatTriggerCore(DcTriggerSpec trigger, out string text)
+        private static bool TryFormatTriggerCore(TriggerSpec trigger, out string text)
         {
             switch (trigger.kind)
             {

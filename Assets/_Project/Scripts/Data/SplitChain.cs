@@ -73,6 +73,8 @@ namespace Wassup.Data
         // 이 유닛이 죽을 때 태어나는 자식 수(첫 SplitOnDeath 슬롯). 사슬이 없으면 0.
         public static int CountAt(AttackUnitData unit)
         {
+            // skill-data-table unit 4 — 적 고유 값이 있으면 그것(이전 과도기 — 없으면 옛 메커닉).
+            if (unit != null && unit.splitUnit != null) return unit.splitCount;
             var mechanics = unit?.nightmareMechanics;
             if (mechanics == null) return 0;
             for (int i = 0; i < mechanics.Length; i++)
@@ -88,6 +90,7 @@ namespace Wassup.Data
         // 첫 SplitOnDeath 슬롯만 본다 — 런타임(SpawnSplitChildren)과 같은 규약이다.
         public static AttackUnitData NextInChain(AttackUnitData unit)
         {
+            if (unit != null && unit.splitUnit != null) return unit.splitUnit;
             var mechanics = unit?.nightmareMechanics;
             if (mechanics == null) return null;
             for (int i = 0; i < mechanics.Length; i++)

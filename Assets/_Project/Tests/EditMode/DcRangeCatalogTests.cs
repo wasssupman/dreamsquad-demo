@@ -157,7 +157,7 @@ namespace Wassup.Tests.EditMode
         private static DcMechanic Mechanic(TriggerKind trigger, EffectKind kind, int tileRange)
             => new DcMechanic
             {
-                trigger = new DcTriggerSpec { kind = trigger },
+                trigger = new TriggerSpec { kind = trigger },
                 payload = new DcPayloadSpec { kind = kind, tileRange = tileRange },
             };
     }

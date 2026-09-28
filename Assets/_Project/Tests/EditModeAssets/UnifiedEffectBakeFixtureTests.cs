@@ -123,7 +123,7 @@ namespace Wassup.Tests.EditModeAssets
             pattern.fanOutToAllCandidates = true;
             var m = new DcMechanic
             {
-                trigger = new DcTriggerSpec { kind = TriggerKind.OnPlace, subject = BindingSubject.Any },
+                trigger = new TriggerSpec { kind = TriggerKind.OnPlace, subject = BindingSubject.Any },
                 payload = new DcPayloadSpec
                 {
                     kind = EffectKind.EmitProjectilePattern, pattern = pattern,
@@ -149,7 +149,7 @@ namespace Wassup.Tests.EditModeAssets
             meteor.visualScale = 1f;
             var m = new DcMechanic
             {
-                trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 1 },
+                trigger = new TriggerSpec { kind = TriggerKind.AttackN, period = 1 },
                 payload = new DcPayloadSpec
                 {
                     kind = EffectKind.ProjectileToTarget, projectile = meteor,

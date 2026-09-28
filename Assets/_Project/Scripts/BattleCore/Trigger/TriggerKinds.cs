@@ -91,7 +91,7 @@ namespace Wassup.BattleCore.Trigger
     /// <summary>
     /// 이 바인딩이 **누구의 사건**을 듣나. `Self` = 소유자 자신의 사건(유닛 스킬 전부) ·
     /// `Any` = 판 위 누구의 사건이든(배치 오라 · Squad 상속 — 7b). unified-effect-layer unit 5 부터 저작에 노출된다 —
-    /// `DcTriggerSpec.subject` 「남의 배치」(`Any`) + `BindingSubjectFilter.PlacedDefender`(빌더가 옮긴다 · 배치에만 뜻이 있다).
+    /// `TriggerSpec.subject` 「남의 배치」(`Any`) + `BindingSubjectFilter.PlacedDefender`(빌더가 옮긴다 · 배치에만 뜻이 있다).
     /// </summary>
     public enum BindingSubject : byte { Self = 0, Any = 1 }
 

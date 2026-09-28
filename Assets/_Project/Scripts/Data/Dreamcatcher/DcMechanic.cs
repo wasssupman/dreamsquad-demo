@@ -237,8 +237,10 @@ namespace Wassup.Data
     // v1 배선 조합은 OnDamagedN×Self, AttackN×EventTarget 뿐 — 그 외는 bake 거절
     // (배선 표의 단일 SoT = DcTrigger.GateComboSupported). append-only. (거울 `DcGateSubject` 은퇴 — 코어 `GateSubject`)
 
+    // skill-data-table unit 4 — 트리거 칸 묶음. 옛 이름 `DcTriggerSpec`(타입 이름은 YAML 에 안 남는다 — 에셋 무변).
+    // 옛 `DcMechanic.trigger` 와 새 소유 줄 `BindingSpec.trigger` 가 같이 든다.
     [Serializable]
-    public struct DcTriggerSpec
+    public struct TriggerSpec
     {
         public TriggerKind kind;
         public int period; // AttackN: fire on every N-th attack resolve
@@ -376,7 +378,7 @@ namespace Wassup.Data
     [Serializable]
     public struct DcMechanic
     {
-        public DcTriggerSpec trigger;
+        public TriggerSpec trigger;
         public DcPayloadSpec payload;
     }
 

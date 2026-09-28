@@ -144,7 +144,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = TriggerKind.AttackN, period = 5 },
+                    trigger = new TriggerSpec { kind = TriggerKind.AttackN, period = 5 },
                     payload = new DcPayloadSpec { kind = EffectKind.SelfTileAoe, magnitude = 20, tileRange = 1 },
                 },
             };

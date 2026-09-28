@@ -9,18 +9,7 @@ namespace Wassup.Data
     // assets serialize axis as int 0~2; inserting earlier would relabel them).
     public enum CardTargetAxis { ClassRanger, ClassGuardian, Cost1, All }
 
-    // ingame-dreamcatcher Unit 1 — what a card buffs. Maps to StatModifier in
-    // Unit 2: AttackDamage→DamageMul, AttackSpeed→AttackSpeedMul,
-    // EffectiveHealth→DmgTakenMul (damage-taken reduction proxy), MoveSpeed→MoveSpeedMul.
-    // dreamstone-loadout Unit 6 — CostRate appended at the end (existing card/stone
-    // assets serialize kind as int 0~3; inserting earlier would relabel them).
-    // CostRate has no StatModifier/entity mapping (old battle: BattleBridge.MapDcEffect
-    // no-op'd it and GameManager -> CostRuntime.SetRegenRateMultiplier consumed it — history).
-    // dreamcatcher-new-abilities unit 0 — DamageVsCc: 활성 CcEffect(기절/수면/DoT/넉백)가
-    // 걸린 적에게 추가 피해 %. ⚠ 이동감속(Slow)은 이 엔진에서 CcEffect 가 아니라 MoveSpeedMul
-    // StatModifier 라 여기 해당 없음(카드 문안에 "둔화" 표기 금지). StatKind.DamageVsCcMul
-    // 로 매핑(unit 2). append-only.
-    public enum CardBuffKind { AttackDamage, AttackSpeed, EffectiveHealth, MoveSpeed, CostRate, DamageVsCc }
+    // `CardBuffKind` 는 `CardBuffKind.cs` 로 옮겼다(skill-data-table unit 4 — 효과 값 `EffectValues` 가 같이 쓰는 순수 어휘).
 
     // dreamcatcher-deck-builder Unit 0 — deck-rule category (deck cap RETIRED, now
     // on CardType.Squad). Reused as a concept label: dreamcatcher-squad-warmup adds
@@ -122,6 +111,16 @@ namespace Wassup.Data
         // 값 칸이 하나뿐이라 "종류를 바꿨는데 옛 값이 되살아나는" 함정이 구조적으로 없다
         // (unit 7 rev 의 동기 — 구 3필드 설계의 잔존 companion 문제).
         public string attachValue;
+
+        // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄 · `BindingSpec`). 비어 있으면 굽기가 옛 칸
+        // (`mechanics` · `skill`)을 읽는다(이전 과도기 — 옛 칸은 사용자 승인 뒤 4-정리에서 걷는다). 액티브 카드는 정확히 한 줄
+        // (시전 `Cast` × 액티브 효과). Squad 는 줄 0(스탯 효과 = `effects`).
+        public BindingSpec[] bindings;
+        // U5 — 붙을 수 있는 숙주 종류(부여 게이트). 기본 방어유닛 · 적 표식 카드 = 적. 굽기가 켜진 종류마다 조합을 검증한다.
+        public HostKinds hostKinds = HostKinds.Defender;
+        // 액티브 전용(옛 `SkillData.cooldownSec` · `needsTwoTiles` — `tables.md` §7 `Cards`). `bindings` 를 쓸 때만 읽는다.
+        public float cooldownSec;
+        public bool needsTwoTiles;
 
         // 적 지정 판별 — 전용 필드 없이 mechanics 파생(BountyMark payload 보유 = 적 타겟).
         // 조준 라우팅(DreamcatcherCardDragSlot.Classify)과 손패 태그 칩

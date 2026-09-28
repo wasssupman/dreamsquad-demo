@@ -240,6 +240,15 @@ namespace Wassup.Data
         [Header("Nightmare Catcher")]
         public DcMechanic[] nightmareMechanics;
 
+        // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄). 비어 있지 않으면 굽기가 이것만 읽는다(이전 과도기 —
+        // `nightmareMechanics` 는 4-정리에서 걷는다).
+        public BindingSpec[] bindings;
+        // 분열은 소유 줄이 아니라 **적 고유 값**이다(`tables.md` §8 · 옛 `SplitOnDeath` 메커닉 — 빌더가 규칙 줄을 안 만들었다).
+        // `splitUnit` 이 있으면 `SplitChain` 이 이것을 읽는다(없으면 옛 메커닉). 사슬 끝 = 마지막 단계의 `splitUnit` 을 비운다.
+        public AttackUnitData splitUnit;
+        [Tooltip("분열 자식 수 — 1 이상 · 정의표 상한(MovementTuning.splitMaxChildren) 이하.")]
+        public int splitCount;
+
         // three-minute-kill-race unit 1 — **`killScore` 필드는 은퇴했다.** 개체 1킬 = 1점이고
         // 예외가 없다(보스도 분열체도 1). 점수를 등급으로 가르던 축이 사라졌으므로 이 자리에
         // 밸런스 값을 다시 만들지 말 것 — 강함의 차이는 체력·공격력·등장 빈도로 표현한다.

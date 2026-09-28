@@ -31,7 +31,7 @@ namespace Wassup.Tests.EditMode
             GateSubject subject = GateSubject.Self) =>
             new DcMechanic
             {
-                trigger = new DcTriggerSpec { kind = trigger, gate = gate, gateSubject = subject },
+                trigger = new TriggerSpec { kind = trigger, gate = gate, gateSubject = subject },
                 payload = new DcPayloadSpec { kind = kind, tileRange = tileRange },
             };
 

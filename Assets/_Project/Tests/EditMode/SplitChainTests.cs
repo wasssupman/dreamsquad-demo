@@ -25,7 +25,7 @@ namespace Wassup.Tests.EditMode
             {
                 new DcMechanic
                 {
-                    trigger = new DcTriggerSpec { kind = TriggerKind.OnDeath },
+                    trigger = new TriggerSpec { kind = TriggerKind.OnDeath },
                     payload = new DcPayloadSpec
                     {
                         kind = EffectKind.SplitOnDeath,
