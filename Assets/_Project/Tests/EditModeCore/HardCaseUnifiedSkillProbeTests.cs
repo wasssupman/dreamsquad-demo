@@ -76,7 +76,7 @@ namespace Wassup.Tests.EditMode.Core
             {
                 new PatternDef
                 {
-                    Id = "probe_barrage", BarrelProjectileDefIndex = 0, Damage = Hit,
+                    Id = "probe_barrage", BarrelProjectileDefIndex = 0,
                     Selection = (int)PatternSelectionRule.RoundRobin,
                     Shots = shotRows,
                     ReselectPerShot = true, TelegraphSec = 0f, ScopeTileRange = N,
@@ -94,6 +94,7 @@ namespace Wassup.Tests.EditMode.Core
             r.Effect.PatternDefIndex = 0;
             r.Effect.TileRange = N;          // 조준 후보 반경 = 탄 최대 거리(`EmitPatternParams.Range`)
             r.Effect.Magnitude = Hit;        // ⚠ 패턴 경로는 이 값을 읽지 않는다 — `패턴_경로의_피해는_…` 참조
+            r.Effect.Damage = Hit;           // U10 — 탄 피해의 정본 = 효과 줄의 피해(명세 줄은 모양만)
             return r;
         }
 
@@ -310,10 +311,10 @@ namespace Wassup.Tests.EditMode.Core
         // ── 5. 효과 한 번 정의 — 코어 정의표에서 참조인가 복사인가 ───────────
 
         [Test]
-        public void 패턴_경로의_피해는_바인딩_Magnitude_가_아니라_발사_명세의_Damage_다()
+        public void 패턴_경로의_피해는_Magnitude_가_아니라_효과_줄_Damage_다()
         {
-            // 두 바인딩 줄(A · AA)은 `BindingDef` **값 복사**이고, 공유하는 것은 index 둘(탄 0 · 명세 0)뿐이다.
-            // 피해는 그 공유 줄(`PatternDef.Damage`)에서 나온다(`IntentApplier.cs:311`) — 바인딩 Magnitude 를 0 으로 해도 100.
+            // 두 규칙 줄(A · AA)이 공유하는 것은 index 둘(탄 0 · 명세 0)뿐이다. 피해는 **효과 줄의 `Damage`** 에서 나온다
+            // (skill-data-table 1b · U10 — `IntentApplier.EmitPattern`) — Magnitude 를 0 으로 해도 100.
             var def = Definition();
             var unit = UnitSkillRow();
             unit.Effect.Magnitude = 0f;
@@ -328,7 +329,7 @@ namespace Wassup.Tests.EditMode.Core
             o.Hits = CoreCombatFixtures.Listen(o.M, CoreEventKind.DamageApplied);
             o.Caster = Place(o.M, PlaceCell);
             CoreCombatFixtures.Tick(o.M, Ticks);
-            foreach (var e in o.In) Assert.AreEqual(Hit, o.DamageTo(e), 1e-3f, "Magnitude 0 이어도 100 — 피해의 정본은 PatternDef");
+            foreach (var e in o.In) Assert.AreEqual(Hit, o.DamageTo(e), 1e-3f, "Magnitude 0 이어도 100 — 피해의 정본은 효과 줄 Damage");
         }
 
         // ── 6. 버스트 수명 = 발동 주체 ∧ 바인딩을 든 자(U2) · 킬 귀속(U3) · 캐논 회귀 ─────────

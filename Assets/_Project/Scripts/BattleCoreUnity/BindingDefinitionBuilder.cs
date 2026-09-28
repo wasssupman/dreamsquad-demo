@@ -177,7 +177,10 @@ namespace Wassup.BattleCoreUnity
                 fx.CcKind = (int)ToSkillCc(m.payload.ccKind);
                 fx.StackKind = (int)ToSkillStack(m.payload.stackKind);
                 fx.StatKind = (int)(TryToSkillStat(m.payload.buffStat, out var stat) ? stat : SkillStatKind.DamageMul);
-                fx.SlamDamage = Mathf.Max(0f, m.payload.slamDamage);
+                // skill-data-table 1b(U10) — 착지 슬램 피해 = 효과 줄의 피해. 도약 2종만 쓴다 — 그 밖의 종류에서는 옛날에도
+                // 읽는 곳이 없던 값이라(`SkillParams.SlamDamage` 소비처 = 도약 concrete 둘) 피해 칸으로 옮기지 않는다.
+                if (payload == EffectKind.SelfBlink || payload == EffectKind.UltimateLeap) fx.Damage = Mathf.Max(0f, m.payload.slamDamage);
+                else if (m.payload.slamDamage > 0f) Warn($"{label}: slamDamage 는 도약(SelfBlink · UltimateLeap) 전용 — {payload} 에서는 무시한다.");
                 fx.SlamTileRange = Mathf.Max(0, m.payload.slamTileRange);
                 BakeCone(ref fx, m.payload.coneHalfAngleDeg);
                 b.Origin = BindingOrigin.UnitAuthored;
@@ -413,7 +416,10 @@ namespace Wassup.BattleCoreUnity
                 case EffectKind.SpawnHazard:
                     int h = hazards != null && p.hazard != null ? System.Array.IndexOf(hazards, p.hazard) : -1;
                     if (h < 0) { Warn($"{label}: SpawnHazard 의 장판이 이 판의 장판 표에 없다 — 건너뛴다(카드면 `WithCardHazards` 를 거쳤나)."); return false; }
+                    // U10 — 장판 DoT 피해 = 효과 줄의 피해(unit 4 전까지 장판 SO 의 DoT `param1` 을 빌더가 옮긴다). DoT ≤ 1.
+                    if (!BoardEffectDefinitionBuilder.TryDotDamage(p.hazard, out float dot)) { Error($"{label}: 장판 '{p.hazard.name}' 에 DoT 하위 효과가 둘 이상 — 효과 줄 피해 칸 하나에 못 담는다. 건너뛴다."); return false; }
                     fx.HazardDefIndex = h;
+                    fx.Damage = dot;
                     return true;
                 default:
                     return true;
@@ -443,6 +449,15 @@ namespace Wassup.BattleCoreUnity
             int idx = patterns.IndexOf(pattern);
             if (idx < 0) { patterns.Add(pattern); idx = patterns.Count - 1; }
             fx.PatternDefIndex = idx;
+            // skill-data-table 1b(U10) — 탄 피해 = 효과 줄의 피해(unit 4 전까지 명세 SO 의 `damage` 를 빌더가 옮긴다 — 명세 줄은
+            // 모양만). 탄이 **길막을 세우면** 그 착탄은 피해를 안 주고(설치) 피해 칸은 **길막 폭발**이다(길막 SO `explodeDamage`).
+            var blocker = pattern.barrel.spawnBlocker;
+            if (blocker != null)
+            {
+                if (pattern.damage > 0f) Warn($"{label}: 길막을 세우는 명세의 damage({pattern.damage}) 는 쓰이지 않는다 — 피해 칸 = 길막 폭발 {blocker.explodeDamage}.");
+                fx.Damage = Mathf.Max(0f, blocker.explodeDamage);
+            }
+            else fx.Damage = pattern.damage;
             CombatDefinitionBuilder.IndexOf(projectiles, pattern.barrel);   // 탄 표에 등록
             return true;
         }

@@ -47,6 +47,12 @@ namespace Wassup.BattleCore
         /// </summary>
         public byte TargetLayers;
 
+        /// <summary>
+        /// skill-data-table 1b(U10) — 이 장판의 **DoT 피해**(틱당 · 주기 0 이면 DPS). 까는 자가 싣는다: 효과 줄 `EffectDef.Damage`
+        /// · 디버그 명령의 값. 장판 줄의 DoT 하위 효과는 크기를 들지 않는다(원소 · 주기 · 여유만).
+        /// </summary>
+        public float DotDamage;
+
         public void Reset()
         {
             Id = SimEntityId.None;
@@ -58,6 +64,7 @@ namespace Wassup.BattleCore
             Source = SimEntityId.None;
             Faction = Faction.None;
             TargetLayers = 0;
+            DotDamage = 0f;
         }
     }
 }
@@ -75,15 +82,17 @@ namespace Wassup.BattleCore
         /// </summary>
         public static Hazard Spawn(BattleWorld world, Map.MapRuntime map, MatchDefinition def,
                                    int defIndex, Unity.Mathematics.int2 cell, SimEntityId source,
-                                   Wassup.Skills.Faction faction, byte targetLayers, int tick)
+                                   Wassup.Skills.Faction faction, byte targetLayers, int tick, float dotDamage)
         {
             if (def == null || defIndex < 0 || defIndex >= def.Hazards.Length) return null;
             ref var hd = ref def.Hazards[defIndex];
             var center = map != null
                 ? map.CenterOf(cell)
                 : new Unity.Mathematics.float3(cell.x, 0f, cell.y);
-            return world.SpawnHazard(defIndex, cell, center, hd.RadiusTiles, hd.Lifetime,
-                                     source, faction, targetLayers, tick);
+            var h = world.SpawnHazard(defIndex, cell, center, hd.RadiusTiles, hd.Lifetime,
+                                      source, faction, targetLayers, tick);
+            h.DotDamage = dotDamage;
+            return h;
         }
     }
 }

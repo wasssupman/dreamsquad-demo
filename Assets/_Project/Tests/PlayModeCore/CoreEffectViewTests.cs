@@ -69,7 +69,7 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.Greater(def.Hazards.Length, 0, "BattleDriver 에 존 장판 저작이 없다(6c 씬 배선)");
 
             var cell = PathCell(driver.Match.Map);
-            Assert.IsTrue(driver.Apply(Command.DebugSpawnHazard(0, cell)).Accepted, "장판이 거절됐다");
+            Assert.IsTrue(driver.Apply(Command.DebugSpawnHazard(0, cell, 0f)).Accepted, "장판이 거절됐다");
             yield return Ticks(driver, 0);
 
             var world = driver.Match.World;
@@ -292,7 +292,7 @@ namespace Wassup.Tests.PlayMode.Core
             var map = driver.Match.Map;
             bool placed = false;
             for (int k = 0; k < 64 && !placed; k++)
-                placed = driver.Apply(Command.DebugSpawnBlocker(0, PathCell(map, k))).Accepted;
+                placed = driver.Apply(Command.DebugSpawnBlocker(0, PathCell(map, k), 0f)).Accepted;
             Assert.IsTrue(placed, "어느 길 칸에도 길막이 안 섰다");
             yield return Ticks(driver, 0);
 

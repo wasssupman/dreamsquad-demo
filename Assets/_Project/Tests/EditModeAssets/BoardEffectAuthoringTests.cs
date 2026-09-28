@@ -100,7 +100,6 @@ namespace Wassup.Tests.EditMode
                 UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType.Error,
                     new System.Text.RegularExpressions.Regex("폭발 탄이 미배선"));
                 var row = BoardEffectDefinitionBuilder.ToBlockingHazardDef(so, Array.Empty<ProjectileDef>());
-                Assert.AreEqual(0f, row.ExplodeDamage, "폭발 저작을 통째로 버린다");
                 Assert.AreEqual(-1, row.ExplodeProjectileDefIndex, "0 이 아니라 -1 센티널");
             }
             finally { UnityEngine.Object.DestroyImmediate(so); }

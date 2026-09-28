@@ -192,7 +192,7 @@ namespace Wassup.Tests.EditMode.Core
             {
                 new PatternDef
                 {
-                    Id = "probe_barrage", BarrelProjectileDefIndex = 0, Damage = ShotHit,
+                    Id = "probe_barrage", BarrelProjectileDefIndex = 0,
                     Selection = (int)PatternSelectionRule.RoundRobin,
                     Shots = new[] { new PatternShotDef { DirectionT = 0.5f } },
                     ReselectPerShot = true, TelegraphSec = 0f, ScopeTileRange = Scope,
@@ -214,6 +214,7 @@ namespace Wassup.Tests.EditMode.Core
             r.Effect.PatternDefIndex = 0;
             r.Effect.TileRange = Scope;
             r.Effect.Magnitude = ShotHit;
+            r.Effect.Damage = ShotHit;   // U10 — 탄 피해 = 효과 줄의 피해
             return r;
         }
 

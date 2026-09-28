@@ -109,7 +109,7 @@ namespace Wassup.BattleCore.Trigger
         public SkillParams ToParams(in EffectDef e, byte targetLayers)
             => new SkillParams(
                 e.Magnitude, e.Duration, e.TileRange, Period, e.DataIndex,
-                e.CcKind, e.Speed, e.HitThreshold, e.SlamDamage, e.SlamTileRange, StackId, e.VisualScale,
+                e.CcKind, e.Speed, e.HitThreshold, e.Damage, e.SlamTileRange, StackId, e.VisualScale,
                 e.PatternDefIndex, e.StatKind, e.StackKind, e.ProjectileMovement, e.ProjectilePayload,
                 targetLayers, e.HazardDefIndex,
                 e.ShieldTargetCount, e.ShieldIncludesSelf, e.ShieldFilter, e.ConeSinHalf, e.ConeCosHalf, e.Telegraph);
@@ -149,7 +149,11 @@ namespace Wassup.BattleCore.Trigger
             MatchDefinition.Put(sb, "visualScale", e.VisualScale, inv);
             MatchDefinition.Put(sb, "coneDeg", e.ConeHalfAngleDeg, inv);
             MatchDefinition.Put(sb, "coneSinCos", e.ConeSinHalf.ToString("R", inv) + "," + e.ConeCosHalf.ToString("R", inv));
-            MatchDefinition.Put(sb, "slam", e.SlamDamage.ToString("R", inv) + "," + e.SlamTileRange.ToString(inv));
+            // skill-data-table 1b(U10) — 슬램 피해는 `damage` 로 갔다. 첫 자리는 은퇴(언제나 0)지만 키 모양을 지킨다 —
+            // 바꾸면 슬램이 없는 규칙 줄 전부(대다수)의 정본 텍스트가 흔들린다.
+            MatchDefinition.Put(sb, "slam", "0," + e.SlamTileRange.ToString(inv));
+            // 새 칸 — 0 이면 안 쓴다(계약 8).
+            if (e.Damage != 0f) MatchDefinition.Put(sb, "damage", e.Damage, inv);
             MatchDefinition.Put(sb, "stackId", StackId, inv);
             MatchDefinition.Put(sb, "projAxes", e.ProjectileMovement.ToString(inv) + "," + e.ProjectilePayload.ToString(inv));
             // unified-effect-layer unit 2 — 기본값이면 안 쓴다(unit 1 까지의 규칙 줄 해시 무변).
@@ -204,7 +208,12 @@ namespace Wassup.BattleCore.Trigger
         public float ConeHalfAngleDeg;
         public float ConeSinHalf;
         public float ConeCosHalf;
-        public float SlamDamage;
+        /// <summary>
+        /// skill-data-table 1b(U10) — **이 효과의 피해**(한 효과 = 피해 원천 ≤ 1). 종류가 정한다: 발사 명세 = 탄 한 발 ·
+        /// 길막을 세우는 명세 = 길막 폭발 · 장판 = DoT(틱당 · 주기 0 이면 DPS) · 도약 2종 = 착지 슬램. 패턴 · 장판 · 길막
+        /// 줄에는 피해 칸이 없다(모양만). ⚠ `Magnitude` 로 피해를 싣는 종류(탄 · 자폭 · 브레스 …)는 unit 4 까지 그대로다.
+        /// </summary>
+        public float Damage;
         public int SlamTileRange;
         public int ProjectileMovement;
         public int ProjectilePayload;

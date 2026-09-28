@@ -65,6 +65,12 @@ namespace Wassup.BattleCore
         /// </summary>
         public int DeathTick = -1;
 
+        /// <summary>
+        /// skill-data-table 1b(U10) — 길막 설치물이 부서질 때 낼 폭발 피해. 세운 쪽이 싣는다(세운 탄의 피해 = 효과 줄
+        /// `EffectDef.Damage` · 디버그 명령의 값). 0 = 안 터진다. 길막이 아닌 개체는 0.
+        /// </summary>
+        public float BlockerExplodeDamage;
+
         /// <summary>배치 모션 중. 전투 코어가 소유한 페이즈이고 그동안 표적이 되지 않는다.</summary>
         public bool Deploying;
 
@@ -189,6 +195,7 @@ namespace Wassup.BattleCore
             BaseMaxHealth = 0f;
             Dead = false;
             DeathTick = -1;
+            BlockerExplodeDamage = 0f;
             Deploying = false;
             Untargetable = false;
             HealthExternal = false;

@@ -66,7 +66,7 @@ namespace Wassup.Tests.EditMode.Core
             r.Rule.Fraction = fraction;
             r.Effect.Magnitude = 2f;
             r.Effect.TileRange = 6;
-            r.Effect.SlamDamage = SlamDamage;
+            r.Effect.Damage = SlamDamage;
             r.Effect.SlamTileRange = 1;
             r.Effect.DataIndex = slamDef;
             r.Rule.Origin = BindingOrigin.UnitAuthored;
@@ -82,7 +82,7 @@ namespace Wassup.Tests.EditMode.Core
             r.Effect.Magnitude = 2f;
             r.Effect.TileRange = 6;
             r.Effect.Duration = 2f;
-            r.Effect.SlamDamage = UltSlamDamage;
+            r.Effect.Damage = UltSlamDamage;
             r.Effect.SlamTileRange = 2;
             r.Effect.DataIndex = slamDef;
             r.Rule.FireCap = 1;

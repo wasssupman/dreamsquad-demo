@@ -163,7 +163,7 @@ namespace Wassup.BattleCore
                         ref var eff = ref hd.Effects[e];
                         // F34 — 진영은 **저작 축**이다. 하드 게이트가 아니다.
                         if (((int)u.Faction & eff.TargetFactions) == 0) continue;
-                        fold.Add(in eff, h.Id);
+                        fold.Add(in eff, h.Id, h.DotDamage);
                     }
                 }
                 if (fold.Any) ApplyZoneFold(ctx, u, ref fold);
@@ -231,7 +231,7 @@ namespace Wassup.BattleCore
                 }
             }
 
-            public void Add(in HazardEffectDef eff, SimEntityId zone)
+            public void Add(in HazardEffectDef eff, SimEntityId zone, float dotDamage)
             {
                 switch ((HazardEffectKind)eff.Kind)
                 {
@@ -248,9 +248,10 @@ namespace Wassup.BattleCore
                         int el = eff.Element;
                         if (el < 0 || el >= ElementCount) break;
                         // 같은 원소끼리는 **센 쪽의 요율·주기**가 이긴다. 남은 여유는 긴 쪽.
-                        if (!DotHas[el] || eff.Magnitude > DotScalar[el])
+                        // U10 — DoT 의 크기는 장판 개체가 든다(까는 효과 줄의 피해). 장판 줄의 크기 칸은 읽지 않는다.
+                        if (!DotHas[el] || dotDamage > DotScalar[el])
                         {
-                            DotScalar[el] = eff.Magnitude;
+                            DotScalar[el] = dotDamage;
                             DotInterval[el] = eff.TickInterval;
                             DotSource[el] = zone;
                         }

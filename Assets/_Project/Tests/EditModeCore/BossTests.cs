@@ -22,7 +22,7 @@ namespace Wassup.Tests.EditMode.Core
             leap.Rule.Fraction = 0.3f;
             leap.Effect.Magnitude = 2f;     // 밀집 탐색 반경(칸) — `LeapParams` 가 이름을 붙인다
             leap.Effect.TileRange = 2;      // 착지 링 상한
-            leap.Effect.SlamDamage = SlamDamage;
+            leap.Effect.Damage = SlamDamage;
             leap.Effect.SlamTileRange = 1;
             leap.Effect.DataIndex = slamDef;
             CoreTriggerFixtures.GiveEnemy(def, 0, leap);

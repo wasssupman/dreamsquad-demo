@@ -970,7 +970,6 @@ namespace Wassup.Tests.EditMode.Core
                 {
                     Id = "port_volley",
                     BarrelProjectileDefIndex = 0,
-                    Damage = 0f,
                     Selection = (int)PatternSelectionRule.None,
                     MinAngleDeg = -30f,
                     MaxAngleDeg = 30f,

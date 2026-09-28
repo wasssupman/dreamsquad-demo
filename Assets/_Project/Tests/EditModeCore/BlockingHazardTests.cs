@@ -32,7 +32,7 @@ namespace Wassup.Tests.EditMode.Core
             // F11 — 100 ÷ 50 = 2초. 두 값을 따로 굴리면 수명이 통째로 달라진다.
             var m = CoreMatchFixtures.BeginBattle(Def(hp: 100f, decay: 50f));
             var gone = CoreCombatFixtures.Listen(m, CoreEventKind.UnitDestroyed);
-            Assert.IsTrue(m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 0))).Accepted);
+            Assert.IsTrue(m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 0), 0f)).Accepted);
 
             CoreCombatFixtures.Tick(m, 110);
             Assert.AreEqual(0, gone.Count, "2초 전에는 서 있다");
@@ -44,7 +44,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 문은_부서짐_하나다_노후화가_없으면_시간으로_안_사라진다()
         {
             var m = CoreMatchFixtures.BeginBattle(Def(hp: 100f, decay: 0f));
-            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 0)));
+            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 0), 0f));
             CoreCombatFixtures.Tick(m, 600);
             Assert.NotNull(CoreCombatFixtures.First(m, UnitKind.BlockingHazard), "시한 만료 경로가 없다");
         }
@@ -53,7 +53,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 막는_칸은_저작_모양이고_부서지면_다음_틱에_길이_열린다()
         {
             var m = CoreMatchFixtures.BeginBattle(Def(hp: 100f, decay: 0f, HazardShapeKind.Square3x3));
-            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 2), 0f));
             m.Tick();
             for (int dy = -1; dy <= 1; dy++)
             for (int dx = -1; dx <= 1; dx++)
@@ -71,10 +71,10 @@ namespace Wassup.Tests.EditMode.Core
         public void 골_칸과_이미_막힌_칸에는_못_세운다()
         {
             var m = CoreMatchFixtures.BeginBattle(Def(hp: 100f, decay: 0f));
-            Assert.IsFalse(m.Apply(Command.DebugSpawnBlocker(0, new int2(11, 2))).Accepted, "골 칸");
-            Assert.IsTrue(m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 0))).Accepted);
+            Assert.IsFalse(m.Apply(Command.DebugSpawnBlocker(0, new int2(11, 2), 0f)).Accepted, "골 칸");
+            Assert.IsTrue(m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 0), 0f)).Accepted);
             m.Tick();
-            Assert.IsFalse(m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 0))).Accepted, "이미 막힌 칸");
+            Assert.IsFalse(m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 0), 0f)).Accepted, "이미 막힌 칸");
         }
 
         [Test]
@@ -101,11 +101,10 @@ namespace Wassup.Tests.EditMode.Core
     
         // ── unit 7d — 부서지면 터진다(옛 `BarrelExplosionSystem`) ──────────────
 
-        private static BattleMatch Barrel(float explode, out int blastDef)
+        private static BattleMatch Barrel(out int blastDef)
         {
             var def = Def(hp: 10f, decay: 0f);
             blastDef = CoreTriggerFixtures.AddBlastProjectile(def);
-            def.BlockingHazards[0].ExplodeDamage = explode;
             def.BlockingHazards[0].ExplodeTileRange = 1;
             def.BlockingHazards[0].ExplodeProjectileDefIndex = blastDef;
             def.ConfigHash = def.ComputeConfigHash();
@@ -115,9 +114,10 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         public void 폭발_저작이_있는_길막은_부서지는_틱에_그_칸에서_적만_때리는_즉발_광역을_낸다()
         {
-            var m = Barrel(explode: 40f, out _);
+            const float explode = 40f;
+            var m = Barrel(out _);
             var spawned = CoreCombatFixtures.Listen(m, CoreEventKind.ProjectileSpawned);
-            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 2), explode));   // U10 — 폭발 피해는 세우는 쪽이 싣는다
             var barrel = CoreCombatFixtures.First(m, UnitKind.BlockingHazard);
             var barrelId = barrel.Id;   // 개체는 풀로 돌아가면 비워진다 — id 를 먼저 쥔다
             barrel.Inbox.Damage.Add(new DamageEntry { Amount = 100f, Source = SimEntityId.None });
@@ -125,7 +125,7 @@ namespace Wassup.Tests.EditMode.Core
 
             Assert.AreEqual(1, spawned.Count);
             var e = spawned[0];
-            Assert.AreEqual(40f, e.Amount, 1e-4f);
+            Assert.AreEqual(explode, e.Amount, 1e-4f);
             Assert.AreEqual(0f, e.SiteFired.OriginBody, 1e-6f, "자리에 떨어지는 것 — 몸 0");
             Assert.AreEqual(new int2(5, 2), m.Map.CellOf(e.SiteTarget.Pos), "그 칸 중심");
             Assert.AreEqual(barrelId, e.B, "처치 귀속 = 그 설치물(옛 처치 점수는 킬러를 안 봤다 — 출처가 없으면 점수가 사라진다)");
@@ -134,9 +134,9 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         public void 폭발_저작이_없는_길막은_부서져도_안_터진다()
         {
-            var m = Barrel(explode: 0f, out _);
+            var m = Barrel(out _);
             var spawned = CoreCombatFixtures.Listen(m, CoreEventKind.ProjectileSpawned);
-            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnBlocker(0, new int2(5, 2), 0f));
             CoreCombatFixtures.First(m, UnitKind.BlockingHazard).Inbox.Damage.Add(new DamageEntry { Amount = 100f });
             CoreCombatFixtures.Tick(m, 2);
             Assert.IsEmpty(spawned, "기존 길막 무회귀");

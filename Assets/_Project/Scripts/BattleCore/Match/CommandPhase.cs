@@ -267,14 +267,15 @@ namespace Wassup.BattleCore
         {
             if (_map != null && !_map.Snapshot.InBounds(cmd.Cell)) return Receipt.Reject(RejectReason.OutOfBounds);
             var h = HazardSpawn.Spawn(_world, _map, _def, cmd.HazardDefIndex, cmd.Cell,
-                                      SimEntityId.None, cmd.HazardFaction, targetLayers: 0, tick: tick);
+                                      SimEntityId.None, cmd.HazardFaction, targetLayers: 0, tick: tick,
+                                      dotDamage: cmd.Magnitude);
             return h != null ? Receipt.Ok : Receipt.Reject(RejectReason.InvalidUnit);
         }
 
         private Receipt DebugBlocker(in Command cmd, int tick)
         {
             var u = BlockerSpawn.TrySpawn(_world, _map, _def, cmd.HazardDefIndex, cmd.Cell, tick,
-                                          out var reason);
+                                          cmd.Magnitude, out var reason);
             if (u != null) return Receipt.Ok;
             switch (reason)
             {

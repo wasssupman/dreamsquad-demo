@@ -110,7 +110,7 @@ namespace Wassup.BattleCore
         public string Id;
         /// <summary>이 패턴이 쏘는 탄(`MatchDefinition.Projectiles` 인덱스). -1 = 미저작.</summary>
         public int BarrelProjectileDefIndex;
-        public float Damage;
+        // skill-data-table 1b(U10) — 피해 칸 없음. 스킬 경로의 탄 피해 = 그 명세를 쓰는 **효과 줄** `EffectDef.Damage`.
         public int Selection;   // `PatternSelectionRule`
         public float MinAngleDeg;
         public float MaxAngleDeg;
@@ -133,7 +133,6 @@ namespace Wassup.BattleCore
         {
             MatchDefinition.Put(sb, "id", Id);
             MatchDefinition.Put(sb, "barrel", BarrelProjectileDefIndex, inv);
-            MatchDefinition.Put(sb, "damage", Damage, inv);
             MatchDefinition.Put(sb, "selection", Selection, inv);
             MatchDefinition.Put(sb, "minAngleDeg", MinAngleDeg, inv);
             MatchDefinition.Put(sb, "maxAngleDeg", MaxAngleDeg, inv);

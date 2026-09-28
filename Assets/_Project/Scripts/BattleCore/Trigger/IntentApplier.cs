@@ -329,8 +329,8 @@ namespace Wassup.BattleCore.Trigger
             inst.EnsureCapacity(shots);
             inst.PatternDefIndex = pat;
             inst.LockedTarget = SimEntityId.None;
-            // ⚠ 스킬 경로의 탄 피해 = **패턴 저작 피해**(보스·스킬 경로의 값 — 평타 연발은 공격 실효값을 쓴다).
-            inst.Damage = _def.Patterns[pat].Damage;
+            // ⚠ 스킬 경로의 탄 피해 = **효과 줄의 피해**(U10 — 명세는 모양만. 평타 연발은 공격 실효값을 쓴다).
+            inst.Damage = _binding.Effect.Damage;
             inst.FromSkill = true;
             // 조준이 필요한 패턴(방향 바인딩)은 스킬이 정한 방향·사거리로 나간다(옛 템플릿 origin/direction/maxDistance).
             inst.AimDirection = i.DirectionXZ;
@@ -356,8 +356,10 @@ namespace Wassup.BattleCore.Trigger
         private void SpawnZone(in SimIntent i)
         {
             var src = U(i.Source);
+            // U10 — 장판의 DoT 피해 = 까는 효과 줄의 피해(장판 줄은 모양·비피해 수치만).
             var h = HazardSpawn.Spawn(_world, _map, _def, i.DataIndex, i.Cell, Id(i.Source),
-                                      src != null ? src.Faction : _casterFaction, i.TargetTraversalLayers, Tick);
+                                      src != null ? src.Faction : _casterFaction, i.TargetTraversalLayers, Tick,
+                                      _binding != null ? _binding.Effect.Damage : 0f);
             if (h == null) Warn($"[Intent] 장판 줄 {i.DataIndex} 이 없다 — 깔지 않는다.");
         }
 

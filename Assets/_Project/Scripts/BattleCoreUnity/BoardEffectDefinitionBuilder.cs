@@ -81,7 +81,8 @@ namespace Wassup.BattleCoreUnity
                     outEff[e] = new HazardEffectDef
                     {
                         Kind = (int)ToCoreEffectKind(he.kind),
-                        Magnitude = he.param1,
+                        // U10 — DoT 의 크기는 까는 효과 줄이 싣는다(`TryDotDamage`). 장판 줄에는 비피해 수치만.
+                        Magnitude = he.kind == CcKind.DoT ? 0f : he.param1,
                         RestDuration = he.restDuration,
                         TickInterval = he.tickInterval,
                         Element = (int)ToCoreDotElement(he.element),
@@ -99,6 +100,20 @@ namespace Wassup.BattleCoreUnity
                 };
             }
             return rows;
+        }
+
+        /// <summary>
+        /// skill-data-table 1b(U10) — 그 장판 SO 의 DoT 피해(DoT 하위 효과의 `param1` · 없으면 0). 효과 줄 피해 칸은 하나라
+        /// DoT 가 둘 이상이면 false. 빌더(`SpawnHazard` 효과)와 디버그 메뉴가 같은 값을 읽는다.
+        /// </summary>
+        public static bool TryDotDamage(HazardSO so, out float damage)
+        {
+            damage = 0f;
+            if (so?.effects == null) return true;
+            int n = 0;
+            foreach (var he in so.effects)
+                if (he.kind == CcKind.DoT) { damage = he.param1; n++; }
+            return n <= 1;
         }
 
         public static HazardShapeKind ToCoreShape(HazardShape authored)
@@ -199,7 +214,7 @@ namespace Wassup.BattleCoreUnity
                 }
                 else
                 {
-                    d.ExplodeDamage = so.explodeDamage;
+                    // U10 — 폭발 **피해**는 세우는 효과 줄이 싣는다(`BindPattern`). 이 줄은 폭발 탄·반경만.
                     // 폭발 탄이 **공격 표에 이미 있으면** 그 줄이다. 없으면 -1 로 남는다 — 폭발의 발사와
                     // 그 탄의 표 편입은 사망 seam 과 함께 unit 7 이 연다(그 전엔 폭발이 안 난다).
                     d.ExplodeProjectileDefIndex = IndexOfProjectile(projectileRows, so.explodeProjectile);

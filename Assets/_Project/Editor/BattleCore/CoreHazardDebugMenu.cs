@@ -58,7 +58,9 @@ namespace Wassup.EditorTools.BattleCore
             var map = driver.Match.Map;
             int2 requested = MouseCellOrFallback(driver);
             int2 cell = NearestPathCell(map, requested);
-            var receipt = driver.Apply(Command.DebugSpawnHazard(row, cell));
+            // U10 — 장판 줄에는 피해가 없다. 디버그 깔기는 그 장판 SO 의 DoT 값을 명령에 싣는다(라이브는 까는 효과 줄이 싣는다).
+            BoardEffectDefinitionBuilder.TryDotDamage(driver.ViewAssets.Hazard(row), out float dot);
+            var receipt = driver.Apply(Command.DebugSpawnHazard(row, cell, dot));
             if (!receipt.Accepted)
             {
                 Debug.LogWarning($"[CoreHazardDebug] 장판 '{def.Hazards[row].Id}' 거절 ({cell.x},{cell.y}) — {receipt.Reason}");
@@ -84,6 +86,9 @@ namespace Wassup.EditorTools.BattleCore
             int2 requested = MouseCellOrFallback(driver);
             // 가까운 칸부터 코어가 받아 줄 때까지. **판정은 코어의 것**이고 여기는 자리만 바꿔 본다.
             Receipt last = Receipt.Ok;
+            // U10 — 길막 줄에는 폭발 피해가 없다. 디버그 세우기는 그 길막 SO 의 값을 명령에 싣는다.
+            var so = driver.ViewAssets.Blocker(row);
+            float explode = so != null ? so.explodeDamage : 0f;
             for (int ring = 0; ring <= 6; ring++)
                 for (int dy = -ring; dy <= ring; dy++)
                     for (int dx = -ring; dx <= ring; dx++)
@@ -91,7 +96,7 @@ namespace Wassup.EditorTools.BattleCore
                         if (math.max(math.abs(dx), math.abs(dy)) != ring) continue;
                         var c = requested + new int2(dx, dy);
                         if (!map.InBounds(c)) continue;
-                        last = driver.Apply(Command.DebugSpawnBlocker(row, c));
+                        last = driver.Apply(Command.DebugSpawnBlocker(row, c, explode));
                         if (!last.Accepted) continue;
                         Debug.Log($"[CoreHazardDebug] 길막 '{def.BlockingHazards[row].Id}' 섬 ({c.x},{c.y})"
                             + (ring == 0 ? "" : $" · 요청 ({requested.x},{requested.y}) 근처") +

@@ -35,7 +35,7 @@ namespace Wassup.Tests.EditMode.Core
             {
                 new PatternDef
                 {
-                    Id = "fixture_pattern", BarrelProjectileDefIndex = 0, Damage = 7f,
+                    Id = "fixture_pattern", BarrelProjectileDefIndex = 0,
                     Shots = new[] { new PatternShotDef { DirectionT = 0.5f } },
                 },
             };
@@ -147,13 +147,14 @@ namespace Wassup.Tests.EditMode.Core
         {
             var probe = new ProbeSkill();
             var rule = Probe(TriggerKind.None, probe);
+            rule.Effect.Damage = 7f;   // U10 — 스킬 경로의 탄 피해는 규칙이 가리키는 효과 줄에 있다
             var b = CoreTriggerFixtures.AttachRuntime(_m, _d, rule, 0);
             _m.Intents.Begin(b, _d.Faction, null);
             Apply(new SimIntent { Kind = SimIntentKind.EmitPattern, Source = S(_d), PatternIndex = 0 });
             _m.Intents.End();
             Assert.AreEqual(1, b.Emitters.Count);
             Assert.IsTrue(b.Emitters[0].Active);
-            Assert.AreEqual(7f, b.Emitters[0].Instance.Damage, "스킬 경로 = 패턴 저작 피해");
+            Assert.AreEqual(7f, b.Emitters[0].Instance.Damage, "스킬 경로 = 효과 줄의 피해(U10)");
             var spawned = CoreCombatFixtures.Listen(_m, CoreEventKind.ProjectileSpawned);
             _m.Tick(); _m.Tick();
             Assert.AreEqual(1, spawned.Count);

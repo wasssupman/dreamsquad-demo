@@ -117,7 +117,7 @@ namespace Wassup.Tests.EditMode.Core
             {
                 new PatternDef
                 {
-                    Id = "fixture_cannon_strike", BarrelProjectileDefIndex = 0, Damage = 200f,
+                    Id = "fixture_cannon_strike", BarrelProjectileDefIndex = 0,
                     Selection = (int)Wassup.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin,
                     Shots = new[] { new PatternShotDef { DirectionT = 0.5f } },
                     ReselectPerShot = true, TelegraphSec = 0.4f, ScopeTileRange = 3,
@@ -126,6 +126,7 @@ namespace Wassup.Tests.EditMode.Core
             };
             var rule = Rule(TriggerKind.OnPlace, EffectKind.EmitProjectilePattern);
             rule.Effect.PatternDefIndex = 0;
+            rule.Effect.Damage = 200f;   // U10 — 탄 피해 = 효과 줄의 피해
             GiveUnit(def, 0, rule);
             var m = CoreMatchFixtures.BeginBattle(def);
             var cells = new[] { new int2(4, 1), new int2(5, 1), new int2(4, 2), new int2(5, 3), new int2(6, 2) };

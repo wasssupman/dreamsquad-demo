@@ -47,7 +47,6 @@ namespace Wassup.Tests.EditMode.Core
                 {
                     Id = "fixture_volley",
                     BarrelProjectileDefIndex = 0,
-                    Damage = 0f,
                     Selection = (int)PatternSelectionRule.None,
                     MinAngleDeg = -20f,
                     MaxAngleDeg = 20f,

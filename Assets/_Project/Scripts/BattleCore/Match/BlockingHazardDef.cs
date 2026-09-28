@@ -50,8 +50,8 @@ namespace Wassup.BattleCore
         /// </summary>
         public float DecayPerSec;
 
-        /// <summary>부서질 때 낼 광역 피해. 0 = 폭발 없음. **발사는 unit 7 의 사망 seam** 이다.</summary>
-        public float ExplodeDamage;
+        // skill-data-table 1b(U10) — 폭발 **피해**는 여기 없다. 세운 탄의 피해(= 그 명세를 쓰는 효과 줄 `EffectDef.Damage`)를
+        // 설치물이 들고(`Unit.BlockerExplodeDamage`) 부서질 때 낸다. 0 = 폭발 없음. 이 줄은 모양·반경·폭발 탄만.
 
         /// <summary>폭발 반경(칸).</summary>
         public int ExplodeTileRange;
@@ -96,7 +96,6 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "maxHealth", MaxHealth, inv);
             MatchDefinition.Put(sb, "shape", Shape, inv);
             MatchDefinition.Put(sb, "decayPerSec", DecayPerSec, inv);
-            MatchDefinition.Put(sb, "explodeDamage", ExplodeDamage, inv);
             MatchDefinition.Put(sb, "explodeTileRange", ExplodeTileRange, inv);
             MatchDefinition.Put(sb, "explodeTargetCap", ExplodeTargetCap, inv);
             MatchDefinition.Put(sb, "explodeProjectileDef", ExplodeProjectileDefIndex, inv);

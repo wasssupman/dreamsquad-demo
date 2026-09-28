@@ -73,7 +73,9 @@ namespace Wassup.Tests.EditMode
             int exploding = 0;
             foreach (var b in def.BlockingHazards)
             {
-                if (b.ExplodeDamage <= 0f) continue;
+                // U10 — 폭발 **피해**는 효과 줄에 있다(길막 줄은 폭발 탄·반경만). 폭발 탄이 배선된 줄이 폭발 길막이다 —
+                // 탄이 표 밖이면 빌더가 오류를 낸다(`ToBlockingHazardDef` · Unity 러너는 예상 밖 오류 로그를 실패로 친다).
+                if (b.ExplodeProjectileDefIndex < 0) continue;
                 exploding++;
                 Assert.GreaterOrEqual(b.ExplodeProjectileDefIndex, 0, b.Id + " — 폭발 탄이 표 밖이면 부서져도 안 터진다");
                 Assert.Less(b.ExplodeProjectileDefIndex, def.Projectiles.Length);

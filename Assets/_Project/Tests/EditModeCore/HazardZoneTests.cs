@@ -30,10 +30,12 @@ namespace Wassup.Tests.EditMode.Core
         private static HazardEffectDef Slow(float mul, float rest, int factions = (int)Faction.EnemyUnit)
             => new HazardEffectDef { Kind = (int)HazardEffectKind.Slow, Magnitude = mul, RestDuration = rest, TargetFactions = factions };
 
-        private static HazardEffectDef Burn(float dps, float rest)
+        // skill-data-table 1b(U10) — DoT 하위 효과는 크기를 들지 않는다(원소 · 여유 · 주기만). 피해는 까는 쪽이 싣는다 —
+        // 여기서는 디버그 명령의 값(`DebugSpawnHazard(…, dotDamage)`).
+        private static HazardEffectDef Burn(float rest)
             => new HazardEffectDef
             {
-                Kind = (int)HazardEffectKind.DoT, Magnitude = dps, RestDuration = rest,
+                Kind = (int)HazardEffectKind.DoT, RestDuration = rest,
                 Element = (int)DotElement.Fire, TargetFactions = (int)Faction.EnemyUnit,
             };
 
@@ -58,7 +60,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = Def(new HazardDef { Id = "bad", Shape = 99, Lifetime = 5f, Effects = new[] { Slow(0.5f, 1f) } });
             var m = CoreMatchFixtures.BeginBattle(def);
             var grunt = SpawnGrunt(m, new int2(5, 2));
-            Assert.IsTrue(m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2))).Accepted);
+            Assert.IsTrue(m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), 0f)).Accepted);
             m.Tick();
             Assert.AreEqual(1, m.World.Hazards.Count);
             Assert.IsFalse(grunt.Modifiers.Any);
@@ -74,7 +76,7 @@ namespace Wassup.Tests.EditMode.Core
             var outside = SpawnGrunt(m, new int2(5, 2));
             outside.Position = inside.Position + new float3(0.8f, 0f, 0f);
             inside.Position += new float3(0.7f, 0f, 0f);
-            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), 0f));
             m.Tick();
 
             Assert.AreEqual(0.5f, inside.Modifiers.Effective.MoveSpeedMul, 1e-5f, "0.7 < 0.75 — 안");
@@ -87,7 +89,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = Def(Zone(HazardShapeKind.Square3x3, 10f, Slow(0.5f, 0.2f)));
             var m = CoreMatchFixtures.BeginBattle(def);
             var grunt = SpawnGrunt(m, new int2(5, 2));
-            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), 0f));
             m.Tick();
 
             Assert.IsFalse(grunt.Cc.Any, "행동 불능 슬롯이 아니다");
@@ -106,7 +108,7 @@ namespace Wassup.Tests.EditMode.Core
             var def = Def(Zone(HazardShapeKind.SingleCell, 30f, Slow(0.5f, rest)));
             var m = CoreMatchFixtures.BeginBattle(def);
             var grunt = SpawnGrunt(m, new int2(5, 2));
-            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), 0f));
 
             CoreCombatFixtures.Tick(m, 60);   // 1초 — 총 지속으로 읽었다면 이미 꺼졌다
             Assert.AreEqual(0.5f, grunt.Modifiers.Effective.MoveSpeedMul, 1e-5f, "서 있는 동안은 계속 걸려 있다");
@@ -123,11 +125,11 @@ namespace Wassup.Tests.EditMode.Core
         public void 증상_장판_위의_적은_초당_저작값만큼_타고_나가면_멈춘다()
         {
             const float dps = 10f;
-            var def = Def(Zone(HazardShapeKind.SingleCell, 30f, Burn(dps, 0.2f)));
+            var def = Def(Zone(HazardShapeKind.SingleCell, 30f, Burn(0.2f)));
             var m = CoreMatchFixtures.BeginBattle(def);
             var grunt = SpawnGrunt(m, new int2(5, 2));
             float start = grunt.Health;
-            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), dps));
 
             CoreCombatFixtures.Tick(m, 120);   // 2초
             Assert.AreEqual(start - dps * 2f, grunt.Health, 0.5f, "초당 저작값만큼 준다");
@@ -142,10 +144,10 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         public void 지속_피해의_출처는_언제나_장판이다()
         {
-            var def = Def(Zone(HazardShapeKind.SingleCell, 30f, Burn(5f, 0.2f)));
+            var def = Def(Zone(HazardShapeKind.SingleCell, 30f, Burn(0.2f)));
             var m = CoreMatchFixtures.BeginBattle(def);
             var grunt = SpawnGrunt(m, new int2(5, 2));
-            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), 5f));
             m.Tick();
             Assert.AreEqual(1, grunt.Dot.Count);
             Assert.AreEqual(DotOrigin.Zone, grunt.Dot.Slots[0].Origin, "F16");
@@ -161,7 +163,7 @@ namespace Wassup.Tests.EditMode.Core
             m.Apply(Command.DebugSpawnDefender(0, new int2(5, 2)));
             var defender = CoreCombatFixtures.First(m, UnitKind.Defender);
             var grunt = SpawnGrunt(m, new int2(5, 1));
-            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), 0f));
             m.Tick();
             Assert.IsFalse(defender.Modifiers.Any, "적 전용 저작 — 방어유닛 무영향");
             Assert.IsTrue(grunt.Modifiers.Any);
@@ -171,7 +173,7 @@ namespace Wassup.Tests.EditMode.Core
             var m2 = CoreMatchFixtures.BeginBattle(def2);
             m2.Apply(Command.DebugSpawnDefender(0, new int2(5, 2)));
             var d2 = CoreCombatFixtures.First(m2, UnitKind.Defender);
-            m2.Apply(Command.DebugSpawnHazard(0, new int2(5, 2)));
+            m2.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), 0f));
             m2.Tick();
             Assert.IsTrue(d2.Modifiers.Any, "진영 비트가 곧 대상이다");
         }
@@ -186,8 +188,8 @@ namespace Wassup.Tests.EditMode.Core
                 var def = Def(strongFirst ? new[] { strong, weak } : new[] { weak, strong });
                 var m = CoreMatchFixtures.BeginBattle(def);
                 var grunt = SpawnGrunt(m, new int2(5, 2));
-                m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2)));
-                m.Apply(Command.DebugSpawnHazard(1, new int2(5, 2)));
+                m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), 0f));
+                m.Apply(Command.DebugSpawnHazard(1, new int2(5, 2), 0f));
                 m.Tick();
                 Assert.AreEqual(1, grunt.Modifiers.Count, "한 슬롯을 나눠 쓴다 — 곱으로 쌓이지 않는다");
                 Assert.AreEqual(0.5f, grunt.Modifiers.Effective.MoveSpeedMul, 1e-5f, $"strongFirst={strongFirst}");
@@ -202,7 +204,7 @@ namespace Wassup.Tests.EditMode.Core
             var spawned = CoreCombatFixtures.Listen(m, CoreEventKind.HazardSpawned);
             var gone = CoreCombatFixtures.Listen(m, CoreEventKind.HazardDestroyed);
             var grunt = SpawnGrunt(m, new int2(5, 2));
-            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2)));
+            m.Apply(Command.DebugSpawnHazard(0, new int2(5, 2), 0f));
             Assert.AreEqual(1, spawned.Count);
             Assert.AreEqual(0f, spawned[0].SiteFired.OriginBody, "자리형 — 몸이 없다(제약 13)");
 
@@ -225,7 +227,7 @@ namespace Wassup.Tests.EditMode.Core
             var m = CoreMatchFixtures.BeginBattle(def);
             var grunt = SpawnGrunt(m, new int2(5, 2));
             var h = HazardSpawn.Spawn(m.World, m.Map, def, 0, new int2(5, 2), SimEntityId.None,
-                                      Faction.DefenderUnit, targetLayers: 0x80, tick: 0);
+                                      Faction.DefenderUnit, targetLayers: 0x80, tick: 0, dotDamage: 0f);
             Assert.NotNull(h);
             m.Tick();
             Assert.IsFalse(grunt.Modifiers.Any, "다른 층만 거르는 장판은 안 먹는다");
@@ -239,14 +241,14 @@ namespace Wassup.Tests.EditMode.Core
         {
             ulong Run()
             {
-                var def = Def(Zone(HazardShapeKind.Square3x3, 1.5f, Slow(0.5f, 0.2f), Burn(8f, 0.2f)),
-                              Zone(HazardShapeKind.SingleCell, 3f, Burn(4f, 0.5f)));
+                var def = Def(Zone(HazardShapeKind.Square3x3, 1.5f, Slow(0.5f, 0.2f), Burn(0.2f)),
+                              Zone(HazardShapeKind.SingleCell, 3f, Burn(0.5f)));
                 def.Enemies[0].MoveSpeed = 1.5f;
                 var m = CoreMatchFixtures.BeginBattle(def);
                 m.Apply(Command.DebugSpawnEnemyInLane(0, 0));
                 m.Apply(Command.DebugSpawnEnemyInLane(0, 1));
-                m.Apply(Command.DebugSpawnHazard(0, new int2(2, 1)));
-                m.Apply(Command.DebugSpawnHazard(1, new int2(3, 3)));
+                m.Apply(Command.DebugSpawnHazard(0, new int2(2, 1), 8f));
+                m.Apply(Command.DebugSpawnHazard(1, new int2(3, 3), 4f));
                 CoreCombatFixtures.Tick(m, 240);
                 return m.World.StateHash();
             }
@@ -267,8 +269,8 @@ namespace Wassup.Tests.EditMode.Core
 
             var schedule = new CommandSchedule()
                 .Add(0, Command.FinishPlacement())
-                .Add(1, Command.DebugSpawnHazard(0, new int2(5, 2)))
-                .Add(2, Command.DebugSpawnBlocker(0, new int2(5, 0)));
+                .Add(1, Command.DebugSpawnHazard(0, new int2(5, 2), 0f))
+                .Add(2, Command.DebugSpawnBlocker(0, new int2(5, 0), 0f));
 
             var a = CoreHarness.Run(def, schedule, 60, "board-debug");
             foreach (var r in a.Receipts) Assert.IsTrue(r.Accepted, r.Reason.ToString());

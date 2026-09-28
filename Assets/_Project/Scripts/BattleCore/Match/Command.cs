@@ -484,10 +484,12 @@ namespace Wassup.BattleCore
         /// 존 장판 하나를 `cell` 에 깐다. `faction` 은 **깐 쪽**이다(사건이 값으로 나른다) —
         /// 누가 맞는지는 저작의 `TargetFactions` 가 정하고 이 값과 무관하다.
         /// </summary>
-        public static Command DebugSpawnHazard(int hazardDefIndex, int2 cell,
+        /// `dotDamage` = 그 장판의 DoT 피해(U10 — 장판 줄에는 피해가 없다. 라이브에서는 까는 효과 줄이 싣는다). 0 = DoT 없음.
+        public static Command DebugSpawnHazard(int hazardDefIndex, int2 cell, float dotDamage,
                                                Faction faction = Faction.DefenderUnit) => new Command
         {
             Kind = CommandKind.DebugSpawnHazard,
+            Magnitude = dotDamage,
             DefIndex = -1,
             HazardDefIndex = hazardDefIndex,
             Cell = cell,
@@ -497,10 +499,11 @@ namespace Wassup.BattleCore
             HazardFaction = faction,
         };
 
-        /// <summary>길막 설치물 하나를 `cell` 에 세운다.</summary>
-        public static Command DebugSpawnBlocker(int blockerDefIndex, int2 cell) => new Command
+        /// <summary>길막 설치물 하나를 `cell` 에 세운다. `explodeDamage` = 부서질 때의 폭발 피해(U10 — 길막 줄에는 피해가 없다). 0 = 안 터진다.</summary>
+        public static Command DebugSpawnBlocker(int blockerDefIndex, int2 cell, float explodeDamage) => new Command
         {
             Kind = CommandKind.DebugSpawnBlocker,
+            Magnitude = explodeDamage,
             DefIndex = -1,
             HazardDefIndex = blockerDefIndex,
             Cell = cell,

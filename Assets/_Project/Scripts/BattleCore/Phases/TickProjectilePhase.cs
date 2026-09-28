@@ -1047,8 +1047,8 @@ namespace Wassup.BattleCore
             return true;
         }
 
-        // 길막 설치물을 세운다. **피해는 0 이다** — 배럴은 폭탄이 아니라 물건이고,
-        // 터지는 것은 부서질 때다(그 폭발은 unit 7 의 사망 seam 이 낸다).
+        // 길막 설치물을 세운다. **착탄 피해는 0 이다** — 배럴은 폭탄이 아니라 물건이고, 터지는 것은 부서질 때다(사망 seam).
+        // U10 — 탄에 실린 피해(= 효과 줄 `EffectDef.Damage`)가 그 **폭발 피해**가 되어 설치물에 실린다.
         private void ResolveSpawnBlocker(TickContext ctx, Projectile p)
         {
             // unit 6b — 정의 줄이 있으면 **그 문**(`BlockerSpawn`)으로 세운다: 자리 검증(골·막힌
@@ -1057,7 +1057,7 @@ namespace Wassup.BattleCore
             if (row >= 0)
             {
                 var cell = _map != null ? _map.CellOf(p.Impact) : new int2((int)p.Impact.x, (int)p.Impact.z);
-                if (BlockerSpawn.TrySpawn(ctx.World, _map, ctx.Def, row, cell, ctx.Tick, out var why) == null)
+                if (BlockerSpawn.TrySpawn(ctx.World, _map, ctx.Def, row, cell, ctx.Tick, p.Damage, out var why) == null)
                     ctx.Warn($"[TickProjectile] 길막 거절 ({cell.x},{cell.y}) — {why}");
             }
             else if (p.BlockerHealth > 0f)

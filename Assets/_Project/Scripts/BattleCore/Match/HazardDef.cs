@@ -46,8 +46,9 @@ namespace Wassup.BattleCore
         public int Kind;
 
         /// <summary>
-        /// 크기. `Slow` = 이동속도 배율 · `DoT` = 틱당 피해(주기 0 이면 DPS) ·
-        /// 군중 제어 = 세기(오늘 소비처 없음 — 지속만 쓴다).
+        /// **비피해** 크기. `Slow` = 이동속도 배율 · 군중 제어 = 세기(오늘 소비처 없음 — 지속만 쓴다).
+        /// ⚠ `DoT` 는 이 칸을 읽지 않는다(skill-data-table 1b · U10) — 피해는 까는 효과 줄이 싣고 장판 개체가 든다
+        /// (`Hazard.DotDamage`). 빌더는 DoT 에 0 을 쓴다.
         /// </summary>
         public float Magnitude;
 

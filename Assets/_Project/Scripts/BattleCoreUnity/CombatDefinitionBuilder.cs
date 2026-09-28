@@ -570,7 +570,6 @@ namespace Wassup.BattleCoreUnity
             {
                 Id = p.id,
                 BarrelProjectileDefIndex = IndexOf(projectiles, p.barrel),
-                Damage = p.damage,
                 Selection = (int)ToCoreSelection(p.selection),
                 MinAngleDeg = p.minAngleDeg,
                 MaxAngleDeg = p.maxAngleDeg,
