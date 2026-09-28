@@ -163,9 +163,13 @@ namespace Wassup.BattleCore.Trigger
                 case EffectKind.RecallAttachedToFront: return false;   // 손패 동작
                 case EffectKind.AreaBarrage: return false;             // 발사 명세로 이관
                 case EffectKind.SelfWarmupBuff: return false;          // 죽은 값
-                default: return true;
+                default: return !IsActiveCast(kind);                     // 액티브 시전 — 카드 빌더가 실행자를 id 로 고른다
             }
         }
+
+        /// <summary>skill-data-table unit 4 — 액티브 시전 효과(`EffectKind.ActiveMeteor` ~ `ActivePortal`). 시전(`TriggerKind.Cast`)과만 짝이다.</summary>
+        public static bool IsActiveCast(EffectKind kind)
+            => kind >= EffectKind.ActiveMeteor && kind <= EffectKind.ActivePortal;
 
         /// <summary>
         /// 부착 즉시(`trigger == None`) **에서만** 유효한 payload. ⚠ 면제가 아니라 **거절 사유**다 —

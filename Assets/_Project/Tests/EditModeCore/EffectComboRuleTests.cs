@@ -169,6 +169,27 @@ namespace Wassup.Tests.EditMode.Core
             Assert.Greater(checkedCombos, 0);
         }
 
+        // skill-data-table unit 4 — 시전(액티브 카드). 시전 ⇔ 액티브 효과 · 주인 없는 시전이라 비율형은 기준 없음 · 숙주 사실은 안 본다.
+        [Test]
+        public void 시전은_액티브_효과와만_짝이고_비율형은_기준이_없다()
+        {
+            for (var k = EffectKind.ActiveMeteor; k <= EffectKind.ActivePortal; k++)
+            {
+                var cast = new EffectCombo { Trigger = TriggerKind.Cast, Payload = k, CastHasNoOwner = true };
+                Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(in cast), k.ToString());
+                var enemy = cast; enemy.HostIsEnemy = true; enemy.BindsAfterPlacement = true; enemy.HostCannotHoldAggro = true;
+                Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(in enemy), k + " — 숙주 사실은 시전을 가르지 않는다");
+                var ratio = cast; ratio.Magnitude = MagnitudeMode.OwnerStatRatio;
+                Assert.AreEqual(ComboVerdict.NoRatioBasis, EffectComboRule.Check(in ratio), k + " — 주인 없는 시전");
+                var onEvent = new EffectCombo { Trigger = TriggerKind.AttackN, Payload = k };
+                Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(in onEvent), k + " — 액티브 효과는 사건에 못 단다");
+                Assert.IsFalse(SkillRouting.IsSkill(k), k + " — 라우팅 표 밖(실행자는 카드 빌더가 id 로)");
+            }
+            var castTap = new EffectCombo { Trigger = TriggerKind.Cast, Payload = EffectKind.ProjectileToTarget };
+            Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(in castTap), "시전은 액티브 효과만");
+            Assert.IsFalse(SkillRouting.HasDetector(TriggerKind.Cast, false), "시전은 사건이 아니다 — 감지자 없음");
+        }
+
         [Test]
         public void 사유_문안은_셋이다()
         {

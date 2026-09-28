@@ -23,9 +23,14 @@ namespace Wassup.BattleCore.Trigger
         OnRetire = 8,
         /// <summary>배치 활성화 엣지. **`Periodic` seam 을 탄다**(S1).</summary>
         OnPlace = 9,
+        /// <summary>
+        /// skill-data-table unit 4 — **시전**(액티브 카드 · 플레이어 입력). 사건이 아니라 감지자가 없다 — 저작 · 검증 어휘다.
+        /// 정의표의 규칙 줄에는 실리지 않는다(카드 빌더가 `None` + `UntilFireCap` 으로 굽는다 · 해시 무변).
+        /// </summary>
+        Cast = 10,
     }
 
-    /// <summary>「무엇을」 — 효과 종류(0~32 = 33값). 저작이 직접 든다. 옛 이름 `TriggerPayload`.</summary>
+    /// <summary>「무엇을」 — 효과 종류(0~38 = 39값 · 33~38 = 액티브 시전 6). 저작이 직접 든다. 옛 이름 `TriggerPayload`.</summary>
     public enum EffectKind : byte
     {
         None = 0,
@@ -66,6 +71,15 @@ namespace Wassup.BattleCore.Trigger
         AreaApplyStack = 30,
         AreaCc = 31,
         AreaDot = 32,
+        // skill-data-table unit 4 — **액티브 시전 6**(옛 `SkillData.effect` 의 `SkillEffectType` 1:1 · `tables.md` §3). 트리거가 아니라
+        // 시전(`TriggerKind.Cast`)과만 짝이다(`EffectComboRule` ⓪). 라우팅 표 밖 — 실행자는 카드 빌더가 레지스트리 id 로 고르고
+        // 정의표 효과 줄의 종류는 옛 굽기처럼 `None` 으로 남긴다(해시 무변).
+        ActiveMeteor = 33,
+        ActiveSlowField = 34,
+        ActivePowerSurge = 35,
+        ActiveRapidFire = 36,
+        ActiveTornado = 37,
+        ActivePortal = 38,
     }
 
     /// <summary>게이트 종류 — 저작이 직접 든다.</summary>

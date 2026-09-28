@@ -61,6 +61,13 @@ namespace Wassup.BattleCore.Trigger
     {
         public static ComboVerdict Check(in EffectCombo c)
         {
+            // ⓪ 시전(skill-data-table unit 4) — 액티브 카드는 사건이 아니라 **플레이어 입력**이다(감지자 없음). 시전 ⇔ 액티브 효과,
+            //    그리고 주인 없는 시전이라 비율형의 기준 스탯이 없다(계약 9). 숙주 사실(진영 · 부착 시점 · 가디언)은 보지 않는다.
+            if (c.Trigger == TriggerKind.Cast || SkillRouting.IsActiveCast(c.Payload))
+            {
+                if (c.Trigger != TriggerKind.Cast || !SkillRouting.IsActiveCast(c.Payload)) return ComboVerdict.ShapeMismatch;
+                return c.Magnitude == MagnitudeMode.OwnerStatRatio ? ComboVerdict.NoRatioBasis : ComboVerdict.Allowed;
+            }
             // ① 그 숙주에게 그 사건이 없다(적 × 배치·퇴근 · 트리거 없음) — 감지자 표가 정본이다.
             //    ⚠ 주체 `Any` 의 사건 주인은 숙주가 아니라 **남**(배치된 방어유닛)이다 — 숙주 종류로 감지자를 묻지 않는다
             //    (skill-data-table unit 2 — 적 숙주의 「남의 배치」를 영영 안 터진다고 오판하던 결함. 코어는 터진다).
