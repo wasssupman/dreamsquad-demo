@@ -38,3 +38,6 @@
 - U20: 적 소유 줄 × 튕김 → import 거절 테스트 · 방어유닛 소유 줄 × 튕김 → 통과.
 - 액티브 쿨다운: `Cards.cooldown_sec` 를 고치면 굽기 값과 카드 문안이 같이 바뀐다(테스트).
 - EditMode 아웃게임 · Assets lane 초록(알려진 빨강 외 0).
+- 구현 2026-09-29(에이전트 · 시트 쓰기 0 · 에셋 무변) — `609a52ef3` 스탯 탭 스네이크(Defenders · Enemies · CostConfig) · `18de2e81f` DC 탭(`DcCards` → `Cards` · 새 칸 `host_kinds` · `cooldown_sec` · `needs_two_tiles` · 평면 탭 diff 줄 · `DcSkills` 수치 칸 삭제(+ `cost` — 아무도 안 읽는다) · 스네이크 · 정보 열 `_skill_id` · `_effect` · push 헤더 시드 = JSON 이름 · 에디터 prefs `.v4`) · `e2a29fe35` `Skills` = 종류가 쓰는 칸만(export) · 안 쓰는 칸 경고 + 무시(import) · `3c8c279aa` U20 · `237a97596` 전 탭 왕복(8탭 · 사본 줄 = 원본 줄 · 스냅샷 2 동일) · 문서 커밋(헤더 정본 `5_sheet_io.md` + 문서 대조 테스트 `SheetHeaderDocTests`).
+- 결정: 안 쓰는 칸 = **경고하고 무시**(쓰지 않음 · 요약 `ignored cells N`) · 라이브 효과 62 개가 안 쓰는 칸(`cc_kind` Stun · `stack_kind` Fire — unit 4 이전 기본값)을 들고 있다 → 에셋에만 남고 해시에 그대로(재베이크 0) · 시트엔 안 보인다 · 폐기 호환 열 `attack_damage` 는 DTO 에 남되 헤더 문서에서 뺐다.
+- 남은 것(사용자): `5_sheet_io.md` 「실제 시트 설정」 절차대로 8탭 재생성 · 서버 키 · 옛 탭 보관/삭제. (리드): Unity EditMode(아웃게임 · Assets) · 전 탭 왕복 테스트 초록 확인.

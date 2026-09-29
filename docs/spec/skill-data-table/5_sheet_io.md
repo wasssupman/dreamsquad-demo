@@ -27,12 +27,28 @@ unit 0 의 표 구조로 시트 export/import 를 새로 만든다. 기존 `DcSh
 - 런타임 refresh 는 효과가 **지금 가리키는** 탄 · 패턴 · 장판만 안다(에셋 스캔 없음 — 보고됨). 에디터 import 는 전부 안다.
 - 빈 칸 = 그대로라 참조를 **비우는** 방법이 없다 · bool 을 끄려면 `FALSE` 를 적는다.
 - push 는 업서트(고아 행 안 지움) — `SkillOwners` 에서 줄을 빼도 시트에 옛 줄이 남으면 다음 import 가 되살린다(`DcCardEffects` 와 같은 성질).
-- export 는 기본값이 아닌 칸을 전부 쓴다 — 종류가 안 쓰는 칸(예: 광역 피해 효과의 `cc_kind`)도 값이 있으면 보인다. 「안 쓰는 칸 경고」(`tables.md` §2 검증)는 미구현.
-- `DcSkills` 의 수치 칸(range · magnitude · durationSec · cooldownSec · warningSec)은 이제 **문안만** 움직인다(굽기 = `Skills` 의 액티브 효과 줄 + 카드 `cooldownSec`) — 두 곳을 고쳐야 같은 값이 된다(U18 분리 spec 후보).
+- ~~export 는 기본값이 아닌 칸을 전부 쓴다 · 「안 쓰는 칸 경고」 미구현~~ → **unit 9 해결**: export = 종류가 쓰는 칸만 · import = 안 쓰는 칸에 값이 오면 경고하고 무시.
+- ~~`DcSkills` 의 수치 칸이 문안만 움직인다~~ → **unit 8 · 9 해결**: 문안 = 시전 줄 효과 + 카드 `cooldownSec`(unit 8) · `DcSkills` 수치 칸 삭제 · 쿨다운 = `Cards.cooldown_sec`(unit 9).
 
-## 실제 시트 설정 (사용자 몫 · 에이전트는 시트에 쓰지 않았다)
-1. 탭 `Skills` 1행 헤더: `effect_id, kind, kind_ko, deprecated, magnitude_mode, basis_stat, ratio, damage, shield, percent, mul, count, radius_tiles, range_tiles, duration_sec, flight_sec, tick_sec, stack_cap, speed, cone_half_deg, density_radius_tiles, landing_ring_tiles, cc_kind, stack_kind, buff_stat, shield_filter, includes_self, telegraph, projectile_id, pattern_id, hazard_id`
-2. 탭 `SkillOwners` 1행 헤더: `owner_kind, owner_id, slot, trigger, period, period_sec, fraction, subject, gate, gate_subject, gate_value, fire_cap, effect_id`
-3. 서버: GET `/demo/google/sheet/{Skills|SkillOwners}` 확인 · Apps Script push 업서트 키 = Skills `effect_id` · SkillOwners (`owner_kind`, `owner_id`, `slot`).
-4. 초기 데이터는 **에디터 export**(「Export Dreamcatcher → 시트 페이로드」)로 — 탭이 생기면 로그인 자동 import 가 적용하므로 손으로 친 값은 에셋을 덮는다.
-5. `DcMechanics` 탭은 더 읽지 않는다(보관·삭제 자유). 탭이 생기기 전엔 두 탭 fetch 가 실패로 보고되고 아무것도 바뀌지 않는다.
+## 실제 시트 설정 (사용자 몫 · 에이전트는 시트에 쓰지 않는다 — unit 9 최종 8탭)
+
+아래 헤더 줄이 **정본**이다 — 시트 탭 1행에 이 순서 그대로(export 가 쓰는 열 순서 = `SheetColumns.Of` · 테스트 `SheetHeaderDocTests` 가 DTO 의 JSON 이름과 대조한다).
+열 이름 = 전 탭 스네이크. `_` 로 시작하는 열은 **정보 열**(export 가 채우고 임포터 · 매퍼가 건너뛴다 · `tables.md` §13). 폐기 호환 열 `attack_damage`(옛 `atk` 개명 경고용)는 만들지 않는다.
+
+- `Skills` 헤더: `effect_id, kind, kind_ko, deprecated, magnitude_mode, basis_stat, ratio, damage, shield, percent, mul, count, radius_tiles, range_tiles, duration_sec, flight_sec, tick_sec, stack_cap, speed, cone_half_deg, density_radius_tiles, landing_ring_tiles, cc_kind, stack_kind, buff_stat, shield_filter, includes_self, telegraph, ally_filter, projectile_id, pattern_id, hazard_id`
+- `SkillOwners` 헤더: `owner_kind, owner_id, slot, trigger, period, period_sec, fraction, subject, gate, gate_subject, gate_value, fire_cap, effect_id`
+- `Cards` 헤더: `id, display_name, type, axis, description, visible, attach_type, attach_value, host_kinds, cooldown_sec, needs_two_tiles, _skill_id`
+- `Defenders` 헤더: `id, display_name, desc, visible, role, rarity, health, attack_range, atk, heal, attack_cooldown, hit_delay_sec, attack_target_count, cost, placement_cooldown, death_cooldown, retire_cooldown_ratio, max_on_board, footprint_width, footprint_height, aggro_capacity, aggro_range, awakening_reward`
+- `Enemies` 헤더: `id, display_name, enemy_class, attack_method, target_mode, engage_movement, target_priority_class, target_class_mask, health, move_speed, atk, attack_range, attack_cooldown, attack_target_count, hit_delay_sec, aggro_attack_damage, aggro_attack_cooldown, aggro_attack_range, awakening_reward`
+- `DcSkills` 헤더: `id, display_name, description, _effect`
+- `DcConfig` 헤더: `id, gauge_max, gauge_start, cost_squad, cost_unit, cost_active, hand_size, max_attach_per_unit, slomo_time_scale, deck_size, max_squad, max_unit`
+- `CostConfig` 헤더: `id, starting_cost, max_cost, regen_per_sec, placement_phase_duration`
+
+**서버(Apps Script push 업서트 키 · GET `/demo/google/sheet/{탭}`)**: `Skills` = `effect_id` · `SkillOwners` = (`owner_kind`, `owner_id`, `slot`) · `Cards` · `DcSkills` · `DcConfig` · `Defenders` · `Enemies` · `CostConfig` = `id`. `Defenders` · `Enemies` · `CostConfig` 탭 이름은 에디터 창에서 바꿀 수 있다(기본값 그대로).
+
+**한 번에 바꾸는 절차**(탭을 하나씩 바꾸면 그 사이 로그인 import 가 옛 열을 「계약 밖 헤더」로 보고하고 **아무것도 바꾸지 않는다** — 빈 칸 = 그대로 · 없는 탭 = 섹션 없음):
+1. Unity 에디터 → `Window/Wassup/Unit Stat Import` → 「Export Dreamcatcher → 시트 페이로드」(DC 5탭) · 「Export SO → JSON Files」(Defenders · Enemies) · 「Export CostConfig SO → JSON」 — 값의 정본은 **에셋**이다(손으로 친 시트 값은 로그인 import 가 에셋에 덮는다).
+2. 시트에서 위 8탭을 새 헤더로 다시 만든다(탭 이름 `Cards` 는 새 이름 · 나머지는 같은 이름에 헤더만 스네이크) → export 값을 붙인다(또는 에디터 「Push to Sheet」 — 업서트 · 고아 행 안 지움).
+3. 서버 업서트 키를 위 표대로 설정 → GET 으로 8탭 확인(curl 읽기 전용).
+4. 옛 탭 `DcCards` · `DcCardEffects` · `DcAttackMods` · `DcMechanics` 는 아무도 안 읽는다 — 보관 · 삭제 자유.
+5. ⚠ 에디터 창의 DC 탭 목록 prefs 키가 `.v4` 로 바뀌었다(옛 목록 = 옛 이름 `DcCards` 를 조용히 fetch) — 첫 실행에 새 기본값(5탭)으로 떨어진다.

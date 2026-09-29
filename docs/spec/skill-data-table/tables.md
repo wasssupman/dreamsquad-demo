@@ -16,6 +16,20 @@
 | `Cards` · `CardStatEffects` · `CardAttackMods` | 카드 고유 값 · 스쿼드 스탯 효과 하나 · 공격 수식자 하나 | `id` · (`card_id`, `slot`) ×2 | 54 · 15 · 3 |
 | `Units` · `Enemies` | 소유자 고유 값(스탯 = 현행 스탯 시트 열 그대로 · 스킬 칸 없음) | `id` | 27 · 24 |
 
+**시트 탭(unit 9 최종 — 8탭 · 헤더 정본 = `5_sheet_io.md` 「실제 시트 설정」)**: 설계 표 ↔ 시트 탭.
+
+| 시트 탭 | 설계 표 | 키 | 비고 |
+|---|---|---|---|
+| `Skills` | `Effects`(§2 · §3) | `effect_id` | export = 그 종류가 쓰는 칸만(§3) · import = 안 쓰는 칸 경고 + 무시 · `kind_ko` = 보기 전용 |
+| `SkillOwners` | `Skills`(§4 소유 줄) | (`owner_kind`, `owner_id`, `slot`) | 한 탭(D3) · 탭에 나온 소유자의 소유 줄 재구성 · U20 검증 |
+| `Cards` | `Cards`(§7) | `id` | 옛 `DcCards` 개명 · + `host_kinds` · `cooldown_sec` · `needs_two_tiles` |
+| `Defenders` · `Enemies` | `Units` · `Enemies`(§8) | `id` | 스탯 열(스네이크) · 소유 줄은 `SkillOwners` |
+| `DcSkills` | — (액티브 문안 — U18 분리 전까지) | `id` | 문안 칸만(`display_name` · `description`) · 수치 칸 삭제 |
+| `DcConfig` · `CostConfig` | — (설정) | `id` | 통합은 후속 |
+| ~~`DcCardEffects` · `DcAttackMods` · `DcMechanics`~~ | ~~`CardStatEffects` · `CardAttackMods`~~ | — | 은퇴(→ `Skills` + `SkillOwners` — unit 8) |
+
+모양 표(`Projectiles` · `Patterns` · `PatternShots` · `Hazards` · `HazardEffects` · `Blockers`)는 아직 시트 탭이 없다(`5_sheet_io.md` 「남은 것」).
+
 ## 1. 라이브 전수(재계수)
 
 | 저작 | 수 | 비고 |
@@ -122,7 +136,7 @@
 
 | 열 | 형 | 허용 값 | 기본 | 필수 |
 |---|---|---|---|---|
-| `owner_kind` | enum | `card` · `unit` · `enemy` | — | 필수 |
+| `owner_kind` | enum | `card` · `defender` · `enemy`(U19) | — | 필수 |
 | `owner_id` | string | `Cards` · `Units` · `Enemies` 의 `id` | — | 필수 |
 | `slot` | int | ≥ 0 · 소유자 안 유일 · 굽는 순서 = slot 오름차순 | — | 필수 |
 | `trigger` | enum | 트리거 종류 이름(코어 `TriggerKind`) + `Cast`(액티브 시전 — 표 어휘 · 저작 append 는 unit 4) | — | 필수 |
@@ -137,7 +151,8 @@
 - **수명은 칸이 아니다** — 소유자 종류에서 파생(계약 3): 카드·유닛·적 = 주인 수명(`BindingLifetime.Owner`) · `Cast` = `UntilFireCap`. 저작 손잡이는 `fire_cap` 하나. 오늘 빌더가 종류로 박는 `UltimateLeap → FireCap 1`(`BindingDefinitionBuilder.cs:351`)은 이 칸 값 1 로 옮기고, 0 이면 경고.
 - 인스턴스 값(`StackId` · 부착 캐스트 FireCap/Lifetime)은 칸이 아니다(unit 1a).
 - 검증(코어 `EffectComboRule` 하나 — 카드는 `host_kinds` 의 종류마다): 트리거별 필수 칸 · 쓰지 않는 칸 ≠ 0 경고 · `subject = OthersPlacement` ⇒ `OnPlace` · `trigger = None` ⇒ Unit 카드 × {SelfBuffLethal · DreamCocoon · BountyMark · PlacementAura} · `Cast` ⇔ Active 카드(줄 정확히 1 · `fire_cap` 1) · Squad 카드 = 줄 0 · `BountyMark` 카드는 그 한 종류만(`CardDefinitionBuilder.cs:121`) · 나머지 조합 거절은 census 표 3 을 그대로(unit 2 가 정리).
-- 줄 수: 카드 34 + 액티브 6 + 유닛 17 + 실드 캐스트 1 + 적 11 = **69**.
+- 줄 수: 카드 34 + 액티브 6 + 유닛 17 + 실드 캐스트 1 + 적 11 = **69**(unit 8 뒤 + 상시 효과 줄 18 — 카드 16장).
+- **U20 검증(시트 층 — unit 9)**: 공격 변형 효과(`HeavyStrike` · `ProjectileBounce` · `FrontmostTarget` · `DamageVsSleeping`)를 가리키는 소유 줄은 `owner_kind = defender` 이거나 `host_kinds = Defender` 뿐인 `card` 여야 한다 — 아니면 **그 소유자의 시트 줄 전체를 건너뛴다**(에셋 소유 줄 그대로 · 보고). 적 소유 `FactionStatBuff` 의 `ally_filter` ≠ `All` = 경고(직업 · 코스트는 방어유닛 값). 코어 · 빌더 · `EffectComboRule` 은 소유자 종류를 묻지 않는다(계약 13).
 
 ## 5. `Projectiles` · `Patterns` · `PatternShots`
 
@@ -176,14 +191,17 @@
 | `type` · `category` · `axis` | enum `CardType` · `CardCategory` · `CardTargetAxis` | Squad · Normal · ClassRanger | |
 | `attach_type` · `attach_value` | enum `DcAttachType` · string | None · — | |
 | `host_kinds` | flags `Defender` · `Enemy` | **Defender**(U5) | `BountyMark` 카드 ⇔ `Enemy` 만(오늘 `HasBountyMark()` 파생을 값으로) |
-| `leak_allowance_cost` | int | 0 | ⚠ 코어 소비 0 — 문안만 읽는다(§12 발견) |
-| `cooldown_sec` · `needs_two_tiles` | float · bool | 0 · false | Active 만(옛 `SkillData.cooldownSec` · `needsTwoTiles`) |
+| `leak_allowance_cost` | int | 0 | ⚠ 코어 소비 0 — 문안만 읽는다(§12 발견) · **시트 밖**(unit 9 — `Cards` 탭에 없다 · 후속) |
+| `cooldown_sec` · `needs_two_tiles` | float · bool | 0 · false | Active 만(옛 `SkillData.cooldownSec` · `needsTwoTiles`) · unit 9 — `Cards` 탭 열(굽기 · 문안의 한 원천) |
+| `_skill_id` | string | — | 정보 열(액티브 카드의 `SkillData.id` — 임포터가 안 읽는다 · §13) |
+
+unit 9 — `category` 도 시트 밖(`Cards` 탭 = `id` · `display_name` · `type` · `axis` · `description` · `visible` · `attach_type` · `attach_value` · `host_kinds` · `cooldown_sec` · `needs_two_tiles` · `_skill_id`).
 
 (unit 8 — 아래 두 표는 **은퇴**: 줄은 효과 줄(`FactionStatBuff` · 공격 수식자 3종) + 카드 소유 줄(트리거 `None`)로 옮겼다(`43e6d841f`) · 저작 칸 · 탭 코드 은퇴 = 단계 B. 아래는 옛 모양 기록.) `CardStatEffects`(Squad 만): `card_id` · `slot` · `buff_stat`(`CardBuffKind`) · `percent`. `CardAttackMods`(Unit 만 · 트리거 없는 상시 수식자 — 효과 id 를 주지 않는다: 재사용 소유자 0 · §11): `card_id` · `slot` · `kind`(`DcAttackModKind`) · `count` · `range_tiles` · `damage_mul`. 스킬 칸은 없다 — 카드의 규칙은 `Skills`.
 
 ## 8. `Units` · `Enemies`
 
-- 스탯 열 = 현행 스탯 시트(`UnitStatImportDto.DefenderStatDto` · `EnemyStatDto`) 그대로. 이 spec 이 보태거나 빼는 것만:
+- 스탯 열 = 현행 스탯 시트(`UnitStatImportDto.DefenderStatDto` · `EnemyStatDto`) 그대로 · unit 9 — 시트 탭 `Defenders` · `Enemies` · **열 이름 스네이크**(C# 필드 이름은 SO 와 같게 · 헤더 = `5_sheet_io.md`). 이 spec 이 보태거나 빼는 것만:
 - `Units`: 스킬 칸 없음. `abilities` 중 규칙 레일 2종(`UnitSkillAbility` · `ShieldCastAbility`) → `Skills`. 평타 경로 능력 4종은 SO 참조로 남는다(시트 밖 · §11).
 - `Enemies`: `split_unit_id`(→ `Enemies` 키) · `split_count`(≥1 · ≤ `SplitMaxChildren`) — 옛 `SplitOnDeath` 메커닉(빌더가 규칙 줄을 안 만든다 `BindingDefinitionBuilder.cs:104-112` · 코어는 적 정의 `SplitChain.NextInChain` 으로 읽는다). 검증 = `SplitChain.Validate`(순환·과길이·자손 총수).
 
@@ -239,6 +257,12 @@
 4. `SkillData.cost`(2~4)는 **문안만** 읽는다(`DreamcatcherCardText.cs:549`) — 실비용은 `AwakeningConfig.costActive`(20). 카드 문안이 다른 값을 보일 수 있다 → 후속 후보(이 spec 밖).
 5. `DreamcatcherCard.leakAllowanceCost` 코어 소비 0 — 문안(`DreamcatcherCardText.cs:149-151`)과 테스트만 읽는다. 열은 유지(값 보존) · 처리는 후속 후보.
 6. census(2026-09-26)의 Unit 카드 33 · 메커닉 32 는 이후 `star_strike` · `gaesagi` 추가로 35 · 34 — census 는 날짜 스냅샷이라 고치지 않는다.
+
+## 13. 시트 열 이름 규약 (unit 9)
+
+- 열 이름 = **스네이크**(`display_name` · `cooldown_sec` …) — DTO 필드의 `[JsonProperty]` 이름(C# 필드 이름은 SO 칸과 같게 둔다: `UnitStatFieldMapper` 가 C# 이름으로 짝짓는다). 사람이 보는 열 이름(로그 · 헤더 시드)은 `SheetColumns.NameOf` 로 푼다 — `nameof(필드)` 를 헤더로 쓰면 옛 카멜 열이 되살아난다.
+- **`_` 머리 = 정보 열**(`_skill_id` · `_effect`) — export 가 채우고 **임포터가 안 읽는다**(import DTO 에 필드 없음 · 봉투 파서의 「계약 밖 헤더」 보고에서도 빠진다 · 매퍼가 건너뛴다). 정보 열은 맨 오른쪽.
+- 빈 칸 = 그대로(import) · 기본값 칸 = 안 씀(`Skills` · `SkillOwners` export). 계약 밖 헤더(옛 카멜 이름 포함)는 로그에 「headers not in contract」로 보고되고 그 편집은 무시된다.
 
 ## 사용자 확인 (2026-09-28 답: 표 모양 승인 U12 · 같은 값 병합 안 함 U13 · 실드 반경 고정값 U14 — README)
 
