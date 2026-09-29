@@ -58,6 +58,8 @@ namespace Wassup.Data
         // CardCategoryStyle 이 Subconscious 를 보라 프레임 + "무의식" 칩으로 그린다.
         // 덱에 넣을 수 있는지는 오직 DeckRules(10장 · Squad ≤2)와 visible 이 정한다.
         public CardCategory category = CardCategory.Normal;
+        // ⚠ skill-data-table unit 8 과도기 — 진영 버프 효과 줄(`FactionStatBuff`)로 옮긴다. 상시 효과 줄이 있는 카드는 이 칸을 안 읽는다
+        // (`HasAlwaysOnRows`) · 단계 B(이전 적용 뒤)에서 제거(`CardEffect` 타입은 `DreamstoneData` 가 쓴다 — 남는다).
         public CardEffect[] effects; // usually 1; fortress has 2
         // dreamcatcher-card-art Unit 0 — tarot-style card art shown on the deck
         // page (image + effect text column). Nullable: view falls back to a
@@ -67,6 +69,7 @@ namespace Wassup.Data
         // dreamcatcher-attack-mod-bounce Unit 0 — card class (c): always-on
         // attack-output modifications (usually 0~1). Appended last; bake-time
         // read only, same rules as mechanics above.
+        // ⚠ skill-data-table unit 8 과도기 — 공격 수식자 효과 줄(`ProjectileBounce` · `FrontmostTarget` · `DamageVsSleeping`)로 옮긴다(위 `effects` 와 같은 규칙).
         public DcAttackModSpec[] attackMods;
         // dreamcatcher-card-taxonomy — Squad/Unit type. Deck cap keys on this.
         // Appended last; zero-init = Squad for existing stat cards.
@@ -104,8 +107,9 @@ namespace Wassup.Data
         // (unit 7 rev 의 동기 — 구 3필드 설계의 잔존 companion 문제).
         public string attachValue;
 
-        // skill-data-table unit 4 — 카드의 규칙 = **소유 줄**(효과 에셋 참조 · `BindingSpec`). 옛 `mechanics` 는 이전 뒤 은퇴. Unit 카드만
-        // 읽고(Squad 는 `effects`), 액티브 카드는 정확히 한 줄(시전 `Cast` × 액티브 효과 — `skill` 은 문안 · 덱 구성만 읽는다).
+        // skill-data-table unit 4 — 카드의 규칙 = **소유 줄**(효과 에셋 참조 · `BindingSpec`). 옛 `mechanics` 는 이전 뒤 은퇴. 액티브 카드는
+        // 정확히 한 줄(시전 `Cast` × 액티브 효과 — `skill` 은 문안 칩 · 덱 구성만 읽는다). unit 8 — 상시 효과(진영 버프 · 공격 수식자)도
+        // 여기(트리거 `None`) · Squad 카드 = 진영 버프(`FactionStatBuff`) 줄만.
         public BindingSpec[] bindings;
         // U5 — 붙을 수 있는 숙주 종류(부여 게이트). 기본 방어유닛 · 적 표식 카드 = 적. 굽기가 켜진 종류마다 조합을 검증한다.
         public HostKinds hostKinds = HostKinds.Defender;
@@ -128,6 +132,19 @@ namespace Wassup.Data
             if (bindings == null) return false;
             for (int i = 0; i < bindings.Length; i++)
                 if (bindings[i].effect != null && bindings[i].effect.values.kind == EffectKind.BountyMark) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// skill-data-table unit 8 **과도기** — 상시 효과(진영 버프 · 공격 수식자 — `SkillRouting.IsAlwaysOn`) 소유 줄이 있나. 있으면 굽기 · 문안이
+        /// 옛 칸(`effects` · `attackMods`)을 안 읽는다(이전된 카드) · 없으면 옛 칸이 오늘 결과를 낸다. 단계 B(옛 칸 제거)에서 은퇴.
+        /// 관리 배열 순회 — 굽기 · UI 시점 전용, 매 프레임 금지.
+        /// </summary>
+        public bool HasAlwaysOnRows()
+        {
+            if (bindings == null) return false;
+            for (int i = 0; i < bindings.Length; i++)
+                if (bindings[i].effect != null && SkillRouting.IsAlwaysOn(bindings[i].effect.values.kind)) return true;
             return false;
         }
     }

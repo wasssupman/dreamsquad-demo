@@ -48,7 +48,7 @@ namespace Wassup.BattleCoreUnity
                     bool unusedRecall = false;
                     BindingSpecBuilder.Bake(d.bindings, new RuleOwner { Origin = BindingOrigin.UnitAuthored, Label = d.name,
                                                                         HostIsGuardian = d.aggroCapacity > 0 },
-                                            projectiles, patterns, hazards, rows, effects, mine, mods, ref unusedRecall, view);
+                                            projectiles, patterns, hazards, rows, effects, mine, mods, null, ref unusedRecall, view);
                 }
                 if (mine.Count > 0) def.Units[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Units[i].Attack.Mods = mods.ToArray();
@@ -62,8 +62,9 @@ namespace Wassup.BattleCoreUnity
                 var mods = new List<AttackModDef>();
                 var mine = new List<int>();
                 bool unusedRecall = false;
+                // 진영 버프 줄(unit 8)은 방어유닛 · 적에게 배선 전이라 받을 목록이 없다(null — 조합 검증이 `NotWired` 로 먼저 거절 · unit 7 후속).
                 BindingSpecBuilder.Bake(e.bindings, new RuleOwner { Origin = BindingOrigin.UnitAuthored, Label = e.name, IsEnemy = true },
-                                        projectiles, patterns, hazards, rows, effects, mine, mods, ref unusedRecall, view);
+                                        projectiles, patterns, hazards, rows, effects, mine, mods, null, ref unusedRecall, view);
                 if (mine.Count > 0) def.Enemies[i].Bindings = mine.ToArray();
                 if (mods.Count > 0) def.Enemies[i].Attack.Mods = mods.ToArray();
             }

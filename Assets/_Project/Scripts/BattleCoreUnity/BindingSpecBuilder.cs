@@ -28,8 +28,13 @@ namespace Wassup.BattleCoreUnity
         public HostKinds CardHosts;
         /// <summary>카드가 적을 겨냥하나(적 표식 카드) — 그 카드는 표식 효과만 쓴다.</summary>
         public bool CardTargetsEnemies;
-        /// <summary>카드 축(배치 오라의 주어 필터).</summary>
+        /// <summary>
+        /// 카드 축 — **과도기 폴백만**(skill-data-table unit 8): 배치 오라의 수혜 대상은 효과 칸 `allyFilter`(계약 12)이고, 그 칸이 아직 기본값인
+        /// 동안(이전 전)만 이 값을 쓴다. 단계 B(이전 적용 · 옛 칸 제거)에서 폴백과 함께 은퇴.
+        /// </summary>
         public CardTargetAxis Axis;
+        /// <summary>Squad 카드 — 진영 버프(`FactionStatBuff`) 줄만 든다(카드 분류 검증 · 덱 상한이 이 분류를 본다 · unit 8).</summary>
+        public bool SquadCard;
     }
 
     // skill-data-table unit 4 — **새 저작 형식**(효과 에셋 참조 소유 줄 `BindingSpec`)을 굽는 한 경로. 카드 · 방어유닛 · 적이 같은 함수를
@@ -44,13 +49,19 @@ namespace Wassup.BattleCoreUnity
     //    카드 줄도 라우팅 확인을 표 참조(`BindPayload` — 탄 · 명세 표 등록) **앞**에 한다. 건너뛸 줄이 표에 탄을 등록하지 않는다.
     internal static class BindingSpecBuilder
     {
-        /// <summary>소유 줄 전부를 싣는다(카드 부착 줄 · 유닛 · 적). 액티브 시전 줄은 `CardDefinitionBuilder` 가 따로 굽는다.</summary>
+        /// <summary>
+        /// 소유 줄 전부를 싣는다(카드 부착 줄 · 유닛 · 적). 액티브 시전 줄은 `CardDefinitionBuilder` 가 따로 굽는다.
+        /// `squad` = 진영 버프 줄이 가는 목록(카드 `SquadBindings` — unit 8 · 카드 종류가 아니라 **효과 종류로** 간다). 방어유닛 · 적은 null
+        /// (진영 버프 배선 전 — 조합 검증이 `NotWired` 로 먼저 거절한다 · unit 7 후속).
+        /// </summary>
         internal static void Bake(BindingSpec[] bindings, in RuleOwner o, List<ProjectileData> projectiles,
                                   List<ProjectilePatternData> patterns, HazardSO[] hazards, List<BindingDef> rows,
-                                  List<EffectDef> effects, List<int> mine, List<AttackModDef> mods,
+                                  List<EffectDef> effects, List<int> mine, List<AttackModDef> mods, List<int> squad,
                                   ref bool declaresRetireRecall, MatchViewAssets view)
         {
             bool aura = false;
+            // 상시 효과 줄의 라벨 번호 — 옛 저장처의 항목 번호와 같은 모양(`카드 '{id}' effect {n}` · `attackMod {n}` — 이전이 순서를 지킨다).
+            int buffIndex = 0, modIndex = 0;
             for (int i = 0; i < bindings.Length; i++)
             {
                 var s = bindings[i];
@@ -70,11 +81,23 @@ namespace Wassup.BattleCoreUnity
                 { Warn($"{label}: 시전 × 액티브 효과는 액티브 카드의 한 줄만 — 건너뛴다."); continue; }
                 if (o.IsCard && o.CardTargetsEnemies && kind != EffectKind.BountyMark)
                 { Warn($"{label}: 적 표식 카드는 표식 효과만 쓴다 — {kind} 는 건너뛴다."); continue; }
+                if (o.SquadCard && kind != EffectKind.FactionStatBuff)
+                { Warn($"{label}: Squad 카드는 아군 전체 스탯(FactionStatBuff) 줄만 든다 — {kind} 는 건너뛴다."); continue; }
+
+                // ── 상시 효과(unit 8 — 계약 11) — 트리거 없음 × 4종. 조합 · 라우팅 **앞**에서 가로챈다(`HasDetector(None)` = 거짓 ·
+                //    라우팅 없음 — 뒤로 가면 버려진다 · 동치 조건 4). 규칙 줄은 진영 버프만 싣고(`squad`), 수식자는 줄을 만들지 않는다(조건 2).
+                if (SkillRouting.IsAlwaysOn(kind))
+                {
+                    bool buff = kind == EffectKind.FactionStatBuff;
+                    string alwaysLabel = buff ? $"{o.Label} effect {buffIndex++}" : $"{o.Label} attackMod {modIndex++}";
+                    AlwaysOn(in s, in m, in v, kind, e.id, in o, alwaysLabel, rows, effects, squad, mods);
+                    continue;
+                }
 
                 // ── 트리거 없음 = 부착되는 순간(카드만 — 유닛 · 적은 조합 검증이 「영영 안 터짐」으로 거절한다) ──
                 if (trigger == TriggerKind.None && o.IsCard)
                 {
-                    AttachInstant(in m, in v, kind, label, e.id, o.Axis, ref aura, rows, effects, mine, view);
+                    AttachInstant(in m, in v, kind, label, e.id, AuraFilter(in v, o.Axis), ref aura, rows, effects, mine, view);
                     continue;
                 }
                 // 손패 동작(인수인계) — 규칙이 아니라 퇴근 회수 선언이다. 카드 · 퇴근 · 게이트 없음.
@@ -219,6 +242,71 @@ namespace Wassup.BattleCoreUnity
             return false;
         }
 
+        // ── 상시 효과(unit 8) — 옛 카드 빌더의 두 갈래(`BakeSquad` · attackMods 루프)와 같은 값(효과 id 만 저작 id) ──────────
+
+        private static void AlwaysOn(in BindingSpec s, in DcMechanic m, in EffectValues v, EffectKind kind, string effectId, in RuleOwner o,
+                                     string label, List<BindingDef> rows, List<EffectDef> effects, List<int> squad, List<AttackModDef> mods)
+        {
+            // 트리거 None 만 · 남의 사건 아님 · 숙주 배선(오늘 = 방어유닛에 붙는 카드만 — 그 밖 = 배선 전 `NotWired`).
+            if (!CombosAllow(in m, s.trigger.kind, kind, v.magnitudeMode, in o, label)) return;
+            if (s.trigger.gate != GateKind.None) { Warn($"{label}: 상시 효과에는 게이트가 배선돼 있지 않다 — 건너뛴다."); return; }
+            if (s.fireCap != 0) Warn($"{label}: 상시 효과의 fireCap({s.fireCap}) 은 뜻이 없다 — 무시한다.");
+            switch (kind)
+            {
+                case EffectKind.FactionStatBuff:
+                {
+                    if (squad == null) { Warn($"{label}: 진영 버프 줄을 받을 곳이 없다(배선 전) — 건너뛴다."); return; }
+                    // 수혜 대상 = 효과의 뜻(계약 12 — `allyFilter`). 코어 줄 = 「남의 배치 × 자기 스탯 버프(영구)」 + 직업 · 코스트 필터 + 회수.
+                    if (!CardDefinitionBuilder.ToAxis(v.allyFilter, out int mask, out int cost)) { Error($"{label}: 수혜 대상 {v.allyFilter} 을 옮길 수 없다 — 효과 없음."); return; }
+                    // `CostRate` 는 유닛 스탯이 아니다 — 카드 경로에서는 옛 전투도 무동작이었다(드림스톤 전용 · 판 진입 배율).
+                    if (!CardDefinitionBuilder.MapBuff(v.buffStat, v.percent, out var stat, out float mul)) { Warn($"{label}: {v.buffStat} 는 카드 스탯이 아니다 — 건너뛴다."); return; }
+                    var b = BindingDef.Default();
+                    var fx = EffectDef.Default();
+                    b.Label = label;
+                    b.Trigger = TriggerKind.OnPlace;
+                    b.Origin = o.Origin;
+                    b.Skill = SkillRouting.Resolve(TriggerKind.OnPlace, EffectKind.SelfStatBuff);
+                    b.Subject = BindingSubject.Any;
+                    b.SubjectClassMask = mask;
+                    b.SubjectCost = cost;
+                    b.RevokeOnExpire = true;   // 숙주가 떠나면(사망 ∪ 퇴근) 판 전체에서 소급 회수(정정 1)
+                    fx.Kind = EffectKind.SelfStatBuff;
+                    fx.StatKind = (int)stat;
+                    fx.Magnitude = mul;
+                    BindingDefinitionBuilder.AddRow(rows, effects, squad, b, fx, effectId);
+                    return;
+                }
+                default:
+                {
+                    // 공격 수식자 — 규칙 줄이 아니다(`AddRow` 금지 — 줄 번호가 밀린다). 값 가드는 옛 카드 경로 그대로.
+                    if (v.mul <= 0f) { Warn($"{label}: 배율(mul) <= 0 — 건너뛴다."); return; }
+                    if (kind == EffectKind.ProjectileBounce && v.count <= 0) { Warn($"{label}: ProjectileBounce count <= 0 — 건너뛴다."); return; }
+                    if (kind == EffectKind.DamageVsSleeping && v.mul <= 1f) { Warn($"{label}: DamageVsSleeping mul <= 1(특효가 아님) — 건너뛴다."); return; }
+                    bool bounce = kind == EffectKind.ProjectileBounce;
+                    mods.Add(new AttackModDef
+                    {
+                        Kind = ToAttackMod(kind),
+                        Count = bounce ? v.count : 0,          // 사용 칸 표 — 튕김만 수 · 반경을 읽는다
+                        TileRange = bounce ? v.rangeTiles : 0,
+                        DamageMul = v.mul,
+                    });
+                    return;
+                }
+            }
+        }
+
+        /// <summary>상시 효과 중 공격 수식자 셋 → 코어 축(이름 · 번호가 같은 앞 넷의 뒤 셋).</summary>
+        internal static AttackModKind ToAttackMod(EffectKind kind)
+        {
+            switch (kind)
+            {
+                case EffectKind.ProjectileBounce: return AttackModKind.ProjectileBounce;
+                case EffectKind.FrontmostTarget: return AttackModKind.FrontmostTarget;
+                case EffectKind.DamageVsSleeping: return AttackModKind.DamageVsSleeping;
+                default: return AttackModKind.None;
+            }
+        }
+
         // ── 부착 즉시(카드 · 트리거 없음) — 옛 카드 빌더의 그 갈래와 같은 값(효과 id 만 저작 id) ──────────
 
         private static BindingDef CardRow(string label, TriggerKind trigger, EffectKind payload, out EffectDef fx)
@@ -232,6 +320,13 @@ namespace Wassup.BattleCoreUnity
             fx.Kind = payload;
             return b;
         }
+
+        /// <summary>
+        /// 배치 오라의 수혜 대상 = 효과 칸 `allyFilter`(계약 12). ⚠ 과도기(단계 B 전): 이전 전 에셋은 그 칸이 기본값(첫 값 `ClassRanger`)이라
+        /// 기본값이면 카드 축으로 떨어진다(오늘 결과 — 라이브 `slow_awakening` = 축 `All`). 이전이 효과 칸을 쓰면 폴백과 함께 은퇴.
+        /// </summary>
+        internal static CardTargetAxis AuraFilter(in EffectValues v, CardTargetAxis cardAxis)
+            => v.allyFilter != default(CardTargetAxis) ? v.allyFilter : cardAxis;
 
         private static void AttachInstant(in DcMechanic m, in EffectValues v, EffectKind kind, string label, string effectId,
                                           CardTargetAxis axis, ref bool aura, List<BindingDef> rows, List<EffectDef> effects,

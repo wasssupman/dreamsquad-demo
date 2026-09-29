@@ -106,18 +106,34 @@ namespace Wassup.BattleCoreUnity
 
             c.Kind = CardKind.Attach;
             c.Requirement = ToRequirement(card);
+            // skill-data-table unit 8 — 상시 효과(진영 버프 · 공격 수식자)도 **소유 줄**이다. 진영 버프 줄은 카드 종류가 아니라 **효과 종류로**
+            // `SquadBindings` 에 간다(동치 조건 1 — `Bindings` 로 가면 부착 순간 판 위 아군에게 안 걸린다) · 수식자는 규칙 줄을 안 만든다(조건 2).
+            // ⚠ 과도기(단계 B 전): 상시 효과 줄이 **없는** 카드는 옛 칸(`effects` · `attackMods`)에서 오늘 결과를 낸다 · 있으면 옛 칸은 안 읽는다.
+            bool legacy = !card.HasAlwaysOnRows();
+            var mine = new List<int>();
+            var mods = new List<AttackModDef>();
+            var squad = new List<int>();
+            var hosts = card.hostKinds;
             if (card.type == CardType.Squad)
             {
-                if (HasBindings(card)) Warn($"'{card.id}': Squad 카드의 소유 줄(bindings)은 읽지 않는다 — 스쿼드 스탯 효과는 effects 다.");
-                // Squad 는 effects 만 읽는다(옛 계약 — 규칙 줄은 Unit 카드만).
-                c.SquadBindings = BakeSquad(card, rows, effects);
+                // Squad = 진영 버프 줄만(카드 분류 검증 — 다른 종류 줄은 빌더가 거절한다 · 덱 상한이 이 분류를 본다).
+                if (HasBindings(card))
+                    BindingSpecBuilder.Bake(card.bindings, new RuleOwner
+                        {
+                            Origin = BindingOrigin.Card, Label = $"카드 '{card.id}'", IsCard = true, SquadCard = true,
+                            CardHosts = hosts, Axis = card.axis,
+                        },
+                        projectiles, patterns, hazards, rows, effects, mine, mods, squad, ref c.DeclaresRetireRecall, view);
+                if (legacy)
+                {
+                    var old = BakeSquad(card, rows, effects);
+                    if (old != null) squad.AddRange(old);
+                }
+                if (squad.Count > 0) c.SquadBindings = squad.ToArray();
                 return c;
             }
 
-            // Unit — 소유 줄(bindings) + attackMods. 적 겨냥 = 숙주 종류가 적만(U5 — 옛 `HasBountyMark()` 파생을 값으로).
-            var mine = new List<int>();
-            var mods = new List<AttackModDef>();
-            var hosts = card.hostKinds;
+            // Unit — 소유 줄(bindings) + (과도기) attackMods. 적 겨냥 = 숙주 종류가 적만(U5 — 옛 `HasBountyMark()` 파생을 값으로).
             c.TargetsEnemies = hosts == HostKinds.Enemy;
             if (hosts == (HostKinds.Defender | HostKinds.Enemy))
                 Warn($"'{card.id}': 숙주 종류가 방어유닛 · 적 둘 다 — 코어 카드 줄은 한쪽만 싣는다. 방어유닛 카드로 굽는다(조합 검증은 둘 다).");
@@ -127,8 +143,8 @@ namespace Wassup.BattleCoreUnity
                         Origin = BindingOrigin.Card, Label = $"카드 '{card.id}'", IsCard = true,
                         CardHosts = hosts, CardTargetsEnemies = c.TargetsEnemies, Axis = card.axis,
                     },
-                    projectiles, patterns, hazards, rows, effects, mine, mods, ref c.DeclaresRetireRecall, view);
-            if (!c.TargetsEnemies && card.attackMods != null)
+                    projectiles, patterns, hazards, rows, effects, mine, mods, squad, ref c.DeclaresRetireRecall, view);
+            if (legacy && !c.TargetsEnemies && card.attackMods != null)
                 for (int i = 0; i < card.attackMods.Length; i++)
                 {
                     var am = card.attackMods[i];
@@ -141,8 +157,9 @@ namespace Wassup.BattleCoreUnity
                     mods.Add(new AttackModDef { Kind = kind, Count = am.count, TileRange = am.tileRange, DamageMul = am.damageMul });
                 }
             if (mine.Count > 0) c.Bindings = mine.ToArray();
+            if (squad.Count > 0) c.SquadBindings = squad.ToArray();
             if (mods.Count > 0) c.AttackMods = mods.ToArray();
-            if (mine.Count == 0 && mods.Count == 0 && !c.DeclaresRetireRecall)
+            if (mine.Count == 0 && mods.Count == 0 && squad.Count == 0 && !c.DeclaresRetireRecall)
                 Error($"'{card.id}': 구워진 규칙이 하나도 없다 — 어떤 유닛에도 안 붙는다.");
             return c;
         }
@@ -159,7 +176,9 @@ namespace Wassup.BattleCoreUnity
             return b;
         }
 
-        // ── Squad ─────────────────────────────────────────────────────────────
+        // ── Squad(과도기 — 옛 칸 `effects`) ────────────────────────────────────
+        // skill-data-table unit 8 — 새 형식 = 진영 버프 소유 줄(`BindingSpecBuilder` 가 같은 값을 편다). 이 갈래는 이전 전 에셋만 지나고
+        // 단계 B(이전 적용 · 옛 칸 제거)에서 은퇴한다.
 
         private static int[] BakeSquad(DreamcatcherCard card, List<BindingDef> rows, List<EffectDef> table)
         {
