@@ -163,13 +163,20 @@ namespace Wassup.BattleCore.Trigger
                 case EffectKind.RecallAttachedToFront: return false;   // 손패 동작
                 case EffectKind.AreaBarrage: return false;             // 발사 명세로 이관
                 case EffectKind.SelfWarmupBuff: return false;          // 죽은 값
-                default: return !IsActiveCast(kind);                     // 액티브 시전 — 카드 빌더가 실행자를 id 로 고른다
+                default: return !IsActiveCast(kind) && !IsAlwaysOn(kind);  // 액티브 시전 — 카드 빌더가 실행자를 id 로 고른다 · 상시 효과 — 빌더가 펴는 코어 모양
             }
         }
 
         /// <summary>skill-data-table unit 4 — 액티브 시전 효과(`EffectKind.ActiveMeteor` ~ `ActivePortal`). 시전(`TriggerKind.Cast`)과만 짝이다.</summary>
         public static bool IsActiveCast(EffectKind kind)
             => kind >= EffectKind.ActiveMeteor && kind <= EffectKind.ActivePortal;
+
+        /// <summary>
+        /// skill-data-table unit 8 — **상시 효과**(`FactionStatBuff` ~ `DamageVsSleeping`). 트리거 없음(보유 시작 순간부터 계속)과만 짝이다.
+        /// 라우팅 표 밖 — 빌더가 진영 버프 줄(「남의 배치 × 자기 스탯 버프」) · 공격 수식자로 편다(계약 11).
+        /// </summary>
+        public static bool IsAlwaysOn(EffectKind kind)
+            => kind >= EffectKind.FactionStatBuff && kind <= EffectKind.DamageVsSleeping;
 
         /// <summary>
         /// 부착 즉시(`trigger == None`) **에서만** 유효한 payload. ⚠ 면제가 아니라 **거절 사유**다 —

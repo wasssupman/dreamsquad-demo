@@ -71,6 +71,8 @@ namespace Wassup.Tests.EditMode.Core
                 EffectKind.None, EffectKind.PlacementAura, EffectKind.HeavyStrike,
                 EffectKind.SplitOnDeath, EffectKind.RecallAttachedToFront,
                 EffectKind.AreaBarrage, EffectKind.SelfWarmupBuff,
+                // skill-data-table unit 8 — 상시 효과 4(빌더가 진영 버프 줄 · 공격 수식자로 편다).
+                EffectKind.FactionStatBuff, EffectKind.ProjectileBounce, EffectKind.FrontmostTarget, EffectKind.DamageVsSleeping,
             };
             foreach (var p in notSkills)
             {

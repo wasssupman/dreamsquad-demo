@@ -221,6 +221,10 @@ namespace Wassup.Data.StatImport
                 case EffectKind.ActiveRapidFire: return "액티브 · 속사";
                 case EffectKind.ActiveTornado: return "액티브 · 회오리";
                 case EffectKind.ActivePortal: return "액티브 · 포탈";
+                case EffectKind.FactionStatBuff: return "아군 전체 스탯";
+                case EffectKind.ProjectileBounce: return "투사체 튕김";
+                case EffectKind.FrontmostTarget: return "최전방 우선";
+                case EffectKind.DamageVsSleeping: return "수면 적 특효";
                 default: return kind.ToString();
             }
         }

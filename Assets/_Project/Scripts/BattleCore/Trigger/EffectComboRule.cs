@@ -3,7 +3,7 @@ using Wassup.BattleCore.Combat.Projectile;
 namespace Wassup.BattleCore.Trigger
 {
     /// <summary>
-    /// 조합 검증의 답. 원점 사유 셋(unified-effect-layer 계약 5) + 비율형 수치 사유 둘(skill-data-table unit 3 · append-only).
+    /// 조합 검증의 답. 원점 사유 셋(unified-effect-layer 계약 5) + 비율형 수치 사유 둘(skill-data-table unit 3) + 배선 전 하나(unit 8) · append-only.
     /// </summary>
     public enum ComboVerdict : byte
     {
@@ -18,6 +18,12 @@ namespace Wassup.BattleCore.Trigger
         NoRatioBasis = 4,
         /// <summary>그 효과 종류에 비율 칸이 없다(`tables.md` §9 — 비율은 피해 · 실드량에만).</summary>
         NoRatioField = 5,
+        /// <summary>
+        /// skill-data-table unit 8 — **배선 전**. 조합은 뜻이 있지만 그 숙주에 대한 배선이 아직 없다(설계 거절이 아니다 — `HasDetector` 의
+        /// 「배선 전엔 닫아 둔다」 선례). 상시 효과의 「보유 시작 순간」은 오늘 **방어유닛에 붙는 카드**(부착 순간)만 편다 — 방어유닛 ·
+        /// 적이 직접 들거나 적에게 붙는 카드는 unit 7(후속)이 배선한다. 조용히 반쪽만 도는 상태를 만들지 않으려고 굽기가 말하고 뺀다.
+        /// </summary>
+        NotWired = 6,
     }
 
     /// <summary>
@@ -56,7 +62,7 @@ namespace Wassup.BattleCore.Trigger
     //
     // ⚠ 여기는 **조합**만 본다. 값 가드(크기 0 · 반경 0 · 탄 없음)와 게이트 배선(`SkillRouting.GateComboSupported`) ·
     //    라우팅 유무(`SkillRouting.Resolve`)는 각자의 자리다. 트리거 없음(부착 즉시)은 사건이 아니라서 감지자가 없다 → `NeverFires`
-    //    이고, 부착 즉시 어휘는 카드 빌더의 그 갈래가 따로 굽는다.
+    //    이고, 부착 즉시 어휘는 카드 빌더의 그 갈래가 따로 굽는다. 예외 = 상시 효과 4종(⓪' — 트리거 없음과만 짝 · unit 8).
     public static class EffectComboRule
     {
         public static ComboVerdict Check(in EffectCombo c)
@@ -67,6 +73,17 @@ namespace Wassup.BattleCore.Trigger
             {
                 if (c.Trigger != TriggerKind.Cast || !SkillRouting.IsActiveCast(c.Payload)) return ComboVerdict.ShapeMismatch;
                 return c.Magnitude == MagnitudeMode.OwnerStatRatio ? ComboVerdict.NoRatioBasis : ComboVerdict.Allowed;
+            }
+            // ⓪' 상시 효과(skill-data-table unit 8 — 계약 11) — 트리거 없음(보유 시작 순간부터 계속) ⇔ 상시 효과 4종. 사건이 아니라 감지자가
+            //    없고(`HasDetector(None)` = 거짓) 빌더가 기존 코어 모양으로 편다. 「보유 시작 순간」은 오늘 **방어유닛 숙주에 붙는 카드**
+            //    (부착 = 숙주가 놓인 뒤)만 배선됐다 — 그 밖의 숙주(방어유닛 · 적이 직접 들거나 적 숙주 카드)는 배선 전(unit 7 후속).
+            //    숙주 사실만 본다(출처는 입력이 아니다 — 계약 5). 비율 칸은 없다(`tables.md` §9).
+            if (SkillRouting.IsAlwaysOn(c.Payload))
+            {
+                if (c.Trigger != TriggerKind.None) return ComboVerdict.ShapeMismatch;
+                if (c.Subject == BindingSubject.Any) return ComboVerdict.NoOrigin;
+                if (c.HostIsEnemy || !c.BindsAfterPlacement) return ComboVerdict.NotWired;
+                return c.Magnitude == MagnitudeMode.OwnerStatRatio ? ComboVerdict.NoRatioField : ComboVerdict.Allowed;
             }
             // ① 그 숙주에게 그 사건이 없다(적 × 배치·퇴근 · 트리거 없음) — 감지자 표가 정본이다.
             //    ⚠ 주체 `Any` 의 사건 주인은 숙주가 아니라 **남**(배치된 방어유닛)이다 — 숙주 종류로 감지자를 묻지 않는다
@@ -106,6 +123,7 @@ namespace Wassup.BattleCore.Trigger
                 case ComboVerdict.NeverFires: return "붙는 순간 이미 지난 자기 사건이거나 사건이 없다(영영 안 터짐)";
                 case ComboVerdict.NoRatioBasis: return "비율 기준이 없다(주인 없는 시전)";
                 case ComboVerdict.NoRatioField: return "그 효과에는 비율 칸이 없다(피해 · 실드량만)";
+                case ComboVerdict.NotWired: return "배선 전 — 상시 효과는 방어유닛에 붙는 카드만 배선됐다(방어유닛 · 적 소유는 unit 7 후속)";
                 default: return "허용";
             }
         }

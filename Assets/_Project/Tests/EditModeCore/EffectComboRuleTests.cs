@@ -153,9 +153,11 @@ namespace Wassup.Tests.EditMode.Core
                 var c = new EffectCombo { Trigger = t, Subject = s, Payload = p, HasProjectile = shot >= 0, Binding = shot >= 0 ? (BindingClass)shot : default, FanOut = fan };
                 var baseV = EffectComboRule.Check(in c);
 
+                // skill-data-table unit 8 — 상시 효과(트리거 없음 × 자기)는 「보유 시작 순간」 배선이 숙주 사실(부착 · 진영)을 본다(⓪' · 배선 전).
+                bool alwaysOnSeam = t == TriggerKind.None && s == BindingSubject.Self && SkillRouting.IsAlwaysOn(p);
                 var late = c; late.BindsAfterPlacement = true;
                 if (EffectComboRule.Check(in late) != baseV)
-                    Assert.IsTrue(t == TriggerKind.OnPlace && s == BindingSubject.Self, $"부착 시점이 {t}×{s}×{p} 를 갈랐다");
+                    Assert.IsTrue((t == TriggerKind.OnPlace && s == BindingSubject.Self) || alwaysOnSeam, $"부착 시점이 {t}×{s}×{p} 를 갈랐다");
 
                 var aggro = c; aggro.HostCannotHoldAggro = true;
                 if (EffectComboRule.Check(in aggro) != baseV)
@@ -164,6 +166,10 @@ namespace Wassup.Tests.EditMode.Core
                 var enemy = c; enemy.HostIsEnemy = true;
                 if (EffectComboRule.Check(in enemy) != baseV)
                     Assert.IsTrue(t == TriggerKind.OnPlace || t == TriggerKind.OnRetire, $"진영이 {t}×{p} 를 갈랐다");
+                // 상시 효과는 부착된 뒤(카드)에서만 진영이 가른다 — 타고난 숙주는 진영과 무관하게 배선 전이다.
+                var lateEnemy = late; lateEnemy.HostIsEnemy = true;
+                if (EffectComboRule.Check(in lateEnemy) != EffectComboRule.Check(in late))
+                    Assert.IsTrue(t == TriggerKind.OnPlace || t == TriggerKind.OnRetire || alwaysOnSeam, $"진영(부착 숙주)이 {t}×{p} 를 갈랐다");
                 checkedCombos++;
             }
             Assert.Greater(checkedCombos, 0);
@@ -199,7 +205,40 @@ namespace Wassup.Tests.EditMode.Core
             // skill-data-table unit 3 — 비율형 수치 사유 둘이 뒤에 붙었다(append-only).
             StringAssert.StartsWith("비율 기준이 없다", EffectComboRule.Describe(ComboVerdict.NoRatioBasis));
             StringAssert.StartsWith("그 효과에는 비율 칸이 없다", EffectComboRule.Describe(ComboVerdict.NoRatioField));
-            Assert.AreEqual(6, System.Enum.GetValues(typeof(ComboVerdict)).Length, "허용 + 원점 사유 셋 + 비율 사유 둘");
+            Assert.AreEqual(7, System.Enum.GetValues(typeof(ComboVerdict)).Length, "허용 + 원점 사유 셋 + 비율 사유 둘 + 배선 전 하나(unit 8)");
+        }
+
+        // skill-data-table unit 8 — 상시 효과 4종(진영 버프 · 튕김 · 최전방 · 수면 특효). 트리거 없음(보유 시작 순간)과만 짝이고,
+        // 오늘 배선된 숙주는 「방어유닛에 붙는 카드」 하나다 — 방어유닛 · 적이 직접 들거나 적 숙주 카드면 배선 전(설계 거절과 다른 사유).
+        [Test]
+        public void 상시_효과는_트리거_없음과만_짝이고_방어유닛에_붙는_카드만_배선됐다()
+        {
+            var alwaysOn = new[] { EffectKind.FactionStatBuff, EffectKind.ProjectileBounce, EffectKind.FrontmostTarget, EffectKind.DamageVsSleeping };
+            foreach (var k in alwaysOn)
+            {
+                Assert.IsTrue(SkillRouting.IsAlwaysOn(k), k.ToString());
+                Assert.IsFalse(SkillRouting.IsSkill(k), k + " — 라우팅 표 밖(빌더가 진영 버프 줄 · 공격 수식자로 편다)");
+                Assert.IsNull(SkillRouting.Resolve(TriggerKind.None, k), k + " — 라우팅이 없다(그래서 빌더가 조합 · 라우팅 앞에서 가로챈다)");
+                Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Attached(TriggerKind.None, k)), k + " × 방어유닛에 붙는 카드");
+                Assert.AreEqual(ComboVerdict.NotWired, EffectComboRule.Check(Innate(TriggerKind.None, k)), k + " × 방어유닛이 직접 든다");
+                Assert.AreEqual(ComboVerdict.NotWired, EffectComboRule.Check(Enemy(TriggerKind.None, k)), k + " × 적이 직접 든다");
+                var enemyHostCard = Attached(TriggerKind.None, k); enemyHostCard.HostIsEnemy = true;
+                Assert.AreEqual(ComboVerdict.NotWired, EffectComboRule.Check(in enemyHostCard), k + " × 적에게 붙는 카드");
+                foreach (TriggerKind t in System.Enum.GetValues(typeof(TriggerKind)))
+                    if (t != TriggerKind.None)
+                        Assert.AreEqual(ComboVerdict.ShapeMismatch, EffectComboRule.Check(Attached(t, k)), $"{t} × {k} — 상시 효과는 사건에 못 단다");
+                var any = Attached(TriggerKind.None, k); any.Subject = BindingSubject.Any;
+                Assert.AreEqual(ComboVerdict.NoOrigin, EffectComboRule.Check(in any), k + " — 남의 사건이 아니다");
+                var ratio = Attached(TriggerKind.None, k); ratio.Magnitude = MagnitudeMode.OwnerStatRatio;
+                Assert.AreEqual(ComboVerdict.NoRatioField, EffectComboRule.Check(in ratio), k + " — 비율 칸 없음");
+                Assert.IsFalse(EffectMagnitude.AcceptsRatio(k), k.ToString());
+            }
+            // 강타는 그대로(AttackN — 오늘도 누구나 든다) · 부착 즉시 3종 · 다른 효과 × 트리거 없음은 여전히 사건이 없다.
+            Assert.IsFalse(SkillRouting.IsAlwaysOn(EffectKind.HeavyStrike));
+            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Innate(TriggerKind.AttackN, EffectKind.HeavyStrike)));
+            Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Enemy(TriggerKind.AttackN, EffectKind.HeavyStrike)));
+            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Attached(TriggerKind.None, EffectKind.SelfStatBuff)));
+            StringAssert.StartsWith("배선 전", EffectComboRule.Describe(ComboVerdict.NotWired));
         }
     }
 }

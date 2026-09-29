@@ -56,6 +56,18 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         }
 
         [Test]
+        public void KindKo_NamesEveryEffectKind()
+        {
+            // U19 — 한국어 표시 열. 종류를 append 하고 이름을 잊으면 시트에 enum 이름이 그대로 샌다(skill-data-table unit 8 — 상시 4종 포함).
+            foreach (EffectKind k in System.Enum.GetValues(typeof(EffectKind)))
+                Assert.AreNotEqual(k.ToString(), SkillSheet.KindKo(k), k + " 의 한국어 표시가 없다");
+            Assert.AreEqual("아군 전체 스탯", SkillSheet.KindKo(EffectKind.FactionStatBuff));
+            Assert.AreEqual("투사체 튕김", SkillSheet.KindKo(EffectKind.ProjectileBounce));
+            Assert.AreEqual("최전방 우선", SkillSheet.KindKo(EffectKind.FrontmostTarget));
+            Assert.AreEqual("수면 적 특효", SkillSheet.KindKo(EffectKind.DamageVsSleeping));
+        }
+
+        [Test]
         public void Import_LogsDiffBeforeWriting_AndPreviewWritesNothing()
         {
             var e = Effect("aoe", EffectKind.SelfTileAoe, 20f, 1);

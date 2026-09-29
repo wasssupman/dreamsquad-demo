@@ -30,7 +30,7 @@ namespace Wassup.BattleCore.Trigger
         Cast = 10,
     }
 
-    /// <summary>「무엇을」 — 효과 종류(0~38 = 39값 · 33~38 = 액티브 시전 6). 저작이 직접 든다. 옛 이름 `TriggerPayload`.</summary>
+    /// <summary>「무엇을」 — 효과 종류(0~42 = 43값 · 33~38 = 액티브 시전 6 · 39~42 = 상시 효과 4). 저작이 직접 든다. 옛 이름 `TriggerPayload`.</summary>
     public enum EffectKind : byte
     {
         None = 0,
@@ -80,6 +80,17 @@ namespace Wassup.BattleCore.Trigger
         ActiveRapidFire = 36,
         ActiveTornado = 37,
         ActivePortal = 38,
+        // skill-data-table unit 8 — **상시 효과 4**(옛 카드 전용 저장처 `effects` · `attackMods` 를 효과 줄로 · README 계약 11). 트리거 `None`
+        // (보유 시작 순간부터 계속)과만 짝이다(`EffectComboRule` ⓪'). 라우팅 표 밖 — 코어에 「상시」 트리거를 만들지 않고 빌더가 기존
+        // 코어 모양으로 편다: 진영 버프 = 「남의 배치 × 자기 스탯 버프(영구)」 줄(카드 `SquadBindings`) · 나머지 셋 = 공격 수식자(`AttackModDef`).
+        /// <summary>아군 전체 스탯 — 수혜 대상 = 효과의 `allyFilter`(계약 12).</summary>
+        FactionStatBuff = 39,
+        /// <summary>투사체 튕김(공격 수식자).</summary>
+        ProjectileBounce = 40,
+        /// <summary>최전방 우선(공격 수식자).</summary>
+        FrontmostTarget = 41,
+        /// <summary>수면 적 특효(공격 수식자 · 배율 &gt; 1).</summary>
+        DamageVsSleeping = 42,
     }
 
     /// <summary>게이트 종류 — 저작이 직접 든다.</summary>
