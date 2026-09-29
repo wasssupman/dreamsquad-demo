@@ -8,8 +8,8 @@ using Wassup.Data.StatImport;
 
 namespace Wassup.Tests.EditMode.UnitStatImport
 {
-    // dreamcatcher-sheet-sync unit 2 — regression coverage for the DC tab DTOs and
-    // the two array-sync semantics (sheet-SoT rebuild vs Unity-SoT overlay).
+    // dreamcatcher-sheet-sync unit 2 — regression coverage for the DC tab DTOs(flat tabs — cards · skills · configs).
+    // 시트-정본 자식 탭 둘은 skill-data-table unit 8 단계 B 에서 은퇴(아래 표시).
     public class DcSheetImportTests
     {
         private DreamcatcherCard NewCard(string id)
@@ -49,9 +49,9 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         [Test]
         public void Deserialize_UnknownEnumMember_Throws()
         {
-            const string json = @"[{ ""cardId"": ""x"", ""slot"": 0, ""kind"": ""AttackDamge"" }]";
+            const string json = @"[{ ""id"": ""x"", ""axis"": ""Alll"" }]";
             Assert.Throws<JsonSerializationException>(
-                () => JsonConvert.DeserializeObject<DcCardEffectDto[]>(json));
+                () => JsonConvert.DeserializeObject<DcCardDto[]>(json));
         }
 
         // -------- flat tabs --------
@@ -192,228 +192,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.AreEqual(4, skill.cost, "omitted column must keep the SO value");
         }
 
-        // -------- sheet-SoT tabs: effects rebuild --------
-
-        [Test]
-        public void RebuildEffects_RowAdded_GrowsArray()
-        {
-            var so = NewCard("card_a");
-            so.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10 } };
-            var log = new StringBuilder();
-
-            var payload = new DcSheetPayload
-            {
-                cardEffects = new[]
-                {
-                    new DcCardEffectDto { cardId = "card_a", slot = 0, percent = 12 },
-                    new DcCardEffectDto { cardId = "card_a", slot = 1, kind = CardBuffKind.AttackSpeed, percent = 10 },
-                },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so }, log: log);
-
-            Assert.AreEqual(2, so.effects.Length);
-            Assert.AreEqual(CardBuffKind.AttackDamage, so.effects[0].kind, "slot 0 keeps its kind (blank cell)");
-            Assert.AreEqual(12f, so.effects[0].percent);
-            Assert.AreEqual(CardBuffKind.AttackSpeed, so.effects[1].kind);
-            StringAssert.Contains("effects 1→2", log.ToString());
-        }
-
-        [Test]
-        public void RebuildEffects_RowRemoved_ShrinksArrayAndReports()
-        {
-            var so = NewCard("card_a");
-            so.effects = new[]
-            {
-                new CardEffect { kind = CardBuffKind.EffectiveHealth, percent = 50 },
-                new CardEffect { kind = CardBuffKind.AttackSpeed, percent = -50 },
-            };
-            var log = new StringBuilder();
-
-            var payload = new DcSheetPayload
-            {
-                cardEffects = new[] { new DcCardEffectDto { cardId = "card_a", slot = 0 } },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so }, log: log);
-
-            Assert.AreEqual(1, so.effects.Length);
-            Assert.AreEqual(CardBuffKind.EffectiveHealth, so.effects[0].kind);
-            StringAssert.Contains("effects 2→1", log.ToString());
-        }
-
-        [Test]
-        public void RebuildEffects_CardAbsentFromTab_KeepsArray()
-        {
-            var touched = NewCard("card_a");
-            touched.effects = new CardEffect[0];
-            var untouched = NewCard("card_b");
-            untouched.effects = new[] { new CardEffect { kind = CardBuffKind.MoveSpeed, percent = 10 } };
-            var cards = new Dictionary<string, DreamcatcherCard>
-            { ["card_a"] = touched, ["card_b"] = untouched };
-
-            var payload = new DcSheetPayload
-            {
-                cardEffects = new[]
-                {
-                    new DcCardEffectDto { cardId = "card_a", slot = 0, kind = CardBuffKind.AttackDamage, percent = 5 },
-                },
-            };
-            Apply(payload, cards);
-
-            Assert.AreEqual(1, untouched.effects.Length, "cards absent from the tab keep their arrays");
-            Assert.AreEqual(1, touched.effects.Length);
-        }
-
-        [Test]
-        public void RebuildEffects_DuplicateSlot_SkipsWholeCard()
-        {
-            var so = NewCard("card_a");
-            so.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10 } };
-            var log = new StringBuilder();
-
-            var payload = new DcSheetPayload
-            {
-                cardEffects = new[]
-                {
-                    new DcCardEffectDto { cardId = "card_a", slot = 0, percent = 1 },
-                    new DcCardEffectDto { cardId = "card_a", slot = 0, percent = 2 },
-                },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so }, log: log);
-
-            Assert.AreEqual(10f, so.effects[0].percent, "duplicate slots must poison the whole card");
-            StringAssert.Contains("duplicate slots", log.ToString());
-        }
-
-        [Test]
-        public void RebuildEffects_NewSlotWithoutKind_SkipsWholeCard()
-        {
-            var so = NewCard("card_a");
-            so.effects = new CardEffect[0];
-
-            var payload = new DcSheetPayload
-            {
-                cardEffects = new[] { new DcCardEffectDto { cardId = "card_a", slot = 0, percent = 5 } },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so });
-
-            Assert.AreEqual(0, so.effects.Length, "a new row without kind must not fabricate an effect");
-        }
-
-        [Test]
-        public void RebuildAttackMods_RowAdded_GrowsArray()
-        {
-            var so = NewCard("bouncy_bead");
-            so.attackMods = new DcAttackModSpec[0];
-
-            var payload = new DcSheetPayload
-            {
-                attackMods = new[]
-                {
-                    new DcAttackModDto { cardId = "bouncy_bead", slot = 0, kind = DcAttackModKind.ProjectileBounce, count = 2, tileRange = 3, damageMul = 1f },
-                },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["bouncy_bead"] = so });
-
-            Assert.AreEqual(1, so.attackMods.Length);
-            Assert.AreEqual(2, so.attackMods[0].count);
-        }
-
-        // skill-data-table unit 5 — 옛 DcMechanics 탭(카드 메커닉 값 overlay)은 은퇴했다. 카드 규칙은 이 코어가 아니라
-        // `SkillSheet`(탭 Skills · SkillOwners)가 다룬다 — `SkillSheetImportTests`.
-
-        // ---- unit 6 (review fixes) — edge cases from the two-track review ----
-
-        [Test]
-        public void RebuildEffects_NegativeSlot_SkipsCardWithoutThrowing()
-        {
-            var so = NewCard("card_a");
-            so.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10 } };
-            var log = new StringBuilder();
-
-            var payload = new DcSheetPayload
-            {
-                cardEffects = new[] { new DcCardEffectDto { cardId = "card_a", slot = -1, percent = 99 } },
-            };
-            Assert.DoesNotThrow(() =>
-                Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so }, log: log));
-
-            Assert.AreEqual(10f, so.effects[0].percent, "negative slot must poison the card, not crash");
-            StringAssert.Contains("without valid slot", log.ToString());
-        }
-
-        [Test]
-        public void RebuildEffects_NullSlot_SkipsCard()
-        {
-            var so = NewCard("card_a");
-            so.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10 } };
-
-            var payload = new DcSheetPayload
-            {
-                cardEffects = new[] { new DcCardEffectDto { cardId = "card_a", percent = 99 } },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so });
-
-            Assert.AreEqual(10f, so.effects[0].percent);
-        }
-
-        // Pins the reorder semantics (review M1): a blank cell inherits the old
-        // entry AT THAT SLOT NUMBER, and the rebuilt array is slot-ordered rows —
-        // renumbering rows while leaving cells blank moves values by slot label.
-        [Test]
-        public void RebuildEffects_SlotGap_BlankCellsInheritBySlotNumber()
-        {
-            var so = NewCard("card_a");
-            so.effects = new[]
-            {
-                new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10 },
-                new CardEffect { kind = CardBuffKind.AttackSpeed, percent = 20 },
-            };
-
-            var payload = new DcSheetPayload
-            {
-                cardEffects = new[] { new DcCardEffectDto { cardId = "card_a", slot = 1 } }, // blank kind/percent
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so });
-
-            Assert.AreEqual(1, so.effects.Length);
-            Assert.AreEqual(CardBuffKind.AttackSpeed, so.effects[0].kind, "blank cells inherit old[slot], not old[position]");
-            Assert.AreEqual(20f, so.effects[0].percent);
-        }
-
-        [Test]
-        public void RebuildAttackMods_RowRemoved_ShrinksAndReports()
-        {
-            var so = NewCard("bouncy_bead");
-            so.attackMods = new[]
-            {
-                new DcAttackModSpec { kind = DcAttackModKind.ProjectileBounce, count = 2 },
-                new DcAttackModSpec { kind = DcAttackModKind.ProjectileBounce, count = 3 },
-            };
-            var log = new StringBuilder();
-
-            var payload = new DcSheetPayload
-            {
-                attackMods = new[] { new DcAttackModDto { cardId = "bouncy_bead", slot = 0 } },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["bouncy_bead"] = so }, log: log);
-
-            Assert.AreEqual(1, so.attackMods.Length);
-            Assert.AreEqual(2, so.attackMods[0].count);
-            StringAssert.Contains("attackMods 2→1", log.ToString());
-        }
-
-        [Test]
-        public void ChildTab_UnknownCardId_ReportsNoMatch()
-        {
-            var log = new StringBuilder();
-            var payload = new DcSheetPayload
-            {
-                cardEffects = new[] { new DcCardEffectDto { cardId = "ghost", slot = 0, percent = 1 } },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard>(), log: log);
-
-            StringAssert.Contains("no match for cardId='ghost'", log.ToString());
-        }
+        // skill-data-table unit 8 단계 B — 시트-정본 자식 탭 둘(`DcCardEffects` · `DcAttackMods` — 카드 `effects[]` · `attackMods[]` 재구성)은
+        // 은퇴했다. 스쿼드 스탯 효과 · 공격 수식자는 효과 줄 + 소유 줄이다(탭 `Skills` · `SkillOwners` — `SkillSheetImportTests`).
 
         [Test]
         public void Apply_EmptyPayload_ReportsZeroCounts()

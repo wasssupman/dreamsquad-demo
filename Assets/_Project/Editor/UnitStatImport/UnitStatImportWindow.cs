@@ -26,8 +26,8 @@ namespace Wassup.Editor.UnitStatImport
         // dreamcatcher-sheet-sync unit 3 — DC tab names are contract-fixed
         // (0_json_schema_contract.md); prefs only exist for ad-hoc experiments.
         // skill-data-table unit 5 — 탭 계약 = `DcSheetTabs`(DcMechanics 은퇴 · Skills/SkillOwners 신설 · 7탭). 옛 6탭 목록이 남은
-        // 에디터 prefs 가 버튼을 잠그지 않게 키를 바꿨다(.v2).
-        private const string DcSheetsPrefsKey = "Wassup.UnitStatImport.DcSheets.v2";
+        // 에디터 prefs 가 버튼을 잠그지 않게 키를 바꿨다(.v2). unit 8 단계 B — DcCardEffects · DcAttackMods 은퇴(5탭) · 같은 이유로 .v3.
+        private const string DcSheetsPrefsKey = "Wassup.UnitStatImport.DcSheets.v3";
         private static readonly string DefaultDcSheets = string.Join(",", DcSheetTabs.Default());
         private const string DcFolder = "Assets/_Project/Data/Dreamcatcher";
         private const string SkillFolder = "Assets/_Project/Data/Skills";
@@ -271,20 +271,17 @@ namespace Wassup.Editor.UnitStatImport
             var payload = new DcSheetPayload
             {
                 cards = SheetEnvelopeParser.ParseSheetLogged<DcCardDto>(r[DcSheetTabs.CardsAt].body, r[DcSheetTabs.CardsAt].transportError, tabs[DcSheetTabs.CardsAt], log),
-                cardEffects = SheetEnvelopeParser.ParseSheetLogged<DcCardEffectDto>(r[DcSheetTabs.CardEffectsAt].body, r[DcSheetTabs.CardEffectsAt].transportError, tabs[DcSheetTabs.CardEffectsAt], log),
-                attackMods = SheetEnvelopeParser.ParseSheetLogged<DcAttackModDto>(r[DcSheetTabs.AttackModsAt].body, r[DcSheetTabs.AttackModsAt].transportError, tabs[DcSheetTabs.AttackModsAt], log),
                 skills = SheetEnvelopeParser.ParseSheetLogged<DcSkillDto>(r[DcSheetTabs.ActiveSkillsAt].body, r[DcSheetTabs.ActiveSkillsAt].transportError, tabs[DcSheetTabs.ActiveSkillsAt], log),
                 configs = SheetEnvelopeParser.ParseSheetLogged<DcConfigDto>(r[DcSheetTabs.ConfigAt].body, r[DcSheetTabs.ConfigAt].transportError, tabs[DcSheetTabs.ConfigAt], log),
             };
             var skillPayload = ParseSkillTabs(r, tabs, log);
-            if (payload.cards == null && payload.cardEffects == null && payload.attackMods == null
-                && payload.skills == null && payload.configs == null
+            if (payload.cards == null && payload.skills == null && payload.configs == null
                 && skillPayload.skills == null && skillPayload.owners == null)
                 return log.ToString();
 
             // review (architect #3) — surface each tab's SoT mode so "can I delete
             // this row?" never depends on remembering the spec.
-            log.AppendLine($"[mode] {tabs[DcSheetTabs.CardEffectsAt]}/{tabs[DcSheetTabs.AttackModsAt]}/{tabs[DcSheetTabs.SkillOwnersAt]}: sheet-SoT (rows rebuild arrays; deleting a row deletes the entry) · {tabs[DcSheetTabs.SkillsAt]}: per-id values (blank = keep; unknown ids are reported, never created).");
+            log.AppendLine($"[mode] {tabs[DcSheetTabs.SkillOwnersAt]}: sheet-SoT (rows rebuild arrays; deleting a row deletes the entry) · {tabs[DcSheetTabs.SkillsAt]}: per-id values (blank = keep; unknown ids are reported, never created).");
 
             var cardsById = UnitStatApplier.BuildIndex(
                 UnitAssetScan.Enumerate<DreamcatcherCard>(DcFolder), so => so.id, log, nameof(DreamcatcherCard));

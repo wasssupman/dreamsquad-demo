@@ -18,14 +18,13 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         private const string Empty = @"{ ""success"": true, ""data"": [] }";
         private const string ErrorBody = @"{ ""success"": false, ""errorDetail"": { ""errorCode"": ""INTERNAL_SERVER_ERROR"", ""detailMessage"": ""구글 시트 연동 실패"" } }";
 
-        private static SheetFetcher.Result[] Results(string cards, string effects,
-            string attackMods, string skills, string config, string skillRows = Empty, string owners = Empty)
+        // `DcSheetTabs` 순서(skill-data-table unit 8 단계 B — 5탭: DcCards · DcSkills · DcConfig · Skills · SkillOwners).
+        private static SheetFetcher.Result[] Results(string cards, string skills, string config,
+            string skillRows = Empty, string owners = Empty)
         {
             return new[]
             {
                 new SheetFetcher.Result(cards, null),
-                new SheetFetcher.Result(effects, null),
-                new SheetFetcher.Result(attackMods, null),
                 new SheetFetcher.Result(skills, null),
                 new SheetFetcher.Result(config, null),
                 new SheetFetcher.Result(skillRows, null),
@@ -39,7 +38,6 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
             card.id = "test_card";
             card.displayName = "OLD";
-            card.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10f } };
 
             var skill = ScriptableObject.CreateInstance<SkillData>();
             skill.id = "sk";
@@ -64,14 +62,11 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             string log = DcSheetRuntimeRefresher.ApplyBodies(
                 Results(
                     Body(@"{ ""id"": ""test_card"", ""displayName"": ""NEW"" }"),
-                    Body(@"{ ""cardId"": ""test_card"", ""slot"": 0, ""kind"": ""AttackDamage"", ""percent"": 25 }"),
-                    Empty,
                     Body(@"{ ""id"": ""sk"", ""magnitude"": 200 }"),
                     Body(@"{ ""id"": ""awk"", ""handSize"": 4 }")),
                 Tabs, catalog, new[] { active }, awakening);
 
             Assert.AreEqual("NEW", card.displayName, "DcCards flat field applied to catalog card");
-            Assert.AreEqual(25f, card.effects[0].percent, "DcCardEffects rebuilt the effect");
             Assert.AreEqual(200f, skill.magnitude, "DcSkills applied to active card's wrapped skill");
             Assert.AreEqual(4, awakening.handSize, "DcConfig applied to AwakeningConfig");
             StringAssert.Contains("Matched", log);
@@ -95,7 +90,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             string log = DcSheetRuntimeRefresher.ApplyBodies(
                 Results(Body(@"{ ""id"": ""ghost"", ""displayName"": ""X"" }"),
-                    Empty, Empty, Empty, Empty),
+                    Empty, Empty),
                 Tabs, catalog, null, null);
 
             Assert.AreEqual("OLD", card.displayName, "unmatched sheet id must not touch other cards");
@@ -111,24 +106,32 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
             card.id = "test_card";
             card.displayName = "OLD";
-            card.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10f } };
+            var skill = ScriptableObject.CreateInstance<SkillData>();
+            skill.id = "sk";
+            skill.magnitude = 40f;
+            var active = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            active.id = "active_x";
+            active.type = CardType.Active;
+            active.skill = skill;
             var catalog = ScriptableObject.CreateInstance<DreamcatcherCardCatalog>();
             catalog.cards = new[] { card };
 
-            // DcCards fails (error envelope); DcCardEffects succeeds — partial-update
-            // must still rebuild the effect while the failed tab is reported.
+            // DcCards fails (error envelope); DcSkills succeeds — partial-update
+            // must still apply the healthy tab while the failed tab is reported.
             string log = DcSheetRuntimeRefresher.ApplyBodies(
                 Results(ErrorBody,
-                    Body(@"{ ""cardId"": ""test_card"", ""slot"": 0, ""kind"": ""AttackDamage"", ""percent"": 25 }"),
-                    Empty, Empty, Empty),
-                Tabs, catalog, null, null);
+                    Body(@"{ ""id"": ""sk"", ""magnitude"": 200 }"),
+                    Empty),
+                Tabs, catalog, new[] { active }, null);
 
-            Assert.AreEqual(25f, card.effects[0].percent, "healthy DcCardEffects tab must still apply");
+            Assert.AreEqual(200f, skill.magnitude, "healthy DcSkills tab must still apply");
             Assert.AreEqual("OLD", card.displayName, "failed DcCards tab must not change flat fields");
             StringAssert.Contains("[DcCards] fetch failed", log);
             StringAssert.Contains("구글 시트 연동 실패", log);
 
             Object.DestroyImmediate(card);
+            Object.DestroyImmediate(skill);
+            Object.DestroyImmediate(active);
             Object.DestroyImmediate(catalog);
         }
 
@@ -157,7 +160,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             string log = DcSheetRuntimeRefresher.ApplyBodies(
                 Results(Body(@"{ ""id"": ""test_card"", ""displayName"": ""NEW"" }"),
-                    Empty, Empty, Empty, Empty,
+                    Empty, Empty,
                     Body(@"{ ""effect_id"": ""test_aoe"", ""damage"": 99, ""radius_tiles"": 3 }"),
                     Body(@"{ ""owner_kind"": ""card"", ""owner_id"": ""test_card"", ""slot"": 0, ""period"": 2 },
                            { ""owner_kind"": ""defender"", ""owner_id"": ""test_unit"", ""slot"": 0, ""trigger"": ""OnPlace"", ""effect_id"": ""test_aoe"" }")),
@@ -184,6 +187,10 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void TabContract_RetiresDcMechanics_AndAddsSkillTabs()
         {
             CollectionAssert.DoesNotContain(DcSheetTabs.Default(), "DcMechanics");
+            // skill-data-table unit 8 단계 B — 카드 자식 탭 둘도 은퇴(스쿼드 스탯 효과 · 공격 수식자 = 효과 줄 + 소유 줄).
+            CollectionAssert.DoesNotContain(DcSheetTabs.Default(), "DcCardEffects");
+            CollectionAssert.DoesNotContain(DcSheetTabs.Default(), "DcAttackMods");
+            Assert.AreEqual(5, DcSheetTabs.Count);
             Assert.AreEqual(DcSheetTabs.Count, DcSheetTabs.Default().Length);
             Assert.AreEqual("Skills", DcSheetTabs.Default()[DcSheetTabs.SkillsAt]);
             Assert.AreEqual("SkillOwners", DcSheetTabs.Default()[DcSheetTabs.SkillOwnersAt]);

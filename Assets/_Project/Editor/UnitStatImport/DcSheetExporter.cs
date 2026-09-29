@@ -10,9 +10,9 @@ using Wassup.Data.StatImport;
 namespace Wassup.Editor.UnitStatImport
 {
     // dreamcatcher-sheet-sync unit 3 — SO → per-tab JSON rows, the reverse of
-    // DcSheetApplier. Child arrays unroll into (cardId, slot) rows; `_`-prefixed
-    // informational columns (asset-ref ids, structural enums) are filled here by
+    // DcSheetApplier. `_`-prefixed informational columns (asset-ref ids, structural enums) are filled here by
     // hand and ignored by the importer. Output rows match the seed JSON shape.
+    // skill-data-table unit 8 단계 B — 카드 자식 탭 둘(DcCardEffects · DcAttackMods)은 은퇴 — 그 값은 `Skills` · `SkillOwners` 로 나간다.
     public static class DcSheetExporter
     {
         private static readonly JsonSerializerSettings Settings = new()
@@ -28,7 +28,7 @@ namespace Wassup.Editor.UnitStatImport
         // 폐기와 함께 제거. 모든 스킬이 타일 대상이라 열의 정보량이 0이다.
         private class SkillRow : DcSkillDto { public string _effect; }
 
-        // tabNames order = `DcSheetTabs`(cards, cardEffects, attackMods, DcSkills, config, Skills, SkillOwners).
+        // tabNames order = `DcSheetTabs`(cards, DcSkills, config, Skills, SkillOwners).
         public static string ExportToFolder(string folder, string[] tabNames,
             string dcAssetFolder, string skillAssetFolder)
         {
@@ -40,8 +40,6 @@ namespace Wassup.Editor.UnitStatImport
                 .OrderBy(so => so.id, System.StringComparer.Ordinal).ToList();
 
             var cardRows = new List<CardRow>();
-            var effectRows = new List<DcCardEffectDto>();
-            var attackModRows = new List<DcAttackModDto>();
             foreach (var so in cards)
             {
                 var row = new CardRow();
@@ -59,22 +57,6 @@ namespace Wassup.Editor.UnitStatImport
                     row.attachValue = null;
                 }
                 cardRows.Add(row);
-
-                for (int i = 0; i < (so.effects?.Length ?? 0); i++)
-                {
-                    var e = so.effects[i];
-                    effectRows.Add(new DcCardEffectDto
-                    { cardId = so.id, slot = i, kind = e.kind, percent = e.percent });
-                }
-                for (int i = 0; i < (so.attackMods?.Length ?? 0); i++)
-                {
-                    var a = so.attackMods[i];
-                    attackModRows.Add(new DcAttackModDto
-                    {
-                        cardId = so.id, slot = i, kind = a.kind,
-                        count = a.count, tileRange = a.tileRange, damageMul = a.damageMul,
-                    });
-                }
             }
 
             var skillRows = new List<SkillRow>();
@@ -112,8 +94,6 @@ namespace Wassup.Editor.UnitStatImport
                 UnitAssetScan.Enumerate<AttackUnitData>(UnitStatImportWindow.DataRoot));
 
             WriteTab(folder, tabNames[DcSheetTabs.CardsAt], cardRows, log);
-            WriteTab(folder, tabNames[DcSheetTabs.CardEffectsAt], effectRows, log);
-            WriteTab(folder, tabNames[DcSheetTabs.AttackModsAt], attackModRows, log);
             WriteTab(folder, tabNames[DcSheetTabs.ActiveSkillsAt], skillRows, log);
             WriteTab(folder, tabNames[DcSheetTabs.ConfigAt], configRows, log);
             WriteTab(folder, tabNames[DcSheetTabs.SkillsAt], skillSheet.skills, log);
@@ -144,7 +124,7 @@ namespace Wassup.Editor.UnitStatImport
 
                 var root = new Newtonsoft.Json.Linq.JObject
                 {
-                    ["_note"] = "전 드림캐쳐 · 스킬 SO export 스냅샷. 각 탭명 키의 배열을 구글 시트 같은 이름 탭에 업서트(키=id · (cardId,slot) · Skills=effect_id · SkillOwners=(owner_kind,owner_id,slot)). enum=C# 멤버명. DcCardEffects/DcAttackMods/SkillOwners=시트-SoT(행=배열항목), Skills=효과 id 별 값(kind_ko=보기 전용).",
+                    ["_note"] = "전 드림캐쳐 · 스킬 SO export 스냅샷. 각 탭명 키의 배열을 구글 시트 같은 이름 탭에 업서트(키=id · Skills=effect_id · SkillOwners=(owner_kind,owner_id,slot)). enum=C# 멤버명. SkillOwners=시트-SoT(행=배열항목), Skills=효과 id 별 값(kind_ko=보기 전용).",
                 };
                 foreach (var tab in tabNames)
                 {
@@ -177,7 +157,7 @@ namespace Wassup.Editor.UnitStatImport
             sb.AppendLine("1. JSON top-level 키 = 시트 탭 이름(`_note` 제외). 각 배열을 같은 이름 탭에 반영, 없으면 생성.");
             sb.AppendLine("2. 배열 원소=행, 객체 키=열 헤더(1행 헤더, 2행부터 데이터). 특정 행에 없는 키는 셀 비움.");
             sb.AppendLine("3. 기존 헤더 순서 유지, JSON 에만 있는 새 열은 오른쪽에 추가.");
-            sb.AppendLine("4. 업서트(중복 생성 금지): DcCards/DcSkills/DcConfig 키=id · DcCardEffects/DcAttackMods 키=(cardId,slot) · Skills 키=effect_id · SkillOwners 키=(owner_kind,owner_id,slot). 같은 키 행은 갱신, 없으면 추가, slot 오름차순. JSON 에 없는 기존 행은 지우지 마라.");
+            sb.AppendLine("4. 업서트(중복 생성 금지): DcCards/DcSkills/DcConfig 키=id · Skills 키=effect_id · SkillOwners 키=(owner_kind,owner_id,slot). 같은 키 행은 갱신, 없으면 추가, slot 오름차순. JSON 에 없는 기존 행은 지우지 마라.");
             sb.AppendLine("5. 값 그대로: enum=문자열, 숫자=숫자, 한글 텍스트 원문 유지. 변형·번역·반올림 금지.");
             sb.AppendLine("6. 반영 후 탭별 추가/갱신 행 수를 요약.");
             sb.AppendLine();

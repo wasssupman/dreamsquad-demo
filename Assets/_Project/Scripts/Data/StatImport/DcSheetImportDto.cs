@@ -42,28 +42,10 @@ namespace Wassup.Data.StatImport
         public string attachValue;
     }
 
-    // Sheet-SoT child row (effects[] rebuild): slot is the ordering/identity key.
-    public class DcCardEffectDto
-    {
-        public string cardId;
-        public int? slot;
-        public CardBuffKind? kind;
-        public float? percent;
-    }
-
     // skill-data-table unit 5 — 옛 `DcMechanicDto`(DcMechanics 탭 · 카드 메커닉 값 overlay)는 은퇴. 카드 · 방어유닛 · 적의 규칙은
     // 새 두 탭 `Skills` · `SkillOwners`(`SkillSheetDto.cs` · `SkillSheet`)가 맡는다.
-
-    // Sheet-SoT child row (attackMods[] rebuild).
-    public class DcAttackModDto
-    {
-        public string cardId;
-        public int? slot;
-        public DcAttackModKind? kind;
-        public int? count;
-        public int? tileRange;
-        public float? damageMul;
-    }
+    // skill-data-table unit 8 단계 B — 카드 자식 행 둘(`DcCardEffectDto` · `DcAttackModDto` — 탭 `DcCardEffects` · `DcAttackMods`)도 은퇴.
+    // 스쿼드 스탯 효과 · 공격 수식자는 효과 줄 + 카드 소유 줄(같은 두 탭)이다.
 
     public class DcSkillDto
     {
@@ -104,8 +86,6 @@ namespace Wassup.Data.StatImport
     public class DcSheetPayload
     {
         public DcCardDto[] cards;
-        public DcCardEffectDto[] cardEffects;
-        public DcAttackModDto[] attackMods;
         public DcSkillDto[] skills;
         public DcConfigDto[] configs;
     }

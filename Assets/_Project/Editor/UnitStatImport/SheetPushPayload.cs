@@ -5,7 +5,7 @@ using Wassup.Data.StatImport;
 
 namespace Wassup.Editor.UnitStatImport
 {
-    // sheet-export-push unit 2 — 유닛 2탭 + DC 탭(`DcSheetTabs` — skill-data-table unit 5 부터 Skills · SkillOwners 포함 7탭) + CostConfig 1탭을 하나의 push 바디
+    // sheet-export-push unit 2 — 유닛 2탭 + DC 탭(`DcSheetTabs` — skill-data-table unit 5 부터 Skills · SkillOwners 포함 · unit 8 단계 B 부터 5탭) + CostConfig 1탭을 하나의 push 바디
     // ({ "<탭명>": [rows], ... })로 병합한다. 검증된 exporter 를 임시 폴더에 그대로
     // 돌린 뒤 산출 JSON 을 다시 읽어 탭명 키로 합친다 — DcSheetExporter.ExportCombinedFile
     // 이 이미 쓰는 패턴(수집 로직 중복 0, 기존 exporter 미변경). null 필드 생략(blank=keep)·

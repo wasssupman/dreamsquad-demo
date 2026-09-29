@@ -15,6 +15,7 @@ namespace Wassup.Core
     // dev/QA-only; scene-local component, not a singleton.
     // skill-data-table unit 5 — 옛 DcMechanics 탭은 은퇴 · 새 두 탭 `Skills` · `SkillOwners`(`DcSheetTabs`)를 같은 fetch 로 받아
     // `SkillSheet` 하나가 효과 에셋 값과 카드 · 방어유닛 · 적의 소유 줄을 메모리에서 고친다(로그인 자동 import 도 이 경로다).
+    // skill-data-table unit 8 단계 B — 카드 자식 탭 둘(DcCardEffects · DcAttackMods)은 은퇴 — 받지 않는다(`DcSheetTabs` 5탭).
     public class DcSheetRuntimeRefresher : MonoBehaviour, IRuntimeRefresher
     {
         [SerializeField] private DreamcatcherCardCatalog cardCatalog;
@@ -70,8 +71,6 @@ namespace Wassup.Core
             var payload = new DcSheetPayload
             {
                 cards = Parse<DcCardDto>(r, tabs, DcSheetTabs.CardsAt, log),
-                cardEffects = Parse<DcCardEffectDto>(r, tabs, DcSheetTabs.CardEffectsAt, log),
-                attackMods = Parse<DcAttackModDto>(r, tabs, DcSheetTabs.AttackModsAt, log),
                 skills = Parse<DcSkillDto>(r, tabs, DcSheetTabs.ActiveSkillsAt, log),
                 configs = Parse<DcConfigDto>(r, tabs, DcSheetTabs.ConfigAt, log),
             };
@@ -80,8 +79,7 @@ namespace Wassup.Core
                 skills = Parse<SkillRowDto>(r, tabs, DcSheetTabs.SkillsAt, log),
                 owners = Parse<SkillOwnerRowDto>(r, tabs, DcSheetTabs.SkillOwnersAt, log),
             };
-            bool dcNone = payload.cards == null && payload.cardEffects == null && payload.attackMods == null
-                          && payload.skills == null && payload.configs == null;
+            bool dcNone = payload.cards == null && payload.skills == null && payload.configs == null;
             if (dcNone && skillPayload.skills == null && skillPayload.owners == null)
                 return log.ToString();
 

@@ -70,6 +70,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             // skill-data-table unit 5 — push 바디 = 새 탭 계약(DcMechanics 없음 · Skills · SkillOwners 있음).
             var root = JObject.Parse(json);
             Assert.IsNull(root["DcMechanics"], "은퇴한 DcMechanics 탭을 push 하면 안 된다");
+            Assert.IsNull(root["DcCardEffects"], "은퇴한 DcCardEffects 탭을 push 하면 안 된다(unit 8 단계 B)");
+            Assert.IsNull(root["DcAttackMods"], "은퇴한 DcAttackMods 탭을 push 하면 안 된다(unit 8 단계 B)");
             Assert.Greater(((JArray)root["Skills"]).Count, 0, "Skills 탭(효과 줄)이 push 바디에 있다");
             Assert.Greater(((JArray)root["SkillOwners"]).Count, 0, "SkillOwners 탭(소유 줄)이 push 바디에 있다");
 
