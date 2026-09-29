@@ -20,11 +20,11 @@ namespace Wassup.Editor.UnitStatImport
             Converters = { new Newtonsoft.Json.Converters.StringEnumConverter() },
         };
 
-        // {folder}/{tabName}.json 한 파일. 반환 = 사람이 읽는 로그.
-        public static string ExportToFolder(string folder, string tabName, string configAssetFolder)
+        // skill-data-table unit 9 — 탭 줄 짓기(메모리 · 디스크 없음 — 전 탭 왕복 테스트가 같은 줄을 쓴다).
+        internal static List<CostConfigDto> Rows(IEnumerable<CostConfig> configs)
         {
             var rows = new List<CostConfigDto>();
-            foreach (var so in UnitAssetScan.Enumerate<CostConfig>(configAssetFolder))
+            foreach (var so in configs)
             {
                 var row = new CostConfigDto();
                 UnitStatFieldMapper.ReadFieldsToDto(so, row);
@@ -32,6 +32,13 @@ namespace Wassup.Editor.UnitStatImport
             }
             // 반복 export 가 깨끗하게 diff 되도록 id 오름차순(유닛/DC exporter 와 동일).
             rows.Sort((a, b) => string.CompareOrdinal(a.id, b.id));
+            return rows;
+        }
+
+        // {folder}/{tabName}.json 한 파일. 반환 = 사람이 읽는 로그.
+        public static string ExportToFolder(string folder, string tabName, string configAssetFolder)
+        {
+            var rows = Rows(UnitAssetScan.Enumerate<CostConfig>(configAssetFolder));
 
             string path = Path.Combine(folder, $"{tabName.Trim()}.json");
             File.WriteAllText(path, JsonConvert.SerializeObject(rows, Formatting.Indented, Settings),

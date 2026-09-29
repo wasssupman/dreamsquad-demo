@@ -40,6 +40,28 @@ namespace Wassup.Editor.UnitStatImport
             var skills = UnitAssetScan.Enumerate<SkillData>(skillAssetFolder)
                 .OrderBy(so => so.id, System.StringComparer.Ordinal).ToList();
 
+            var cardRows = CardRows(cards);
+            var skillRows = SkillRows(skills);
+            var configRows = ConfigRows(UnitAssetScan.Enumerate<AwakeningConfig>(dcAssetFolder), UnitAssetScan.Enumerate<DeckRuleConfig>(dcAssetFolder));
+
+            // skill-data-table unit 5 — 새 두 탭(효과 · 소유 줄). 카드 · 방어유닛 · 적이 같은 형식이라 소유자 종류는 열 하나다.
+            var skillSheet = SkillSheet.Export(
+                UnitAssetScan.Enumerate<EffectData>(UnitStatImportWindow.DataRoot),
+                UnitAssetScan.Enumerate<DreamcatcherCard>(UnitStatImportWindow.DataRoot),
+                UnitAssetScan.Enumerate<DefenderUnitData>(UnitStatImportWindow.DataRoot),
+                UnitAssetScan.Enumerate<AttackUnitData>(UnitStatImportWindow.DataRoot));
+
+            WriteTab(folder, tabNames[DcSheetTabs.CardsAt], cardRows, log);
+            WriteTab(folder, tabNames[DcSheetTabs.ActiveSkillsAt], skillRows, log);
+            WriteTab(folder, tabNames[DcSheetTabs.ConfigAt], configRows, log);
+            WriteTab(folder, tabNames[DcSheetTabs.SkillsAt], skillSheet.skills, log);
+            WriteTab(folder, tabNames[DcSheetTabs.SkillOwnersAt], skillSheet.owners, log);
+            return log.ToString();
+        }
+
+        // skill-data-table unit 9 — 탭 줄 짓기(메모리 · 디스크 없음). 파일 export · push · 전 탭 왕복 테스트가 같은 줄을 쓴다.
+        internal static List<CardRow> CardRows(IEnumerable<DreamcatcherCard> cards)
+        {
             var cardRows = new List<CardRow>();
             foreach (var so in cards)
             {
@@ -59,7 +81,11 @@ namespace Wassup.Editor.UnitStatImport
                 }
                 cardRows.Add(row);
             }
+            return cardRows;
+        }
 
+        internal static List<SkillRow> SkillRows(IEnumerable<SkillData> skills)
+        {
             var skillRows = new List<SkillRow>();
             foreach (var so in skills)
             {
@@ -68,9 +94,13 @@ namespace Wassup.Editor.UnitStatImport
                 row._effect = so.effect.ToString();
                 skillRows.Add(row);
             }
+            return skillRows;
+        }
 
+        internal static List<DcConfigDto> ConfigRows(IEnumerable<AwakeningConfig> awakenings, IEnumerable<DeckRuleConfig> deckRules)
+        {
             var configRows = new List<DcConfigDto>();
-            foreach (var so in UnitAssetScan.Enumerate<AwakeningConfig>(dcAssetFolder))
+            foreach (var so in awakenings)
             {
                 configRows.Add(new DcConfigDto
                 {
@@ -80,27 +110,17 @@ namespace Wassup.Editor.UnitStatImport
                     slomoTimeScale = so.slomoTimeScale,
                 });
             }
-            foreach (var so in UnitAssetScan.Enumerate<DeckRuleConfig>(dcAssetFolder))
+            foreach (var so in deckRules)
             {
                 configRows.Add(new DcConfigDto
                 { id = so.id, deckSize = so.deckSize, maxSquad = so.maxSquad, maxUnit = so.maxUnit });
             }
             configRows.Sort((a, b) => string.CompareOrdinal(a.id, b.id));
-
-            // skill-data-table unit 5 — 새 두 탭(효과 · 소유 줄). 카드 · 방어유닛 · 적이 같은 형식이라 소유자 종류는 열 하나다.
-            var skillSheet = SkillSheet.Export(
-                UnitAssetScan.Enumerate<EffectData>(UnitStatImportWindow.DataRoot),
-                UnitAssetScan.Enumerate<DreamcatcherCard>(UnitStatImportWindow.DataRoot),
-                UnitAssetScan.Enumerate<DefenderUnitData>(UnitStatImportWindow.DataRoot),
-                UnitAssetScan.Enumerate<AttackUnitData>(UnitStatImportWindow.DataRoot));
-
-            WriteTab(folder, tabNames[DcSheetTabs.CardsAt], cardRows, log);
-            WriteTab(folder, tabNames[DcSheetTabs.ActiveSkillsAt], skillRows, log);
-            WriteTab(folder, tabNames[DcSheetTabs.ConfigAt], configRows, log);
-            WriteTab(folder, tabNames[DcSheetTabs.SkillsAt], skillSheet.skills, log);
-            WriteTab(folder, tabNames[DcSheetTabs.SkillOwnersAt], skillSheet.owners, log);
-            return log.ToString();
+            return configRows;
         }
+
+        /// <summary>파일과 같은 직렬화 규약(null 칸 생략 · enum = 멤버 이름).</summary>
+        internal static string ToJson<T>(IEnumerable<T> rows) => JsonConvert.SerializeObject(rows, Formatting.Indented, Settings);
 
         private static void WriteTab<T>(string folder, string tabName, IReadOnlyCollection<T> rows, StringBuilder log)
         {

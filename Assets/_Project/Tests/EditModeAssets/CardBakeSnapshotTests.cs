@@ -31,10 +31,11 @@ namespace Wassup.Tests.EditModeAssets
             return AssetDatabase.LoadAssetAtPath<AwakeningConfig>(AssetDatabase.GUIDToAssetPath(guids[0]));
         }
 
-        public static string Bake(List<DreamcatcherCard> cards)
+        /// <summary>`awakening` = 카드 값의 주인(null = 라이브 에셋 — skill-data-table unit 9 의 전 탭 왕복은 시트로 되짚은 사본을 넣는다).</summary>
+        public static string Bake(List<DreamcatcherCard> cards, AwakeningConfig awakening = null)
         {
             var def = new MatchDefinition();
-            CardDefinitionBuilder.Fill(def, new CardAuthoring { Cards = cards, Awakening = Awakening() },
+            CardDefinitionBuilder.Fill(def, new CardAuthoring { Cards = cards, Awakening = awakening != null ? awakening : Awakening() },
                                        new List<ProjectileData>(), new List<ProjectilePatternData>(),
                                        CardDefinitionBuilder.WithCardHazards(null, cards));
             Assert.AreEqual(cards.Count, def.Cards.Length, "덱 순서 = 카드 줄 순서");
