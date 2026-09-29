@@ -382,6 +382,35 @@ namespace Wassup.Tests.EditMode
                 DreamcatcherCardText.Body(card));
         }
 
+        // skill-data-table unit 5 — 칸 결합 낙하 탄(SkyFall)의 ProjectileToTarget 은 «추가 투사체» 가 아니라 맞은 적 자리의 반경 피해다.
+        [Test]
+        public void UnitMechanic_ProjectileToTarget_SkyFall_DescribesStrikeAtHitEnemy()
+        {
+            var meteor = ScriptableObject.CreateInstance<ProjectileData>();
+            meteor.flightMode = ProjectileFlightMode.SkyFall;
+            _cleanup.Add(meteor);
+            var card = Card(CardType.Unit);
+            TestBindings.Attach(card, new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new TriggerSpec { kind = TriggerKind.AttackN, period = 1 },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = EffectKind.ProjectileToTarget, magnitude = 30f, tileRange = 1, duration = 0.5f, projectile = meteor,
+                    },
+                },
+            }, _cleanup);
+            StringAssert.Contains("공격마다 → 맞은 적 자리에 운석 낙하 · 0.5초 후 반경 1칸 피해 30", DreamcatcherCardText.Body(card));
+
+            card.bindings[0].effect.values.flightSec = 0f;
+            StringAssert.Contains("공격마다 → 맞은 적 자리에 운석 낙하 · 반경 1칸 피해 30", DreamcatcherCardText.Body(card));
+
+            // 유도탄은 옛 문안 그대로.
+            meteor.flightMode = ProjectileFlightMode.Homing;
+            StringAssert.Contains("공격마다 → 대상에게 추가 투사체 피해 30", DreamcatcherCardText.Body(card));
+        }
+
         [Test]
         public void ActiveSkill_FormatsMultiplierDurationCostAndCooldown()
         {

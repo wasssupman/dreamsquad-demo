@@ -256,6 +256,16 @@ namespace Wassup.UI
                     // content-5 unit 3 — 이 payload 는 이제 **탄 에셋의 궤적을 따른다**.
                     // 왕복(부메랑)은 «대상에게» 가 아니라 경로를 훑고 돌아오므로 문안이
                     // 갈려야 한다 — 판정은 탄 SO 를 읽어서 하고 문자열에 수치를 복제하지 않는다.
+                    // skill-data-table unit 5 — 칸 결합 낙하(SkyFall · 타격 운석)는 «대상에게 추가 투사체» 가 아니라 **맞은 적의 자리**에
+                    // 떨어져 반경으로 터진다(빌더 — 효과 좌표 = 맞은 적 자리 · 착탄 반경 = tileRange · 낙하 = duration). 뒤쪽 형식은
+                    // SelfTileAoe 의 낙하 예고 문안과 같다.
+                    if (payload.projectile != null && payload.projectile.flightMode == ProjectileFlightMode.SkyFall)
+                    {
+                        effect = payload.duration > 0f
+                            ? $"맞은 적 자리에 운석 낙하 · {Duration(payload.duration)} 후 반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}"
+                            : $"맞은 적 자리에 운석 낙하 · 반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}";
+                        break;
+                    }
                     effect = payload.projectile != null
                              && payload.projectile.flightMode == ProjectileFlightMode.Boomerang
                         ? $"부메랑이 날아갔다 돌아오며 스치는 적에게 피해 {Count(payload.magnitude)}"

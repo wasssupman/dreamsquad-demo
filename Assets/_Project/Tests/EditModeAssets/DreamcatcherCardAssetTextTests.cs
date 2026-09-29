@@ -64,6 +64,63 @@ namespace Wassup.Tests.EditMode
             Assert.Greater(structuredCount, 0, "정형 카드가 하나도 없다 — 스캔 경로 확인");
         }
 
+        // skill-data-table unit 5 — 칸 결합 낙하 탄(SkyFall)의 ProjectileToTarget 문안만 바뀌었다(별똥 타격). **전 카드 본문 전/후 대조**:
+        // 옛 formatter 는 이 갈래에서 탄의 궤적을 부메랑 여부로만 갈랐다 — SkyFall 탄을 유도탄 사본으로 바꿔 끼운 카드가 곧 「옛 본문」이다.
+        // 그 둘이 다른 카드는 SkyFall 을 든 카드뿐이어야 하고(= 별똥 타격), 나머지 카드는 한 글자도 같아야 한다.
+        [Test]
+        public void SkyFallStrike_OnlyStarStrikeTextChanges_AllOtherCardsIdentical()
+        {
+            var made = new List<UnityEngine.Object>();
+            var changed = new List<string>();
+            int compared = 0;
+            try
+            {
+                foreach (var guid in AssetDatabase.FindAssets("t:DreamcatcherCard", new[] { "Assets/_Project/Data/Dreamcatcher" }))
+                {
+                    var card = AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(AssetDatabase.GUIDToAssetPath(guid));
+                    if (card == null) continue;
+                    var legacy = UnityEngine.Object.Instantiate(card);
+                    made.Add(legacy);
+                    if (card.bindings != null)
+                    {
+                        legacy.bindings = (BindingSpec[])card.bindings.Clone();
+                        for (int i = 0; i < legacy.bindings.Length; i++)
+                        {
+                            var e = legacy.bindings[i].effect;
+                            if (e == null || e.values.kind != Wassup.BattleCore.Trigger.EffectKind.ProjectileToTarget
+                                || e.projectile == null || e.projectile.flightMode != ProjectileFlightMode.SkyFall) continue;
+                            var e2 = UnityEngine.Object.Instantiate(e);
+                            var p2 = UnityEngine.Object.Instantiate(e.projectile);
+                            p2.flightMode = ProjectileFlightMode.Homing;
+                            e2.projectile = p2;
+                            made.Add(e2); made.Add(p2);
+                            legacy.bindings[i].effect = e2;
+                        }
+                    }
+                    int? cost = card.type == CardType.Active ? 20 : (int?)null;
+                    string now = DreamcatcherCardText.Body(card, null, cost);
+                    string before = DreamcatcherCardText.Body(legacy, null, cost);
+                    compared++;
+                    if (now != before)
+                    {
+                        changed.Add(card.id);
+                        TestContext.WriteLine($"[{card.id}]\n  전: {before.Replace("\n", " / ")}\n  후: {now.Replace("\n", " / ")}");
+                    }
+                }
+            }
+            finally
+            {
+                foreach (var o in made) if (o != null) UnityEngine.Object.DestroyImmediate(o);
+            }
+            TestContext.WriteLine($"대조한 카드 {compared}장 · 바뀐 카드 [{string.Join(", ", changed)}]");
+            Assert.Greater(compared, 0);
+            CollectionAssert.AreEqual(new[] { "star_strike" }, changed, "칸 결합 낙하 문안 변경은 별똥 타격 한 장만 바꿔야 한다");
+
+            var star = AssetDatabase.LoadAssetAtPath<DreamcatcherCard>("Assets/_Project/Data/Dreamcatcher/Card_StarStrike.asset");
+            StringAssert.Contains("공격마다 → 맞은 적 자리에 운석 낙하 · 0.5초 후 반경 1칸 피해 30", DreamcatcherCardText.Body(star));
+            StringAssert.DoesNotContain("추가 투사체", DreamcatcherCardText.Body(star));
+        }
+
         [Test]
         public void StackAssets_CarryTheirModifierReference()
         {
