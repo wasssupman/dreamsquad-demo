@@ -15,7 +15,8 @@
 | `DamageVsSleeping` | 수면 적 특효 | `mul`(> 1) | 〃 |
 
 - 소유 줄 트리거 = **`None`(보유 시작 순간 · 이후 계속)** — 카드는 오늘도 이 뜻이다(부착 즉시). 코어에 새 트리거를 만들지 않는다. 빌더가 위 모양으로 편다(강타 `HeavyStrike` → 수식자 선례).
-- `EffectComboRule`: 위 4종 ⇔ `None`(모든 소유자 종류) · 다른 트리거와의 조합 거절. 강타는 그대로(`AttackN`).
+- `EffectComboRule`: 위 4종 ⇔ `None` · 다른 트리거와의 조합 거절. 강타는 그대로(`AttackN` — 오늘도 누구나 든다).
+- **방어유닛 · 적 × 위 4종 = 「배선 전」 거절**(굽기가 말하고 뺀다 — 조용히 반쪽만 도는 상태를 만들지 않는다 · `SkillRouting.HasDetector` 의 「배선 전엔 닫아 둔다」 선례). 배선은 unit 7(후속). 카드는 숙주가 방어유닛일 때만.
 - `ally_filter` = 새 효과 칸(값 = 오늘 카드 `axis` 의 `All` · `ClassRanger` · `ClassGuardian` · `Cost1`). 수혜 대상은 **효과의 뜻**(계약 12 · `shield_filter` 선례). 배치 오라(`PlacementAura`)의 필터도 이 칸에서 읽는다.
 - 한 원천: Squad 카드의 머리 칩 · 분류 문구(`CardCategoryStyle.cs:77` · `DreamcatcherCardText.cs:78`)는 그 카드 효과 줄의 `ally_filter` 에서 파생하고, 카드 `axis` 는 Unit 카드 표시 전용으로 남긴다. 효과 층의 enum 이름(`CardTargetAxis`)은 이번에 바꾸지 않는다(개명 = 후속 후보).
 
@@ -28,7 +29,7 @@
 
 ## 변경 대상
 
-- `Scripts/BattleCore/Trigger/{TriggerKinds,EffectComboRule,Applicability}.cs` — 방어유닛 · 적이 든 수식자는 카드와 같은 숙주 적합성을 굽기 때 지난다: `HostProfile.OfDef`(정의 + 탄 SO 비행 모드 입력 — `HostProfile.Of` 는 런타임 개체가 입력이고 굽기는 탄 표 확정 전이라 못 부른다 · `Applicability.cs:40` · `CombatDefinitionBuilder.cs:74` vs `:105`).
+- `Scripts/BattleCore/Trigger/{TriggerKinds,EffectComboRule}.cs` — 카드 수식자의 숙주 적합성은 오늘처럼 부착 때(`Applicability.EvaluateAttackMod`).
 - `Scripts/Data/Effects/{EffectValues,EffectSlots}.cs` — 새 칸 · **종류별 사용 칸 표**(정본 = `tables.md` §3 · 전 `EffectKind` 커버 테스트 — unit 9 export 가 쓴다).
 - `Scripts/BattleCoreUnity/{BindingSpecBuilder,CardDefinitionBuilder,BindingDefinitionBuilder}.cs` — `None` × 4종을 펴는 한 경로(카드 · 방어유닛 · 적 공용). 「Squad 카드의 소유 줄은 읽지 않는다」 가드 은퇴 · Squad 카드 = `FactionStatBuff` 줄만(카드 분류 검증 — 덱 상한이 본다).
 - `Scripts/Data/Dreamcatcher/DreamcatcherCard.cs` — `effects` · `attackMods` 칸 제거(이전 뒤). `CardEffect` 타입은 남는다(`DreamstoneData`).
@@ -39,5 +40,5 @@
 
 - 굽기 스냅샷 2종: 바뀌는 줄은 라벨 · 효과 id 뿐이고 커밋 메시지에 나열(해석된 값 · 순서 동일). 재베이크 0.
 - 전 카드 문안 · 칩 전/후 대조 테스트 동일(액티브 6장 포함).
-- 빌더 픽스처: 같은 `FactionStatBuff` 효과를 카드와 방어유닛이 참조 → 같은 코어 줄 모양 · 방어유닛이 튕김을 들면 그 유닛 공격에 실린다 · 튕김이 안 맞는 숙주(비투사체)면 굽기가 말하고 뺀다.
+- 빌더 픽스처: 두 카드가 같은 `FactionStatBuff` 효과를 참조 → 같은 코어 줄 모양(복사 0) · 방어유닛 · 적이 새 4종을 들면 굽기가 「배선 전」을 말하고 뺀다 · Squad 카드에 다른 종류 줄 → 거절.
 - 헤드리스 · EditMode 3어셈블리(알려진 빨강 외 0) · PlayMode Core 초록.
