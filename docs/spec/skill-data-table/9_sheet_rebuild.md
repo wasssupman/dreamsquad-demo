@@ -17,19 +17,19 @@
 | ~~`DcCardEffects`~~ · ~~`DcAttackMods`~~ | — | — | 은퇴(→ `Skills` + `SkillOwners`) |
 
 - 열 이름 = 전 탭 스네이크(`[JsonProperty]` — C# 필드 이름은 그대로 · `SkillSheetDto` 선례). 정보 열(`_skillId` · `_effect` — 임포터가 안 읽는다)은 `_` 머리 규약을 `tables.md` 에 적는다.
-- **U20 검증(시트 층 — 코어 · 빌더는 소유자 종류를 묻지 않는다)**: 공격 변형 효과(`HeavyStrike` · `ProjectileBounce` · `FrontmostTarget` · `DamageVsSleeping`)를 가리키는 소유 줄은 `owner_kind = defender` 이거나 숙주가 방어유닛인 `card` 여야 한다. 적 소유 줄 · 적 숙주 카드 줄이면 그 줄을 **거절**(import 가 에셋에 안 쓰고 보고).
+- **U20 검증(시트 층 — 코어 · 빌더는 소유자 종류를 묻지 않는다)**: 공격 변형 효과(`HeavyStrike` · `ProjectileBounce` · `FrontmostTarget` · `DamageVsSleeping`)를 가리키는 소유 줄은 `owner_kind = defender` 이거나 숙주가 방어유닛인 `card` 여야 한다. 적 소유 줄 · 적 숙주 카드 줄이면 **그 소유자의 시트 소유 줄 전체를 건너뛴다**(에셋의 소유 줄은 그대로 · 보고). 줄만 빼고 재구성하면 인스펙터 저작이 로그인마다 지워진다 — 인스펙터 저작은 계약 13 이 받아들인 구멍이다.
 - 적 소유 `FactionStatBuff` 의 `ally_filter` ≠ `All` 이면 경고(직업 · 코스트는 방어유닛의 값이라 아무도 못 받는다).
 
 ## 변경 대상
 
 - `Scripts/Data/StatImport/{DcSheetTabs,DcSheetImportDto,DcSheetApplier,SkillSheet,SkillSheetDto,UnitStatImportDto,CostConfigDto}.cs` · 런타임 refresher(`Scripts/Core/Dreamcatcher/DcSheetRuntimeRefresher.cs` · `AllRuntimeRefresher.cs`)
-- `Editor/UnitStatImport/{DcSheetExporter,UnitStatExporter,CostConfigSheetExporter,SheetPushPayload,UnitStatImportWindow}.cs`
+- `Editor/UnitStatImport/{DcSheetExporter,UnitStatExporter,CostConfigSheetExporter,SheetPushPayload,UnitStatImportWindow}.cs` — `SheetPushPayload.cs:46-47` 이 `nameof(DcCardDto.attachType)` 를 헤더로 밀어 넣는다 → 스네이크 뒤 옛 열이 되살아나지 않게 JSON 이름으로.
 - 테스트: `Tests/EditModeAssets/SkillSheetRoundTripTests.cs`(전 탭 왕복 = 스냅샷 동치) · `Tests/EditMode/UnitStatImport/*`
 - 문서: `tables.md`(§0 표 목록 · §4 · §7 · §8 을 이 표로) · `5_sheet_io.md` 「실제 시트 설정」(전 탭 헤더 · 서버 키)
 
 ## 시트 교체 절차 (사용자 몫 · 에이전트는 시트에 쓰지 않는다)
 
-한 번에 바꾼다: 에디터 export → 새 헤더로 탭 재생성 → 서버 키 설정. 그전까지 로그인 자동 import 는 옛 열을 못 읽어 **아무것도 바꾸지 않는다**(빈 칸 = 그대로 — 에셋이 덮이지 않는다). 옛 탭은 보관 · 삭제 자유.
+한 번에 바꾼다: 에디터 export → 새 헤더로 탭 재생성 → 서버 키 설정. 그전까지 로그인 자동 import 는 옛 열을 못 읽어 **아무것도 바꾸지 않는다**(모르는 헤더 무시 → 빈 칸 = 그대로 · `SheetEnvelopeParser.cs:62-76` · 필드 매퍼는 C# 이름으로 짝짓는다 · 없는 탭 = 섹션 없음 — 비평이 확인). 옛 탭은 보관 · 삭제 자유.
 
 ## 완료 기준
 
