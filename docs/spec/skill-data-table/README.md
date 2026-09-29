@@ -1,6 +1,6 @@
 # skill-data-table — 스킬 데이터 표 재설계
 
-> **상태: units 0~5 구현 완료 2026-09-29 · 2부(units 7~10 — 시트 구조 리팩토링): unit 7 보류 · unit 8 구현 완료 2026-09-29(단계 A · 이전 적용 · 단계 B — 카드 에셋 재직렬화 · Unity lane · 리뷰 대기) · unit 9 · 10 미착수.** 2부 근거 = 시트 export 에서 드러난 옛 형식 잔존(카드 전용 탭 2 · 열 이름 혼용 · 쿨다운 두 원천) + 독립 비평(Fable) 검토. 1부 인계 = `6_handoff_summary.md`. core-reviewer 묶음 2회 APPROVE(1a–3 · 4–5). 선행 = `docs/spec/unified-effect-layer/`(완료 — 실행 층 통일 · 하드 케이스 1~4). 근거 = 그 README 「하드 케이스 3·4 막는 곳」 표 + 3자 토론(리드 · 독립 비판 · 게임 선례 조사) 합의. **기존 시트 구조는 폐기 전제** — 새 표는 이 spec 이 정한다.
+> **상태: units 0~5 구현 완료 2026-09-29 · 2부(units 7~10 — 시트 구조 리팩토링): unit 7 보류 · unit 8 완료 2026-09-29(단계 A · 이전 적용 · 단계 B · 재직렬화 · EditMode · PlayMode Core · core-reviewer APPROVE) · unit 9 · 10 미착수.** 2부 근거 = 시트 export 에서 드러난 옛 형식 잔존(카드 전용 탭 2 · 열 이름 혼용 · 쿨다운 두 원천) + 독립 비평(Fable) 검토. 1부 인계 = `6_handoff_summary.md`. core-reviewer 묶음 2회 APPROVE(1a–3 · 4–5). 선행 = `docs/spec/unified-effect-layer/`(완료 — 실행 층 통일 · 하드 케이스 1~4). 근거 = 그 README 「하드 케이스 3·4 막는 곳」 표 + 3자 토론(리드 · 독립 비판 · 게임 선례 조사) 합의. **기존 시트 구조는 폐기 전제** — 새 표는 이 spec 이 정한다.
 
 ## 상위 목표
 
