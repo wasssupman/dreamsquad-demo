@@ -33,12 +33,13 @@ namespace Wassup.Tests.EditMode
                     AssetDatabase.GUIDToAssetPath(guid));
                 if (card == null) continue;
 
+                // skill-data-table unit 8 — 상시 효과 줄(진영 버프 · 수식자)도 정형 데이터다(과도기 — 옛 칸 또는 새 줄) · 액티브 = 시전 줄.
                 bool hasStructuredData = card.type == CardType.Squad
-                    ? card.effects != null && card.effects.Length > 0
+                    ? (card.effects != null && card.effects.Length > 0) || card.HasAlwaysOnRows()
                     : card.type == CardType.Unit
                         ? (card.RuleView() != null && card.RuleView().Length > 0)
                           || (card.attackMods != null && card.attackMods.Length > 0)
-                        : card.skill != null;
+                        : card.bindings != null && card.bindings.Length > 0;
                 if (!hasStructuredData) { unstructured.Add(card.name); continue; }
 
                 structuredCount++;

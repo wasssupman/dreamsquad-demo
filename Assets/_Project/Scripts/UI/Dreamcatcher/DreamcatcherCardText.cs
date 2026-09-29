@@ -75,7 +75,7 @@ namespace Wassup.UI
         {
             var lines = LinesWithFallback(card, unitNameOf, activeCost);
 
-            string axis = AxisLabel(card == null ? CardTargetAxis.All : card.axis);
+            string axis = AxisLabel(card == null ? CardTargetAxis.All : SquadAxis(card));
             string typeLabel = TypeLabel(card == null ? CardType.Squad : card.type);
             string header = card != null && card.type == CardType.Squad
                 ? $"<color=#F5D480><b>{axis}</b></color>  ·  {typeLabel}"
@@ -142,7 +142,9 @@ namespace Wassup.UI
                     hasUnsupportedData = !BuildUnitLines(card, lines);
                     break;
                 case CardType.Active:
-                    if (card.skill != null) hasUnsupportedData = !BuildSkillLine(card.skill, activeCost, lines);
+                    // skill-data-table unit 8 — 수치 = 시전 줄 효과 값 + 카드 `cooldownSec`(굽기와 한 원천 · 옛 `SkillData` 수치는 안 읽는다).
+                    var cast = CastEffect(card);
+                    if (cast != null) hasUnsupportedData = !BuildActiveLine(cast.values, card.cooldownSec, activeCost, lines);
                     break;
             }
 
@@ -156,64 +158,124 @@ namespace Wassup.UI
                 lines.Add($"부착 즉시 → 유출 허용치 -{card.leakAllowanceCost} (환불 없음)");
             }
 
+            // skill-data-table unit 8 — 진영 버프 효과 줄(수혜 대상 = 효과의 `allyFilter`). ⚠ 과도기: 상시 효과 줄이 없는 카드는 옛 칸
+            // (`effects` + 카드 `axis`)에서 쓴다(단계 B 에서 은퇴).
+            if (card.HasAlwaysOnRows())
+            {
+                AppendFactionBuffLine(card, lines);
+                return;
+            }
+
             if (card.effects == null || card.effects.Length == 0) return;
 
             var effects = new List<string>();
             foreach (var effect in card.effects)
-                effects.Add(FormatSquadEffect(card.axis, effect));
+                effects.Add(FormatSquadEffect(card.axis, effect.kind, effect.percent));
 
             lines.Add(AlwaysPrefix + string.Join(" · ", effects));
         }
 
-        private static string FormatSquadEffect(CardTargetAxis axis, CardEffect effect)
+        // 카드의 진영 버프 줄 전부를 한 줄로(옛 Squad 문안과 같은 모양 — 효과마다 자기 수혜 대상).
+        private static void AppendFactionBuffLine(DreamcatcherCard card, List<string> lines)
+        {
+            var effects = new List<string>();
+            foreach (var b in card.bindings)
+                if (b.effect != null && b.effect.values.kind == EffectKind.FactionStatBuff)
+                    effects.Add(FormatSquadEffect(b.effect.values.allyFilter, b.effect.values.buffStat, b.effect.values.percent));
+            if (effects.Count > 0) lines.Add(AlwaysPrefix + string.Join(" · ", effects));
+        }
+
+        private static string FormatSquadEffect(CardTargetAxis axis, CardBuffKind kind, float percent)
         {
             string target = AxisTargetLabel(axis);
-            if (effect.kind == CardBuffKind.DamageVsCc)
-                return $"CC 상태 적에게 {target} 피해 {SignedPercent(effect.percent)}";
+            if (kind == CardBuffKind.DamageVsCc)
+                return $"CC 상태 적에게 {target} 피해 {SignedPercent(percent)}";
 
-            return $"{target} {BuffLabel(effect.kind)} {SignedPercent(effect.percent)}";
+            return $"{target} {BuffLabel(kind)} {SignedPercent(percent)}";
+        }
+
+        /// <summary>
+        /// skill-data-table unit 8 — Squad 카드의 머리 축(분류 문구 · 손패 칩 — 한 원천): 첫 진영 버프 줄의 `allyFilter`. ⚠ 과도기: 그 줄이 없는
+        /// 카드는 카드 `axis`(단계 B 에서 은퇴). 카드 `axis` 는 Unit 카드 표시 전용으로 남는다.
+        /// </summary>
+        internal static CardTargetAxis SquadAxis(DreamcatcherCard card)
+        {
+            if (card?.bindings != null)
+                foreach (var b in card.bindings)
+                    if (b.effect != null && b.effect.values.kind == EffectKind.FactionStatBuff) return b.effect.values.allyFilter;
+            return card != null ? card.axis : CardTargetAxis.All;
         }
 
         private static bool BuildUnitLines(DreamcatcherCard card, List<string> lines)
         {
             bool supported = true;
-            if (card.attackMods != null)
+            // skill-data-table unit 8 — 공격 수식자 · 진영 버프도 소유 줄이다(트리거 None). 문안 순서는 옛것 그대로: 수식자 줄 → 규칙 줄.
+            // ⚠ 과도기: 상시 효과 줄이 없는 카드는 옛 칸(`attackMods`)에서 쓴다(단계 B 에서 은퇴).
+            if (card.HasAlwaysOnRows())
+            {
+                foreach (var b in card.bindings)
+                {
+                    if (b.effect == null || !SkillRouting.IsAlwaysOn(b.effect.values.kind) || b.effect.values.kind == EffectKind.FactionStatBuff) continue;
+                    var v = b.effect.values;
+                    if (TryFormatAttackMod(v.kind, v.count, v.rangeTiles, v.mul, out string line)) lines.Add(line);
+                    else supported = false;
+                }
+                AppendFactionBuffLine(card, lines);
+            }
+            else if (card.attackMods != null)
             {
                 foreach (var mod in card.attackMods)
                 {
                     string line;
-                    if (TryFormatAttackMod(mod, out line)) lines.Add(line);
+                    if (TryFormatAttackMod(ToEffectKind(mod.kind), mod.count, mod.tileRange, mod.damageMul, out line)) lines.Add(line);
                     else supported = false;
                 }
             }
 
-            // skill-data-table unit 4 — 소유 줄(`bindings`)을 옛 메커닉 모양으로 읽는다(값 동치 — `BindingSpecView` · 문안 무변).
-            foreach (var mechanic in card.RuleView())
-                if (!TryAppendMechanic(lines, mechanic)) supported = false;
+            // skill-data-table unit 4 — 소유 줄(`bindings`)을 옛 메커닉 모양으로 읽는다(값 동치 — `BindingSpecView` · 문안 무변). 상시 효과 줄은 위에서 썼다.
+            var rules = card.RuleView();
+            for (int i = 0; i < rules.Length; i++)
+            {
+                var e = card.bindings[i].effect;
+                if (e != null && SkillRouting.IsAlwaysOn(e.values.kind)) continue;
+                if (!TryAppendMechanic(lines, rules[i])) supported = false;
+            }
 
             return supported;
         }
 
-        private static bool TryFormatAttackMod(DcAttackModSpec mod, out string line)
+        // 과도기 — 옛 저작 수식자 종류 → 효과 종류(단계 B 에서 옛 칸과 함께 은퇴).
+        private static EffectKind ToEffectKind(DcAttackModKind kind)
+        {
+            switch (kind)
+            {
+                case DcAttackModKind.ProjectileBounce: return EffectKind.ProjectileBounce;
+                case DcAttackModKind.FrontmostTarget: return EffectKind.FrontmostTarget;
+                case DcAttackModKind.DamageVsSleeping: return EffectKind.DamageVsSleeping;
+                default: return EffectKind.None;
+            }
+        }
+
+        private static bool TryFormatAttackMod(EffectKind kind, int count, int rangeTiles, float mul, out string line)
         {
             line = null;
-            switch (mod.kind)
+            switch (kind)
             {
-                case DcAttackModKind.ProjectileBounce:
-                    string falloff = Approximately(mod.damageMul, 1f)
+                case EffectKind.ProjectileBounce:
+                    string falloff = Approximately(mul, 1f)
                         ? "감쇠 없음"
-                        : $"튕길 때마다 피해 {Multiplier(mod.damageMul)}";
-                    line = AlwaysPrefix + $"공격 투사체가 최대 {Count(mod.tileRange)}칸 범위 내 "
-                         + $"{Count(mod.count)}회 튕김 ({falloff})";
+                        : $"튕길 때마다 피해 {Multiplier(mul)}";
+                    line = AlwaysPrefix + $"공격 투사체가 최대 {Count(rangeTiles)}칸 범위 내 "
+                         + $"{Count(count)}회 튕김 ({falloff})";
                     return true;
-                case DcAttackModKind.FrontmostTarget:
+                case EffectKind.FrontmostTarget:
                     line = AlwaysPrefix + "목표 지점에 가장 가까운 적 우선 공격"
-                         + $" · 해당 적 직접 피해 {SignedPercent((mod.damageMul - 1f) * 100f)}";
+                         + $" · 해당 적 직접 피해 {SignedPercent((mul - 1f) * 100f)}";
                     return true;
                 // content-4 unit 0 — 수면 특효. "잠든 적에게만" 이 카드 판단의 핵심이라
                 // 대상 조건을 문안 앞에 둔다(ApplyCcToTarget 의 Sleep 문안과 같은 판단).
-                case DcAttackModKind.DamageVsSleeping:
-                    line = AlwaysPrefix + $"잠든 적에게 주는 피해 {Multiplier(mod.damageMul)}";
+                case EffectKind.DamageVsSleeping:
+                    line = AlwaysPrefix + $"잠든 적에게 주는 피해 {Multiplier(mul)}";
                     return true;
                 default:
                     return false;
@@ -525,42 +587,53 @@ namespace Wassup.UI
             }
         }
 
-        private static bool BuildSkillLine(SkillData skill, int? activeCost, List<string> lines)
+        /// <summary>액티브 카드의 시전 줄 효과(트리거 `Cast` × 액티브 효과 — 굽기와 같은 줄). 없으면 null.</summary>
+        private static EffectData CastEffect(DreamcatcherCard card)
+        {
+            if (card.bindings == null) return null;
+            foreach (var b in card.bindings)
+                if (b.trigger.kind == TriggerKind.Cast && b.effect != null && SkillRouting.IsActiveCast(b.effect.values.kind)) return b.effect;
+            return null;
+        }
+
+        // skill-data-table unit 8 — 수치 = 시전 줄 효과 값(굽기가 싣는 값) + 카드 `cooldownSec`(정의표 카드 대기). 옛 `SkillData` 수치
+        // (range · magnitude · durationSec · warningSec · cooldownSec)는 코어가 안 읽는 두 번째 원천이라 문안에서도 은퇴했다.
+        private static bool BuildActiveLine(in EffectValues v, float cooldownSec, int? activeCost, List<string> lines)
         {
             string effect;
-            switch (skill.effect)
+            switch (v.kind)
             {
-                case SkillEffectType.Meteor:
+                case EffectKind.ActiveMeteor:
                     effect = "타일 지정 → ";
-                    if (skill.warningSec > 0f) effect += $"{Duration(skill.warningSec)} 후 ";
-                    effect += $"반경 {Count(skill.range)}칸 피해 {Count(skill.magnitude)}";
+                    if (v.flightSec > 0f) effect += $"{Duration(v.flightSec)} 후 ";
+                    effect += $"반경 {Count(v.radiusTiles)}칸 피해 {Count(v.damage)}";
                     break;
-                case SkillEffectType.Portal:
-                    effect = $"두 타일 지정 → 입구 진입 적을 출구로 이동 · {Duration(skill.durationSec)}";
+                case EffectKind.ActivePortal:
+                    effect = $"두 타일 지정 → 입구 진입 적을 출구로 이동 · {Duration(v.durationSec)}";
                     break;
                 // active-dreamcatcher-tile-aim unit 0 — 아군 버프도 타일 지정 + 반경이다.
-                case SkillEffectType.PowerSurge:
-                    effect = $"타일 지정 → 반경 {Count(skill.range)}칸 아군 공격력 "
-                           + $"{Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
+                case EffectKind.ActivePowerSurge:
+                    effect = $"타일 지정 → 반경 {Count(v.radiusTiles)}칸 아군 공격력 "
+                           + $"{Multiplier(v.mul)} · {Duration(v.durationSec)}";
                     break;
-                case SkillEffectType.RapidFire:
-                    effect = $"타일 지정 → 반경 {Count(skill.range)}칸 아군 공격 속도 "
-                           + $"{Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
+                case EffectKind.ActiveRapidFire:
+                    effect = $"타일 지정 → 반경 {Count(v.radiusTiles)}칸 아군 공격 속도 "
+                           + $"{Multiplier(v.mul)} · {Duration(v.durationSec)}";
                     break;
-                case SkillEffectType.SlowField:
-                    effect = $"타일 지정 → 반경 {Count(skill.range)}칸 적 이동 속도 "
-                           + $"{Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
+                case EffectKind.ActiveSlowField:
+                    effect = $"타일 지정 → 반경 {Count(v.radiusTiles)}칸 적 이동 속도 "
+                           + $"{Multiplier(v.mul)} · {Duration(v.durationSec)}";
                     break;
-                case SkillEffectType.Tornado:
-                    effect = $"타일 지정 → 반경 {Count(skill.range)}칸 적을 중심으로 끌어당김"
-                           + $" · 끌어당김 속도 {Count(skill.magnitude)} · {Duration(skill.durationSec)}";
+                case EffectKind.ActiveTornado:
+                    effect = $"타일 지정 → 반경 {Count(v.radiusTiles)}칸 적을 중심으로 끌어당김"
+                           + $" · 끌어당김 속도 {Count(v.speed)} · {Duration(v.durationSec)}";
                     break;
                 default:
                     return false;
             }
 
             string cost = activeCost.HasValue ? $" · 비용 {activeCost.Value}" : "";
-            lines.Add($"{effect}{cost} · 재사용 {Duration(skill.cooldownSec)}");
+            lines.Add($"{effect}{cost} · 재사용 {Duration(cooldownSec)}");
             return true;
         }
 

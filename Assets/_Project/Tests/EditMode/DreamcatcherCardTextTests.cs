@@ -37,6 +37,28 @@ namespace Wassup.Tests.EditMode
             return skill;
         }
 
+        // skill-data-table unit 8 — 액티브 문안의 수치 = 시전 줄 효과 값 + 카드 `cooldownSec`(굽기와 한 원천).
+        private void AttachCast(DreamcatcherCard card, EffectValues v, float cooldownSec)
+        {
+            var e = ScriptableObject.CreateInstance<EffectData>();
+            e.id = "fixture_cast";
+            e.values = v;
+            _cleanup.Add(e);
+            card.bindings = new[] { new BindingSpec { trigger = new TriggerSpec { kind = TriggerKind.Cast }, fireCap = 1, effect = e } };
+            card.cooldownSec = cooldownSec;
+        }
+
+        private EffectData AlwaysOnEffect(EffectValues v)
+        {
+            var e = ScriptableObject.CreateInstance<EffectData>();
+            e.id = "fixture_" + v.kind.ToString().ToLowerInvariant();
+            e.values = v;
+            _cleanup.Add(e);
+            return e;
+        }
+
+        private static BindingSpec Always(EffectData e) => new BindingSpec { trigger = new TriggerSpec { kind = TriggerKind.None }, effect = e };
+
         [TearDown]
         public void TearDown()
         {
@@ -415,8 +437,8 @@ namespace Wassup.Tests.EditMode
         public void ActiveSkill_FormatsMultiplierDurationCostAndCooldown()
         {
             var card = Card(CardType.Active, description: "레거시 설명");
-            card.skill = Skill(SkillEffectType.RapidFire, 2f, 6f, 25f, 2);
-            card.skill.range = 1f; // active-dreamcatcher-tile-aim unit 0 — 아군 버프도 타일 반경
+            // active-dreamcatcher-tile-aim unit 0 — 아군 버프도 타일 반경
+            AttachCast(card, new EffectValues { kind = EffectKind.ActiveRapidFire, mul = 2f, radiusTiles = 1, durationSec = 6f }, 25f);
 
             // skill-data-table U18 — 비용 칸 = 실제 비용(호출처가 넘기는 카드 값 · `AwakeningConfig.costActive`). `SkillData.cost`(2)는 안 읽는다.
             StringAssert.Contains(
@@ -430,8 +452,7 @@ namespace Wassup.Tests.EditMode
         {
             // U18 — 비용을 모르는 호출처는 비용 칸을 뺀다(옛 `SkillData.cost` 로 떨어지지 않는다).
             var card = Card(CardType.Active);
-            card.skill = Skill(SkillEffectType.RapidFire, 2f, 6f, 25f, 2);
-            card.skill.range = 1f;
+            AttachCast(card, new EffectValues { kind = EffectKind.ActiveRapidFire, mul = 2f, radiusTiles = 1, durationSec = 6f }, 25f);
 
             StringAssert.Contains("타일 지정 → 반경 1칸 아군 공격 속도 x2 · 6초 · 재사용 25초", DreamcatcherCardText.Body(card));
             StringAssert.DoesNotContain("비용", DreamcatcherCardText.Body(card));
@@ -442,12 +463,98 @@ namespace Wassup.Tests.EditMode
         public void ActiveSkill_FormatsTornadoPullSpeed()
         {
             var card = Card(CardType.Active);
-            card.skill = Skill(SkillEffectType.Tornado, 12.5f, 3f, 20f, 2);
-            card.skill.range = 2f;
+            AttachCast(card, new EffectValues { kind = EffectKind.ActiveTornado, speed = 12.5f, radiusTiles = 2, durationSec = 3f }, 20f);
 
             StringAssert.Contains(
                 "타일 지정 → 반경 2칸 적을 중심으로 끌어당김 · 끌어당김 속도 12.5 · 3초 · 비용 20 · 재사용 20초",
                 DreamcatcherCardText.Body(card, activeCost: 20));
+        }
+
+        [Test]
+        public void ActiveSkill_ReadsCastEffectAndCardCooldown_NotSkillDataNumbers()
+        {
+            // skill-data-table unit 8 — 쿨다운 두 원천 해소: 문안은 굽기와 같은 값(시전 줄 효과 + 카드 cooldownSec)만 읽는다.
+            var card = Card(CardType.Active);
+            AttachCast(card, new EffectValues { kind = EffectKind.ActiveMeteor, damage = 40f, radiusTiles = 2, flightSec = 1.5f }, 18f);
+            card.skill = Skill(SkillEffectType.Meteor, 99f, 0f, 77f, 4);   // 옛 두 번째 원천 — 다른 숫자
+            card.skill.range = 5f;
+            card.skill.warningSec = 9f;
+
+            string body = DreamcatcherCardText.Body(card, activeCost: 20);
+            StringAssert.Contains("타일 지정 → 1.5초 후 반경 2칸 피해 40 · 비용 20 · 재사용 18초", body);
+            StringAssert.DoesNotContain("99", body);
+            StringAssert.DoesNotContain("77", body);
+        }
+
+        [Test]
+        public void ActiveSkill_WithoutCastRow_FallsBackToDescription()
+        {
+            var card = Card(CardType.Active, description: "레거시 설명");
+            card.skill = Skill(SkillEffectType.RapidFire, 2f, 6f, 25f, 2);
+            StringAssert.Contains("레거시 설명", DreamcatcherCardText.Body(card));
+            StringAssert.DoesNotContain("재사용", DreamcatcherCardText.Body(card));
+        }
+
+        // ── skill-data-table unit 8 — 상시 효과 줄(진영 버프 · 공격 수식자) ─────────────────────────────
+
+        [Test]
+        public void SquadRows_FormatFromEffectRows_AndIgnoreLegacyFields()
+        {
+            // 과도기: 상시 효과 줄이 있으면 옛 칸(effects · axis)은 안 읽는다 — 수혜 대상 = 효과의 allyFilter(계약 12).
+            var card = Card(CardType.Squad, CardTargetAxis.All, new[] { new CardEffect { kind = CardBuffKind.MoveSpeed, percent = 99f } });
+            card.bindings = new[]
+            {
+                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.AttackDamage, percent = 20f, allyFilter = CardTargetAxis.ClassRanger })),
+                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.MoveSpeed, percent = -10f, allyFilter = CardTargetAxis.ClassRanger })),
+            };
+            string body = DreamcatcherCardText.Body(card);
+            StringAssert.Contains("항상 → 레인저 아군 공격력 +20% · 레인저 아군 이동 속도 -10%", body);
+            StringAssert.Contains("레인저", body.Split('\n')[0], "머리 축 = 효과 줄의 수혜 대상(카드 axis 가 아니다)");
+            StringAssert.DoesNotContain("99", body);
+            Assert.AreEqual("레인저 버프", CardCategoryStyle.TargetTag(card), "손패 칩도 같은 원천");
+        }
+
+        [Test]
+        public void SquadRows_MatchLegacyText_ForSameValues()
+        {
+            // 이전 전/후 동치: 같은 값이면 옛 칸 문안과 새 줄 문안이 글자까지 같다(머리 · 칩 포함).
+            var legacy = Card(CardType.Squad, CardTargetAxis.ClassGuardian, new[]
+            {
+                new CardEffect { kind = CardBuffKind.EffectiveHealth, percent = 50f },
+                new CardEffect { kind = CardBuffKind.DamageVsCc, percent = 50f },
+            });
+            var migrated = Card(CardType.Squad, CardTargetAxis.ClassGuardian);
+            migrated.bindings = new[]
+            {
+                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.EffectiveHealth, percent = 50f, allyFilter = CardTargetAxis.ClassGuardian })),
+                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.DamageVsCc, percent = 50f, allyFilter = CardTargetAxis.ClassGuardian })),
+            };
+            Assert.AreEqual(DreamcatcherCardText.Body(legacy), DreamcatcherCardText.Body(migrated));
+            Assert.AreEqual(DreamcatcherCardText.BodyLinesOnly(legacy), DreamcatcherCardText.BodyLinesOnly(migrated));
+            Assert.AreEqual(CardCategoryStyle.TargetTag(legacy), CardCategoryStyle.TargetTag(migrated));
+        }
+
+        [Test]
+        public void AttackModRows_MatchLegacyText_AndIgnoreLegacyFields()
+        {
+            var legacy = Card(CardType.Unit);
+            legacy.attackMods = new[]
+            {
+                new DcAttackModSpec { kind = DcAttackModKind.ProjectileBounce, count = 2, tileRange = 3, damageMul = 1f },
+                new DcAttackModSpec { kind = DcAttackModKind.FrontmostTarget, damageMul = 1.2f },
+                new DcAttackModSpec { kind = DcAttackModKind.DamageVsSleeping, damageMul = 2f },
+            };
+            var migrated = Card(CardType.Unit);
+            migrated.attackMods = new[] { new DcAttackModSpec { kind = DcAttackModKind.ProjectileBounce, count = 9, tileRange = 9, damageMul = 0.5f } };
+            migrated.bindings = new[]
+            {
+                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.ProjectileBounce, count = 2, rangeTiles = 3, mul = 1f })),
+                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FrontmostTarget, mul = 1.2f })),
+                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.DamageVsSleeping, mul = 2f })),
+            };
+            Assert.AreEqual(DreamcatcherCardText.Body(legacy), DreamcatcherCardText.Body(migrated), "옛 attackMods(다른 값)는 안 읽는다");
+            StringAssert.Contains("항상 → 공격 투사체가 최대 3칸 범위 내 2회 튕김 (감쇠 없음)", DreamcatcherCardText.Body(migrated));
+            StringAssert.Contains("항상 → 잠든 적에게 주는 피해 x2", DreamcatcherCardText.Body(migrated));
         }
 
         [Test]
