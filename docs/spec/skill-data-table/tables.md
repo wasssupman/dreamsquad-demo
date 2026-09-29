@@ -179,7 +179,7 @@
 | `leak_allowance_cost` | int | 0 | ⚠ 코어 소비 0 — 문안만 읽는다(§12 발견) |
 | `cooldown_sec` · `needs_two_tiles` | float · bool | 0 · false | Active 만(옛 `SkillData.cooldownSec` · `needsTwoTiles`) |
 
-(unit 8 — 아래 두 표의 줄은 효과 줄(`FactionStatBuff` · 공격 수식자 3종) + 카드 소유 줄(트리거 `None`)로 옮긴다 · 탭 은퇴는 unit 9.) `CardStatEffects`(Squad 만): `card_id` · `slot` · `buff_stat`(`CardBuffKind`) · `percent`. `CardAttackMods`(Unit 만 · 트리거 없는 상시 수식자 — 효과 id 를 주지 않는다: 재사용 소유자 0 · §11): `card_id` · `slot` · `kind`(`DcAttackModKind`) · `count` · `range_tiles` · `damage_mul`. 스킬 칸은 없다 — 카드의 규칙은 `Skills`.
+(unit 8 — 아래 두 표는 **은퇴**: 줄은 효과 줄(`FactionStatBuff` · 공격 수식자 3종) + 카드 소유 줄(트리거 `None`)로 옮겼다(`43e6d841f`) · 저작 칸 · 탭 코드 은퇴 = 단계 B. 아래는 옛 모양 기록.) `CardStatEffects`(Squad 만): `card_id` · `slot` · `buff_stat`(`CardBuffKind`) · `percent`. `CardAttackMods`(Unit 만 · 트리거 없는 상시 수식자 — 효과 id 를 주지 않는다: 재사용 소유자 0 · §11): `card_id` · `slot` · `kind`(`DcAttackModKind`) · `count` · `range_tiles` · `damage_mul`. 스킬 칸은 없다 — 카드의 규칙은 `Skills`.
 
 ## 8. `Units` · `Enemies`
 

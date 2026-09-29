@@ -15,7 +15,7 @@ unit 0 의 표 구조로 시트 export/import 를 새로 만든다. 기존 `DcSh
 ## 기록 (2026-09-29 · 5 1부)
 
 - **탭 이름 = U19**: `tables.md` 의 `Effects` → 시트 탭 `Skills` · `tables.md` 의 `Skills`(소유 줄) → `SkillOwners` · `owner_kind` = `card` · `defender` · `enemy` · 한국어 표시 열 `kind_ko`(보기 전용 — 임포터가 안 읽는다). `subject` 값 = 코어 멤버 이름(`Self` · `Any`).
-- **탭 계약 하나** = `Scripts/Data/StatImport/DcSheetTabs.cs`(7탭 — `DcCards` · `DcCardEffects` · `DcAttackMods` · `DcSkills`(U18 유지) · `DcConfig` · `Skills` · `SkillOwners`). 옛 `DcMechanics` 은퇴(DTO · 차단 분기 삭제).
+- **탭 계약 하나** = `Scripts/Data/StatImport/DcSheetTabs.cs`(7탭 — `DcCards` · `DcCardEffects` · `DcAttackMods` · `DcSkills`(U18 유지) · `DcConfig` · `Skills` · `SkillOwners`). 옛 `DcMechanics` 은퇴(DTO · 차단 분기 삭제). ⚠ unit 8 단계 B(`5825fed06`) — `DcCardEffects` · `DcAttackMods` 도 은퇴 → **5탭**(`DcCards` · `DcSkills` · `DcConfig` · `Skills` · `SkillOwners`).
 - **임포터 하나** = `SkillSheet`(`Scripts/Data/StatImport/SkillSheet.cs`): 계획 → 쓰기 전 diff 표(`[skills-diff]`) → apply. 없는 id(효과 · 소유자 · 탄 · 패턴 · 장판)는 보고만. `Skills` = id 별 부분 갱신(빈 칸 = 그대로) · `SkillOwners` = 탭에 나온 소유자의 `bindings` 재구성(시트-정본). 에디터 창에 「diff 미리보기(쓰지 않음)」 버튼.
 - 경로: 로그인 자동 import · 로비 refresh(`DcSheetRuntimeRefresher` — 방어유닛 · 적 카탈로그 배선) · 에디터 창 import/export · push 바디 · 합본 export.
 - U18: 액티브 문안의 비용 = 정의표 카드 값(`CardDef.Cost` = `AwakeningConfig.costActive`) · 모르면 비용 칸을 뺀다.

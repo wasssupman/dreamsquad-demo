@@ -14,7 +14,7 @@
 | `Defenders` · `Enemies` | 스탯 | `id` | 열 이름만 스네이크 |
 | `DcSkills` | 액티브 문안(U18 분리 전까지) | `id` | 수치 칸(`range` · `magnitude` · `durationSec` · `cooldownSec` · `warningSec`) **삭제** — 문안만 움직이던 두 번째 원천 |
 | `DcConfig` · `CostConfig` | 설정 | `id` | 열 이름만 스네이크(통합은 후속) |
-| ~~`DcCardEffects`~~ · ~~`DcAttackMods`~~ | — | — | 은퇴(→ `Skills` + `SkillOwners`) |
+| ~~`DcCardEffects`~~ · ~~`DcAttackMods`~~ | — | — | 은퇴(→ `Skills` + `SkillOwners`) — **코드 은퇴는 unit 8 단계 B 에서 끝남**(`5825fed06` — `DcSheetTabs` 5탭 · DTO · 재구성 · export · push). 이 unit 에 남은 것 = 시트 쪽(탭 삭제 · 서버 키)뿐 |
 
 - 열 이름 = 전 탭 스네이크(`[JsonProperty]` — C# 필드 이름은 그대로 · `SkillSheetDto` 선례). 정보 열(`_skillId` · `_effect` — 임포터가 안 읽는다)은 `_` 머리 규약을 `tables.md` 에 적는다.
 - **U20 검증(시트 층 — 코어 · 빌더는 소유자 종류를 묻지 않는다)**: 공격 변형 효과(`HeavyStrike` · `ProjectileBounce` · `FrontmostTarget` · `DamageVsSleeping`)를 가리키는 소유 줄은 `owner_kind = defender` 이거나 숙주가 방어유닛인 `card` 여야 한다. 적 소유 줄 · 적 숙주 카드 줄이면 **그 소유자의 시트 소유 줄 전체를 건너뛴다**(에셋의 소유 줄은 그대로 · 보고). 줄만 빼고 재구성하면 인스펙터 저작이 로그인마다 지워진다 — 인스펙터 저작은 계약 13 이 받아들인 구멍이다.
