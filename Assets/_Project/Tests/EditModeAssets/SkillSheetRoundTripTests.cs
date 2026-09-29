@@ -108,7 +108,12 @@ namespace Wassup.Tests.EditModeAssets
             // 위 테스트의 초록이 「사본이 원본 값을 들고 있어서」가 아님을 보인다 — 비운 사본은 스냅샷과 달라야 한다.
             var cards = CardEffectWitnessTests.Cards();
             var cardCopies = cards.Select(x => { var c = Copy(x); c.bindings = System.Array.Empty<BindingSpec>(); return c; }).ToList();
-            Assert.IsNotNull(CardBakeSnapshotTests.FirstDiff(CardBakeSnapshotTests.Committed(), CardBakeSnapshotTests.Bake(cardCopies)),
+            // 소유 줄을 비운 Unit 카드는 빌더가 「구워진 규칙이 하나도 없다」 오류를 낸다 — 이 반증이 **의도한** 로그라(카드마다 한 줄) 이 굽기 동안만 허용한다.
+            string baked;
+            UnityEngine.TestTools.LogAssert.ignoreFailingMessages = true;
+            try { baked = CardBakeSnapshotTests.Bake(cardCopies); }
+            finally { UnityEngine.TestTools.LogAssert.ignoreFailingMessages = false; }
+            Assert.IsNotNull(CardBakeSnapshotTests.FirstDiff(CardBakeSnapshotTests.Committed(), baked),
                 "소유 줄을 비운 카드 사본이 스냅샷과 같다 — 왕복 테스트가 아무것도 증언하지 못한다");
         }
 
