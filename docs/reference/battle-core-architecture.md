@@ -198,7 +198,7 @@ flowchart LR
   3. **호밍 여부는 탄 궤적의 성질** — 발사 요청 조립은 궤적 결합 종류(대상 · 칸 · 방향)로만 갈린다.
   4. **귀속·발사 자리 = 발동 주체 · 수명 = 발동 주체 ∧ 바인딩을 든 자.** 출처(`BindingOrigin`)는 수명·표기 꼬리표.
   5. **저작 검증은 하나** — 출처(카드 · 유닛 능력 · 악몽)는 검증 입력이 아니다.
-- **스킬 데이터 표 계약 — 예정**(`skill-data-table` · 승인 대기 · `docs/spec/skill-data-table/README.md` 계약 1~6 · 표 설계 `tables.md`). 구현 전이라 오늘 코드는 위 계약 그대로다:
+- **스킬 데이터 표 계약**(`skill-data-table` · 2026-09-29 구현 — `docs/spec/skill-data-table/README.md` 계약 1~10 · 표 설계 `tables.md` · 인계 `6_handoff_summary.md`). 코어 = `MatchDefinition.Effects`(`EffectDef` · 규칙 줄 `BindingDef.EffectIndex`) · 저작 = 효과 SO `EffectData`(`Data/Effects/`) + 소유자 `bindings`(`BindingSpec`) · 굽기 한 경로 `BindingSpecBuilder` · 시트 탭 `Skills` · `SkillOwners`(`SkillSheet`):
   1. **정체는 효과 줄에 있다** — 효과 표(종류 + 수치 + 수치 방식 + 안정 `Id`)가 탄·패턴·장판 표와 나란한 넷째 id 참조 표. 수치가 다르면 다른 줄 · 소유자별 덮어쓰기 없음. 피해는 효과 줄에만(패턴·장판·길막은 모양).
   2. **소유 = 참조 줄** — 카드 · 유닛 · 적이 같은 (트리거 · 주체 · 게이트 · 발동 상한 → 효과 id) 줄을 든다.
   3. **스킬은 소유자를 묻지 않는다** — 소유자마다 달라야 하는 결과는 그 상태의 담당자가 진영으로 정한다.

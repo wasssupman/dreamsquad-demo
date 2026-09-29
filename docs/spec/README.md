@@ -106,6 +106,7 @@ code + git history        구현 상세
 
 ## 진행 중 spec
 
+- `skill-data-table/` — **스킬 데이터 표 재설계**(스킬 = 효과 id · 소유 = 참조 줄 · 시트 `Skills`/`SkillOwners`). **구현 완료 2026-09-29 · 사용자 확인 대기** · 인계 `6_handoff_summary.md`.
 - `unified-effect-layer/` — **통합 효과 층**(트리거 검사·효과 발동이 출처와 무관하게 한 경로). **완료 2026-09-28**(플레이 확인) · 인계 `6_handoff_summary.md` · 전수 표 `census.md`.
 
 ## 은퇴한 spec
