@@ -236,6 +236,115 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.AreEqual(20f, e.values.damage, "빈 칸 = 그대로");
         }
 
+        // ── skill-data-table unit 9 — U20(공격 변형 = 방어유닛 쪽 소유자만 · 시트 층) ─────────────────────────────
+
+        private EffectData Mod(string id, EffectKind kind, float mul = 2f)
+        {
+            var e = New<EffectData>();
+            e.id = id;
+            e.name = "Effect_" + id;
+            e.values = new EffectValues { kind = kind, mul = mul, count = 2, rangeTiles = 3 };
+            return e;
+        }
+
+        [Test]
+        public void U20_EnemyOwner_WithProjectileBounce_SkipsWholeOwner_AndReports()
+        {
+            var bounce = Mod("bounce", EffectKind.ProjectileBounce, 1f);
+            var aoe = Effect("aoe", EffectKind.SelfTileAoe, 20f, 1);
+            var enemy = New<AttackUnitData>(); enemy.id = "boss";
+            var keep = new[] { Bind(TriggerKind.OnDeath, aoe) };
+            enemy.bindings = keep;
+            string log = SkillSheet.Import(new SkillSheetPayload
+            {
+                owners = new[]
+                {
+                    new SkillOwnerRowDto { ownerKind = "enemy", ownerId = "boss", slot = 0, kind = TriggerKind.OnDeath, effectId = "aoe" },
+                    new SkillOwnerRowDto { ownerKind = "enemy", ownerId = "boss", slot = 1, kind = TriggerKind.None, effectId = "bounce" },
+                },
+            }, Index(new[] { bounce, aoe }, enemies: new[] { enemy }), true, null, new StringBuilder());
+
+            StringAssert.Contains("'enemy/boss' U20 — attack modifier 'bounce' (ProjectileBounce) on owner_kind = enemy", log);
+            StringAssert.Contains("owner's sheet rows skipped (asset bindings untouched)", log);
+            Assert.AreSame(keep, enemy.bindings, "그 소유자의 시트 줄 전체를 건너뛴다(줄만 빼고 재구성하지 않는다)");
+        }
+
+        [Test]
+        public void U20_EnemyOwner_WithHeavyStrike_IsSkipped()
+        {
+            var heavy = Mod("heavy", EffectKind.HeavyStrike);
+            var enemy = New<AttackUnitData>(); enemy.id = "boss";
+            string log = SkillSheet.Import(new SkillSheetPayload
+            {
+                owners = new[] { new SkillOwnerRowDto { ownerKind = "enemy", ownerId = "boss", slot = 0, kind = TriggerKind.AttackN, period = 3, effectId = "heavy" } },
+            }, Index(new[] { heavy }, enemies: new[] { enemy }), true, null, new StringBuilder());
+            StringAssert.Contains("U20 — attack modifier 'heavy' (HeavyStrike)", log);
+            Assert.IsNull(enemy.bindings);
+        }
+
+        [Test]
+        public void U20_DefenderOwner_WithProjectileBounce_PassesTheSheetLayer()
+        {
+            // 시트 층은 통과(방어유닛 쪽 소유자) — 굽기는 unit 8 규칙대로 「배선 전(NotWired)」을 말한다(시트의 일이 아니다).
+            var bounce = Mod("bounce", EffectKind.ProjectileBounce, 1f);
+            var unit = New<DefenderUnitData>(); unit.id = "u";
+            string log = SkillSheet.Import(new SkillSheetPayload
+            {
+                owners = new[] { new SkillOwnerRowDto { ownerKind = "defender", ownerId = "u", slot = 0, kind = TriggerKind.None, effectId = "bounce" } },
+            }, Index(new[] { bounce }, units: new[] { unit }), true, null, new StringBuilder());
+            StringAssert.DoesNotContain("U20", log);
+            Assert.AreSame(bounce, unit.bindings[0].effect);
+        }
+
+        [Test]
+        public void U20_Card_OnlyWhenHostKindsAreDefenderOnly()
+        {
+            var front = Mod("front", EffectKind.FrontmostTarget, 1.2f);
+            var ok = New<DreamcatcherCard>(); ok.id = "ok"; ok.hostKinds = HostKinds.Defender;
+            var both = New<DreamcatcherCard>(); both.id = "both"; both.hostKinds = HostKinds.Defender | HostKinds.Enemy;
+            string log = SkillSheet.Import(new SkillSheetPayload
+            {
+                owners = new[]
+                {
+                    new SkillOwnerRowDto { ownerKind = "card", ownerId = "ok", slot = 0, kind = TriggerKind.None, effectId = "front" },
+                    new SkillOwnerRowDto { ownerKind = "card", ownerId = "both", slot = 0, kind = TriggerKind.None, effectId = "front" },
+                },
+            }, Index(new[] { front }, new[] { ok, both }), true, null, new StringBuilder());
+            Assert.AreSame(front, ok.bindings[0].effect, "방어유닛 숙주 카드는 통과");
+            Assert.IsNull(both.bindings, "적 숙주도 켠 카드는 건너뛴다");
+            StringAssert.Contains("'card/both' U20 — attack modifier 'front' (FrontmostTarget) on a card whose host_kinds = Defender, Enemy", log);
+        }
+
+        [Test]
+        public void U20_UsesTheKindAfterThisImport()
+        {
+            // 같은 import 의 Skills 탭이 효과를 공격 변형으로 바꾸면 그 뒤 종류로 판정한다.
+            var e = Effect("e", EffectKind.SelfTileAoe, 20f, 1);
+            var enemy = New<AttackUnitData>(); enemy.id = "boss";
+            string log = SkillSheet.Import(new SkillSheetPayload
+            {
+                skills = new[] { new SkillRowDto { id = "e", kind = EffectKind.DamageVsSleeping, mul = 2f } },
+                owners = new[] { new SkillOwnerRowDto { ownerKind = "enemy", ownerId = "boss", slot = 0, kind = TriggerKind.None, effectId = "e" } },
+            }, Index(new[] { e }, enemies: new[] { enemy }), true, null, new StringBuilder());
+            StringAssert.Contains("U20 — attack modifier 'e' (DamageVsSleeping)", log);
+            Assert.IsNull(enemy.bindings);
+        }
+
+        [Test]
+        public void EnemyOwned_FactionStatBuff_NotAll_Warns_ButApplies()
+        {
+            var buff = New<EffectData>();
+            buff.id = "buff";
+            buff.values = new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.AttackDamage, percent = 10f, allyFilter = CardTargetAxis.ClassRanger };
+            var enemy = New<AttackUnitData>(); enemy.id = "boss";
+            string log = SkillSheet.Import(new SkillSheetPayload
+            {
+                owners = new[] { new SkillOwnerRowDto { ownerKind = "enemy", ownerId = "boss", slot = 0, kind = TriggerKind.None, effectId = "buff" } },
+            }, Index(new[] { buff }, enemies: new[] { enemy }), true, null, new StringBuilder());
+            StringAssert.Contains("'enemy/boss' warning — enemy-owned FactionStatBuff 'buff' ally_filter=ClassRanger", log);
+            Assert.AreSame(buff, enemy.bindings[0].effect, "경고일 뿐 — 적용한다");
+        }
+
         // ── skill-data-table unit 9 — 종류별 사용 칸(`EffectSlots.UsedColumns`) ─────────────────────────────
 
         [Test]

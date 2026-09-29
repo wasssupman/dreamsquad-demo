@@ -454,6 +454,23 @@ namespace Wassup.Data.StatImport
                     log.AppendLine($"[SkillOwners] '{label}' {error} — owner skipped.");
                     continue;
                 }
+                // skill-data-table unit 9 — U20(시트 층만 · 계약 13): 공격 변형 효과는 방어유닛 쪽 소유자만 받는다. 어긋나면 그 소유자의 시트 줄
+                // **전체**를 건너뛴다(에셋 소유 줄 그대로 — 줄만 빼고 재구성하면 인스펙터 저작이 로그인마다 지워진다).
+                string u20 = AttackModifierOwnerError(key.kind, so, next, effectPlans);
+                if (u20 != null)
+                {
+                    c.skipped += list.Count;
+                    log.AppendLine($"[SkillOwners] '{label}' U20 — {u20} — owner's sheet rows skipped (asset bindings untouched).");
+                    continue;
+                }
+                if (key.kind == OwnerEnemy)
+                    foreach (var b in next)
+                    {
+                        var v = ValuesOf(b.effect, effectPlans);
+                        if (v.kind == EffectKind.FactionStatBuff && v.allyFilter != CardTargetAxis.All)
+                            log.AppendLine($"[SkillOwners] '{label}' warning — enemy-owned FactionStatBuff '{b.effect.id}' ally_filter={v.allyFilter} "
+                                           + "(class · cost filters are defender values — no enemy receives it; use All).");
+                    }
                 c.matched++;
 
                 int before = diff.Count;
@@ -474,6 +491,36 @@ namespace Wassup.Data.StatImport
                 plans.Add(new OwnerPlan { So = so, Set = set, Next = next });
             }
             return plans;
+        }
+
+        // U20 — 공격 변형(그 공격의 성질 — 강타 · 튕김 · 최전방 · 수면 특효)은 방어유닛 쪽 소유자만(방어유닛 · 숙주가 방어유닛뿐인 카드).
+        private static bool IsAttackModifier(EffectKind k)
+            => k == EffectKind.HeavyStrike || k == EffectKind.ProjectileBounce
+            || k == EffectKind.FrontmostTarget || k == EffectKind.DamageVsSleeping;
+
+        // 이 import 가 효과 값도 바꾸면 **바뀐 뒤** 종류로 본다(같은 import 의 Skills 계획).
+        private static EffectValues ValuesOf(EffectData effect, List<EffectPlan> effectPlans)
+        {
+            if (effect == null) return default;
+            var planned = effectPlans.FirstOrDefault(p => p.So == effect);
+            return planned != null ? planned.Values : effect.values;
+        }
+
+        private static string AttackModifierOwnerError(string ownerKind, ScriptableObject so, BindingSpec[] next, List<EffectPlan> effectPlans)
+        {
+            foreach (var b in next)
+            {
+                var kind = ValuesOf(b.effect, effectPlans).kind;
+                if (!IsAttackModifier(kind)) continue;
+                if (ownerKind == OwnerDefender) return null;
+                if (ownerKind == OwnerCard && so is DreamcatcherCard card)
+                {
+                    if (card.hostKinds == HostKinds.Defender) return null;
+                    return $"attack modifier '{b.effect.id}' ({kind}) on a card whose host_kinds = {card.hostKinds} (Defender only)";
+                }
+                return $"attack modifier '{b.effect.id}' ({kind}) on owner_kind = {ownerKind} (defender · defender-hosted card only)";
+            }
+            return null;
         }
 
         private static bool TryOwner(string kind, string id, SkillSheetIndex index, out ScriptableObject so,
