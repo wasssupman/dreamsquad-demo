@@ -17,8 +17,16 @@ namespace Wassup.Tests.EditMode
                 "t:DreamcatcherCard", new[] { "Assets/_Project/Data/Dreamcatcher" });
             Assert.IsNotEmpty(guids);
 
+            // skill-data-table U18 — 액티브 문안의 비용 = 실제 비용(`AwakeningConfig.costActive` — 전투 손패가 넘기는 카드 값과 같다).
+            // 에셋 description(폴백)도 그 숫자로 적혀 있어 같은 비용을 넘겨야 요약과 대조된다.
+            var awakeningGuids = AssetDatabase.FindAssets("t:AwakeningConfig");
+            Assert.IsNotEmpty(awakeningGuids, "AwakeningConfig 에셋이 없다");
+            var awakening = AssetDatabase.LoadAssetAtPath<AwakeningConfig>(AssetDatabase.GUIDToAssetPath(awakeningGuids[0]));
+
             int structuredCount = 0;
             var unstructured = new List<string>();
+            // 카드마다 멈추지 않고 모은다 — 한 장의 선행 실패가 다른 카드의 결과를 가리지 않게(실패 메시지 = 어긋난 카드 id 전부).
+            var mismatched = new List<string>();
             foreach (var guid in guids)
             {
                 var card = AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(
@@ -34,14 +42,15 @@ namespace Wassup.Tests.EditMode
                 if (!hasStructuredData) { unstructured.Add(card.name); continue; }
 
                 structuredCount++;
-                string body = DreamcatcherCardText.Body(card);
-                Assert.IsFalse(string.IsNullOrEmpty(body), $"empty body: {card.id}");
+                int? activeCost = card.type == CardType.Active ? awakening.CostFor(CardType.Active) : (int?)null;
+                string body = DreamcatcherCardText.Body(card, null, activeCost);
+                if (string.IsNullOrEmpty(body)) { mismatched.Add(card.id + "(빈 본문)"); continue; }
                 if (!string.IsNullOrEmpty(card.description))
                 {
                     int first = body.IndexOf(card.description, System.StringComparison.Ordinal);
                     int last = body.LastIndexOf(card.description, System.StringComparison.Ordinal);
-                    Assert.GreaterOrEqual(first, 0, card.id);
-                    Assert.AreEqual(first, last, card.id + " description must not be duplicated");
+                    if (first < 0) mismatched.Add(card.id + "(description 이 요약에 없다)");
+                    else if (first != last) mismatched.Add(card.id + "(description 중복)");
                 }
 
             }
@@ -49,6 +58,7 @@ namespace Wassup.Tests.EditMode
             // «현재 44장» 같은 개수 스냅샷은 카드를 추가할 때마다 깨진다 — 원 의도인
             // «모든 카드가 데이터 정형(effects/mechanics/skill 저작)» 을 직접 단언한다
             // (test-suite-fast-lane unit 1).
+            Assert.IsEmpty(mismatched, $"요약 문안과 description 이 어긋난 카드: [{string.Join(", ", mismatched)}]");
             Assert.IsEmpty(unstructured,
                 $"데이터 정형이 아닌 카드: [{string.Join(", ", unstructured)}] — 문안이 구형 fallback 으로 조립된다");
             Assert.Greater(structuredCount, 0, "정형 카드가 하나도 없다 — 스캔 경로 확인");
