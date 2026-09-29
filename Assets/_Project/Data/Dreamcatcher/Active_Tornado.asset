@@ -17,9 +17,7 @@ MonoBehaviour:
   visible: 1
   axis: 0
   category: 0
-  effects: []
   art: {fileID: 21300000, guid: dbded4ca405947698482275eede81008, type: 3}
-  attackMods: []
   type: 2
   skill: {fileID: 11400000, guid: a1f7c4d2e85b4e6f9c3d7b8e2a1f5d60, type: 2}
   description: "\uD0C0\uC77C \uC9C0\uC815 \u2192 \uBC18\uACBD 2\uCE78 \uC801\uC744
