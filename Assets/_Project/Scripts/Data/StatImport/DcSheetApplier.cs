@@ -51,7 +51,10 @@ namespace Wassup.Data.StatImport
                 { c.skipped++; log.AppendLine($"[{label}] duplicate row for id='{id}' — skipped."); continue; }
                 if (string.IsNullOrEmpty(id) || !byId.TryGetValue(id, out var so))
                 { c.unmatched++; log.AppendLine($"[{label}] no match for id='{id}'"); continue; }
-                c.fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so);
+                // skill-data-table unit 9 — 바뀐 칸을 한 줄씩 남긴다(열 = 시트 JSON 이름 · 새 카드 칸 host_kinds · cooldown_sec · needs_two_tiles 포함).
+                var changes = new List<string>();
+                c.fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so, changes);
+                foreach (var change in changes) log.AppendLine($"[{label}-diff] '{id}' · {change}");
                 postApply?.Invoke(so);
                 onApplied?.Invoke(so);
                 c.matched++;

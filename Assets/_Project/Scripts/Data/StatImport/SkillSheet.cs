@@ -464,11 +464,7 @@ namespace Wassup.Data.StatImport
         private static string Describe(in BindingSpec b)
             => $"{b.trigger.kind} → {(b.effect != null ? b.effect.id : "null")}";
 
-        private static string Column(Type dto, string field)
-        {
-            var attr = dto.GetField(field, PublicInstance)?.GetCustomAttribute<JsonPropertyAttribute>();
-            return attr?.PropertyName ?? field;
-        }
+        private static string Column(Type dto, string field) => SheetColumns.NameOf(dto, field);
 
         private static void AddDiff(List<string> diff, string where, string column, object before, object after)
         {

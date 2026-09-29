@@ -23,10 +23,11 @@ namespace Wassup.Editor.UnitStatImport
 
         // Export-only rows: the extra `_` fields must not exist on the import DTOs,
         // or the reflection mapper / row binding would have to special-case them.
-        private class CardRow : DcCardDto { public string _skillId; }
+        // skill-data-table unit 9 — 정보 열도 스네이크(`_skill_id` · `_effect`)이고 **맨 오른쪽**이다(Order — 헤더 줄 순서 = `SheetColumns.Of`).
+        internal class CardRow : DcCardDto { [JsonProperty("_skill_id", Order = 1)] public string _skillId; }
         // active-dreamcatcher-tile-aim unit 0 — `_target` 정보 열은 대상축(SkillTargetType)
         // 폐기와 함께 제거. 모든 스킬이 타일 대상이라 열의 정보량이 0이다.
-        private class SkillRow : DcSkillDto { public string _effect; }
+        internal class SkillRow : DcSkillDto { [JsonProperty("_effect", Order = 1)] public string _effect; }
 
         // tabNames order = `DcSheetTabs`(cards, DcSkills, config, Skills, SkillOwners).
         public static string ExportToFolder(string folder, string[] tabNames,
@@ -157,7 +158,7 @@ namespace Wassup.Editor.UnitStatImport
             sb.AppendLine("1. JSON top-level 키 = 시트 탭 이름(`_note` 제외). 각 배열을 같은 이름 탭에 반영, 없으면 생성.");
             sb.AppendLine("2. 배열 원소=행, 객체 키=열 헤더(1행 헤더, 2행부터 데이터). 특정 행에 없는 키는 셀 비움.");
             sb.AppendLine("3. 기존 헤더 순서 유지, JSON 에만 있는 새 열은 오른쪽에 추가.");
-            sb.AppendLine("4. 업서트(중복 생성 금지): DcCards/DcSkills/DcConfig 키=id · Skills 키=effect_id · SkillOwners 키=(owner_kind,owner_id,slot). 같은 키 행은 갱신, 없으면 추가, slot 오름차순. JSON 에 없는 기존 행은 지우지 마라.");
+            sb.AppendLine("4. 업서트(중복 생성 금지): Cards/DcSkills/DcConfig 키=id · Skills 키=effect_id · SkillOwners 키=(owner_kind,owner_id,slot). 같은 키 행은 갱신, 없으면 추가, slot 오름차순. JSON 에 없는 기존 행은 지우지 마라.");
             sb.AppendLine("5. 값 그대로: enum=문자열, 숫자=숫자, 한글 텍스트 원문 유지. 변형·번역·반올림 금지.");
             sb.AppendLine("6. 반영 후 탭별 추가/갱신 행 수를 요약.");
             sb.AppendLine();

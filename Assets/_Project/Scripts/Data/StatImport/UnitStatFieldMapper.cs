@@ -65,7 +65,14 @@ namespace Wassup.Data.StatImport
             return readCount;
         }
 
-        public static int ApplyNonNullFields(object dto, ScriptableObject so)
+        /// <summary>
+        /// `changes`(선택 · skill-data-table unit 9) = 값이 **실제로 바뀐** 칸마다 「열: 전 → 후」 한 줄(열 = 시트 JSON 이름 — `SheetColumns`).
+        /// 짝은 여전히 C# 필드 이름이다(DTO ↔ SO 1:1).
+        /// </summary>
+        private static string Show(object v)
+            => v == null ? "(없음)" : System.Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture);
+
+        public static int ApplyNonNullFields(object dto, ScriptableObject so, List<string> changes = null)
         {
             int appliedCount = 0;
 
@@ -90,6 +97,12 @@ namespace Wassup.Data.StatImport
                     continue;
                 }
 
+                if (changes != null)
+                {
+                    object before = soField.GetValue(so);
+                    if (!Equals(before, dtoValue))
+                        changes.Add($"{SheetColumns.NameOf(dto.GetType(), dtoField.Name)}: {Show(before)} → {Show(dtoValue)}");
+                }
                 soField.SetValue(so, dtoValue);
                 appliedCount++;
             }

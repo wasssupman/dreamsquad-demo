@@ -80,8 +80,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         [Test]
         public void Deserialize_CardDto_ParsesAttachTypeByName_AndValueAsString()
         {
-            const string json = @"[{ ""id"": ""x"", ""attachType"": ""Class"",
-                ""attachValue"": ""Guardian"" }]";
+            const string json = @"[{ ""id"": ""x"", ""attach_type"": ""Class"",
+                ""attach_value"": ""Guardian"" }]";
 
             var rows = JsonConvert.DeserializeObject<DcCardDto[]>(json);
 
@@ -174,22 +174,54 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         }
 
         [Test]
-        public void ApplySkills_UpdatesBalanceScalars()
+        public void ApplySkills_UpdatesTextColumns_AndNumericColumnsAreRetired()
         {
+            // skill-data-table unit 9 — DcSkills = 액티브 **문안**만(수치 칸은 아무도 안 읽는 두 번째 원천이라 삭제 · 굽기 = Skills + Cards.cooldown_sec).
             var skill = ScriptableObject.CreateInstance<SkillData>();
             skill.id = "meteor";
+            skill.displayName = "old";
+            skill.description = "keep";
             skill.cooldownSec = 18f;
-            skill.cost = 4;
 
-            var payload = new DcSheetPayload
-            {
-                skills = new[] { new DcSkillDto { id = "meteor", cooldownSec = 22f } },
-            };
-            Apply(payload, new Dictionary<string, DreamcatcherCard>(),
+            const string body = @"{ ""success"": true, ""data"": [ { ""id"": ""meteor"", ""display_name"": ""운석"", ""cooldown_sec"": 99, ""cooldownSec"": 99 } ] }";
+            var log = new StringBuilder();
+            var rows = SheetEnvelopeParser.ParseSheetLogged<DcSkillDto>(body, null, "DcSkills", log);
+            Apply(new DcSheetPayload { skills = rows }, new Dictionary<string, DreamcatcherCard>(),
                 skills: new Dictionary<string, SkillData> { ["meteor"] = skill });
 
-            Assert.AreEqual(22f, skill.cooldownSec);
-            Assert.AreEqual(4, skill.cost, "omitted column must keep the SO value");
+            Assert.AreEqual("운석", skill.displayName);
+            Assert.AreEqual("keep", skill.description, "omitted column must keep the SO value");
+            Assert.AreEqual(18f, skill.cooldownSec, "수치 칸은 계약 밖 — 시트가 보내도 안 쓴다");
+            StringAssert.Contains("cooldown_sec", log.ToString(), "계약 밖 헤더로 보고된다(편집이 무시된다는 경고)");
+            CollectionAssert.AreEqual(new[] { "id", "display_name", "description" }, SheetColumns.Of(typeof(DcSkillDto)));
+            Object.DestroyImmediate(skill);
+        }
+
+        // skill-data-table unit 9 — Cards 탭 새 칸(host_kinds · cooldown_sec · needs_two_tiles · 빈 칸 = 그대로 · 바뀐 칸은 diff 줄).
+        [Test]
+        public void ApplyCards_NewColumns_HostKindsCooldownTwoTiles_AndDiffLog()
+        {
+            var so = NewCard("active_portal");
+            so.type = CardType.Active;
+            so.hostKinds = HostKinds.Defender;
+            so.cooldownSec = 14f;
+            so.needsTwoTiles = false;
+            so.displayName = "포탈";
+            const string body = @"{ ""success"": true, ""data"": [
+                { ""id"": ""active_portal"", ""host_kinds"": ""Defender, Enemy"", ""cooldown_sec"": 20.5, ""needs_two_tiles"": true, ""display_name"": """" } ] }";
+            var log = new StringBuilder();
+            var rows = SheetEnvelopeParser.ParseSheetLogged<DcCardDto>(body, null, DcSheetTabs.Cards, log);
+            StringAssert.DoesNotContain("headers not in contract", log.ToString());
+            Apply(new DcSheetPayload { cards = rows }, new Dictionary<string, DreamcatcherCard> { ["active_portal"] = so }, log: log);
+
+            Assert.AreEqual(HostKinds.Defender | HostKinds.Enemy, so.hostKinds);
+            Assert.AreEqual(20.5f, so.cooldownSec);
+            Assert.IsTrue(so.needsTwoTiles);
+            Assert.AreEqual("포탈", so.displayName, "빈 칸 = 그대로");
+            StringAssert.Contains("[dc-card-diff] 'active_portal' · cooldown_sec: 14 → 20.5", log.ToString());
+            StringAssert.Contains("needs_two_tiles: False → True", log.ToString());
+            StringAssert.Contains("host_kinds:", log.ToString());
+            Object.DestroyImmediate(so);
         }
 
         // skill-data-table unit 8 단계 B — 시트-정본 자식 탭 둘(`DcCardEffects` · `DcAttackMods` — 카드 `effects[]` · `attackMods[]` 재구성)은
@@ -209,14 +241,16 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void ParseSheetLogged_UnknownHeader_IsReportedAndUnderscoreIsNot()
         {
             const string body = @"{ ""success"": true, ""data"": [
-                { ""id"": ""x"", ""displayNam"": ""oops"", ""_memo"": ""y"" }
+                { ""id"": ""x"", ""display_nam"": ""oops"", ""displayName"": ""old camel"", ""_memo"": ""y"" }
             ] }";
             var log = new StringBuilder();
 
-            var rows = SheetEnvelopeParser.ParseSheetLogged<DcCardDto>(body, null, "DcCards", log);
+            var rows = SheetEnvelopeParser.ParseSheetLogged<DcCardDto>(body, null, DcSheetTabs.Cards, log);
 
             Assert.AreEqual(1, rows.Length);
-            StringAssert.Contains("displayNam", log.ToString());
+            StringAssert.Contains("display_nam", log.ToString());
+            StringAssert.Contains("displayName", log.ToString(), "unit 9 — 옛 카멜 헤더도 계약 밖으로 보고된다(스네이크 전환)");
+            Assert.IsNull(rows[0].displayName);
             StringAssert.DoesNotContain("_memo", log.ToString());
         }
 

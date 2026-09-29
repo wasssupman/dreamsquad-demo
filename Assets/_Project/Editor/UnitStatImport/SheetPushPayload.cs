@@ -40,12 +40,13 @@ namespace Wassup.Editor.UnitStatImport
                 // exporter 는 attach 두 키를 전부 생략한다. Push 전용 id-less 행으로
                 // 키만 운반하면 기존 Apps Script 가 헤더를 만든 뒤 key 결측으로 행을
                 // 건너뛴다. 따라서 서버 재배포·가짜 카드·None 노이즈 없이 첫 Push 에서
-                // DcCards 오른쪽에 두 컬럼이 생긴다.
+                // Cards 오른쪽에 두 컬럼이 생긴다.
+                // skill-data-table unit 9 — 헤더 = **JSON 이름**(스네이크 `attach_type` · `attach_value`). `nameof` 를 쓰면 옛 카멜 열이 되살아난다.
                 var dcCardRows = (JArray)root[dcTabs[DcSheetTabs.CardsAt].Trim()];
                 dcCardRows.Add(new JObject
                 {
-                    [nameof(DcCardDto.attachType)] = "",
-                    [nameof(DcCardDto.attachValue)] = "",
+                    [SheetColumns.NameOf(typeof(DcCardDto), nameof(DcCardDto.attachType))] = "",
+                    [SheetColumns.NameOf(typeof(DcCardDto), nameof(DcCardDto.attachValue))] = "",
                 });
 
                 return root.ToString(Formatting.Indented);

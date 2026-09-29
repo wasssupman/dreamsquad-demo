@@ -18,7 +18,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         private const string Empty = @"{ ""success"": true, ""data"": [] }";
         private const string ErrorBody = @"{ ""success"": false, ""errorDetail"": { ""errorCode"": ""INTERNAL_SERVER_ERROR"", ""detailMessage"": ""구글 시트 연동 실패"" } }";
 
-        // `DcSheetTabs` 순서(skill-data-table unit 8 단계 B — 5탭: DcCards · DcSkills · DcConfig · Skills · SkillOwners).
+        // `DcSheetTabs` 순서(skill-data-table unit 8 단계 B — 5탭 · unit 9 개명: Cards · DcSkills · DcConfig · Skills · SkillOwners).
         private static SheetFetcher.Result[] Results(string cards, string skills, string config,
             string skillRows = Empty, string owners = Empty)
         {
@@ -41,7 +41,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             var skill = ScriptableObject.CreateInstance<SkillData>();
             skill.id = "sk";
-            skill.magnitude = 40f;
+            skill.displayName = "OLD SKILL";
 
             var active = ScriptableObject.CreateInstance<DreamcatcherCard>();
             active.id = "active_x";
@@ -61,13 +61,13 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             string log = DcSheetRuntimeRefresher.ApplyBodies(
                 Results(
-                    Body(@"{ ""id"": ""test_card"", ""displayName"": ""NEW"" }"),
-                    Body(@"{ ""id"": ""sk"", ""magnitude"": 200 }"),
-                    Body(@"{ ""id"": ""awk"", ""handSize"": 4 }")),
+                    Body(@"{ ""id"": ""test_card"", ""display_name"": ""NEW"" }"),
+                    Body(@"{ ""id"": ""sk"", ""display_name"": ""NEW SKILL"" }"),
+                    Body(@"{ ""id"": ""awk"", ""hand_size"": 4 }")),
                 Tabs, catalog, new[] { active }, awakening);
 
-            Assert.AreEqual("NEW", card.displayName, "DcCards flat field applied to catalog card");
-            Assert.AreEqual(200f, skill.magnitude, "DcSkills applied to active card's wrapped skill");
+            Assert.AreEqual("NEW", card.displayName, "Cards flat field applied to catalog card");
+            Assert.AreEqual("NEW SKILL", skill.displayName, "DcSkills applied to active card's wrapped skill");
             Assert.AreEqual(4, awakening.handSize, "DcConfig applied to AwakeningConfig");
             StringAssert.Contains("Matched", log);
 
@@ -89,7 +89,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             catalog.cards = new[] { card };
 
             string log = DcSheetRuntimeRefresher.ApplyBodies(
-                Results(Body(@"{ ""id"": ""ghost"", ""displayName"": ""X"" }"),
+                Results(Body(@"{ ""id"": ""ghost"", ""display_name"": ""X"" }"),
                     Empty, Empty),
                 Tabs, catalog, null, null);
 
@@ -108,7 +108,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             card.displayName = "OLD";
             var skill = ScriptableObject.CreateInstance<SkillData>();
             skill.id = "sk";
-            skill.magnitude = 40f;
+            skill.displayName = "OLD SKILL";
             var active = ScriptableObject.CreateInstance<DreamcatcherCard>();
             active.id = "active_x";
             active.type = CardType.Active;
@@ -116,17 +116,17 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var catalog = ScriptableObject.CreateInstance<DreamcatcherCardCatalog>();
             catalog.cards = new[] { card };
 
-            // DcCards fails (error envelope); DcSkills succeeds — partial-update
+            // Cards fails (error envelope); DcSkills succeeds — partial-update
             // must still apply the healthy tab while the failed tab is reported.
             string log = DcSheetRuntimeRefresher.ApplyBodies(
                 Results(ErrorBody,
-                    Body(@"{ ""id"": ""sk"", ""magnitude"": 200 }"),
+                    Body(@"{ ""id"": ""sk"", ""display_name"": ""NEW SKILL"" }"),
                     Empty),
                 Tabs, catalog, new[] { active }, null);
 
-            Assert.AreEqual(200f, skill.magnitude, "healthy DcSkills tab must still apply");
-            Assert.AreEqual("OLD", card.displayName, "failed DcCards tab must not change flat fields");
-            StringAssert.Contains("[DcCards] fetch failed", log);
+            Assert.AreEqual("NEW SKILL", skill.displayName, "healthy DcSkills tab must still apply");
+            Assert.AreEqual("OLD", card.displayName, "failed Cards tab must not change flat fields");
+            StringAssert.Contains("[Cards] fetch failed", log);
             StringAssert.Contains("구글 시트 연동 실패", log);
 
             Object.DestroyImmediate(card);
@@ -136,7 +136,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         }
 
         // skill-data-table unit 5 — 로그인 자동 import(LoginAutoImport → AllRuntimeRefresher → 이 코어)가 새 두 탭으로 효과 값과
-        // 소유 줄을 **메모리에서** 고친다. 같은 호출에서 다른 탭(DcCards)도 그대로 적용된다. 방어유닛 소유자도 같은 형식이다.
+        // 소유 줄을 **메모리에서** 고친다. 같은 호출에서 다른 탭(Cards)도 그대로 적용된다. 방어유닛 소유자도 같은 형식이다.
         [Test]
         public void ApplyBodies_SkillTabs_UpdateEffectAndOwners_InMemory()
         {
@@ -159,7 +159,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             catalog.cards = new[] { card };
 
             string log = DcSheetRuntimeRefresher.ApplyBodies(
-                Results(Body(@"{ ""id"": ""test_card"", ""displayName"": ""NEW"" }"),
+                Results(Body(@"{ ""id"": ""test_card"", ""display_name"": ""NEW"" }"),
                     Empty, Empty,
                     Body(@"{ ""effect_id"": ""test_aoe"", ""damage"": 99, ""radius_tiles"": 3 }"),
                     Body(@"{ ""owner_kind"": ""card"", ""owner_id"": ""test_card"", ""slot"": 0, ""period"": 2 },
@@ -191,6 +191,9 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             CollectionAssert.DoesNotContain(DcSheetTabs.Default(), "DcCardEffects");
             CollectionAssert.DoesNotContain(DcSheetTabs.Default(), "DcAttackMods");
             Assert.AreEqual(5, DcSheetTabs.Count);
+            // unit 9 — DcCards → Cards 개명.
+            Assert.AreEqual("Cards", DcSheetTabs.Default()[DcSheetTabs.CardsAt]);
+            CollectionAssert.DoesNotContain(DcSheetTabs.Default(), "DcCards");
             Assert.AreEqual(DcSheetTabs.Count, DcSheetTabs.Default().Length);
             Assert.AreEqual("Skills", DcSheetTabs.Default()[DcSheetTabs.SkillsAt]);
             Assert.AreEqual("SkillOwners", DcSheetTabs.Default()[DcSheetTabs.SkillOwnersAt]);

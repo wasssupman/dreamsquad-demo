@@ -20,7 +20,7 @@ namespace Wassup.Core
     {
         [SerializeField] private DreamcatcherCardCatalog cardCatalog;
         // Active cards are not in the deck catalog (per-match awakening cards). Wire
-        // them explicitly so their DcCards rows + wrapped skills refresh too.
+        // them explicitly so their Cards rows + wrapped skills refresh too.
         [SerializeField] private DreamcatcherCard[] activeCards;
         [SerializeField] private AwakeningConfig awakeningConfig;
         // skill-data-table unit 5 — `SkillOwners` 의 방어유닛 · 적 소유자(스탯 refresher 와 같은 카탈로그).

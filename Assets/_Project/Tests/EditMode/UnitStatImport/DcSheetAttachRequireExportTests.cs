@@ -40,8 +40,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             DcSheetExporter.ExportToFolder(_dir, tabs, DcFolder, SkillFolder);
 
-            string path = Path.Combine(_dir, "DcCards.json");
-            Assert.IsTrue(File.Exists(path), "DcCards.json exported");
+            string path = Path.Combine(_dir, "Cards.json");
+            Assert.IsTrue(File.Exists(path), "Cards.json exported");
             var rows = JArray.Parse(File.ReadAllText(path));
             Assert.Greater(rows.Count, 0, "카드가 하나 이상 export 되어야 검증이 의미 있다");
 
@@ -49,10 +49,10 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             foreach (JObject row in rows)
             {
                 // 현재 카탈로그는 전부 제한 없음(attachType == None) → 두 키 모두 부재.
-                string kind = (string)row["attachType"];
+                string kind = (string)row["attach_type"];
                 if (kind != null) continue; // 제한이 설정된 카드가 생기면 그 행은 대상 밖
                 checked_++;
-                Assert.IsNull(row["attachValue"],
+                Assert.IsNull(row["attach_value"],
                     $"'{(string)row["id"]}': 제한 없는 행에 attachValue 키가 있으면 안 된다");
             }
             Assert.Greater(checked_, 0, "제한 없는 카드 행이 하나 이상 검사되어야 한다");
@@ -75,7 +75,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.Greater(((JArray)root["Skills"]).Count, 0, "Skills 탭(효과 줄)이 push 바디에 있다");
             Assert.Greater(((JArray)root["SkillOwners"]).Count, 0, "SkillOwners 탭(소유 줄)이 push 바디에 있다");
 
-            var rows = (JArray)root["DcCards"];
+            Assert.IsNull(root["DcCards"], "unit 9 — 옛 탭 이름 DcCards 로 push 하면 안 된다(→ Cards)");
+            var rows = (JArray)root["Cards"];
             int seedCount = 0;
             int cardCount = 0;
             foreach (JObject row in rows)
@@ -87,8 +88,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
                 }
 
                 seedCount++;
-                Assert.AreEqual("", (string)row["attachType"]);
-                Assert.AreEqual("", (string)row["attachValue"]);
+                Assert.AreEqual("", (string)row["attach_type"]);
+                Assert.AreEqual("", (string)row["attach_value"]);
                 Assert.AreEqual(2, row.Count, "헤더 시드에는 attach 두 키 외 데이터가 없어야 한다");
             }
 

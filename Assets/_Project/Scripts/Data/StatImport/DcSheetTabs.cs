@@ -9,10 +9,12 @@ namespace Wassup.Data.StatImport
     ///
     /// skill-data-table unit 8 단계 B — 카드 전용 자식 탭 둘(`DcCardEffects` · `DcAttackMods`)도 **은퇴**했다(7 → 5탭). 스쿼드 스탯 효과 ·
     /// 공격 수식자는 효과 줄(`Skills`) + 카드 소유 줄(`SkillOwners` · 트리거 `None`)이다. 서버 시트의 옛 탭은 남아도 아무도 안 읽는다(보관 · 삭제 자유).
+    /// unit 9 — `DcCards` → `Cards` 개명 · 전 탭 열 이름 스네이크(`SheetColumns` · 헤더 정본 = `5_sheet_io.md` 「실제 시트 설정」).
     /// </summary>
     public static class DcSheetTabs
     {
-        public const string Cards = "DcCards";
+        // skill-data-table unit 9 — 옛 `DcCards` 개명(카드 고유 값 탭 — `tables.md` §7). `DcSkills` · `DcConfig` 이름은 후속(U18 · 설정 통합).
+        public const string Cards = "Cards";
         public const string ActiveSkills = "DcSkills";
         public const string Config = "DcConfig";
         public const string Skills = "Skills";
