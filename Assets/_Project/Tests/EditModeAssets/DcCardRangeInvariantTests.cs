@@ -91,14 +91,24 @@ namespace Wassup.Tests.EditModeAssets
             int checkedCards = 0;
             for (int c = 0; c < cards.Count; c++)
             {
-                bool rulesEmpty = cards[c].bindings == null || cards[c].bindings.Length == 0;
-                bool hasAttackMods = cards[c].attackMods != null && cards[c].attackMods.Length > 0;
-                if (!rulesEmpty || !hasAttackMods) continue;
+                // skill-data-table unit 8 — 공격 수식자도 소유 줄이다(트리거 None). 「수식자만」 = 소유 줄 전부가 수식자 종류.
+                if (!OnlyAttackModRows(cards[c])) continue;
                 checkedCards++;
                 Assert.AreEqual(RangeShape.None, CoreCardDragSlot.CardRangeOf(def, c).Shape,
-                    $"{cards[c].id}: attackMods 만 있는 카드가 범위를 그리면 안 된다");
+                    $"{cards[c].id}: 공격 수식자 줄만 있는 카드가 범위를 그리면 안 된다");
             }
             Assert.Greater(checkedCards, 0, "공격 수식자만 있는 카드가 없다면 테스트가 공허하다");
+        }
+
+        private static bool OnlyAttackModRows(DreamcatcherCard card)
+        {
+            if (card.bindings == null || card.bindings.Length == 0) return false;
+            foreach (var b in card.bindings)
+            {
+                var k = b.effect != null ? b.effect.values.kind : EffectKind.None;
+                if (k != EffectKind.ProjectileBounce && k != EffectKind.FrontmostTarget && k != EffectKind.DamageVsSleeping) return false;
+            }
+            return true;
         }
 
         [Test]

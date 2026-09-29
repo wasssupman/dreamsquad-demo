@@ -33,13 +33,8 @@ namespace Wassup.Tests.EditMode
                     AssetDatabase.GUIDToAssetPath(guid));
                 if (card == null) continue;
 
-                // skill-data-table unit 8 — 상시 효과 줄(진영 버프 · 수식자)도 정형 데이터다(과도기 — 옛 칸 또는 새 줄) · 액티브 = 시전 줄.
-                bool hasStructuredData = card.type == CardType.Squad
-                    ? (card.effects != null && card.effects.Length > 0) || card.HasAlwaysOnRows()
-                    : card.type == CardType.Unit
-                        ? (card.RuleView() != null && card.RuleView().Length > 0)
-                          || (card.attackMods != null && card.attackMods.Length > 0)
-                        : card.bindings != null && card.bindings.Length > 0;
+                // skill-data-table unit 8 — 모든 카드의 정형 데이터 = 소유 줄(진영 버프 · 수식자 · 규칙 · 시전 — 옛 effects · attackMods 은퇴).
+                bool hasStructuredData = card.bindings != null && card.bindings.Length > 0;
                 if (!hasStructuredData) { unstructured.Add(card.name); continue; }
 
                 structuredCount++;
@@ -57,7 +52,7 @@ namespace Wassup.Tests.EditMode
             }
 
             // «현재 44장» 같은 개수 스냅샷은 카드를 추가할 때마다 깨진다 — 원 의도인
-            // «모든 카드가 데이터 정형(effects/mechanics/skill 저작)» 을 직접 단언한다
+            // «모든 카드가 데이터 정형(소유 줄 저작 — skill-data-table unit 8)» 을 직접 단언한다
             // (test-suite-fast-lane unit 1).
             Assert.IsEmpty(mismatched, $"요약 문안과 description 이 어긋난 카드: [{string.Join(", ", mismatched)}]");
             Assert.IsEmpty(unstructured,

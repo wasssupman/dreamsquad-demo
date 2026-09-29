@@ -74,7 +74,7 @@ namespace Wassup.UI
                 // 같은 판별(DreamcatcherCard.HasBountyMark)로 칩 문안을 가른다.
                 case CardType.Unit: return c.HasBountyMark() ? "적 지정" : "아군 부착";
                 case CardType.Active: return ActiveTargetTag(c.skill);
-                // skill-data-table unit 8 — Squad 의 축 = 진영 버프 효과 줄의 수혜 대상(분류 문구와 한 원천 · 과도기 = 카드 axis).
+                // skill-data-table unit 8 — Squad 의 축 = 진영 버프 효과 줄의 수혜 대상(분류 문구와 한 원천 · 버프 줄이 없으면 「전체」).
                 default: return DreamcatcherCardText.AxisLabel(DreamcatcherCardText.SquadAxis(c)) + " 버프";
             }
         }

@@ -21,7 +21,7 @@ namespace Wassup.BattleCore.Combat
     // 이 조립을 안 지난다(`IntentApplier.SpawnProjectile`). 배율을 붙이면 강화 스택이 그대로 곱해진다.
     public enum AttackModKind : byte
     {
-        // 앞 넷은 저작 `DcAttackModKind` 미러(번호 핀 — `CoreTriggerEnumPinTests`).
+        // 튕김 · 최전방 · 수면 = 저작 효과 종류(`EffectKind` 상시 수식자 3 — skill-data-table unit 8)와 이름이 같다(핀 — `CoreTriggerEnumPinTests`).
         None = 0,
         ProjectileBounce = 1,
         FrontmostTarget = 2,

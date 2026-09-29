@@ -28,11 +28,6 @@ namespace Wassup.BattleCoreUnity
         public HostKinds CardHosts;
         /// <summary>카드가 적을 겨냥하나(적 표식 카드) — 그 카드는 표식 효과만 쓴다.</summary>
         public bool CardTargetsEnemies;
-        /// <summary>
-        /// 카드 축 — **과도기 폴백만**(skill-data-table unit 8): 배치 오라의 수혜 대상은 효과 칸 `allyFilter`(계약 12)이고, 그 칸이 아직 기본값인
-        /// 동안(이전 전)만 이 값을 쓴다. 단계 B(이전 적용 · 옛 칸 제거)에서 폴백과 함께 은퇴.
-        /// </summary>
-        public CardTargetAxis Axis;
         /// <summary>Squad 카드 — 진영 버프(`FactionStatBuff`) 줄만 든다(카드 분류 검증 · 덱 상한이 이 분류를 본다 · unit 8).</summary>
         public bool SquadCard;
     }
@@ -97,7 +92,7 @@ namespace Wassup.BattleCoreUnity
                 // ── 트리거 없음 = 부착되는 순간(카드만 — 유닛 · 적은 조합 검증이 「영영 안 터짐」으로 거절한다) ──
                 if (trigger == TriggerKind.None && o.IsCard)
                 {
-                    AttachInstant(in m, in v, kind, label, e.id, AuraFilter(in v, o.Axis), ref aura, rows, effects, mine, view);
+                    AttachInstant(in m, in v, kind, label, e.id, ref aura, rows, effects, mine, view);
                     continue;
                 }
                 // 손패 동작(인수인계) — 규칙이 아니라 퇴근 회수 선언이다. 카드 · 퇴근 · 게이트 없음.
@@ -242,7 +237,7 @@ namespace Wassup.BattleCoreUnity
             return false;
         }
 
-        // ── 상시 효과(unit 8) — 옛 카드 빌더의 두 갈래(`BakeSquad` · attackMods 루프)와 같은 값(효과 id 만 저작 id) ──────────
+        // ── 상시 효과(unit 8) — 옛 카드 빌더의 두 갈래(`BakeSquad` · attackMods 루프 — 단계 B 에서 은퇴)와 같은 값(효과 id 만 저작 id) ──────────
 
         private static void AlwaysOn(in BindingSpec s, in DcMechanic m, in EffectValues v, EffectKind kind, string effectId, in RuleOwner o,
                                      string label, List<BindingDef> rows, List<EffectDef> effects, List<int> squad, List<AttackModDef> mods)
@@ -285,25 +280,13 @@ namespace Wassup.BattleCoreUnity
                     bool bounce = kind == EffectKind.ProjectileBounce;
                     mods.Add(new AttackModDef
                     {
-                        Kind = ToAttackMod(kind),
+                        Kind = BindingDefinitionBuilder.ToCoreAttackMod(kind),
                         Count = bounce ? v.count : 0,          // 사용 칸 표 — 튕김만 수 · 반경을 읽는다
                         TileRange = bounce ? v.rangeTiles : 0,
                         DamageMul = v.mul,
                     });
                     return;
                 }
-            }
-        }
-
-        /// <summary>상시 효과 중 공격 수식자 셋 → 코어 축(이름 · 번호가 같은 앞 넷의 뒤 셋).</summary>
-        internal static AttackModKind ToAttackMod(EffectKind kind)
-        {
-            switch (kind)
-            {
-                case EffectKind.ProjectileBounce: return AttackModKind.ProjectileBounce;
-                case EffectKind.FrontmostTarget: return AttackModKind.FrontmostTarget;
-                case EffectKind.DamageVsSleeping: return AttackModKind.DamageVsSleeping;
-                default: return AttackModKind.None;
             }
         }
 
@@ -321,15 +304,8 @@ namespace Wassup.BattleCoreUnity
             return b;
         }
 
-        /// <summary>
-        /// 배치 오라의 수혜 대상 = 효과 칸 `allyFilter`(계약 12). ⚠ 과도기(단계 B 전): 이전 전 에셋은 그 칸이 기본값(첫 값 `ClassRanger`)이라
-        /// 기본값이면 카드 축으로 떨어진다(오늘 결과 — 라이브 `slow_awakening` = 축 `All`). 이전이 효과 칸을 쓰면 폴백과 함께 은퇴.
-        /// </summary>
-        internal static CardTargetAxis AuraFilter(in EffectValues v, CardTargetAxis cardAxis)
-            => v.allyFilter != default(CardTargetAxis) ? v.allyFilter : cardAxis;
-
         private static void AttachInstant(in DcMechanic m, in EffectValues v, EffectKind kind, string label, string effectId,
-                                          CardTargetAxis axis, ref bool aura, List<BindingDef> rows, List<EffectDef> effects,
+                                          ref bool aura, List<BindingDef> rows, List<EffectDef> effects,
                                           List<int> mine, MatchViewAssets view)
         {
             var trigger = TriggerKind.None;
@@ -376,7 +352,8 @@ namespace Wassup.BattleCoreUnity
                 {
                     if (v.percent <= 0f) { Warn($"{label}: PlacementAura percent <= 0 — 건너뛴다."); return; }
                     if (aura) { Warn($"{label}: 카드당 PlacementAura 는 하나만 — 추가 오라는 건너뛴다."); return; }
-                    if (!CardDefinitionBuilder.ToAxis(axis, out int mask, out int cost)) { Warn($"{label}: 축 {axis} 을 옮길 수 없다 — 건너뛴다."); return; }
+                    // 수혜 대상 = 효과 칸 `allyFilter`(계약 12 — 누가 들든 효과의 뜻 · 단계 B 에서 카드 축 폴백 은퇴 · 라이브 `slow_awakening` = All).
+                    if (!CardDefinitionBuilder.ToAxis(v.allyFilter, out int mask, out int cost)) { Warn($"{label}: 수혜 대상 {v.allyFilter} 을 옮길 수 없다 — 건너뛴다."); return; }
                     aura = true;
                     var speed = CardRow(label + " 공속", TriggerKind.OnPlace, kind, out var speedFx);
                     speed.Skill = new SelfStatBuffSkill();

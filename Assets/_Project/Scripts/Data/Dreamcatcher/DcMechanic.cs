@@ -374,27 +374,8 @@ namespace Wassup.Data
         public DcPayloadSpec payload;
     }
 
-    // dreamcatcher-attack-mod-bounce Unit 0 — card class (c): trigger-less,
-    // always-on modification of the bound unit's base attack output. Same
-    // architecture-agnostic contract as the trigger definitions above: pure
-    // data, no ECS references; interpretation lives in the Unity-layer translator
-    // (`CardDefinitionBuilder`) and the battle core (old: BattleBridge bake + AttackSystem — history). Append new kinds at the end.
-    // dreamcatcher-content-4 unit 0 — DamageVsSleeping: 잠든 적을 때리면 그 타격의 피해 ×배율.
-    // **판정은 피해자별**이다 — 잠든 적 옆의 깨어 있는 적은 그대로다. 배율은 기존
-    // `DcAttackModSpec.damageMul` 재사용(2.0 = ×2) → **신규 필드 0**.
-    //
-    // 트리거 축(게이트 × HeavyStrike)으로 만들지 않은 이유: 강공은 그 공격의 **전 victim**
-    // (근접 cleave/splash/bounce)을 배율해서, 잠든 적 옆의 깨어 있는 적까지 2배가 된다(사양 초과).
-    // 적용 지점은 `DamageVsCcMul`(shatter_hymn)이 이미 피해자별로 곱해지는 2곳과 같다 —
-    // 투사체 발사 시 bestTarget 스냅샷 · 근접/AoE 는 hitTarget 별. append-only.
-    public enum DcAttackModKind { None, ProjectileBounce, FrontmostTarget, DamageVsSleeping }
-
-    [Serializable]
-    public struct DcAttackModSpec
-    {
-        public DcAttackModKind kind;
-        public int count;          // ProjectileBounce: bounce count · FrontmostTarget: unused
-        public int tileRange;      // ProjectileBounce: retarget radius (Chebyshev) · FrontmostTarget: unused (uses base attack range)
-        public float damageMul;    // ProjectileBounce: per-bounce decay (1 = no decay) · FrontmostTarget: primary-target damage multiplier
-    }
+    // skill-data-table unit 8 단계 B — 옛 카드 전용 공격 수식자 저작(`DcAttackModKind` · `DcAttackModSpec` — `DreamcatcherCard.attackMods`)은
+    // 은퇴했다. 튕김 · 최전방 · 수면 특효는 효과 종류(`EffectKind.ProjectileBounce` · `FrontmostTarget` · `DamageVsSleeping`) + 카드 소유 줄
+    // (트리거 `None`)이다 — 굽기가 코어 `AttackModDef` 로 접는다(`BindingSpecBuilder`). 판정 규칙(수면 특효 = 피해자별 · 강타와 다른 축)은
+    // 코어 `AttackMod` 가 든다.
 }

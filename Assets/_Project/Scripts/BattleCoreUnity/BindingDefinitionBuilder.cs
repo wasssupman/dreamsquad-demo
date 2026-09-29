@@ -397,14 +397,17 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
-        /// <summary>저작 공격 수식자(카드 — 7b) → 코어 축. 앞 넷은 이름·번호가 같다(핀 테스트).</summary>
-        public static AttackModKind ToCoreAttackMod(DcAttackModKind authored)
+        /// <summary>
+        /// 상시 효과 중 공격 수식자 셋(skill-data-table unit 8 — `EffectKind` 튕김 · 최전방 · 수면 특효) → 코어 축. 이름이 같다(핀 테스트).
+        /// 그 밖의 종류 = `None`(강타는 트리거 저작이라 `TryHeavyStrike` 가 접는다).
+        /// </summary>
+        public static AttackModKind ToCoreAttackMod(EffectKind kind)
         {
-            switch (authored)
+            switch (kind)
             {
-                case DcAttackModKind.ProjectileBounce: return AttackModKind.ProjectileBounce;
-                case DcAttackModKind.FrontmostTarget: return AttackModKind.FrontmostTarget;
-                case DcAttackModKind.DamageVsSleeping: return AttackModKind.DamageVsSleeping;
+                case EffectKind.ProjectileBounce: return AttackModKind.ProjectileBounce;
+                case EffectKind.FrontmostTarget: return AttackModKind.FrontmostTarget;
+                case EffectKind.DamageVsSleeping: return AttackModKind.DamageVsSleeping;
                 default: return AttackModKind.None;
             }
         }

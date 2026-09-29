@@ -35,6 +35,20 @@ namespace Wassup.Tests.EditMode
             return result;
         }
 
+        // skill-data-table unit 8 — 스쿼드 스탯 효과 = 진영 버프 효과 줄(트리거 None — 보유 시작 순간부터). 옛 `effects` 칸의 후계.
+        private static List<EffectValues> FactionBuffRows(DreamcatcherCard card)
+        {
+            var rows = new List<EffectValues>();
+            if (card.bindings == null) return rows;
+            foreach (var b in card.bindings)
+            {
+                if (b.effect == null || b.effect.values.kind != EffectKind.FactionStatBuff) continue;
+                Assert.AreEqual(TriggerKind.None, b.trigger.kind, $"'{card.id}': 진영 버프 줄의 트리거는 None(상시)");
+                rows.Add(b.effect.values);
+            }
+            return rows;
+        }
+
         // 의도적으로 카탈로그에서 뺀 카드(= 뽑히지 않음). SO·기능 코드는 남겨 두므로
         // 이 가드가 "등록 깜빡"으로 오인하지 않게 여기에 사유와 함께 명시한다.
         //   Card_IncubusPact(희생계약) — 2026-08-08 사용자 결정으로 비활성화. 유출 허용치를
@@ -117,9 +131,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CardType.Unit, butterfly.type);
             Assert.AreEqual(CardCategory.Subconscious, butterfly.category);
             Assert.AreEqual(CardTargetAxis.All, butterfly.axis);
-            Assert.IsEmpty(butterfly.effects);
-            Assert.IsEmpty(butterfly.attackMods);
-            Assert.AreEqual(1, butterfly.RuleView().Length);
+            Assert.AreEqual(1, butterfly.RuleView().Length, "소유 줄 = 고치 하나(진영 버프 · 수식자 줄 없음)");
             var m = butterfly.RuleView()[0];
             Assert.AreEqual(TriggerKind.None, m.trigger.kind);
             Assert.AreEqual(EffectKind.DreamCocoon, m.payload.kind);
@@ -142,13 +154,14 @@ namespace Wassup.Tests.EditMode
             var pact = byId["sub_incubus_pact"];
             Assert.AreEqual(CardType.Squad, pact.type);
             Assert.AreEqual(CardCategory.Subconscious, pact.category);
-            Assert.AreEqual(CardTargetAxis.All, pact.axis);
-            Assert.AreEqual(1, pact.effects.Length);
-            Assert.AreEqual(CardBuffKind.AttackDamage, pact.effects[0].kind);
-            Assert.Greater(pact.effects[0].percent, 0f,
-                "percent 는 DcSheet 소유 — 여기서는 버프 부호(+)만 잠근다. 값은 자유 튜닝 (unit 1)");
-            Assert.IsEmpty(pact.RuleView());
-            Assert.IsEmpty(pact.attackMods);
+            // skill-data-table unit 8 — 스쿼드 버프 = 진영 버프 효과 줄 하나(소유 줄 전부가 그 줄 — Squad 카드 분류).
+            var buffs = FactionBuffRows(pact);
+            Assert.AreEqual(1, buffs.Count);
+            Assert.AreEqual(1, pact.bindings.Length, "Squad 카드 = 진영 버프 줄만");
+            Assert.AreEqual(CardBuffKind.AttackDamage, buffs[0].buffStat);
+            Assert.AreEqual(CardTargetAxis.All, buffs[0].allyFilter, "전군(수혜 대상 = 효과의 뜻)");
+            Assert.Greater(buffs[0].percent, 0f,
+                "percent 는 시트 소유 — 여기서는 버프 부호(+)만 잠근다. 값은 자유 튜닝 (unit 1)");
             Assert.AreEqual(1, pact.leakAllowanceCost, "유출 허용치 선불 1");
         }
 
@@ -165,9 +178,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CardType.Unit, offering.type);
             Assert.AreEqual(CardCategory.Subconscious, offering.category);
             Assert.AreEqual(CardTargetAxis.All, offering.axis);
-            Assert.IsEmpty(offering.effects);
-            Assert.IsEmpty(offering.attackMods);
-            Assert.AreEqual(1, offering.RuleView().Length);
+            Assert.AreEqual(1, offering.RuleView().Length, "소유 줄 = 표식 하나(진영 버프 · 수식자 줄 없음)");
             var m = offering.RuleView()[0];
             Assert.AreEqual(TriggerKind.None, m.trigger.kind);
             Assert.AreEqual(EffectKind.BountyMark, m.payload.kind);
@@ -193,7 +204,6 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CardType.Unit, heart.type);
             Assert.AreEqual(CardCategory.Subconscious, heart.category);
             Assert.AreEqual(CardTargetAxis.All, heart.axis);
-            Assert.IsEmpty(heart.effects);
             Assert.AreEqual(3, heart.RuleView().Length);
             // 수치(magnitude·duration·period·tileRange)는 DcSheet 소유 — 자유 튜닝.
             // 여기서는 3-메커닉 구성(kind·trigger)과 부호·배율 구조만 잠근다 (unit 1).
@@ -215,14 +225,17 @@ namespace Wassup.Tests.EditMode
             var grail = byId["cracked_grail"];
             Assert.AreEqual(CardType.Squad, grail.type);
             Assert.AreEqual(CardCategory.Subconscious, grail.category);
-            Assert.AreEqual(CardTargetAxis.All, grail.axis);
-            Assert.IsEmpty(grail.RuleView());
-            Assert.AreEqual(2, grail.effects.Length);
-            Assert.AreEqual(CardBuffKind.AttackDamage, grail.effects[0].kind);
-            Assert.AreEqual(CardBuffKind.EffectiveHealth, grail.effects[1].kind);
-            // percent 는 DcSheet 소유 — 성배의 정체성은 값이 아니라 **부호**다(딜 ↑ · 체력 ↓).
-            Assert.Greater(grail.effects[0].percent, 0f, "공격 버프 부호가 뒤집혔다");
-            Assert.Less(grail.effects[1].percent, 0f, "체력 말루스 부호가 뒤집혔다 — 저주가 축복이 된다");
+            // skill-data-table unit 8 — 스쿼드 스탯 효과 둘 = 진영 버프 효과 줄 둘(순서 = 옛 항목 순서 · Squad 카드 = 그 줄만).
+            var grailBuffs = FactionBuffRows(grail);
+            Assert.AreEqual(2, grailBuffs.Count);
+            Assert.AreEqual(2, grail.bindings.Length, "Squad 카드 = 진영 버프 줄만");
+            Assert.AreEqual(CardBuffKind.AttackDamage, grailBuffs[0].buffStat);
+            Assert.AreEqual(CardBuffKind.EffectiveHealth, grailBuffs[1].buffStat);
+            Assert.AreEqual(CardTargetAxis.All, grailBuffs[0].allyFilter);
+            Assert.AreEqual(CardTargetAxis.All, grailBuffs[1].allyFilter);
+            // percent 는 시트 소유 — 성배의 정체성은 값이 아니라 **부호**다(딜 ↑ · 체력 ↓).
+            Assert.Greater(grailBuffs[0].percent, 0f, "공격 버프 부호가 뒤집혔다");
+            Assert.Less(grailBuffs[1].percent, 0f, "체력 말루스 부호가 뒤집혔다 — 저주가 축복이 된다");
             Assert.AreEqual("dreamcatcher_card_25", grail.art.name);
         }
 

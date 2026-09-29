@@ -107,9 +107,8 @@ namespace Wassup.BattleCoreUnity
             c.Kind = CardKind.Attach;
             c.Requirement = ToRequirement(card);
             // skill-data-table unit 8 — 상시 효과(진영 버프 · 공격 수식자)도 **소유 줄**이다. 진영 버프 줄은 카드 종류가 아니라 **효과 종류로**
-            // `SquadBindings` 에 간다(동치 조건 1 — `Bindings` 로 가면 부착 순간 판 위 아군에게 안 걸린다) · 수식자는 규칙 줄을 안 만든다(조건 2).
-            // ⚠ 과도기(단계 B 전): 상시 효과 줄이 **없는** 카드는 옛 칸(`effects` · `attackMods`)에서 오늘 결과를 낸다 · 있으면 옛 칸은 안 읽는다.
-            bool legacy = !card.HasAlwaysOnRows();
+            // `SquadBindings` 에 간다(`Bindings` 로 가면 부착 순간 판 위 아군에게 안 걸린다) · 수식자는 규칙 줄을 안 만든다.
+            // 옛 카드 전용 저장처(`effects` · `attackMods`)는 단계 B 에서 은퇴 — 소유 줄이 유일한 경로다.
             var mine = new List<int>();
             var mods = new List<AttackModDef>();
             var squad = new List<int>();
@@ -120,20 +119,14 @@ namespace Wassup.BattleCoreUnity
                 if (HasBindings(card))
                     BindingSpecBuilder.Bake(card.bindings, new RuleOwner
                         {
-                            Origin = BindingOrigin.Card, Label = $"카드 '{card.id}'", IsCard = true, SquadCard = true,
-                            CardHosts = hosts, Axis = card.axis,
+                            Origin = BindingOrigin.Card, Label = $"카드 '{card.id}'", IsCard = true, SquadCard = true, CardHosts = hosts,
                         },
                         projectiles, patterns, hazards, rows, effects, mine, mods, squad, ref c.DeclaresRetireRecall, view);
-                if (legacy)
-                {
-                    var old = BakeSquad(card, rows, effects);
-                    if (old != null) squad.AddRange(old);
-                }
                 if (squad.Count > 0) c.SquadBindings = squad.ToArray();
                 return c;
             }
 
-            // Unit — 소유 줄(bindings) + (과도기) attackMods. 적 겨냥 = 숙주 종류가 적만(U5 — 옛 `HasBountyMark()` 파생을 값으로).
+            // Unit — 소유 줄(bindings). 적 겨냥 = 숙주 종류가 적만(U5 — 옛 `HasBountyMark()` 파생을 값으로).
             c.TargetsEnemies = hosts == HostKinds.Enemy;
             if (hosts == (HostKinds.Defender | HostKinds.Enemy))
                 Warn($"'{card.id}': 숙주 종류가 방어유닛 · 적 둘 다 — 코어 카드 줄은 한쪽만 싣는다. 방어유닛 카드로 굽는다(조합 검증은 둘 다).");
@@ -141,65 +134,15 @@ namespace Wassup.BattleCoreUnity
                 BindingSpecBuilder.Bake(card.bindings, new RuleOwner
                     {
                         Origin = BindingOrigin.Card, Label = $"카드 '{card.id}'", IsCard = true,
-                        CardHosts = hosts, CardTargetsEnemies = c.TargetsEnemies, Axis = card.axis,
+                        CardHosts = hosts, CardTargetsEnemies = c.TargetsEnemies,
                     },
                     projectiles, patterns, hazards, rows, effects, mine, mods, squad, ref c.DeclaresRetireRecall, view);
-            if (legacy && !c.TargetsEnemies && card.attackMods != null)
-                for (int i = 0; i < card.attackMods.Length; i++)
-                {
-                    var am = card.attackMods[i];
-                    string label = $"카드 '{card.id}' attackMod {i}";
-                    if (am.kind == DcAttackModKind.None || am.damageMul <= 0f) { Warn($"{label}: None 종류 / damageMul <= 0 — 건너뛴다."); continue; }
-                    if (am.kind == DcAttackModKind.ProjectileBounce && am.count <= 0) { Warn($"{label}: ProjectileBounce count <= 0 — 건너뛴다."); continue; }
-                    if (am.kind == DcAttackModKind.DamageVsSleeping && am.damageMul <= 1f) { Warn($"{label}: DamageVsSleeping damageMul <= 1(특효가 아님) — 건너뛴다."); continue; }
-                    var kind = BindingDefinitionBuilder.ToCoreAttackMod(am.kind);
-                    if (kind == AttackModKind.None) { Warn($"{label}: 옮길 수 없는 종류 {am.kind} — 건너뛴다."); continue; }
-                    mods.Add(new AttackModDef { Kind = kind, Count = am.count, TileRange = am.tileRange, DamageMul = am.damageMul });
-                }
             if (mine.Count > 0) c.Bindings = mine.ToArray();
             if (squad.Count > 0) c.SquadBindings = squad.ToArray();
             if (mods.Count > 0) c.AttackMods = mods.ToArray();
             if (mine.Count == 0 && mods.Count == 0 && squad.Count == 0 && !c.DeclaresRetireRecall)
                 Error($"'{card.id}': 구워진 규칙이 하나도 없다 — 어떤 유닛에도 안 붙는다.");
             return c;
-        }
-
-        private static BindingDef CardRow(string label, TriggerKind trigger, EffectKind payload, out EffectDef fx)
-        {
-            var b = BindingDef.Default();
-            b.Label = label;
-            b.Trigger = trigger;
-            b.Origin = BindingOrigin.Card;
-            b.Skill = SkillRouting.Resolve(trigger, payload);
-            fx = EffectDef.Default();
-            fx.Kind = payload;
-            return b;
-        }
-
-        // ── Squad(과도기 — 옛 칸 `effects`) ────────────────────────────────────
-        // skill-data-table unit 8 — 새 형식 = 진영 버프 소유 줄(`BindingSpecBuilder` 가 같은 값을 편다). 이 갈래는 이전 전 에셋만 지나고
-        // 단계 B(이전 적용 · 옛 칸 제거)에서 은퇴한다.
-
-        private static int[] BakeSquad(DreamcatcherCard card, List<BindingDef> rows, List<EffectDef> table)
-        {
-            var mine = new List<int>();
-            if (!ToAxis(card.axis, out int mask, out int cost)) { Error($"'{card.id}': 축 {card.axis} 을 옮길 수 없다 — 효과 없음."); return null; }
-            var effects = card.effects ?? System.Array.Empty<CardEffect>();
-            for (int i = 0; i < effects.Length; i++)
-            {
-                var e = effects[i];
-                // `CostRate` 는 유닛 스탯이 아니다 — 카드 경로에서는 옛 전투도 무동작이었다(드림스톤 전용 · 판 진입 배율).
-                if (!MapBuff(e.kind, e.percent, out var stat, out float mul)) { Warn($"'{card.id}' effect {i}: {e.kind} 는 카드 스탯이 아니다 — 건너뛴다."); continue; }
-                var b = CardRow($"카드 '{card.id}' effect {i}", TriggerKind.OnPlace, EffectKind.SelfStatBuff, out var fx);
-                b.Subject = BindingSubject.Any;
-                b.SubjectClassMask = mask;
-                b.SubjectCost = cost;
-                fx.StatKind = (int)stat;
-                fx.Magnitude = mul;
-                b.RevokeOnExpire = true;   // 숙주가 떠나면(사망 ∪ 퇴근) 판 전체에서 소급 회수(정정 1)
-                BindingDefinitionBuilder.AddRow(rows, table, mine, b, fx, card.id + ".squad" + mine.Count);
-            }
-            return mine.Count > 0 ? mine.ToArray() : null;
         }
 
         private static int[] BakeDreamstones(IReadOnlyList<DreamstoneData> stones, List<BindingDef> rows, List<EffectDef> effects)

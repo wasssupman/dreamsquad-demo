@@ -18,15 +18,21 @@ namespace Wassup.Tests.EditMode
     public class CoreTriggerEnumPinTests
     {
         [Test]
-        public void 공격_수식자는_앞_넷이_미러이고_강공이_하나_더_있다()
+        public void 공격_수식자는_상시_효과_셋과_이름이_같고_강공이_하나_더_있다()
         {
-            foreach (DcAttackModKind a in Enum.GetValues(typeof(DcAttackModKind)))
+            // skill-data-table unit 8 — 옛 저작 미러(`DcAttackModKind`)는 은퇴 · 저작 = 효과 종류(상시 수식자 3). 번호는 다르다(이름으로 옮긴다).
+            var authored = new[] { EffectKind.ProjectileBounce, EffectKind.FrontmostTarget, EffectKind.DamageVsSleeping };
+            foreach (var k in authored)
             {
-                Assert.AreEqual((int)a, Convert.ToInt32(Enum.Parse(typeof(AttackModKind), a.ToString())), a.ToString());
-                Assert.AreEqual(a.ToString(), BindingDefinitionBuilder.ToCoreAttackMod(a).ToString());
+                var core = BindingDefinitionBuilder.ToCoreAttackMod(k);
+                Assert.AreNotEqual(AttackModKind.None, core, k.ToString());
+                Assert.AreEqual(k.ToString(), core.ToString());
             }
-            Assert.AreEqual(Enum.GetValues(typeof(DcAttackModKind)).Length + 1, Enum.GetValues(typeof(AttackModKind)).Length,
-                "강공(HeavyStrike)은 저작상 payload 라 코어 축에만 있다");
+            foreach (EffectKind k in Enum.GetValues(typeof(EffectKind)))
+                if (Array.IndexOf(authored, k) < 0)
+                    Assert.AreEqual(AttackModKind.None, BindingDefinitionBuilder.ToCoreAttackMod(k), k + " 는 상시 수식자가 아니다");
+            Assert.AreEqual(authored.Length + 2, Enum.GetValues(typeof(AttackModKind)).Length,
+                "None + 상시 수식자 셋 + 강공(HeavyStrike — 트리거 저작이라 코어 축에만 있다)");
         }
 
         [Test]

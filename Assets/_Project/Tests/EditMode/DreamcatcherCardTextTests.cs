@@ -18,9 +18,19 @@ namespace Wassup.Tests.EditMode
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
             card.type = type;
             card.axis = axis;
-            card.effects = effects;
             card.description = description;
             _cleanup.Add(card);
+            // skill-data-table unit 8 — 스쿼드 스탯 효과 = 진영 버프 효과 줄(트리거 None · 수혜 대상 = `allyFilter`). 픽스처는 읽기 쉬운
+            // (종류, %) 모양으로 적고 여기서 소유 줄로 옮긴다(수혜 대상 = 넘긴 축 — 이전 규칙과 같다).
+            if (effects != null)
+            {
+                card.bindings = new BindingSpec[effects.Length];
+                for (int i = 0; i < effects.Length; i++)
+                    card.bindings[i] = Always(AlwaysOnEffect(new EffectValues
+                    {
+                        kind = EffectKind.FactionStatBuff, buffStat = effects[i].kind, percent = effects[i].percent, allyFilter = axis,
+                    }));
+            }
             return card;
         }
 
@@ -265,16 +275,7 @@ namespace Wassup.Tests.EditMode
         public void UnitAttackMod_FormatsBounceValues()
         {
             var card = Card(CardType.Unit);
-            card.attackMods = new[]
-            {
-                new DcAttackModSpec
-                {
-                    kind = DcAttackModKind.ProjectileBounce,
-                    count = 2,
-                    tileRange = 3,
-                    damageMul = 1f,
-                },
-            };
+            card.bindings = new[] { Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.ProjectileBounce, count = 2, rangeTiles = 3, mul = 1f })) };
 
             StringAssert.Contains(
                 "항상 → 공격 투사체가 최대 3칸 범위 내 2회 튕김 (감쇠 없음)",
@@ -288,10 +289,7 @@ namespace Wassup.Tests.EditMode
         public void UnitAttackMod_FormatsDamageVsSleeping()
         {
             var card = Card(CardType.Unit);
-            card.attackMods = new[]
-            {
-                new DcAttackModSpec { kind = DcAttackModKind.DamageVsSleeping, damageMul = 2f },
-            };
+            card.bindings = new[] { Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.DamageVsSleeping, mul = 2f })) };
 
             StringAssert.Contains(
                 "항상 → 잠든 적에게 주는 피해 x2",
@@ -498,63 +496,36 @@ namespace Wassup.Tests.EditMode
         // ── skill-data-table unit 8 — 상시 효과 줄(진영 버프 · 공격 수식자) ─────────────────────────────
 
         [Test]
-        public void SquadRows_FormatFromEffectRows_AndIgnoreLegacyFields()
+        public void SquadRows_EachRowCarriesItsAllyFilter_HeaderAndChipFromFirstRow()
         {
-            // 과도기: 상시 효과 줄이 있으면 옛 칸(effects · axis)은 안 읽는다 — 수혜 대상 = 효과의 allyFilter(계약 12).
-            var card = Card(CardType.Squad, CardTargetAxis.All, new[] { new CardEffect { kind = CardBuffKind.MoveSpeed, percent = 99f } });
+            // 수혜 대상 = 효과의 `allyFilter`(계약 12) — 카드 axis 는 읽지 않는다(단계 B). 머리 · 칩 = 첫 진영 버프 줄.
+            var card = Card(CardType.Squad, CardTargetAxis.All);
             card.bindings = new[]
             {
                 Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.AttackDamage, percent = 20f, allyFilter = CardTargetAxis.ClassRanger })),
-                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.MoveSpeed, percent = -10f, allyFilter = CardTargetAxis.ClassRanger })),
+                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.MoveSpeed, percent = -10f, allyFilter = CardTargetAxis.Cost1 })),
             };
             string body = DreamcatcherCardText.Body(card);
-            StringAssert.Contains("항상 → 레인저 아군 공격력 +20% · 레인저 아군 이동 속도 -10%", body);
-            StringAssert.Contains("레인저", body.Split('\n')[0], "머리 축 = 효과 줄의 수혜 대상(카드 axis 가 아니다)");
-            StringAssert.DoesNotContain("99", body);
+            StringAssert.Contains("항상 → 레인저 아군 공격력 +20% · 1코스트 유닛 이동 속도 -10%", body);
+            StringAssert.Contains("레인저", body.Split('\n')[0], "머리 축 = 첫 진영 버프 줄의 수혜 대상(카드 axis 가 아니다)");
             Assert.AreEqual("레인저 버프", CardCategoryStyle.TargetTag(card), "손패 칩도 같은 원천");
         }
 
         [Test]
-        public void SquadRows_MatchLegacyText_ForSameValues()
+        public void AttackModRows_FormatAllThree_InRowOrder_BeforeRuleLines()
         {
-            // 이전 전/후 동치: 같은 값이면 옛 칸 문안과 새 줄 문안이 글자까지 같다(머리 · 칩 포함).
-            var legacy = Card(CardType.Squad, CardTargetAxis.ClassGuardian, new[]
+            var card = Card(CardType.Unit);
+            card.bindings = new[]
             {
-                new CardEffect { kind = CardBuffKind.EffectiveHealth, percent = 50f },
-                new CardEffect { kind = CardBuffKind.DamageVsCc, percent = 50f },
-            });
-            var migrated = Card(CardType.Squad, CardTargetAxis.ClassGuardian);
-            migrated.bindings = new[]
-            {
-                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.EffectiveHealth, percent = 50f, allyFilter = CardTargetAxis.ClassGuardian })),
-                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.DamageVsCc, percent = 50f, allyFilter = CardTargetAxis.ClassGuardian })),
-            };
-            Assert.AreEqual(DreamcatcherCardText.Body(legacy), DreamcatcherCardText.Body(migrated));
-            Assert.AreEqual(DreamcatcherCardText.BodyLinesOnly(legacy), DreamcatcherCardText.BodyLinesOnly(migrated));
-            Assert.AreEqual(CardCategoryStyle.TargetTag(legacy), CardCategoryStyle.TargetTag(migrated));
-        }
-
-        [Test]
-        public void AttackModRows_MatchLegacyText_AndIgnoreLegacyFields()
-        {
-            var legacy = Card(CardType.Unit);
-            legacy.attackMods = new[]
-            {
-                new DcAttackModSpec { kind = DcAttackModKind.ProjectileBounce, count = 2, tileRange = 3, damageMul = 1f },
-                new DcAttackModSpec { kind = DcAttackModKind.FrontmostTarget, damageMul = 1.2f },
-                new DcAttackModSpec { kind = DcAttackModKind.DamageVsSleeping, damageMul = 2f },
-            };
-            var migrated = Card(CardType.Unit);
-            migrated.attackMods = new[] { new DcAttackModSpec { kind = DcAttackModKind.ProjectileBounce, count = 9, tileRange = 9, damageMul = 0.5f } };
-            migrated.bindings = new[]
-            {
-                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.ProjectileBounce, count = 2, rangeTiles = 3, mul = 1f })),
+                Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.ProjectileBounce, count = 2, rangeTiles = 3, mul = 0.5f })),
                 Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.FrontmostTarget, mul = 1.2f })),
                 Always(AlwaysOnEffect(new EffectValues { kind = EffectKind.DamageVsSleeping, mul = 2f })),
             };
-            Assert.AreEqual(DreamcatcherCardText.Body(legacy), DreamcatcherCardText.Body(migrated), "옛 attackMods(다른 값)는 안 읽는다");
-            StringAssert.Contains("항상 → 공격 투사체가 최대 3칸 범위 내 2회 튕김 (감쇠 없음)", DreamcatcherCardText.Body(migrated));
-            StringAssert.Contains("항상 → 잠든 적에게 주는 피해 x2", DreamcatcherCardText.Body(migrated));
+            var lines = DreamcatcherCardText.BodyLinesOnly(card).Replace("항상 →\n", "항상 → ").Split('\n');
+            Assert.AreEqual(3, lines.Length);
+            Assert.AreEqual("항상 → 공격 투사체가 최대 3칸 범위 내 2회 튕김 (튕길 때마다 피해 x0.5)", lines[0]);
+            Assert.AreEqual("항상 → 목표 지점에 가장 가까운 적 우선 공격 · 해당 적 직접 피해 +20%", lines[1]);
+            Assert.AreEqual("항상 → 잠든 적에게 주는 피해 x2", lines[2]);
         }
 
         [Test]

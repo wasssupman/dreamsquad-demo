@@ -29,6 +29,17 @@ namespace Wassup.Tests.EditMode
             return c;
         }
 
+        // skill-data-table unit 8 — 스쿼드 버프 = 진영 버프 효과 줄(트리거 None · 수혜 대상 = `allyFilter`). 칩 · 문안이 이 줄을 읽는다.
+        private DreamcatcherCard WithBuff(DreamcatcherCard c, CardTargetAxis allyFilter, CardBuffKind stat, float percent)
+        {
+            var e = ScriptableObject.CreateInstance<EffectData>();
+            e.id = "fixture_buff";
+            e.values = new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = stat, percent = percent, allyFilter = allyFilter };
+            _created.Add(e);
+            c.bindings = new[] { new BindingSpec { trigger = new TriggerSpec { kind = TriggerKind.None }, effect = e } };
+            return c;
+        }
+
         private SkillData MakeSkill(SkillEffectType effect)
         {
             var s = ScriptableObject.CreateInstance<SkillData>();
@@ -63,7 +74,12 @@ namespace Wassup.Tests.EditMode
         [TestCase(CardTargetAxis.ClassGuardian, "가디언 버프")]
         [TestCase(CardTargetAxis.Cost1, "1코스트 버프")]
         public void TargetTag_Squad_AxisPlusRole(CardTargetAxis axis, string expected)
-            => Assert.AreEqual(expected, CardCategoryStyle.TargetTag(MakeCard(CardType.Squad, axis)));
+            => Assert.AreEqual(expected, CardCategoryStyle.TargetTag(WithBuff(MakeCard(CardType.Squad), axis, CardBuffKind.AttackDamage, 5f)));
+
+        [Test]
+        public void TargetTag_Squad_WithoutBuffRow_IsAll()
+            => Assert.AreEqual("전체 버프", CardCategoryStyle.TargetTag(MakeCard(CardType.Squad, CardTargetAxis.ClassRanger)),
+                               "카드 axis 는 칩 원천이 아니다(skill-data-table unit 8 — 수혜 대상 = 효과 줄)");
 
         [Test]
         public void TargetTag_Unit_IsAttach()
@@ -99,8 +115,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void BodyLinesOnly_Squad_HasEffectLine_NoHeader()
         {
-            var card = MakeCard(CardType.Squad, CardTargetAxis.ClassRanger);
-            card.effects = new[] { new CardEffect { kind = CardBuffKind.AttackSpeed, percent = 10f } };
+            var card = WithBuff(MakeCard(CardType.Squad), CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f);
             string body = DreamcatcherCardText.BodyLinesOnly(card);
             StringAssert.Contains("레인저 아군 공격 속도 +10%", body);
             StringAssert.DoesNotContain("스쿼드 버프", body); // 타입 헤더 줄 없음
@@ -119,8 +134,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void BodyLinesOnly_BreaksLineAtArrow()
         {
-            var card = MakeCard(CardType.Squad, CardTargetAxis.All);
-            card.effects = new[] { new CardEffect { kind = CardBuffKind.MoveSpeed, percent = 10f } };
+            var card = WithBuff(MakeCard(CardType.Squad), CardTargetAxis.All, CardBuffKind.MoveSpeed, 10f);
             StringAssert.Contains("항상 →\n", DreamcatcherCardText.BodyLinesOnly(card));
         }
 

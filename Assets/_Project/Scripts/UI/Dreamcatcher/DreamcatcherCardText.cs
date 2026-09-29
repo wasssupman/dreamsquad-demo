@@ -158,26 +158,14 @@ namespace Wassup.UI
                 lines.Add($"부착 즉시 → 유출 허용치 -{card.leakAllowanceCost} (환불 없음)");
             }
 
-            // skill-data-table unit 8 — 진영 버프 효과 줄(수혜 대상 = 효과의 `allyFilter`). ⚠ 과도기: 상시 효과 줄이 없는 카드는 옛 칸
-            // (`effects` + 카드 `axis`)에서 쓴다(단계 B 에서 은퇴).
-            if (card.HasAlwaysOnRows())
-            {
-                AppendFactionBuffLine(card, lines);
-                return;
-            }
-
-            if (card.effects == null || card.effects.Length == 0) return;
-
-            var effects = new List<string>();
-            foreach (var effect in card.effects)
-                effects.Add(FormatSquadEffect(card.axis, effect.kind, effect.percent));
-
-            lines.Add(AlwaysPrefix + string.Join(" · ", effects));
+            // skill-data-table unit 8 — 진영 버프 효과 줄(수혜 대상 = 효과의 `allyFilter` — 계약 12). 옛 칸(`effects` + 카드 `axis`)은 단계 B 에서 은퇴.
+            AppendFactionBuffLine(card, lines);
         }
 
         // 카드의 진영 버프 줄 전부를 한 줄로(옛 Squad 문안과 같은 모양 — 효과마다 자기 수혜 대상).
         private static void AppendFactionBuffLine(DreamcatcherCard card, List<string> lines)
         {
+            if (card.bindings == null) return;
             var effects = new List<string>();
             foreach (var b in card.bindings)
                 if (b.effect != null && b.effect.values.kind == EffectKind.FactionStatBuff)
@@ -195,24 +183,22 @@ namespace Wassup.UI
         }
 
         /// <summary>
-        /// skill-data-table unit 8 — Squad 카드의 머리 축(분류 문구 · 손패 칩 — 한 원천): 첫 진영 버프 줄의 `allyFilter`. ⚠ 과도기: 그 줄이 없는
-        /// 카드는 카드 `axis`(단계 B 에서 은퇴). 카드 `axis` 는 Unit 카드 표시 전용으로 남는다.
+        /// skill-data-table unit 8 — Squad 카드의 머리 축(분류 문구 · 손패 칩 — 한 원천): 첫 진영 버프 줄의 `allyFilter`. 그 줄이 없는 카드(버프가
+        /// 없다)는 `All`(「전체」 — 중립 라벨). 카드 `axis` 는 읽지 않는다(단계 B — 수혜 대상은 효과의 뜻).
         /// </summary>
         internal static CardTargetAxis SquadAxis(DreamcatcherCard card)
         {
             if (card?.bindings != null)
                 foreach (var b in card.bindings)
                     if (b.effect != null && b.effect.values.kind == EffectKind.FactionStatBuff) return b.effect.values.allyFilter;
-            return card != null ? card.axis : CardTargetAxis.All;
+            return CardTargetAxis.All;
         }
 
         private static bool BuildUnitLines(DreamcatcherCard card, List<string> lines)
         {
             bool supported = true;
             // skill-data-table unit 8 — 공격 수식자 · 진영 버프도 소유 줄이다(트리거 None). 문안 순서는 옛것 그대로: 수식자 줄 → 규칙 줄.
-            // ⚠ 과도기: 상시 효과 줄이 없는 카드는 옛 칸(`attackMods`)에서 쓴다(단계 B 에서 은퇴).
-            if (card.HasAlwaysOnRows())
-            {
+            if (card.bindings != null)
                 foreach (var b in card.bindings)
                 {
                     if (b.effect == null || !SkillRouting.IsAlwaysOn(b.effect.values.kind) || b.effect.values.kind == EffectKind.FactionStatBuff) continue;
@@ -220,17 +206,7 @@ namespace Wassup.UI
                     if (TryFormatAttackMod(v.kind, v.count, v.rangeTiles, v.mul, out string line)) lines.Add(line);
                     else supported = false;
                 }
-                AppendFactionBuffLine(card, lines);
-            }
-            else if (card.attackMods != null)
-            {
-                foreach (var mod in card.attackMods)
-                {
-                    string line;
-                    if (TryFormatAttackMod(ToEffectKind(mod.kind), mod.count, mod.tileRange, mod.damageMul, out line)) lines.Add(line);
-                    else supported = false;
-                }
-            }
+            AppendFactionBuffLine(card, lines);
 
             // skill-data-table unit 4 — 소유 줄(`bindings`)을 옛 메커닉 모양으로 읽는다(값 동치 — `BindingSpecView` · 문안 무변). 상시 효과 줄은 위에서 썼다.
             var rules = card.RuleView();
@@ -242,18 +218,6 @@ namespace Wassup.UI
             }
 
             return supported;
-        }
-
-        // 과도기 — 옛 저작 수식자 종류 → 효과 종류(단계 B 에서 옛 칸과 함께 은퇴).
-        private static EffectKind ToEffectKind(DcAttackModKind kind)
-        {
-            switch (kind)
-            {
-                case DcAttackModKind.ProjectileBounce: return EffectKind.ProjectileBounce;
-                case DcAttackModKind.FrontmostTarget: return EffectKind.FrontmostTarget;
-                case DcAttackModKind.DamageVsSleeping: return EffectKind.DamageVsSleeping;
-                default: return EffectKind.None;
-            }
         }
 
         private static bool TryFormatAttackMod(EffectKind kind, int count, int rangeTiles, float mul, out string line)

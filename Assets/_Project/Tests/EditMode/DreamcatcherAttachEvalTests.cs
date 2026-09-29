@@ -10,20 +10,16 @@ namespace Wassup.Tests.EditMode
     // 몫이라 그 케이스들은 코어 테스트(`EditModeCore/ApplicabilityTests`)가 잰다 — skill-data-table 4-정리(B21)에서 옛 사본과 함께 옮겼다.
     public class DreamcatcherAttachEvalTests
     {
-        private static DreamcatcherCard UnitCard(DcMechanic[] mech = null, DcAttackModSpec[] mods = null)
+        private static DreamcatcherCard UnitCard(DcMechanic[] mech = null)
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
             c.type = CardType.Unit;
             TestBindings.Attach(c, mech);
-            c.attackMods = mods;
             return c;
         }
 
         private static DcMechanic Mech(EffectKind kind) =>
             new DcMechanic { payload = new DcPayloadSpec { kind = kind } };
-
-        private static DcAttackModSpec Mod(DcAttackModKind kind, int count, float damageMul) =>
-            new DcAttackModSpec { kind = kind, count = count, damageMul = damageMul };
 
         // ── dreamcatcher-attach-requirement unit 0: 부착 대상 제한(정적 술어) ──────
 

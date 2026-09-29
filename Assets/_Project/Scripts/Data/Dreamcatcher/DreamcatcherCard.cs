@@ -51,6 +51,8 @@ namespace Wassup.Data
         // 탭의 같은 이름 컬럼과 1:1. 기존 에셋은 YAML 에 이 키가 없어 초기값 1 을 유지하므로
         // 백필하지 않는다(id 처럼 비면 매칭이 깨지는 키가 아니라 기본값이 곧 정답).
         public int visible = 1;
+        // skill-data-table unit 8 단계 B — 버프 수혜 대상이 **아니다**(그건 효과 줄 `allyFilter` — 계약 12 · Squad 머리 칩도 그 칸에서).
+        // 굽기 · 문안이 읽지 않는 카드 라벨로 남는다(시트 `DcCards.axis` 열 · 개명/은퇴는 후속 후보).
         public CardTargetAxis axis;
         // deck-builder no longer keys deck rules on this (that moved to CardType).
         // gift-phase-removal unit 0 — 림의 선물이 폐지되면서 마지막 **규칙** 소비처(Rim 풀
@@ -58,19 +60,15 @@ namespace Wassup.Data
         // CardCategoryStyle 이 Subconscious 를 보라 프레임 + "무의식" 칩으로 그린다.
         // 덱에 넣을 수 있는지는 오직 DeckRules(10장 · Squad ≤2)와 visible 이 정한다.
         public CardCategory category = CardCategory.Normal;
-        // ⚠ skill-data-table unit 8 과도기 — 진영 버프 효과 줄(`FactionStatBuff`)로 옮긴다. 상시 효과 줄이 있는 카드는 이 칸을 안 읽는다
-        // (`HasAlwaysOnRows`) · 단계 B(이전 적용 뒤)에서 제거(`CardEffect` 타입은 `DreamstoneData` 가 쓴다 — 남는다).
-        public CardEffect[] effects; // usually 1; fortress has 2
+        // skill-data-table unit 8 단계 B — 옛 `effects`(스쿼드 스탯 효과)는 은퇴 → 진영 버프 효과 줄(`FactionStatBuff`) + 소유 줄(`bindings`).
+        // `CardEffect` 타입은 `DreamstoneData` 가 쓴다(남는다).
         // dreamcatcher-card-art Unit 0 — tarot-style card art shown on the deck
         // page (image + effect text column). Nullable: view falls back to a
         // category color when unassigned. Appended last to keep serialization
         // order stable for existing card assets.
         public Sprite art;
-        // dreamcatcher-attack-mod-bounce Unit 0 — card class (c): always-on
-        // attack-output modifications (usually 0~1). Appended last; bake-time
-        // read only, same rules as mechanics above.
-        // ⚠ skill-data-table unit 8 과도기 — 공격 수식자 효과 줄(`ProjectileBounce` · `FrontmostTarget` · `DamageVsSleeping`)로 옮긴다(위 `effects` 와 같은 규칙).
-        public DcAttackModSpec[] attackMods;
+        // skill-data-table unit 8 단계 B — 옛 `attackMods`(상시 공격 수식자)는 은퇴 → 효과 줄(`ProjectileBounce` · `FrontmostTarget` ·
+        // `DamageVsSleeping`) + 소유 줄(`bindings` · 트리거 `None`).
         // dreamcatcher-card-taxonomy — Squad/Unit type. Deck cap keys on this.
         // Appended last; zero-init = Squad for existing stat cards.
         public CardType type;
@@ -135,17 +133,5 @@ namespace Wassup.Data
             return false;
         }
 
-        /// <summary>
-        /// skill-data-table unit 8 **과도기** — 상시 효과(진영 버프 · 공격 수식자 — `SkillRouting.IsAlwaysOn`) 소유 줄이 있나. 있으면 굽기 · 문안이
-        /// 옛 칸(`effects` · `attackMods`)을 안 읽는다(이전된 카드) · 없으면 옛 칸이 오늘 결과를 낸다. 단계 B(옛 칸 제거)에서 은퇴.
-        /// 관리 배열 순회 — 굽기 · UI 시점 전용, 매 프레임 금지.
-        /// </summary>
-        public bool HasAlwaysOnRows()
-        {
-            if (bindings == null) return false;
-            for (int i = 0; i < bindings.Length; i++)
-                if (bindings[i].effect != null && SkillRouting.IsAlwaysOn(bindings[i].effect.values.kind)) return true;
-            return false;
-        }
     }
 }

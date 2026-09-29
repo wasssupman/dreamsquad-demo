@@ -9,17 +9,18 @@ using Wassup.BattleCore.Combat;
 using Wassup.BattleCore.Trigger;
 using Wassup.BattleCoreUnity;
 using Wassup.Data;
+using Wassup.Skills;
 using Wassup.Skills.Concrete;
 
 namespace Wassup.Tests.EditModeAssets
 {
     // skill-data-table unit 8 — **상시 효과도 스킬 줄이다**(계약 11). 카드 전용 저장처 둘(`effects` · `attackMods`)을 효과 줄 + 소유 줄(트리거
-    // `None`)로 옮긴 뒤에도 굽기가 오늘과 같은 코어 모양을 내는가(빌더 픽스처 — 합성 SO · 디스크 쓰기 0).
+    // `None`)로 옮긴 뒤 굽기가 옛 두 갈래와 같은 코어 모양을 내는가(빌더 픽스처 — 합성 SO · 디스크 쓰기 0 · 옛 칸은 단계 B 에서 은퇴).
     //
-    // ① 옛 칸 카드 ↔ 새 줄 카드(같은 id · 같은 값)의 정본 텍스트가 **글자까지** 같다(스냅샷 동치 조건 1 · 2 · 4).
+    // ① 진영 버프 줄 = 옛 스쿼드 굽기와 같은 코어 줄(라벨 · 값 · `SquadBindings`) · 수식자 = 규칙 줄 0 · 옛 값 가드(라이브 동치 = 굽기 스냅샷).
     // ② 두 카드가 같은 진영 버프 효과를 참조하면 같은 코어 줄 모양 · 같은 효과 줄(복사 0).
     // ③ 방어유닛 · 적이 상시 효과를 들면 굽기가 「배선 전」을 말하고 뺀다(unit 7 후속).
-    // ④ Squad 카드에 다른 종류 줄 → 거절. ⑤ 수식자는 규칙 줄을 안 만든다. ⑥ 배치 오라의 수혜 대상 = 효과 칸(과도기 폴백 = 카드 축).
+    // ④ Squad 카드에 다른 종류 줄 → 거절. ⑥ 배치 오라의 수혜 대상 = 효과 칸(카드 축은 안 읽는다 — 단계 B).
     public class AlwaysOnEffectBakeTests
     {
         private const string DataRoot = "Assets/_Project/Data";
@@ -77,64 +78,74 @@ namespace Wassup.Tests.EditModeAssets
             return def;
         }
 
-        private static string Text(MatchDefinition def) => CardProbe.CanonicalDeckText(def);
-
-        // ── ① 옛 칸 ↔ 새 줄 ──────────────────────────────────────────────────────
+        // ── ① 코어 줄 모양(옛 BakeSquad · attackMods 루프와 같은 값 — 라이브 동치는 굽기 스냅샷이 증언한다) ───────────
 
         [Test]
-        public void 진영_버프_줄은_옛_스쿼드_효과와_정본_텍스트가_같다()
+        public void 진영_버프_줄은_효과_종류로_SquadBindings_에_가고_옛_라벨_모양이다()
         {
-            var legacy = Card("fx_fortress", CardType.Squad, CardTargetAxis.ClassGuardian);
-            legacy.effects = new[] { new CardEffect { kind = CardBuffKind.EffectiveHealth, percent = 50f },
-                                     new CardEffect { kind = CardBuffKind.AttackSpeed, percent = -50f } };
-            var migrated = Card("fx_fortress", CardType.Squad, CardTargetAxis.ClassGuardian);
-            migrated.effects = legacy.effects;   // 과도기 — 새 줄이 있으면 옛 칸은 안 읽는다(남아 있어도)
-            migrated.bindings = new[]
+            var card = Card("fx_fortress", CardType.Squad, CardTargetAxis.All);   // 카드 축은 수혜 대상이 아니다
+            card.bindings = new[]
             {
                 Always(Effect("fx_fortress_0", new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.EffectiveHealth, percent = 50f, allyFilter = CardTargetAxis.ClassGuardian })),
                 Always(Effect("fx_fortress_1", new EffectValues { kind = EffectKind.FactionStatBuff, buffStat = CardBuffKind.AttackSpeed, percent = -50f, allyFilter = CardTargetAxis.ClassGuardian })),
             };
-            var before = Bake(legacy);
-            var after = Bake(migrated);
-            Assert.AreEqual(Text(before), Text(after), "라벨 · 해석된 값 · 순서가 같다(효과 id 만 다르다 — 해시 밖)");
-            Assert.AreEqual(2, after.Cards[0].SquadBindings.Length, "진영 버프 줄은 효과 종류로 SquadBindings 에 간다");
-            Assert.IsNull(after.Cards[0].Bindings);
-            Assert.AreEqual("fx_fortress_0", after.EffectOf(in after.Bindings[after.Cards[0].SquadBindings[0]]).Id, "효과 id = 저작 id");
-            StringAssert.Contains("카드 'fx_fortress' effect 1", Text(after), "옛 라벨 모양");
+            var def = Bake(card);
+            Assert.AreEqual(2, def.Cards[0].SquadBindings.Length, "진영 버프 줄은 효과 종류로 SquadBindings 에 간다");
+            Assert.IsNull(def.Cards[0].Bindings);
+            var r0 = def.Bindings[def.Cards[0].SquadBindings[0]];
+            var r1 = def.Bindings[def.Cards[0].SquadBindings[1]];
+            Assert.AreEqual("카드 'fx_fortress' effect 0", r0.Label, "옛 라벨 모양(굽기 스냅샷 글자 동치)");
+            Assert.AreEqual("카드 'fx_fortress' effect 1", r1.Label);
+            Assert.AreEqual(1 << (int)DefenderClass.Guardian, r0.SubjectClassMask, "수혜 대상 = 효과 칸");
+            Assert.AreEqual("fx_fortress_0", def.EffectOf(in r0).Id, "효과 id = 저작 id");
+            Assert.AreEqual((int)SkillStatKind.DmgTakenMul, def.EffectOf(in r0).StatKind, "체력 = 받는 피해 대리(역수)");
+            Assert.AreEqual(1f / 1.5f, def.EffectOf(in r0).Magnitude, 1e-6f);
+            Assert.AreEqual(0.5f, def.EffectOf(in r1).Magnitude, 1e-6f, "-50% 공속 = ×0.5");
         }
 
         [Test]
-        public void 공격_수식자_줄은_옛_attackMods_와_정본_텍스트가_같고_규칙_줄을_안_만든다()
+        public void 공격_수식자_줄은_규칙_줄을_안_만들고_소유_줄_순서로_접힌다()
         {
-            var legacy = Card("fx_mods", CardType.Unit);
-            legacy.attackMods = new[]
-            {
-                new DcAttackModSpec { kind = DcAttackModKind.ProjectileBounce, count = 2, tileRange = 3, damageMul = 1f },
-                new DcAttackModSpec { kind = DcAttackModKind.FrontmostTarget, damageMul = 1.2f },
-                new DcAttackModSpec { kind = DcAttackModKind.DamageVsSleeping, damageMul = 2f },
-            };
-            var migrated = Card("fx_mods", CardType.Unit);
-            migrated.attackMods = legacy.attackMods;
-            migrated.bindings = new[]
+            var card = Card("fx_mods", CardType.Unit);
+            card.bindings = new[]
             {
                 Always(Effect("fx_mods_0", new EffectValues { kind = EffectKind.ProjectileBounce, count = 2, rangeTiles = 3, mul = 1f })),
-                Always(Effect("fx_mods_1", new EffectValues { kind = EffectKind.FrontmostTarget, mul = 1.2f })),
+                Always(Effect("fx_mods_1", new EffectValues { kind = EffectKind.FrontmostTarget, count = 7, rangeTiles = 7, mul = 1.2f })),
                 Always(Effect("fx_mods_2", new EffectValues { kind = EffectKind.DamageVsSleeping, mul = 2f })),
             };
-            var before = Bake(legacy);
-            var after = Bake(migrated);
-            Assert.AreEqual(Text(before), Text(after));
-            Assert.AreEqual(0, after.Bindings.Length, "수식자는 규칙 줄을 만들지 않는다(줄 번호가 밀리지 않는다)");
-            Assert.IsNull(after.Cards[0].Bindings);
-            Assert.IsNull(after.Cards[0].SquadBindings);
-            var mods = after.Cards[0].AttackMods;
-            Assert.AreEqual(3, mods.Length, "옛 칸이 남아 있어도 두 번 싣지 않는다");
+            var def = Bake(card);
+            Assert.AreEqual(0, def.Bindings.Length, "수식자는 규칙 줄을 만들지 않는다(줄 번호가 밀리지 않는다)");
+            Assert.IsNull(def.Cards[0].Bindings);
+            Assert.IsNull(def.Cards[0].SquadBindings);
+            var mods = def.Cards[0].AttackMods;
+            Assert.AreEqual(3, mods.Length);
             Assert.AreEqual(AttackModKind.ProjectileBounce, mods[0].Kind);
             Assert.AreEqual(2, mods[0].Count);
             Assert.AreEqual(3, mods[0].TileRange);
+            Assert.AreEqual(1f, mods[0].DamageMul);
             Assert.AreEqual(AttackModKind.FrontmostTarget, mods[1].Kind);
+            Assert.AreEqual(0, mods[1].Count, "최전방은 수 · 반경을 안 읽는다(사용 칸 표)");
+            Assert.AreEqual(0, mods[1].TileRange);
             Assert.AreEqual(1.2f, mods[1].DamageMul);
             Assert.AreEqual(AttackModKind.DamageVsSleeping, mods[2].Kind);
+        }
+
+        [Test]
+        public void 공격_수식자_값_가드는_옛_카드_경로와_같다()
+        {
+            var card = Card("fx_mod_guards", CardType.Unit);
+            card.bindings = new[]
+            {
+                Always(Effect("fx_bounce_zero", new EffectValues { kind = EffectKind.ProjectileBounce, count = 0, rangeTiles = 3, mul = 1f })),
+                Always(Effect("fx_sleep_one", new EffectValues { kind = EffectKind.DamageVsSleeping, mul = 1f })),
+                Always(Effect("fx_front_zero", new EffectValues { kind = EffectKind.FrontmostTarget, mul = 0f })),
+            };
+            LogAssert.Expect(LogType.Warning, new Regex("ProjectileBounce count <= 0"));
+            LogAssert.Expect(LogType.Warning, new Regex("DamageVsSleeping mul <= 1"));
+            LogAssert.Expect(LogType.Warning, new Regex("배율\\(mul\\) <= 0"));
+            LogAssert.ignoreFailingMessages = true;   // 「구워진 규칙이 하나도 없다」 오류(의도)
+            try { Assert.IsNull(Bake(card).Cards[0].AttackMods); }
+            finally { LogAssert.ignoreFailingMessages = false; }
         }
 
         // ── ② 같은 효과 두 소유자 ────────────────────────────────────────────────
@@ -266,38 +277,25 @@ namespace Wassup.Tests.EditModeAssets
             Assert.AreEqual(1, def.Bindings.Length);
         }
 
-        // ── ⑤ 과도기 ─────────────────────────────────────────────────────────────
-
-        [Test]
-        public void 상시_효과_줄이_없는_카드는_옛_칸에서_굽는다()
-        {
-            var card = Card("fx_legacy_squad", CardType.Squad, CardTargetAxis.Cost1);
-            card.effects = new[] { new CardEffect { kind = CardBuffKind.AttackSpeed, percent = 5f } };
-            var def = Bake(card);
-            Assert.AreEqual(1, def.Cards[0].SquadBindings.Length);
-            var r = def.Bindings[def.Cards[0].SquadBindings[0]];
-            Assert.AreEqual(1, r.SubjectCost, "옛 칸 = 카드 축");
-            Assert.AreEqual("카드 'fx_legacy_squad' effect 0", r.Label);
-        }
-
         // ── ⑥ 배치 오라의 수혜 대상 ─────────────────────────────────────────────
 
         [Test]
-        public void 배치_오라의_수혜_대상은_효과_칸이고_기본값이면_카드_축이다()
+        public void 배치_오라의_수혜_대상은_효과_칸이다_카드_축을_안_읽는다()
         {
-            var aura = Effect("fx_aura", new EffectValues { kind = EffectKind.PlacementAura, percent = 50f, durationSec = 0f });
-            var card = Card("fx_aura_card", CardType.Unit, CardTargetAxis.All);
+            // 단계 B — 카드 축 폴백 은퇴(라이브 `slow_awakening` 효과 = All · 이전 43e6d841f).
+            var aura = Effect("fx_aura", new EffectValues { kind = EffectKind.PlacementAura, percent = 50f, durationSec = 0f, allyFilter = CardTargetAxis.All });
+            var card = Card("fx_aura_card", CardType.Unit, CardTargetAxis.ClassGuardian);
             card.bindings = new[] { Always(aura) };
 
             var def = Bake(card);
             var r = def.Bindings[def.Cards[0].Bindings[0]];
-            Assert.AreEqual(0, r.SubjectClassMask, "효과 칸 기본값(이전 전) → 카드 축 All(과도기 폴백)");
+            Assert.AreEqual(0, r.SubjectClassMask, "효과 칸 All — 카드 축(가디언)은 수혜 대상이 아니다");
             Assert.AreEqual(0, r.SubjectCost);
 
             aura.values.allyFilter = CardTargetAxis.ClassGuardian;
             def = Bake(card);
             r = def.Bindings[def.Cards[0].Bindings[0]];
-            Assert.AreEqual(1 << (int)DefenderClass.Guardian, r.SubjectClassMask, "효과 칸이 차 있으면 효과의 뜻(계약 12)");
+            Assert.AreEqual(1 << (int)DefenderClass.Guardian, r.SubjectClassMask, "효과의 뜻(계약 12)");
         }
     }
 }
