@@ -31,7 +31,29 @@ MonoBehaviour:
   leakAllowanceCost: 0
   attachType: 0
   attachValue: 
-  bindings: []
+  bindings:
+  - trigger:
+      kind: 0
+      period: 0
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: aa253c3a5b1a740bc9f2bb1f71f092be, type: 2}
+  - trigger:
+      kind: 0
+      period: 0
+      periodSeconds: 0
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+      subject: 0
+    fireCap: 0
+    effect: {fileID: 11400000, guid: 113890d8905c848c382b744f5fcb6854, type: 2}
   hostKinds: 1
   cooldownSec: 0
   needsTwoTiles: 0
