@@ -48,5 +48,8 @@ namespace Wassup.Data
         public ShieldTargetFilter shieldFilter;
         public bool includesSelf;
         public bool telegraph;     // U1 착탄 예고
+        // skill-data-table unit 8 — **수혜 대상은 효과의 뜻**(계약 12 · `shieldFilter` 선례): 진영 버프(`FactionStatBuff`)와 배치 오라
+        // (`PlacementAura`)가 누구에게 거는가. 값 = 옛 카드 `axis` 와 같은 어휘(`CardTargetAxis` — 개명은 후속 후보). 시트 열 `ally_filter`.
+        public CardTargetAxis allyFilter;
     }
 }

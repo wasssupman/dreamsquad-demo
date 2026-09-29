@@ -44,6 +44,8 @@ namespace Wassup.Data.StatImport
         [JsonProperty("shield_filter")] public ShieldTargetFilter? shieldFilter;
         [JsonProperty("includes_self")] public bool? includesSelf;
         [JsonProperty("telegraph")] public bool? telegraph;
+        // skill-data-table unit 8 — 수혜 대상(진영 버프 · 배치 오라 — `EffectValues.allyFilter`). 이름 짝이라 export · import 가 그대로 읽는다.
+        [JsonProperty("ally_filter")] public CardTargetAxis? allyFilter;
         // 참조(표마다 id — `tables.md` §10). 장판 id = 에셋 이름.
         [JsonProperty("projectile_id")] public string projectileId;
         [JsonProperty("pattern_id")] public string patternId;

@@ -55,6 +55,7 @@
 | `density_radius_tiles` · `landing_ring_tiles` | int | ≥ 0 | 0 | 도약 2종 |
 | `cc_kind` · `stack_kind` · `buff_stat` | enum | `DcCcKind` · `DcStackKind` · `CardBuffKind` 이름 | 첫 값 | 종류별 |
 | `shield_filter` · `includes_self` | enum · bool | `ShieldTargetFilter` 이름 | `Self` · false | `GrantShield` |
+| `ally_filter` | enum | `CardTargetAxis` 이름(`All` · `ClassRanger` · `ClassGuardian` · `Cost1` — 수혜 대상 · unit 8) | `ClassRanger`(첫 값) | `FactionStatBuff` · `PlacementAura` |
 | `projectile_id` · `pattern_id` · `hazard_id` | string | 각 표의 키 | — | 종류별 |
 | `telegraph` | bool | U1 착탄 예고 | false | — |
 
@@ -67,6 +68,8 @@
 
 「옛 → 새」의 `m` = `magnitude` · `t` = `tileRange` · `d` = `duration`. 라이브 = 저작 줄 수(카드/유닛/적).
 
+**이 표가 종류별 사용 칸의 정본이다**(unit 8 — 코드 `EffectSlots.UsedColumns` · 전 종류 커버 테스트 `EffectSlotsColumnsTests`): 한 종류가 쓰는 열 = 「옛 → 새」의 새 칸 + 필수 · 선택 참조 + §9 의 비율 칸(`magnitude_mode` · `basis_stat` · `ratio` — 비율을 받는 종류만). unit 9 export 는 이 열만 쓴다.
+
 | kind | 옛 → 새 | 필수 참조 | 라이브 |
 |---|---|---|---|
 | ProjectileToTarget | m→`damage`★ · t→`range_tiles` · d→`flight_sec`(칸 결합 탄) · `telegraph` | `projectile_id` | 3/0/0 |
@@ -74,7 +77,7 @@
 | NextAttackDoubleFire | 칸 없음 | | 1/0/0 |
 | SelfBuffLethal | m→`percent`(공속) · d→`duration_sec` | | 2/0/0 |
 | SelfBlink | m→`density_radius_tiles` · t→`landing_ring_tiles` · `slamDamage`→`damage`★ · `slamTileRange`→`radius_tiles` | `projectile_id`(연출 · 선택) | 0/0/2 |
-| PlacementAura | m→`percent`(공속) · d→`duration_sec`(수면 · 0 = 없음) | | 1/0/0 |
+| PlacementAura | m→`percent`(공속) · d→`duration_sec`(수면 · 0 = 없음) · `ally_filter`(unit 8 — 옛 카드 `axis`) | | 1/0/0 |
 | AllyMoveSpeedAura | m→`percent` · t→`radius_tiles` · d→`duration_sec`(TTL) | `projectile_id`(선택) | 0/0/1 |
 | ApplyCcToTarget | `ccKind`→`cc_kind` · d→`duration_sec` · m→`speed`(Impulse 만) | | 3/0/0 |
 | ApplyStackToTarget | `stackKind`→`stack_kind` · m→`count` · d→`duration_sec`(겹당) · t→`stack_cap`(0 = 기본 5) | | 2/0/0 |
@@ -97,6 +100,10 @@
 | AreaApplyStack | `stackKind`→`stack_kind` · m→`count` · t→`radius_tiles` · d→`duration_sec`(겹당) | | 0/1/0 |
 | AreaCc | m→`damage`★(부수 · 0 = CC 만) · t→`radius_tiles` · d→`duration_sec` · `ccKind`→`cc_kind` | | 0/1/0 |
 | AreaDot | m→`damage`★(틱당) · t→`radius_tiles` · d→`duration_sec` · `tickIntervalSec`→`tick_sec` | | 0/1/0 |
+| FactionStatBuff(unit 8) | 옛 카드 `effects[i]`: `kind`→`buff_stat` · `percent`→`percent` · 카드 `axis`→`ally_filter` | | 15/0/0(카드 13장) |
+| ProjectileBounce(unit 8) | 옛 카드 `attackMods[i]`: `count`→`count` · `tileRange`→`range_tiles` · `damageMul`→`mul`(튕김 감쇠 · 1 = 없음) | | 1/0/0 |
+| FrontmostTarget(unit 8) | 〃 `damageMul`→`mul`(최전방 배율) | | 1/0/0 |
+| DamageVsSleeping(unit 8) | 〃 `damageMul`→`mul`(> 1) | | 1/0/0 |
 | **표에 들지 않음** | `None`(센티넬) · `AreaBarrage`(이관 — 거절) · `SelfWarmupBuff`(죽은 값) · `SplitOnDeath`(→ `Enemies` 열 · §8) | | 적 2 = Split |
 
 **액티브 6(새 종류 — `SkillEffectType` 1:1 · 저작 enum append 는 unit 4)**: 옛 `SkillData` 칸 → 새 칸. 주인 없는 시전이라 비율형 거절(계약 9).
@@ -172,7 +179,7 @@
 | `leak_allowance_cost` | int | 0 | ⚠ 코어 소비 0 — 문안만 읽는다(§12 발견) |
 | `cooldown_sec` · `needs_two_tiles` | float · bool | 0 · false | Active 만(옛 `SkillData.cooldownSec` · `needsTwoTiles`) |
 
-`CardStatEffects`(Squad 만): `card_id` · `slot` · `buff_stat`(`CardBuffKind`) · `percent`. `CardAttackMods`(Unit 만 · 트리거 없는 상시 수식자 — 효과 id 를 주지 않는다: 재사용 소유자 0 · §11): `card_id` · `slot` · `kind`(`DcAttackModKind`) · `count` · `range_tiles` · `damage_mul`. 스킬 칸은 없다 — 카드의 규칙은 `Skills`.
+(unit 8 — 아래 두 표의 줄은 효과 줄(`FactionStatBuff` · 공격 수식자 3종) + 카드 소유 줄(트리거 `None`)로 옮긴다 · 탭 은퇴는 unit 9.) `CardStatEffects`(Squad 만): `card_id` · `slot` · `buff_stat`(`CardBuffKind`) · `percent`. `CardAttackMods`(Unit 만 · 트리거 없는 상시 수식자 — 효과 id 를 주지 않는다: 재사용 소유자 0 · §11): `card_id` · `slot` · `kind`(`DcAttackModKind`) · `count` · `range_tiles` · `damage_mul`. 스킬 칸은 없다 — 카드의 규칙은 `Skills`.
 
 ## 8. `Units` · `Enemies`
 
@@ -196,7 +203,7 @@
 - 네임스페이스 = 표마다(`Effects` · `Projectiles` · `Patterns` · `Hazards` · `Blockers` · `Cards` · `Units` · `Enemies`). 참조 칸은 이름에 표를 밝힌다(`projectile_id` · `pattern_id` …) — 겹쳐도 모호하지 않다.
 - **겹침 3건(허용 · 개명 안 함)**: `cannon_strike` · `nightmare_barrage` · `nightmare_missile` = 탄 id 이자 패턴 id.
 - 장판 · 길막 id = 에셋 이름(`Hazard_Ember` 등 — 스네이크 규칙의 유일한 예외).
-- 새 `effect_id` = 소문자 스네이크 · 첫 공개 뒤 개명 금지 · 삭제 대신 `deprecated`(서버 어휘 — 계약 6). 이전 기본값(unit 4 dry-run 에서 바꿀 수 있다): 유닛 능력 = 능력 id(`sky_strike_cannon` · `shield_shield_shuttle` …) · 카드 = 카드 id(메커닉 여럿이면 `_{slot}`) · 적 = `{enemy_id}_{slot}` · 액티브 = `SkillData.id`(`meteor` …). 오늘 이 후보들 사이 충돌 0.
+- 새 `effect_id` = 소문자 스네이크 · 첫 공개 뒤 개명 금지 · 삭제 대신 `deprecated`(서버 어휘 — 계약 6). 이전 기본값(unit 4 dry-run 에서 바꿀 수 있다): 유닛 능력 = 능력 id(`sky_strike_cannon` · `shield_shield_shuttle` …) · 카드 = 카드 id(메커닉 여럿이면 `_{slot}`) · 적 = `{enemy_id}_{slot}` · 액티브 = `SkillData.id`(`meteor` …). 오늘 이 후보들 사이 충돌 0. unit 8(상시 효과) = 카드 id · 옛 칸 항목이 둘이면 `{card_id}_{옛 항목 번호}`(`cracked_grail_0` · `guardian_fortress_1` …) — 기존 69 와 충돌 0(dry-run `dry-run/dry_run_part2.md`).
 - 기존 id 전부 비지 않고 표 안 유일(카드 54 · 탄 83 · 패턴 13 · 유닛 27 · 적 24 — 재확인).
 
 ## 11. 필드 → 열 전수 대조

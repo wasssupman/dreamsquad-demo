@@ -25,6 +25,44 @@ namespace Wassup.Data
     }
 
     /// <summary>
+    /// skill-data-table unit 8 — 효과 줄의 **시트 열**(`tables.md` §2 `Skills` — `EffectValues` 의 칸 + 효과 에셋의 참조 셋). 종류마다
+    /// 어느 열을 쓰나는 `EffectSlots.UsedColumns` 한 표다. 이름 = `EffectValues` 칸 이름의 첫 글자 대문자(참조는 `…Id`).
+    /// </summary>
+    [Flags]
+    public enum EffectColumns : uint
+    {
+        None = 0,
+        Damage = 1u << 0,
+        Shield = 1u << 1,
+        Percent = 1u << 2,
+        Mul = 1u << 3,
+        Count = 1u << 4,
+        RadiusTiles = 1u << 5,
+        RangeTiles = 1u << 6,
+        DurationSec = 1u << 7,
+        FlightSec = 1u << 8,
+        TickSec = 1u << 9,
+        StackCap = 1u << 10,
+        Speed = 1u << 11,
+        ConeHalfDeg = 1u << 12,
+        DensityRadiusTiles = 1u << 13,
+        LandingRingTiles = 1u << 14,
+        CcKind = 1u << 15,
+        StackKind = 1u << 16,
+        BuffStat = 1u << 17,
+        ShieldFilter = 1u << 18,
+        IncludesSelf = 1u << 19,
+        Telegraph = 1u << 20,
+        AllyFilter = 1u << 21,
+        MagnitudeMode = 1u << 22,
+        BasisStat = 1u << 23,
+        Ratio = 1u << 24,
+        ProjectileId = 1u << 25,
+        PatternId = 1u << 26,
+        HazardId = 1u << 27,
+    }
+
+    /// <summary>
     /// 옛 저작의 스칼라 칸(`DcPayloadSpec` 의 값 칸만 — 참조 · 뷰 칸 제외). 엔진 타입이 없어 이전 변환 · 헤드리스 dry-run 이 그대로 쓴다.
     /// CC · 스택은 **옛 번호**(`DcCcKind` · `DcStackKind` 의 정수)다.
     /// </summary>
@@ -98,8 +136,105 @@ namespace Wassup.Data
                 case EffectKind.ActiveRapidFire: m = EffectSlot.Mul; t = EffectSlot.RadiusTiles; d = EffectSlot.DurationSec; return true;
                 case EffectKind.ActiveTornado: m = EffectSlot.Speed; t = EffectSlot.RadiusTiles; d = EffectSlot.DurationSec; return true;
                 case EffectKind.ActivePortal: d = EffectSlot.DurationSec; return true;
+                // skill-data-table unit 8 — 상시 효과 4. 옛 겸직 칸 모양이 없던 종류(카드 자식 값이었다) — 보기용 첫 칸만 준다.
+                case EffectKind.FactionStatBuff: m = EffectSlot.Percent; return true;
+                case EffectKind.ProjectileBounce: m = EffectSlot.Mul; t = EffectSlot.RangeTiles; return true;
+                case EffectKind.FrontmostTarget:
+                case EffectKind.DamageVsSleeping: m = EffectSlot.Mul; return true;
                 default: return false;   // None · AreaBarrage · SelfWarmupBuff · SplitOnDeath
             }
+        }
+
+        /// <summary>
+        /// skill-data-table unit 8 — **종류별 사용 칸 표**(정본 = `tables.md` §3 의 새 칸 · 참조 + §9 의 비율 칸). 표에 드는 종류면 true 와
+        /// 그 종류가 읽는 칸 전부(시트 `Skills` 탭의 열), 들지 않는 종류(센티넬 · 이관 · 죽은 값 · 분열 — `Of` 와 같은 넷)는 false.
+        /// unit 9 export 가 「그 종류가 쓰는 칸만」 쓰는 데 쓴다(오라 줄의 `cc_kind` 같은 잡음 0). `kind` · `deprecated` · `effect_id` 는 모든 줄의 칸이라 여기 없다.
+        /// </summary>
+        public static bool UsedColumns(EffectKind kind, out EffectColumns cols)
+        {
+            const EffectColumns RatioCols = EffectColumns.MagnitudeMode | EffectColumns.BasisStat | EffectColumns.Ratio;
+            switch (kind)
+            {
+                case EffectKind.ProjectileToTarget:
+                    cols = EffectColumns.Damage | EffectColumns.RangeTiles | EffectColumns.FlightSec | EffectColumns.Telegraph | EffectColumns.ProjectileId; break;
+                case EffectKind.SelfTileAoe:
+                    cols = EffectColumns.Damage | EffectColumns.RadiusTiles | EffectColumns.FlightSec | EffectColumns.ProjectileId; break;
+                case EffectKind.NextAttackDoubleFire:
+                case EffectKind.RecallAttachedToFront:
+                    cols = EffectColumns.None; break;
+                case EffectKind.SelfBuffLethal:
+                    cols = EffectColumns.Percent | EffectColumns.DurationSec; break;
+                case EffectKind.SelfBlink:
+                    cols = EffectColumns.DensityRadiusTiles | EffectColumns.LandingRingTiles | EffectColumns.Damage | EffectColumns.RadiusTiles | EffectColumns.ProjectileId; break;
+                case EffectKind.PlacementAura:
+                    cols = EffectColumns.Percent | EffectColumns.DurationSec | EffectColumns.AllyFilter; break;
+                case EffectKind.AllyMoveSpeedAura:
+                    cols = EffectColumns.Percent | EffectColumns.RadiusTiles | EffectColumns.DurationSec | EffectColumns.ProjectileId; break;
+                case EffectKind.ApplyCcToTarget:
+                    cols = EffectColumns.CcKind | EffectColumns.DurationSec | EffectColumns.Speed; break;
+                case EffectKind.ApplyStackToTarget:
+                    cols = EffectColumns.StackKind | EffectColumns.Count | EffectColumns.DurationSec | EffectColumns.StackCap; break;
+                case EffectKind.SelfStatBuff:
+                    cols = EffectColumns.BuffStat | EffectColumns.Percent | EffectColumns.DurationSec | EffectColumns.StackCap; break;
+                case EffectKind.HeavyStrike:
+                case EffectKind.FrontmostTarget:
+                case EffectKind.DamageVsSleeping:
+                    cols = EffectColumns.Mul; break;
+                case EffectKind.DreamCocoon:
+                    cols = EffectColumns.Percent | EffectColumns.DurationSec | EffectColumns.BuffStat; break;
+                case EffectKind.BountyMark:
+                    cols = EffectColumns.Mul | EffectColumns.Percent; break;
+                case EffectKind.AreaSleep:
+                    cols = EffectColumns.Count | EffectColumns.RadiusTiles | EffectColumns.DurationSec | EffectColumns.ProjectileId; break;
+                case EffectKind.EmitProjectilePattern:
+                    cols = EffectColumns.Damage | EffectColumns.RangeTiles | EffectColumns.PatternId; break;
+                case EffectKind.UltimateLeap:
+                    cols = EffectColumns.DensityRadiusTiles | EffectColumns.LandingRingTiles | EffectColumns.FlightSec | EffectColumns.Damage
+                         | EffectColumns.RadiusTiles | EffectColumns.ProjectileId; break;
+                case EffectKind.GrantShield:
+                    cols = EffectColumns.Shield | EffectColumns.RadiusTiles | EffectColumns.Count | EffectColumns.ShieldFilter | EffectColumns.IncludesSelf; break;
+                case EffectKind.AreaBreath:
+                    cols = EffectColumns.Damage | EffectColumns.RangeTiles | EffectColumns.ConeHalfDeg; break;
+                case EffectKind.SelfOrbitProjectile:
+                    cols = EffectColumns.Damage | EffectColumns.RadiusTiles | EffectColumns.DurationSec | EffectColumns.Count | EffectColumns.ProjectileId; break;
+                case EffectKind.AreaTaunt:
+                    cols = EffectColumns.RadiusTiles | EffectColumns.DurationSec; break;
+                case EffectKind.SpawnHazard:
+                    cols = EffectColumns.Damage | EffectColumns.HazardId; break;
+                case EffectKind.AllyStatAura:
+                case EffectKind.OpponentStatAura:
+                    cols = EffectColumns.BuffStat | EffectColumns.Percent | EffectColumns.RadiusTiles | EffectColumns.DurationSec; break;
+                case EffectKind.GainCost:
+                    cols = EffectColumns.Count; break;
+                case EffectKind.ReduceSkillCooldown:
+                    cols = EffectColumns.DurationSec; break;
+                case EffectKind.AreaApplyStack:
+                    cols = EffectColumns.StackKind | EffectColumns.Count | EffectColumns.RadiusTiles | EffectColumns.DurationSec; break;
+                case EffectKind.AreaCc:
+                    cols = EffectColumns.Damage | EffectColumns.RadiusTiles | EffectColumns.DurationSec | EffectColumns.CcKind; break;
+                case EffectKind.AreaDot:
+                    cols = EffectColumns.Damage | EffectColumns.RadiusTiles | EffectColumns.DurationSec | EffectColumns.TickSec; break;
+                case EffectKind.ActiveMeteor:
+                    cols = EffectColumns.Damage | EffectColumns.RadiusTiles | EffectColumns.FlightSec | EffectColumns.ProjectileId; break;
+                case EffectKind.ActiveSlowField:
+                case EffectKind.ActivePowerSurge:
+                case EffectKind.ActiveRapidFire:
+                    cols = EffectColumns.Mul | EffectColumns.RadiusTiles | EffectColumns.DurationSec; break;
+                case EffectKind.ActiveTornado:
+                    cols = EffectColumns.Speed | EffectColumns.RadiusTiles | EffectColumns.DurationSec; break;
+                case EffectKind.ActivePortal:
+                    cols = EffectColumns.DurationSec; break;
+                case EffectKind.FactionStatBuff:
+                    cols = EffectColumns.BuffStat | EffectColumns.Percent | EffectColumns.AllyFilter; break;
+                case EffectKind.ProjectileBounce:
+                    cols = EffectColumns.Count | EffectColumns.RangeTiles | EffectColumns.Mul; break;
+                default:
+                    cols = EffectColumns.None;
+                    return false;   // None · AreaBarrage · SelfWarmupBuff · SplitOnDeath
+            }
+            // §9 — 비율 칸이 있는 종류만 수치 방식 칸을 쓴다(나머지는 비율형이 거절된다 — 칸이 뜻이 없다).
+            if (EffectMagnitude.AcceptsRatio(kind)) cols |= RatioCols;
+            return true;
         }
 
         /// <summary>착지 슬램이 있는 도약 둘 — 옛 `slamDamage` · `slamTileRange` 가 `damage` · `radiusTiles` 로 온다.</summary>
