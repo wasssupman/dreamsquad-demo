@@ -26,6 +26,7 @@ unit 0 의 표 구조로 시트 export/import 를 새로 만든다. 기존 `DcSh
 - **모양 탭(`Projectiles` · `Patterns` · `PatternShots` · `Hazards` · `HazardEffects` · `Blockers`) 은 이 1부 밖** — 오늘 시트에 없는 값이라 회귀가 없고, 패턴 · 장판 SO 에 U10 이전 옛 피해 칸이 남아 있어 먼저 열면 죽은 열이 시트에 보인다. 소유자 표(`Cards` · `Units` · `Enemies`)는 기존 `DcCards` · `Defenders` · `Enemies` 탭 그대로.
 - 런타임 refresh 는 효과가 **지금 가리키는** 탄 · 패턴 · 장판만 안다(에셋 스캔 없음 — 보고됨). 에디터 import 는 전부 안다.
 - 빈 칸 = 그대로라 참조를 **비우는** 방법이 없다 · bool 을 끄려면 `FALSE` 를 적는다.
+- `Skills` export 는 그 종류가 쓰는 칸을 **기본값이어도** 적는다(`buff_stat` = `AttackDamage` 처럼 첫 enum 값이 빈 칸으로 숨지 않게) · 비율 칸(`basis_stat` · `ratio`)은 `magnitude_mode = Flat` 줄에서 비운다.
 - push 는 업서트(고아 행 안 지움) — `SkillOwners` 에서 줄을 빼도 시트에 옛 줄이 남으면 다음 import 가 되살린다(`DcCardEffects` 와 같은 성질).
 - ~~export 는 기본값이 아닌 칸을 전부 쓴다 · 「안 쓰는 칸 경고」 미구현~~ → **unit 9 해결**: export = 종류가 쓰는 칸만 · import = 안 쓰는 칸에 값이 오면 경고하고 무시.
 - ~~`DcSkills` 의 수치 칸이 문안만 움직인다~~ → **unit 8 · 9 해결**: 문안 = 시전 줄 효과 + 카드 `cooldownSec`(unit 8) · `DcSkills` 수치 칸 삭제 · 쿨다운 = `Cards.cooldown_sec`(unit 9).

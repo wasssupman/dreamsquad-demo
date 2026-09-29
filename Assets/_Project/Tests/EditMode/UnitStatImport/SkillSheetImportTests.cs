@@ -374,6 +374,34 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         }
 
         [Test]
+        public void Export_WritesUsedColumnsEvenAtDefault_RatioOnlyWhenNotFlat()
+        {
+            // 「모든 아군 공격력 +8%」 — buff_stat 의 첫 enum 값(공격력)이 빈 칸으로 숨으면 기획자가 무슨 스탯인지 모른다.
+            var buff = New<EffectData>();
+            buff.id = "all_atk";
+            buff.values = new EffectValues { kind = EffectKind.FactionStatBuff, percent = 8f, allyFilter = CardTargetAxis.All };
+            var buffRow = SkillSheet.Export(new[] { buff }, null, null, null).skills.Single();
+            Assert.AreEqual(default(CardBuffKind), buffRow.buffStat, "쓰는 칸은 기본값이어도 적는다");
+            Assert.IsNotNull(buffRow.buffStat);
+            StringAssert.Contains("\"buff_stat\"", SkillSheet.ToJson(new[] { buffRow }));
+
+            // 고정 수치 광역 — 비율 칸(기준 스탯 · 비율)은 뜻이 없어 비운다 · 비율형이면 적는다.
+            var flat = New<EffectData>();
+            flat.id = "flat_aoe";
+            flat.values = new EffectValues { kind = EffectKind.SelfTileAoe, damage = 30f, radiusTiles = 1 };
+            var flatRow = SkillSheet.Export(new[] { flat }, null, null, null).skills.Single();
+            Assert.IsNull(flatRow.basisStat);
+            Assert.IsNull(flatRow.ratio);
+            var ratio = New<EffectData>();
+            ratio.id = "ratio_aoe";
+            ratio.values = new EffectValues { kind = EffectKind.SelfTileAoe, radiusTiles = 1, magnitudeMode = MagnitudeMode.OwnerStatRatio, ratio = 1.5f };
+            var ratioRow = SkillSheet.Export(new[] { ratio }, null, null, null).skills.Single();
+            Assert.AreEqual(MagnitudeMode.OwnerStatRatio, ratioRow.magnitudeMode);
+            Assert.IsNotNull(ratioRow.basisStat, "비율형 줄은 기준 스탯이 첫 enum 값이어도 적는다");
+            Assert.AreEqual(1.5f, ratioRow.ratio);
+        }
+
+        [Test]
         public void Import_UnusedColumn_WarnsAndIgnores_UsedColumnApplies()
         {
             var aura = New<EffectData>();
@@ -412,7 +440,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         }
 
         [Test]
-        public void Export_WritesKindAndTriggerAlways_OtherValuesOnlyWhenSet()
+        public void Export_WritesKindAndTriggerAlways_UsedValuesEvenAtDefault()
         {
             var e = Effect("aoe", EffectKind.SelfTileAoe, 20f, 0);
             var unit = New<DefenderUnitData>(); unit.id = "u";
@@ -422,7 +450,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var row = sheet.skills.Single();
             Assert.AreEqual(EffectKind.SelfTileAoe, row.kind);
             Assert.AreEqual(20f, row.damage);
-            Assert.IsNull(row.radiusTiles, "0 = 빈 칸");
+            Assert.AreEqual(0, row.radiusTiles, "종류가 쓰는 칸은 0 이어도 적는다(빈 칸이면 기획자가 값을 모른다)");
+            Assert.IsNull(row.shield, "종류가 안 쓰는 칸은 안 적는다");
             Assert.AreEqual(SkillSheet.KindKo(EffectKind.SelfTileAoe), row.kindKo);
             var owner = sheet.owners.Single();
             Assert.AreEqual("defender", owner.ownerKind);

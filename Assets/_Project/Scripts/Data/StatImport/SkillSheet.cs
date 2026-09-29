@@ -107,10 +107,11 @@ namespace Wassup.Data.StatImport
         // ───────────────────────── export ─────────────────────────
 
         /// <summary>
-        /// 에셋 → 두 탭의 줄(메모리). 효과는 id 순 · 소유 줄은 (card · defender · enemy) → owner_id → slot 순. 값 칸은 **기본값이 아닐 때만**
-        /// 채운다(빈 칸 = 0 · false · 첫 enum) — `kind` · `trigger` · `effect_id` 는 늘 채운다(새 줄의 필수 칸).
-        /// skill-data-table unit 9 — `Skills` 는 **그 종류가 쓰는 칸만** 쓴다(`EffectSlots.UsedColumns` — 오라 줄의 `cc_kind` 같은 잡음 0 ·
-        /// 참조 셋도 같다). 안 쓰는 칸에 남은 값(옛 이전이 채운 기본값 등)은 에셋에만 있고 시트에 보이지 않는다.
+        /// 에셋 → 두 탭의 줄(메모리). 효과는 id 순 · 소유 줄은 (card · defender · enemy) → owner_id → slot 순.
+        /// skill-data-table unit 9 — `Skills` 는 **그 종류가 쓰는 칸만, 기본값이어도** 쓴다(`EffectSlots.UsedColumns` — 오라 줄의 `cc_kind` 같은
+        /// 잡음 0 · 「공격력 버프」의 `buff_stat` 처럼 첫 enum 값이 빈 칸으로 숨지 않는다 · 참조 셋도 같다). 비율 칸은 고정 수치 줄에서 비운다.
+        /// 안 쓰는 칸에 남은 값(옛 이전이 채운 기본값 등)은 에셋에만 있고 시트에 보이지 않는다. 소유 줄은 기본값이 아닐 때만 채운다
+        /// (`trigger` · `effect_id` 는 늘).
         /// </summary>
         public static SkillSheetPayload Export(IEnumerable<EffectData> effects, IEnumerable<DreamcatcherCard> cards,
             IEnumerable<DefenderUnitData> defenders, IEnumerable<AttackUnitData> enemies)
@@ -129,7 +130,10 @@ namespace Wassup.Data.StatImport
                     patternId = (used & EffectColumns.PatternId) != 0 && e.pattern != null ? e.pattern.id : null,
                     hazardId = (used & EffectColumns.HazardId) != 0 && e.hazard != null ? e.hazard.name : null,
                 };
-                ReadNonDefault(e.values, row, EffectPairs, t => (used & EffectSlots.ColumnOfField(t.Name)) != 0);
+                // 종류가 쓰는 칸은 **기본값이어도** 적는다 — 기획자가 빈 칸을 보고 「공격력 버프」(`buff_stat` 첫 enum)인지 알 수 없다.
+                // 비율 칸(기준 스탯 · 비율)만 고정 수치 줄에서 비운다(고정 줄에서 뜻이 없다).
+                if (e.values.magnitudeMode == MagnitudeMode.Flat) used &= ~(EffectColumns.BasisStat | EffectColumns.Ratio);
+                ReadUsed(e.values, row, EffectPairs, t => (used & EffectSlots.ColumnOfField(t.Name)) != 0);
                 row.kind = e.values.kind;
                 skillRows.Add(row);
             }
@@ -160,6 +164,12 @@ namespace Wassup.Data.StatImport
                     rows.Add(row);
                 }
             }
+        }
+
+        private static void ReadUsed(object source, object dto, (FieldInfo dto, FieldInfo target)[] pairs, Func<FieldInfo, bool> include)
+        {
+            foreach (var (d, t) in pairs)
+                if (include(t)) d.SetValue(dto, t.GetValue(source));
         }
 
         private static void ReadNonDefault(object source, object dto, (FieldInfo dto, FieldInfo target)[] pairs,
