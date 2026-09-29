@@ -237,6 +237,17 @@ namespace Wassup.Data
             return true;
         }
 
+        /// <summary>
+        /// skill-data-table unit 9 — `EffectValues` 칸 이름 → 그 시트 열(이름 규약 = 첫 글자 대문자 · `EffectSlotsColumnsTests` 가 짝을 잰다).
+        /// `kind` 는 모든 줄의 칸이라 `None`.
+        /// </summary>
+        public static EffectColumns ColumnOfField(string valuesFieldName)
+        {
+            if (string.IsNullOrEmpty(valuesFieldName) || valuesFieldName == nameof(EffectValues.kind)) return EffectColumns.None;
+            string name = char.ToUpperInvariant(valuesFieldName[0]) + valuesFieldName.Substring(1);
+            return Enum.TryParse(name, false, out EffectColumns col) ? col : EffectColumns.None;
+        }
+
         /// <summary>착지 슬램이 있는 도약 둘 — 옛 `slamDamage` · `slamTileRange` 가 `damage` · `radiusTiles` 로 온다.</summary>
         public static bool IsLeap(EffectKind kind) => kind == EffectKind.SelfBlink || kind == EffectKind.UltimateLeap;
 

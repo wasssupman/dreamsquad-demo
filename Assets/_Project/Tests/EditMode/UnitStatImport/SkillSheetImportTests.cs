@@ -231,8 +231,75 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.AreEqual(EffectKind.AreaDot, e.values.kind);
             Assert.AreEqual(4, e.values.radiusTiles);
             Assert.AreEqual(0.5f, e.values.tickSec);
-            Assert.AreEqual(Wassup.Data.Authoring.CcKind.Sleep, e.values.ccKind);
+            // skill-data-table unit 9 — 광역 지속 피해(AreaDot)는 cc_kind 를 안 쓴다 → 경고하고 무시(에셋 칸 그대로).
+            Assert.AreEqual(default(Wassup.Data.Authoring.CcKind), e.values.ccKind, "안 쓰는 칸은 쓰지 않는다");
             Assert.AreEqual(20f, e.values.damage, "빈 칸 = 그대로");
+        }
+
+        // ── skill-data-table unit 9 — 종류별 사용 칸(`EffectSlots.UsedColumns`) ─────────────────────────────
+
+        [Test]
+        public void Export_WritesOnlyColumnsTheKindUses()
+        {
+            // 배치 오라 — 옛 이전이 채운 cc_kind · stack_kind 기본값이 에셋에 남아 있어도 시트에는 안 나온다.
+            var aura = New<EffectData>();
+            aura.id = "aura";
+            aura.values = new EffectValues
+            {
+                kind = EffectKind.PlacementAura, percent = 50f, durationSec = 2f, allyFilter = CardTargetAxis.All,
+                ccKind = Wassup.Data.Authoring.CcKind.Stun, stackKind = Wassup.Data.Authoring.StackKind.Fire, damage = 7f,
+            };
+            aura.projectile = New<ProjectileData>();
+            aura.projectile.id = "stray_projectile";
+            var row = SkillSheet.Export(new[] { aura }, null, null, null).skills.Single();
+            Assert.AreEqual(50f, row.percent);
+            Assert.AreEqual(2f, row.durationSec);
+            Assert.AreEqual(CardTargetAxis.All, row.allyFilter);
+            Assert.IsNull(row.ccKind, "오라는 cc_kind 를 안 쓴다");
+            Assert.IsNull(row.stackKind, "오라는 stack_kind 를 안 쓴다");
+            Assert.IsNull(row.damage);
+            Assert.IsNull(row.projectileId, "안 쓰는 참조 칸도 안 나온다");
+            string json = SkillSheet.ToJson(new[] { row });
+            StringAssert.DoesNotContain("cc_kind", json);
+            StringAssert.DoesNotContain("stack_kind", json);
+        }
+
+        [Test]
+        public void Import_UnusedColumn_WarnsAndIgnores_UsedColumnApplies()
+        {
+            var aura = New<EffectData>();
+            aura.id = "aura";
+            aura.values = new EffectValues { kind = EffectKind.PlacementAura, percent = 50f };
+            var proj = New<ProjectileData>();
+            proj.id = "p";
+            string log = SkillSheet.Import(new SkillSheetPayload
+            {
+                skills = new[] { new SkillRowDto { id = "aura", percent = 30f, ccKind = Wassup.Data.Authoring.CcKind.Sleep, damage = 9f, projectileId = "p" } },
+            }, Index(new[] { aura }, projectiles: new[] { proj }), true, null, new StringBuilder());
+
+            Assert.AreEqual(30f, aura.values.percent, "쓰는 칸은 반영");
+            Assert.AreEqual(default(Wassup.Data.Authoring.CcKind), aura.values.ccKind, "안 쓰는 칸은 무시");
+            Assert.AreEqual(0f, aura.values.damage);
+            Assert.IsNull(aura.projectile, "안 쓰는 참조 칸도 무시");
+            StringAssert.Contains("'aura' cc_kind=Sleep — kind PlacementAura does not use this column; ignored.", log);
+            StringAssert.Contains("'aura' damage=9 — kind PlacementAura does not use this column; ignored.", log);
+            StringAssert.Contains("'aura' projectile_id='p' — kind PlacementAura does not use this column; ignored.", log);
+            StringAssert.Contains("ignored cells 3", log);
+        }
+
+        [Test]
+        public void Import_KindChange_UsesTheNewKindsColumns()
+        {
+            // 줄이 종류를 바꾸면 칸 규칙도 새 종류를 따른다(자리 폭발 → 광역 지속 피해: tick_sec 이 새로 쓰는 칸).
+            var e = Effect("x", EffectKind.SelfTileAoe, 20f, 1);
+            string log = SkillSheet.Import(new SkillSheetPayload
+            {
+                skills = new[] { new SkillRowDto { id = "x", kind = EffectKind.AreaDot, tickSec = 0.5f, flightSec = 3f } },
+            }, Index(new[] { e }), true, null, new StringBuilder());
+            Assert.AreEqual(EffectKind.AreaDot, e.values.kind);
+            Assert.AreEqual(0.5f, e.values.tickSec);
+            Assert.AreEqual(0f, e.values.flightSec, "새 종류(AreaDot)는 flight_sec 을 안 쓴다");
+            StringAssert.Contains("flight_sec=3 — kind AreaDot does not use this column; ignored.", log);
         }
 
         [Test]

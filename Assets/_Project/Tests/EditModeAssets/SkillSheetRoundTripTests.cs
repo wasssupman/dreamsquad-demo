@@ -63,16 +63,19 @@ namespace Wassup.Tests.EditModeAssets
                 owners = ParseTab<SkillOwnerRowDto>(SkillSheet.ToJson(exported.owners), DcSheetTabs.SkillOwners),
             };
 
-            // ② 값을 비운 사본(효과 id · 뷰 칸만 남긴다 · 소유 줄 0 — 빈 배열: 시트에 줄이 없는 소유자 = 소유 줄 없음)
+            // ② 값을 비운 사본(효과 id · 뷰 칸만 남긴다 · 소유 줄 0 — 빈 배열: 시트에 줄이 없는 소유자 = 소유 줄 없음).
+            //    skill-data-table unit 9 — 시트는 **종류가 쓰는 칸만** 싣는다 → 그 칸(과 종류 · 참조)만 비운다. 안 쓰는 칸(옛 이전이 채운 cc · 스택
+            //    기본값)은 시트 밖이라 에셋 값이 그대로 남는다 — 그 값도 비우면 해시 잡음(cc=3 · stack=1)이 빠져 스냅샷이 흔들린다.
             var paths = new Dictionary<Object, string>();
             var effectCopies = effects.Select(e =>
             {
                 var c = Copy(e);
-                c.values = default;
+                c.values = BlankSheetColumns(e.values);
                 c.deprecated = false;
-                c.projectile = null;
-                c.pattern = null;
-                c.hazard = null;
+                EffectSlots.UsedColumns(e.values.kind, out var used);
+                if ((used & EffectColumns.ProjectileId) != 0) c.projectile = null;
+                if ((used & EffectColumns.PatternId) != 0) c.pattern = null;
+                if ((used & EffectColumns.HazardId) != 0) c.hazard = null;
                 return c;
             }).ToList();
             var cardCopies = cards.Select(x => { var c = Copy(x); c.bindings = System.Array.Empty<BindingSpec>(); return c; }).ToList();
@@ -100,6 +103,42 @@ namespace Wassup.Tests.EditModeAssets
             string committed = System.IO.File.ReadAllText(BindingBakeSnapshotTests.SnapshotPath).Replace("\r\n", "\n");
             Assert.IsNull(BindingBakeSnapshotTests.FirstDiff(committed, bindingNow),
                 "시트 왕복 뒤 유닛 · 적 굽기가 스냅샷과 다르다: " + BindingBakeSnapshotTests.FirstDiff(committed, bindingNow));
+        }
+
+        /// <summary>시트가 싣는 칸(종류 · 그 종류가 쓰는 칸)만 기본값으로 — unit 9 export 규칙과 같은 표(`EffectSlots.UsedColumns`).</summary>
+        internal static EffectValues BlankSheetColumns(EffectValues v)
+        {
+            EffectSlots.UsedColumns(v.kind, out var used);
+            object boxed = v;
+            foreach (var f in typeof(EffectValues).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+                if (f.Name == nameof(EffectValues.kind) || (used & EffectSlots.ColumnOfField(f.Name)) != 0)
+                    f.SetValue(boxed, System.Activator.CreateInstance(f.FieldType));
+            return (EffectValues)boxed;
+        }
+
+        [Test]
+        public void 라이브_Skills_export_는_종류가_쓰는_칸만_싣는다()
+        {
+            // unit 9 완료 기준 — 종류가 안 쓰는 칸 0(배치 오라 줄의 cc_kind 같은 잡음 0).
+            var exported = SkillSheet.Export(BindingBakeSnapshotTests.LiveAssets<EffectData>(), null, null, null);
+            var noise = new List<string>();
+            foreach (var row in exported.skills)
+            {
+                EffectSlots.UsedColumns(row.kind.Value, out var used);
+                foreach (var f in typeof(SkillRowDto).GetFields())
+                {
+                    if (f.GetValue(row) == null) continue;
+                    var col = f.Name == nameof(SkillRowDto.projectileId) ? EffectColumns.ProjectileId
+                            : f.Name == nameof(SkillRowDto.patternId) ? EffectColumns.PatternId
+                            : f.Name == nameof(SkillRowDto.hazardId) ? EffectColumns.HazardId
+                            : EffectSlots.ColumnOfField(f.Name);
+                    if (col != EffectColumns.None && (used & col) == 0) noise.Add($"{row.id}.{SheetColumns.NameOf(typeof(SkillRowDto), f.Name)}");
+                }
+            }
+            CollectionAssert.IsEmpty(noise, "종류가 안 쓰는 칸이 export 에 나왔다");
+            var aura = exported.skills.Single(r => r.id == "slow_awakening");
+            Assert.IsNull(aura.ccKind);
+            Assert.IsNull(aura.stackKind);
         }
 
         [Test]

@@ -109,6 +109,8 @@ namespace Wassup.Data.StatImport
         /// <summary>
         /// 에셋 → 두 탭의 줄(메모리). 효과는 id 순 · 소유 줄은 (card · defender · enemy) → owner_id → slot 순. 값 칸은 **기본값이 아닐 때만**
         /// 채운다(빈 칸 = 0 · false · 첫 enum) — `kind` · `trigger` · `effect_id` 는 늘 채운다(새 줄의 필수 칸).
+        /// skill-data-table unit 9 — `Skills` 는 **그 종류가 쓰는 칸만** 쓴다(`EffectSlots.UsedColumns` — 오라 줄의 `cc_kind` 같은 잡음 0 ·
+        /// 참조 셋도 같다). 안 쓰는 칸에 남은 값(옛 이전이 채운 기본값 등)은 에셋에만 있고 시트에 보이지 않는다.
         /// </summary>
         public static SkillSheetPayload Export(IEnumerable<EffectData> effects, IEnumerable<DreamcatcherCard> cards,
             IEnumerable<DefenderUnitData> defenders, IEnumerable<AttackUnitData> enemies)
@@ -117,16 +119,17 @@ namespace Wassup.Data.StatImport
             foreach (var e in (effects ?? Enumerable.Empty<EffectData>()).Where(x => x != null)
                          .OrderBy(x => x.id, StringComparer.Ordinal))
             {
+                EffectSlots.UsedColumns(e.values.kind, out var used);
                 var row = new SkillRowDto
                 {
                     id = e.id,
                     kindKo = KindKo(e.values.kind),
                     deprecated = e.deprecated ? true : (bool?)null,
-                    projectileId = e.projectile != null ? e.projectile.id : null,
-                    patternId = e.pattern != null ? e.pattern.id : null,
-                    hazardId = e.hazard != null ? e.hazard.name : null,
+                    projectileId = (used & EffectColumns.ProjectileId) != 0 && e.projectile != null ? e.projectile.id : null,
+                    patternId = (used & EffectColumns.PatternId) != 0 && e.pattern != null ? e.pattern.id : null,
+                    hazardId = (used & EffectColumns.HazardId) != 0 && e.hazard != null ? e.hazard.name : null,
                 };
-                ReadNonDefault(e.values, row, EffectPairs);
+                ReadNonDefault(e.values, row, EffectPairs, t => (used & EffectSlots.ColumnOfField(t.Name)) != 0);
                 row.kind = e.values.kind;
                 skillRows.Add(row);
             }
@@ -159,10 +162,12 @@ namespace Wassup.Data.StatImport
             }
         }
 
-        private static void ReadNonDefault(object source, object dto, (FieldInfo dto, FieldInfo target)[] pairs)
+        private static void ReadNonDefault(object source, object dto, (FieldInfo dto, FieldInfo target)[] pairs,
+            Func<FieldInfo, bool> include = null)
         {
             foreach (var (d, t) in pairs)
             {
+                if (include != null && !include(t)) continue;
                 object v = t.GetValue(source);
                 if (!Equals(v, Activator.CreateInstance(t.FieldType))) d.SetValue(dto, v);
             }
@@ -250,7 +255,7 @@ namespace Wassup.Data.StatImport
 
         private sealed class Counters
         {
-            public int matched, unmatched, skipped, changedFields;
+            public int matched, unmatched, skipped, changedFields, ignoredCells;
         }
 
         /// <summary>
@@ -292,7 +297,8 @@ namespace Wassup.Data.StatImport
             }
 
             log.Insert(0, $"Skills/SkillOwners: matched {c.matched}, unmatched {c.unmatched}, skipped {c.skipped}, "
-                          + $"changed fields {c.changedFields}, assets {(apply ? "written" : "would write")} {(apply ? written : effectPlans.Count + ownerPlans.Count)}.\n");
+                          + $"changed fields {c.changedFields}, assets {(apply ? "written" : "would write")} {(apply ? written : effectPlans.Count + ownerPlans.Count)}, "
+                          + $"ignored cells {c.ignoredCells}.\n");
             return log.ToString();
         }
 
@@ -311,12 +317,27 @@ namespace Wassup.Data.StatImport
                 { c.unmatched++; log.AppendLine($"[Skills] no effect for effect_id='{id}' — not created (make the asset first)."); continue; }
                 c.matched++;
 
+                // skill-data-table unit 9 — 칸 규칙 = 그 줄의 **결과 종류**(이 줄이 kind 를 바꾸면 새 종류)가 쓰는 칸만. 안 쓰는 칸에 값이 오면
+                // **경고하고 무시**한다(쓰지 않는다 — 에셋의 그 칸은 그대로 · export 가 안 쓰는 칸을 안 내보내는 것과 대칭).
+                var kindAfter = row.kind ?? so.values.kind;
+                EffectSlots.UsedColumns(kindAfter, out var used);
                 object boxed = so.values;
                 foreach (var (d, t) in EffectPairs)
                 {
                     object v = d.GetValue(row);
-                    if (v != null) t.SetValue(boxed, v);
+                    if (v == null) continue;
+                    var col = EffectSlots.ColumnOfField(t.Name);
+                    if (col != EffectColumns.None && (used & col) == 0)
+                    {
+                        c.ignoredCells++;
+                        log.AppendLine($"[Skills] '{id}' {Column(typeof(SkillRowDto), d.Name)}={Show(v)} — kind {kindAfter} does not use this column; ignored.");
+                        continue;
+                    }
+                    t.SetValue(boxed, v);
                 }
+                string projectileRef = UsedRef(row.projectileId, used, EffectColumns.ProjectileId, "projectile_id", id, kindAfter, log, c);
+                string patternRef = UsedRef(row.patternId, used, EffectColumns.PatternId, "pattern_id", id, kindAfter, log, c);
+                string hazardRef = UsedRef(row.hazardId, used, EffectColumns.HazardId, "hazard_id", id, kindAfter, log, c);
                 var plan = new EffectPlan
                 {
                     So = so,
@@ -326,9 +347,9 @@ namespace Wassup.Data.StatImport
                     Pattern = so.pattern,
                     Hazard = so.hazard,
                 };
-                if (!Resolve(row.projectileId, index.Projectiles, ref plan.Projectile, "projectile_id", id, log)
-                    | !Resolve(row.patternId, index.Patterns, ref plan.Pattern, "pattern_id", id, log)
-                    | !Resolve(row.hazardId, index.Hazards, ref plan.Hazard, "hazard_id", id, log))
+                if (!Resolve(projectileRef, index.Projectiles, ref plan.Projectile, "projectile_id", id, log)
+                    | !Resolve(patternRef, index.Patterns, ref plan.Pattern, "pattern_id", id, log)
+                    | !Resolve(hazardRef, index.Hazards, ref plan.Hazard, "hazard_id", id, log))
                 { c.skipped++; continue; }
 
                 int before = diff.Count;
@@ -343,6 +364,16 @@ namespace Wassup.Data.StatImport
                 plans.Add(plan);
             }
             return plans;
+        }
+
+        // unit 9 — 종류가 안 쓰는 참조 칸 = 경고하고 무시(null = 그대로).
+        private static string UsedRef(string refId, EffectColumns used, EffectColumns col, string column, string id,
+            EffectKind kind, StringBuilder log, Counters c)
+        {
+            if (string.IsNullOrEmpty(refId) || (used & col) != 0) return refId;
+            c.ignoredCells++;
+            log.AppendLine($"[Skills] '{id}' {column}='{refId}' — kind {kind} does not use this column; ignored.");
+            return null;
         }
 
         // 빈 칸 = 그대로. 모르는 id = 그 줄을 통째로 건너뛴다(반쯤 쓰인 효과를 남기지 않는다).
