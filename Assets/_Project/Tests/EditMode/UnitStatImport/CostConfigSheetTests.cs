@@ -31,7 +31,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             // 시트에서 maxCost/regenPerSec 만 채운 행 — 나머지 열은 빈 셀(키 생략).
             string log = CostConfigRuntimeRefresher.ApplyBody(
-                new SheetFetcher.Result(Body(@"{ ""id"": ""cost_default"", ""maxCost"": 20, ""regenPerSec"": 0.75 }"), null),
+                new SheetFetcher.Result(Body(@"{ ""id"": ""cost_default"", ""max_cost"": 20, ""regen_per_sec"": 0.75 }"), null),
                 config);
 
             Assert.AreEqual(20, config.maxCost, "채운 셀은 반영된다");
@@ -49,7 +49,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var config = NewConfig("cost_default");
 
             string log = CostConfigRuntimeRefresher.ApplyBody(
-                new SheetFetcher.Result(Body(@"{ ""id"": ""ghost"", ""maxCost"": 99 }"), null), config);
+                new SheetFetcher.Result(Body(@"{ ""id"": ""ghost"", ""max_cost"": 99 }"), null), config);
 
             Assert.AreEqual(10, config.maxCost, "매칭되지 않은 시트 행은 SO 를 건드리지 않는다");
             StringAssert.Contains("no match for id='ghost'", log);
@@ -64,7 +64,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             string log = CostConfigRuntimeRefresher.ApplyBody(
                 new SheetFetcher.Result(Body(
-                    @"{ ""id"": ""cost_default"", ""maxCost"": 20 }, { ""id"": ""cost_default"", ""maxCost"": 99 }"), null),
+                    @"{ ""id"": ""cost_default"", ""max_cost"": 20 }, { ""id"": ""cost_default"", ""max_cost"": 99 }"), null),
                 config);
 
             Assert.AreEqual(20, config.maxCost, "같은 키가 두 행이면 첫 행만 적용된다");
@@ -79,7 +79,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var config = NewConfig("");
 
             string log = CostConfigRuntimeRefresher.ApplyBody(
-                new SheetFetcher.Result(Body(@"{ ""id"": ""cost_default"", ""maxCost"": 99 }"), null), config);
+                new SheetFetcher.Result(Body(@"{ ""id"": ""cost_default"", ""max_cost"": 99 }"), null), config);
 
             Assert.AreEqual(10, config.maxCost, "id 가 비면 어떤 행과도 매칭되지 않는다");
             StringAssert.Contains("id 가 비어", log);
@@ -105,7 +105,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void ApplyBody_NullConfig_ReportsAndDoesNotThrow()
         {
             string log = CostConfigRuntimeRefresher.ApplyBody(
-                new SheetFetcher.Result(Body(@"{ ""id"": ""cost_default"", ""maxCost"": 99 }"), null), null);
+                new SheetFetcher.Result(Body(@"{ ""id"": ""cost_default"", ""max_cost"": 99 }"), null), null);
 
             StringAssert.Contains("config 미할당", log);
         }

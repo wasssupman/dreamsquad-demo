@@ -111,7 +111,7 @@ namespace Wassup.Data.StatImport
         public static void WarnDeprecatedAttackDamage(float? attackDamage, string label, StringBuilder log)
         {
             if (attackDamage == null) return;
-            log.AppendLine($"[{label}] 'attackDamage' is deprecated (renamed to 'atk') and was NOT applied — update the sheet column.");
+            log.AppendLine($"[{label}] 'attack_damage' is deprecated (renamed to 'atk') and was NOT applied — update the sheet column.");
         }
 
         private static int CountOfKind(AttackOutput[] outputs, AttackOutputKind kind)

@@ -36,7 +36,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMask_CombinesFlagsFromArray()
         {
             const string json = @"{ ""defenders"": [], ""enemies"": [
-                { ""id"": ""basic"", ""targetClassMask"": [""Ranger"", ""Guardian""] }
+                { ""id"": ""basic"", ""target_class_mask"": [""Ranger"", ""Guardian""] }
             ] }";
 
             var payload = JsonConvert.DeserializeObject<UnitStatImportPayload>(json);
@@ -48,7 +48,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskEverything_ParsesAsEverythingSentinel()
         {
             const string json = @"{ ""defenders"": [], ""enemies"": [
-                { ""id"": ""basic"", ""targetClassMask"": [""Everything""] }
+                { ""id"": ""basic"", ""target_class_mask"": [""Everything""] }
             ] }";
 
             var payload = JsonConvert.DeserializeObject<UnitStatImportPayload>(json);
@@ -60,7 +60,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskEmptyArray_ParsesAsNone()
         {
             const string json = @"{ ""defenders"": [], ""enemies"": [
-                { ""id"": ""basic"", ""targetClassMask"": [] }
+                { ""id"": ""basic"", ""target_class_mask"": [] }
             ] }";
 
             var payload = JsonConvert.DeserializeObject<UnitStatImportPayload>(json);
@@ -72,7 +72,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskMixesEverythingWithOthers_Throws()
         {
             const string json = @"{ ""defenders"": [], ""enemies"": [
-                { ""id"": ""basic"", ""targetClassMask"": [""Everything"", ""Ranger""] }
+                { ""id"": ""basic"", ""target_class_mask"": [""Everything"", ""Ranger""] }
             ] }";
 
             Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<UnitStatImportPayload>(json));
@@ -84,7 +84,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskLowercaseNames_Accepted()
         {
             const string json = @"{ ""defenders"": [], ""enemies"": [
-                { ""id"": ""basic"", ""targetClassMask"": [""ranger"", ""guardian""] }
+                { ""id"": ""basic"", ""target_class_mask"": [""ranger"", ""guardian""] }
             ] }";
 
             var payload = JsonConvert.DeserializeObject<UnitStatImportPayload>(json);
@@ -96,7 +96,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskUnknownName_Throws()
         {
             const string json = @"{ ""defenders"": [], ""enemies"": [
-                { ""id"": ""basic"", ""targetClassMask"": [""Rangr""] }
+                { ""id"": ""basic"", ""target_class_mask"": [""Rangr""] }
             ] }";
 
             Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<UnitStatImportPayload>(json));
@@ -338,7 +338,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             UnitStatApplier.WarnDeprecatedAttackDamage(25f, "defender 'archer'", log);
 
-            StringAssert.Contains("attackDamage", log.ToString());
+            StringAssert.Contains("attack_damage", log.ToString());
             StringAssert.Contains("NOT applied", log.ToString());
         }
 
@@ -420,7 +420,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskCommaString_CombinesFlags()
         {
             var dto = JsonConvert.DeserializeObject<EnemyStatDto>(
-                @"{ ""id"": ""basic"", ""targetClassMask"": ""Ranger, guardian"" }");
+                @"{ ""id"": ""basic"", ""target_class_mask"": ""Ranger, guardian"" }");
 
             Assert.AreEqual(DefenderClassFlags.Ranger | DefenderClassFlags.Guardian, dto.targetClassMask);
         }
@@ -429,7 +429,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskStringEverything_ParsesAsEverything()
         {
             var dto = JsonConvert.DeserializeObject<EnemyStatDto>(
-                @"{ ""id"": ""basic"", ""targetClassMask"": ""Everything"" }");
+                @"{ ""id"": ""basic"", ""target_class_mask"": ""Everything"" }");
 
             Assert.AreEqual(DefenderClassFlags.Everything, dto.targetClassMask);
         }
@@ -438,7 +438,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskStringNone_ParsesAsNone()
         {
             var dto = JsonConvert.DeserializeObject<EnemyStatDto>(
-                @"{ ""id"": ""basic"", ""targetClassMask"": ""None"" }");
+                @"{ ""id"": ""basic"", ""target_class_mask"": ""None"" }");
 
             Assert.AreEqual(DefenderClassFlags.None, dto.targetClassMask);
         }
@@ -447,7 +447,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskBlankString_ParsesAsNullKeepExisting()
         {
             var dto = JsonConvert.DeserializeObject<EnemyStatDto>(
-                @"{ ""id"": ""basic"", ""targetClassMask"": ""  "" }");
+                @"{ ""id"": ""basic"", ""target_class_mask"": ""  "" }");
 
             Assert.IsNull(dto.targetClassMask, "blank mask cell must mean keep-existing, not None");
         }
@@ -456,9 +456,9 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_TargetClassMaskStringSentinelMixed_Throws()
         {
             Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<EnemyStatDto>(
-                @"{ ""id"": ""basic"", ""targetClassMask"": ""Everything,Ranger"" }"));
+                @"{ ""id"": ""basic"", ""target_class_mask"": ""Everything,Ranger"" }"));
             Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<EnemyStatDto>(
-                @"{ ""id"": ""basic"", ""targetClassMask"": ""None,Ranger"" }"));
+                @"{ ""id"": ""basic"", ""target_class_mask"": ""None,Ranger"" }"));
         }
 
         [Test]
@@ -539,7 +539,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             StringAssert.Contains("\"id\": \"caster\"", json);
             StringAssert.DoesNotContain("atk", json);
-            StringAssert.DoesNotContain("attackDamage", json);
+            StringAssert.DoesNotContain("attack_damage", json);
         }
 
         [Test]
@@ -563,9 +563,9 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             string none = JsonConvert.SerializeObject(
                 new EnemyStatDto { id = "x", targetClassMask = DefenderClassFlags.None });
 
-            StringAssert.Contains("\"targetClassMask\":\"Ranger,Guardian\"", partial);
-            StringAssert.Contains("\"targetClassMask\":\"Everything\"", everything);
-            StringAssert.Contains("\"targetClassMask\":\"None\"", none);
+            StringAssert.Contains("\"target_class_mask\":\"Ranger,Guardian\"", partial);
+            StringAssert.Contains("\"target_class_mask\":\"Everything\"", everything);
+            StringAssert.Contains("\"target_class_mask\":\"None\"", none);
         }
 
         [Test]
