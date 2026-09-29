@@ -29,3 +29,10 @@ unit 0 의 표 구조로 시트 export/import 를 새로 만든다. 기존 `DcSh
 - push 는 업서트(고아 행 안 지움) — `SkillOwners` 에서 줄을 빼도 시트에 옛 줄이 남으면 다음 import 가 되살린다(`DcCardEffects` 와 같은 성질).
 - export 는 기본값이 아닌 칸을 전부 쓴다 — 종류가 안 쓰는 칸(예: 광역 피해 효과의 `cc_kind`)도 값이 있으면 보인다. 「안 쓰는 칸 경고」(`tables.md` §2 검증)는 미구현.
 - `DcSkills` 의 수치 칸(range · magnitude · durationSec · cooldownSec · warningSec)은 이제 **문안만** 움직인다(굽기 = `Skills` 의 액티브 효과 줄 + 카드 `cooldownSec`) — 두 곳을 고쳐야 같은 값이 된다(U18 분리 spec 후보).
+
+## 실제 시트 설정 (사용자 몫 · 에이전트는 시트에 쓰지 않았다)
+1. 탭 `Skills` 1행 헤더: `effect_id, kind, kind_ko, deprecated, magnitude_mode, basis_stat, ratio, damage, shield, percent, mul, count, radius_tiles, range_tiles, duration_sec, flight_sec, tick_sec, stack_cap, speed, cone_half_deg, density_radius_tiles, landing_ring_tiles, cc_kind, stack_kind, buff_stat, shield_filter, includes_self, telegraph, projectile_id, pattern_id, hazard_id`
+2. 탭 `SkillOwners` 1행 헤더: `owner_kind, owner_id, slot, trigger, period, period_sec, fraction, subject, gate, gate_subject, gate_value, fire_cap, effect_id`
+3. 서버: GET `/demo/google/sheet/{Skills|SkillOwners}` 확인 · Apps Script push 업서트 키 = Skills `effect_id` · SkillOwners (`owner_kind`, `owner_id`, `slot`).
+4. 초기 데이터는 **에디터 export**(「Export Dreamcatcher → 시트 페이로드」)로 — 탭이 생기면 로그인 자동 import 가 적용하므로 손으로 친 값은 에셋을 덮는다.
+5. `DcMechanics` 탭은 더 읽지 않는다(보관·삭제 자유). 탭이 생기기 전엔 두 탭 fetch 가 실패로 보고되고 아무것도 바뀌지 않는다.
