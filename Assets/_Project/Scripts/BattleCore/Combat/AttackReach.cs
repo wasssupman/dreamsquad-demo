@@ -62,6 +62,10 @@ namespace Wassup.BattleCore.Combat
                    tgtCell.x - atkCell.x, tgtCell.y - atkCell.y,
                    tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
 
+        // «같은 자리» 임계(월드 거리²). 0.01 월드 유닛 = 타일 1개 기준 1% — 셀 판정을 흔들지 않으면서 방향 계산이
+        // 의미를 잃는 구간만 잡는다. (옛 `Wassup.Skills.SkillCone` 에 있던 값 — 소비처가 여기 하나라 옮겼다.)
+        private const float SameSpotEpsSq = 1e-4f;
+
         // **부가 타격 전용 진입점.** 원 항(위와 같은 본체) AND 도형 항.
         // `dirToPrimary` = 공격자 → 주 대상 XZ 벡터(정규화 불필요 — 방향만 쓴다).
         //
@@ -81,7 +85,7 @@ namespace Wassup.BattleCore.Combat
                 return false;
             if (shape.kind == AttackShapeBaked.OmniKind) return true;
             float len2 = math.lengthsq(dirToPrimary);
-            if (len2 <= Wassup.Skills.SkillCone.SameSpotEpsSq) return true;
+            if (len2 <= SameSpotEpsSq) return true;
             float2 u = dirToPrimary * math.rsqrt(len2);
             float along = u.x * dx + u.y * dz;        // 주 대상 방향 성분
             float across = u.x * dz - u.y * dx;       // 그 수직 성분(부호는 게이트가 접는다)
