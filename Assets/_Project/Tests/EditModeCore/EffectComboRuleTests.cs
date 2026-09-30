@@ -154,7 +154,9 @@ namespace Wassup.Tests.EditMode.Core
                 var baseV = EffectComboRule.Check(in c);
 
                 // skill-data-table unit 8 — 상시 효과(트리거 없음 × 자기)는 「보유 시작 순간」 배선이 숙주 사실(부착 · 진영)을 본다(⓪' · 배선 전).
-                bool alwaysOnSeam = t == TriggerKind.None && s == BindingSubject.Self && SkillRouting.IsAlwaysOn(p);
+                // 감사 — 부착 즉시 전용 효과(⓪'')도 같은 자리: 타고난 숙주 = 배선 전 · 카드 = 부착 순간.
+                bool alwaysOnSeam = t == TriggerKind.None && s == BindingSubject.Self
+                                    && (SkillRouting.IsAlwaysOn(p) || SkillRouting.OnlyValidWithNoTrigger(p) || p == EffectKind.PlacementAura);
                 var late = c; late.BindsAfterPlacement = true;
                 if (EffectComboRule.Check(in late) != baseV)
                     Assert.IsTrue((t == TriggerKind.OnPlace && s == BindingSubject.Self) || alwaysOnSeam, $"부착 시점이 {t}×{s}×{p} 를 갈랐다");
@@ -239,6 +241,21 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(ComboVerdict.Allowed, EffectComboRule.Check(Enemy(TriggerKind.AttackN, EffectKind.HeavyStrike)));
             Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Attached(TriggerKind.None, EffectKind.SelfStatBuff)));
             StringAssert.StartsWith("배선 전", EffectComboRule.Describe(ComboVerdict.NotWired));
+        }
+
+        // skill-data-table 감사 — 부착 즉시 전용 효과(트리거 없음 = 부착 순간)를 방어유닛 · 적이 **직접** 들면 「영영 안 터짐」이 아니라 배선 전이다.
+        [Test]
+        public void 부착_즉시_전용_효과를_타고난_숙주가_들면_배선_전이다()
+        {
+            foreach (var k in new[] { EffectKind.SelfBuffLethal, EffectKind.DreamCocoon, EffectKind.BountyMark, EffectKind.PlacementAura })
+            {
+                Assert.AreEqual(ComboVerdict.NotWired, EffectComboRule.Check(Innate(TriggerKind.None, k)), k + " × 방어유닛이 직접 든다");
+                Assert.AreEqual(ComboVerdict.NotWired, EffectComboRule.Check(Enemy(TriggerKind.None, k)), k + " × 적이 직접 든다");
+                // 사건 트리거에 매달면 여전히 「그 원점 형을 못 받는다」(④) — 배선 전이 아니다.
+                Assert.AreNotEqual(ComboVerdict.NotWired, EffectComboRule.Check(Innate(TriggerKind.AttackN, k)), k + " × 사건");
+            }
+            // 사건이 없는 다른 효과 × 트리거 없음은 그대로 「영영 안 터짐」.
+            Assert.AreEqual(ComboVerdict.NeverFires, EffectComboRule.Check(Innate(TriggerKind.None, EffectKind.SelfStatBuff)));
         }
     }
 }

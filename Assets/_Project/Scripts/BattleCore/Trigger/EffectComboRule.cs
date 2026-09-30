@@ -85,6 +85,11 @@ namespace Wassup.BattleCore.Trigger
                 if (c.HostIsEnemy || !c.BindsAfterPlacement) return ComboVerdict.NotWired;
                 return c.Magnitude == MagnitudeMode.OwnerStatRatio ? ComboVerdict.NoRatioField : ComboVerdict.Allowed;
             }
+            // ⓪'' 부착 즉시 전용 효과(자기 버프 후 사망 · 꿈 고치 · 현상금 표식 · 배치 오라 — 트리거 없음 = **부착 순간**) × 타고난 숙주(방어유닛 ·
+            //     적이 직접 든다 — 부착이 없다) = 배선 전(설계 거절이 아니다 · 「보유 시작 순간」 배선은 unit 7 후속). 숙주 사실만 본다(⓪' 와 같다).
+            if (c.Trigger == TriggerKind.None && c.Subject == BindingSubject.Self && !c.BindsAfterPlacement
+                && (SkillRouting.OnlyValidWithNoTrigger(c.Payload) || c.Payload == EffectKind.PlacementAura))
+                return ComboVerdict.NotWired;
             // ① 그 숙주에게 그 사건이 없다(적 × 배치·퇴근 · 트리거 없음) — 감지자 표가 정본이다.
             //    ⚠ 주체 `Any` 의 사건 주인은 숙주가 아니라 **남**(배치된 방어유닛)이다 — 숙주 종류로 감지자를 묻지 않는다
             //    (skill-data-table unit 2 — 적 숙주의 「남의 배치」를 영영 안 터진다고 오판하던 결함. 코어는 터진다).
@@ -123,7 +128,7 @@ namespace Wassup.BattleCore.Trigger
                 case ComboVerdict.NeverFires: return "붙는 순간 이미 지난 자기 사건이거나 사건이 없다(영영 안 터짐)";
                 case ComboVerdict.NoRatioBasis: return "비율 기준이 없다(주인 없는 시전)";
                 case ComboVerdict.NoRatioField: return "그 효과에는 비율 칸이 없다(피해 · 실드량만)";
-                case ComboVerdict.NotWired: return "배선 전 — 상시 효과는 방어유닛에 붙는 카드만 배선됐다(방어유닛 · 적 소유는 unit 7 후속)";
+                case ComboVerdict.NotWired: return "배선 전 — 트리거 없음(보유 시작 순간) 효과는 카드 부착에만 배선됐다(방어유닛 · 적이 직접 들면 unit 7 후속)";
                 default: return "허용";
             }
         }
