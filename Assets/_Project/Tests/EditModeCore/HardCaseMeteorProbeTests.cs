@@ -18,10 +18,11 @@ namespace Wassup.Tests.EditMode.Core
     //   (`AttackN(1) × ProjectileToTarget` → `TargetProjectileSkill` · 탄 줄 = 같은 운석).
     //
     // 정의표는 코어 API 로 손조립한다(빌더 없음). 저작 경로(`SkillData` · `DcMechanic` → 빌더)는 Unity 층이라
-    // 헤드리스에서 돌지 않는다 — 막히는 지점은 `현행_저작_…` 테스트가 **빌더가 만들 수 있는 모양**을 손으로 재현해 박제한다.
+    // 헤드리스에서 돌지 않는다 — **빌더가 만들 수 있는 모양**은 `저작_가능한_타격_운석…` 테스트가 손으로 재현해 박제한다
+    // (`SkyFallOnTarget` = 대상 낙하 · 단일 비산 — 자리 운석과 형이 다르다 · 비산은 같은 자리형 자 `SkillMath.ReachFromImpact`).
     //
     // ⚠ 초록 = 「현 구조가 그 문장을 만족한다」. `[Ignore]` = 「현 구조로는 그 문장이 성립하지 않는다」(사유에 파일:줄).
-    // `현행_` = 지금 동작의 박제 — 코어가 고쳐지면 빨개지는 것이 정상이고, 그때 짝 `[Ignore]` 를 푼다.
+    // (탐침 당시의 `현행_` 박제와 짝 `[Ignore]` 는 unified-effect-layer 에서 풀리거나 지워졌다 — 남은 단언은 현 계약이다.)
     //
     // ⚠ 여기 수치는 게임 값이 아니라 픽스처다.
     //
@@ -407,7 +408,7 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
-        public void 현행_저작_가능한_타격_운석은_대상_낙하_단일_비산이라_착탄_해석과_그림이_갈린다()
+        public void 저작_가능한_타격_운석은_대상_낙하_단일_비산이라_자리_운석과_형이_다르고_비산_자는_같다()
         {
             // (탐침 당시) 빌더는 `ProjectileToTarget` 의 셀 바인딩 탄(SkyFall)을 거절했다 — unit 5 가 풀었다(`EffectComboRule`).
             // 받아 주는 운석형 궤적은 `SkyFallOnTarget` 하나 → (SkyFallOnEntity, SingleSplash)(`CombatDefinitionBuilder.cs:417-418`)

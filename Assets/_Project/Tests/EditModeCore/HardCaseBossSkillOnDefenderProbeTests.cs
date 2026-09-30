@@ -386,7 +386,7 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
-        [Ignore("사용자 결정 필요 — 방어유닛이 «배치할 수 없는 칸»(적 길)에 착지해도 되나. 현행 착지 탐색은 **적 길 흐름장**"
+        [Ignore("시기상조 — 사용자 결정 2026-09-28(방어유닛 자리 이동은 범위 밖). 방어유닛이 «배치할 수 없는 칸»(적 길)에 착지해도 되나. 현행 착지 탐색은 **적 길 흐름장**"
               + "(`CoreSkillContext.cs:224-230` · `TraversalSlots.DefaultMask = Path` `TraversalSlots.cs:16`)만 보고 배치 마스크를 안 본다 — "
               + "그래서 지상 방어유닛의 배치 구역(`MapTile.Place` = 경로 층 없음)에는 **절대** 안 내리고 언제나 길에 내린다.")]
         public void 방어유닛은_배치_불가_칸에_착지하지_않는다()
