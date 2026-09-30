@@ -15,7 +15,7 @@ WHAT
       2. torch/transformers 불필요 → 튜닝 반복이 싸다.
       3. 툴 bake 3종 + 사용자 제공 1종을 균일하게 다룰 수 있다.
 
-왜 힌지 분리가 핵심인가 (docs/spec/cutscene-depth-layering/0_remap_contract.md)
+왜 힌지 분리가 핵심인가
     셰이더의 UV 오프셋은 depth 에 선형이다:
         UvOffset = tilt * (depth - depthCenter) * amplitude * depthSign
     depthCenter(0.5)는 DepthParallaxSettings 의 **전역** 값이라 유닛별로 못 바꾼다. 따라서

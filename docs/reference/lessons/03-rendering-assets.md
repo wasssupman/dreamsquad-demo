@@ -4,7 +4,7 @@ Spine, 타일맵 렌더, 프랍/VFX authoring, 카메라에서 겪은 함정.
 
 ## Spine 런타임은 4.2 고정 — export 는 Spine Editor 4.2.xx 만
 
-spine-unity 런타임은 **4.2 고정**(2026-07-07 업그레이드, `Assets/Spine/package.json` = 4.2.120, spec: `docs/spec/spine-runtime-4-2-upgrade/`). 스켈레톤 데이터는 **major.minor 가 일치하는 런타임에서만 로드**된다 — 4.2 export ↔ 4.2.xx 런타임만 성립, 패치 버전만 상호 호환. 다른 버전 런타임 임포트로 덮어쓰지 말 것.
+spine-unity 런타임은 **4.2 고정**(2026-07-07 업그레이드, `Assets/Spine/package.json` = 4.2.120). 스켈레톤 데이터는 **major.minor 가 일치하는 런타임에서만 로드**된다 — 4.2 export ↔ 4.2.xx 런타임만 성립, 패치 버전만 상호 호환. 다른 버전 런타임 임포트로 덮어쓰지 말 것.
 
 - 3.8 시절 리소스(player-main·몬스터1·BellKnight 등)는 원본 `.spine` 부재로 재-export 불가라 **전량 퇴역**했다(커밋 b758aa29). 신규 리소스는 반드시 원본 `.spine` 을 함께 보존한다 — 그래야 향후 4.3+ 업그레이드가 재제작이 아닌 재-export 로 끝난다.
 - **잘못 임포트 시 복구**(3.8 시절 검증, 동일 원리): `git checkout HEAD -- Assets/Spine "Assets/Spine Examples"` → `git clean -nfd`(dry-run 범위 확인) → `-fd` → stale CS2001 남으면 `AssetDatabase.Refresh(ForceUpdate)` + asmdef `ImportAsset(ForceUpdate)` + `CompilationPipeline.RequestScriptCompilation()`.
@@ -12,7 +12,7 @@ spine-unity 런타임은 **4.2 고정**(2026-07-07 업그레이드, `Assets/Spin
 
 ## Spine 4.2 신규 리소스 수급 규약
 
-신규 스켈레톤을 제작/외주/구매로 들일 때의 체크리스트 (spec: `docs/spec/spine-runtime-4-2-upgrade/3_new_asset_conventions.md`):
+신규 스켈레톤을 제작/외주/구매로 들일 때의 체크리스트:
 
 1. **Export**: Spine Editor **4.2.xx** 만. 바이너리(`.skel`) 권장, JSON 은 디버깅용. major.minor 불일치 데이터는 로드 불가.
 2. **원본 `.spine` 보존(필수)**: `art/spine/{SkeletonName}.spine` 으로 repo 에 커밋. 외주/구매 시 원본 포함을 계약 조건에 넣는다. 3.8 리소스 전량 폐기의 근본 원인이 원본 부재.

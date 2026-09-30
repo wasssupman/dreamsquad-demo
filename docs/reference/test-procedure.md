@@ -1,7 +1,6 @@
 # 테스트 실행·작성 절차
 
-> 무엇을 언제 돌리고, 새 테스트를 어디에 둘지. 왜 이 구조인지의 진단과 이력은
-> [`docs/spec/test-suite-fast-lane/`](../spec/test-suite-fast-lane/README.md).
+> 무엇을 언제 돌리고, 새 테스트를 어디에 둘지.
 
 ## 다섯 개의 어셈블리
 
@@ -59,10 +58,9 @@
 
 **EditMode lane 의 빨강은 회귀로 취급한다.** 알려진 선행 실패가 있으면 그 작업 단위의 완료 기준에 개수와 함께 적혀 있다(예: `battle-core-rebuild` unit 9 완료 기준의 「선행 2」) — 거기 없는 빨강은 회귀다.
 
-PlayMode 에는 분류된 사전 실패가 남아 있다 — 목록과 각각의 원인·다음 행동은
-[`docs/spec/README.md`](../spec/README.md) 의 «PlayMode 사전 실패» 절이 정본이다.
-여기에 복제하지 않는다(두 곳에 적으면 갈라진다). 실패를 만나면 먼저 그 절에
-있는지 확인하고, 없으면 내 변경이 만든 회귀로 취급한다.
+PlayMode 도 같다 — 알려진 선행 실패는 가장 최근 spec 인계의 검증 줄에 개수와 함께 적힌다
+(2026-09-30 `skill-data-table/10_handoff_summary.md` = EditMode 선행 3 · PlayMode Core 97/97).
+여기에 복제하지 않는다(두 곳에 적으면 갈라진다). 거기 없는 빨강은 내 변경이 만든 회귀로 취급한다.
 
 ## 새 테스트를 어느 lane 에 두나
 
@@ -107,4 +105,3 @@ atk→`outputs[].magnitude` · attackCooldown · cost · DC 의 percent·magnitu
 ## 관련 문서
 
 - [`lessons/01-unity-mcp-operation.md`](lessons/01-unity-mcp-operation.md) — `run_tests` MCP 운용 함정
-- [`docs/spec/test-suite-fast-lane/`](../spec/test-suite-fast-lane/README.md) — 이 구조를 만든 진단과 작업 이력

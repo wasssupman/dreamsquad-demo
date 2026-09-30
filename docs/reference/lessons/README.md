@@ -4,7 +4,7 @@
 
 여기는 Demo 저장소를 안전하게 운영한 경험의 진실원이다. 현재 Demo 작업에서는 이 교훈을 활성 spec과 함께 사용하며, dormant production-transition 자료로 역해석하거나 설계를 바꾸지 않는다.
 
-> 출처: 개인 auto-memory 에 쌓였던 지식의 승격본 (spec `docs/spec/workflow-reproducibility/` unit 1). 개인 auto-memory 는 경로별로 분절돼 팀·재클론 간 공유되지 않으므로 레포로 승격했다.
+> 출처: 개인 auto-memory 에 쌓였던 지식의 승격본. 개인 auto-memory 는 경로별로 분절돼 팀·재클론 간 공유되지 않으므로 레포로 승격했다.
 
 | 파일 | 주제 |
 |---|---|

@@ -3,7 +3,6 @@
 > 디오라마 스테이지(`MapStage` 프리팹)를 직접 만들 때의 규칙 요약. bake 단계는 없다 —
 > **프리팹이 곧 맵 정본이자 비주얼**이고, 배틀 진입 시 `MapStageScanner` → `DioramaMapBuilder` 가
 > 프랍 위치를 셀로 양자화해 논리 맵(`GeneratedMap`)을 그 자리에서 파생한다.
-> 설계 이력은 `docs/spec/map-diorama-stage/` (계약 목록은 README).
 
 ## 구성 요소
 

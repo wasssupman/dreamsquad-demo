@@ -7,8 +7,6 @@
 > **이 문서는 현행 라이브 모드 `KillScoreTimed`(`Data/Modes/MatchMode_KillScore3Min.asset`) 기준이다.**
 > 점수·승패 표기는 매치 모드의 목표가 정한다 — `WaveClear`·`TimeAttack` 은 마음이 부서지면 «패배»이고
 > `TimeAttack` 은 점수가 경과 시간이다(`docs/spec/battle-core-rebuild/match-mode-design.md` 사용자 판정 2).
-> 상세 설계·결정 이력은 `docs/spec/three-minute-kill-race/`(현행) ·
-> `docs/spec/three-minute-survival/`(직전) · `docs/spec/battle-score-formula/`(구 3축).
 
 ## 한 줄 요약
 
@@ -64,7 +62,6 @@
 - **맵에 방어 본능이 살아 있는 동안 마음은 표적이 되지 않는다.** 마지막 본능이 무너져야
   마음이 깎이기 시작한다(`CoreShielded`). 라이브에서 본능이 저작된 맵은 Isle·Ford·Duel.
 - 최대치는 `Deck_*.asset` → `goalStabilityMax`(현재 **1500**). 정본은 마음 담당자 `HeartMeter`(`Scripts/BattleCore/Owners/HeartMeter.cs`)의 체력.
-- 설계는 `docs/spec/heart-stress-axis/` · 공성 이력은 `docs/spec/goal-tower-siege/`.
 
 ## 서버에 보내는 수 = 화면에 보이는 수
 
@@ -109,7 +106,7 @@
 | 마음 최대치 = 스트레스 분모 | `Scripts/Data/Decks/Deck_*.asset` → `goalStabilityMax` (라이브 1500) |
 | 처치 시 마음 회복 배율 | 같은 파일 → `killHealPerAwakening` (라이브 10) |
 | 제한시간 180초 | `Data/Modes/MatchMode_KillScore3Min.asset` → `durationSec` (판 길이는 모드 단독 — 덱의 `timerDurationSec` 는 판 길이에 안 쓰인다) |
-| 제출 개방 시점(P1) | 같은 모드 자산 → `submitUnlockSec`(경과 60초) — 설계 `docs/spec/three-minute-kill-race/3_player_submit.md` |
+| 제출 개방 시점(P1) | 같은 모드 자산 → `submitUnlockSec`(경과 60초) |
 
 ## 전투 중 화면 위 점수
 

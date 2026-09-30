@@ -10,7 +10,7 @@
 
 ## 시간 제어는 TimeManager 만 — `Time.timeScale` 금지
 
-시간 스케일 제어는 `Wassup.Core.TimeControl.TimeManager`(의도된 예외 싱글턴, TRD §5.2, 커밋 c2fe03d, spec `docs/spec/time-manager/`)만 담당. 코드에서 `Time.timeScale` 은 **절대 write 안 함(항상 1)**.
+시간 스케일 제어는 `Wassup.Core.TimeControl.TimeManager`(의도된 예외 싱글턴 — `CLAUDE.md` 「추가 제약」)만 담당. 코드에서 `Time.timeScale` 은 **절대 write 안 함(항상 1)**.
 
 - **Why**: 글로벌 `Time.timeScale` 은 너무 blunt — 전투만 멈추고 UI·드래그·카메라는 실시간으로 두려면 도메인 분리 필요.
 - **사용**: 정지 = `TimeManager.Instance.Request(TimeDomain.Battle, 0f, priority:100)`, 슬로우 = `Request(Battle, 0.2f)`. 반환 `TimeLease` 를 보관 후 Dispose(멱등)로 해제.
@@ -39,8 +39,7 @@
 테스트가 아니라 프로덕션 변경이 원인이다. 그 다음 콘솔에서 **첫 예외**(여기서는 InvalidOperationException
 이 아니라 그 앞의 MissingReferenceException)를 찾는다 — 뒤에 쏟아지는 것은 전부 파생이다.
 
-**출처**: defender-clock-out 코드리뷰 반영 중 실측(2026-08-15). 상세는
-`docs/spec/defender-clock-out/4_handoff_summary.md`.
+**출처**: defender-clock-out 코드리뷰 반영 중 실측(2026-08-15).
 
 ## Bursted ISystem 에서 순수 함수를 부를 때 — 함정 둘
 

@@ -16,10 +16,9 @@
 
 ## 작업 방식 전환 이력
 
-- **Phase 0~10 (프로토타이핑)**: `Phase N → 검증 → 다음 Phase` 순서 워크플로우. 관련 문서 (`PHASE*.md`, `phase*-prep.md`, `phase*-decisions.md`, `residual-issues.md`) 는 모두 `docs/prototype/` 로 보존.
+- **Phase 0~10 (프로토타이핑)**: `Phase N → 검증 → 다음 Phase` 순서 워크플로우.
 - **현재**: spec-driven. `docs/spec/{feature-slug}/` 에 feature 단위 분산 스펙을 작성하고 파일번호 순서로 구현/커밋한다. Phase 개념은 더 이상 쓰지 않는다.
-
-프로토타이핑 이력이 필요하면 `docs/prototype/PHASE{0..10}.md` 참조.
+- **spec 초기화 (2026-10-01 사용자 결정)**: 전투 코어 이전 spec 312개 · `docs/plans/` · `docs/prototype/` 를 지웠다. **현재 설계가 시작점이다** — 이 파일 · `docs/reference/` · 남긴 spec 3개(`battle-core-rebuild` · `unified-effect-layer` · `skill-data-table`) 위에 다음 spec 을 쌓는다. 옛 문서는 평소 읽지 않는다. 꼭 필요하면 태그 `archive/pre-spec-reset` 에서 꺼낸다(`git show archive/pre-spec-reset:docs/spec/<slug>/README.md`). 남은 문서 안의 옛 spec 이름·경로도 그 태그 기준이다.
 
 ## 기술 스택
 
@@ -116,7 +115,7 @@
 - **MonoBehaviour 에 전투 로직 직접 작성 금지**(전투는 전투 코어에서만). UI 는 코어 읽기 모델·사건만 읽고, 바꿀 것은 커맨드로 보낸다. "나중을 위한" 확장 포인트 · enum+switch 떡칠 금지.
 - **패키지/API**: 런타임 코드에 에디터 전용 API 금지 · DOTween/Zenject 등 범용 라이브러리는 근거 없으면 금지.
 - **`Shader.Find(...) + new Material(shader)` 금지** — 모바일 shader stripping 으로 null 이 돌아와 렌더가 깨진다. 런타임 Material 은 `Wassup.Rendering.RuntimeMaterialFactory.CreateOpaque / CreateTransparent` 경유(`Assets/Resources/RuntimeMaterials/*.mat` always-included). 새 런타임 shader 는 `Assets/_Project/Shaders/` 명시 추가 + Resources 머티리얼 등록.
-- **Manager 싱글톤의 의도된 예외 2건**: `Wassup.Core.TimeControl.TimeManager`(도메인 스코프 시간 제어, `docs/spec/time-manager/`) · `SoundManager`(전역 SFX, `docs/spec/score-hud-impact-upgrade/` unit 4). 둘 다 판 밖 전역이라 「전투 코어 — 절대 제약」 1(전투 안 매니저 금지)과 충돌하지 않는다. 그 외는 제약 5.
+- **Manager 싱글톤의 의도된 예외 2건**: `Wassup.Core.TimeControl.TimeManager`(도메인 스코프 시간 제어) · `SoundManager`(전역 SFX). 둘 다 판 밖 전역이라 「전투 코어 — 절대 제약」 1(전투 안 매니저 금지)과 충돌하지 않는다. 그 외는 제약 5.
 - **로깅은 마지막이 아니라 첫 축** — 새 사건 채널·이벤트 종류를 열면 로그/트레이스 정거장을 함께 연다.
 
 ## 전투 코어 — 절대 제약 (2026-09-23)
@@ -148,18 +147,18 @@
 | "Project owner가 production-transition 작업을 이번 요청에서 명시적으로 지시했나?" | 그때만 [`docs/production-transition/README.md`](docs/production-transition/README.md) 참조. 평상시에는 읽지 않는다. 이 subtree는 **owner-gated dormant downstream**이며 현재 Demo 구현 명세가 아니다. |
 | "어떤 기술 제약이 있나?" | **이 파일**의 「절대 제약」13(은퇴 번호 포함) + 「추가 제약」 + 「전투 코어 — 절대 제약」6 이 전부다. (구 `docs/TRD.md` 는 Phase 시절 문서라 2026-09-03 은퇴 — 살아 있던 규칙은 위로 이관됐고, 나머지는 git 이력) |
 | "유닛·드림캐쳐·맵이 코드에서 어떻게 맞물리나?" | `docs/reference/battle-core-architecture.md` — **§1 설계 아웃라인(아키텍처 중립) · §2~ 전투 코어 구조 지도**(코어/Unity 층 경계 · 한 판의 생애 · `TickPipeline` 단계 · 담당자 · 커맨드/사건/순서 · 불변식). 전투 변경 전 대조 |
-| "전투 전환(ECS → 전투 코어)은 어디까지 왔나?" | **완료** — 이력은 `docs/spec/battle-core-rebuild/`(README 계약 13 · 작업 단위 · 이식 제외 표 · `class-diagram.md` · `match-mode-design.md`). 설계 입력은 `docs/plans/2026-09-22-battle-core-rebuild-census/` |
+| "전투 전환(ECS → 전투 코어)은 어디까지 왔나?" | **완료** — 이력은 `docs/spec/battle-core-rebuild/`(README 계약 13 · 작업 단위 · 이식 제외 표 · `class-diagram.md` · `match-mode-design.md`) |
 | "feature 구현 상세는?" | `docs/spec/{feature-slug}/` — 분산 스펙 (README + 0~N 작업 단위). 하단 "문서화 구조" 참조 |
 | "다음에 뭐 할까 / 후속 후보는?" | `docs/spec/README.md` 하단 **Follow-up Backlog** 섹션 — 종료된 spec 에서 이관된 후보. 새 spec 시작 전에 먼저 확인 |
-| "과거 어떻게 만들어졌나?" | `docs/prototype/PHASE{0..10}.md` — 프로토타이핑 단계 종료 스펙 (읽기 전용 아카이브) |
+| "과거 어떻게 만들어졌나?" | 평소엔 보지 않는다(2026-10-01 spec 초기화). 꼭 필요하면 태그 `archive/pre-spec-reset` 의 옛 spec · plans · prototype |
 | "이 프로젝트/환경 고유의 함정은?" | `docs/reference/lessons/` — 실제로 겪은 지뢰 모음 (Unity MCP 운용·git/씬 위생·Spine/타일맵/프랍·시뮬 설계). **Unity 조작·에셋 작업·커밋 전에 해당 주제 파일 一讀** |
 | "테스트를 어떻게/언제 돌리나? 새 테스트는 어디에?" | `docs/reference/test-procedure.md` — 어셈블리 5개(`EditMode` 아웃게임 · `.Assets` 실에셋 · `.Core` 전투 코어 · `PlayMode.Core` 전투 씬 · `PlayMode` 아웃게임) + 헤드리스 dotnet lane 과 상황별 실행표 · lane 판별 한 줄 · **밸런스 수치를 리터럴로 못박지 않는 규율**. 시트·에셋 편집 후엔 Assets lane 추가 실행 필수 |
 | "새 플레이 오브젝트의 생성→렌더 정거장은?" | `docs/reference/object-pipeline-map.md` — 아키타입별 파이프라인 체크표. **플레이 오브젝트 spec README 작성 시 대조 필수** |
-| "점수는 어디서 나오고 얼마인가?" | `docs/reference/score-formula.md` — **1킬 = 1점 고정**(시간·스트레스 배점 축은 은퇴). 판이 끝나는 통로 2개 + 마음이 판정에 관여하되 점수엔 관여하지 않는 계약 · 값 바꾸는 곳 요약. 설계 이력은 `docs/spec/battle-score-formula/` · `docs/spec/heart-stress-axis/` |
+| "점수는 어디서 나오고 얼마인가?" | `docs/reference/score-formula.md` — **1킬 = 1점 고정**(시간·스트레스 배점 축은 은퇴). 판이 끝나는 통로 2개 + 마음이 판정에 관여하되 점수엔 관여하지 않는 계약 · 값 바꾸는 곳 요약 |
 | "맵/웨이브 난이도를 조정하려면?" | `docs/reference/map-wave-balancing.md` — 맵 로테이션·웨이브 knob·몬스터 스탯 조정 위치 + **결정론 규칙(waveSeed 비0=같은 맵 같은 웨이브)**. 자주 바꾸는 값 모음 |
-| "적이 어떻게 길을 찾고 움직이나?" | `docs/reference/enemy-movement-algorithm.md` — 틱 의사결정 순서도(`TickPipeline` 단계 · `AiMovePhase` 이동 분기 · 평활화 · 충돌 · 분리) + 쓴 알고리즘 계보와 **쓰지 않은 것의 이유** + 값 바꾸는 곳. 설계 이력은 `docs/spec/continuous-agent-movement/` |
-| "무기 궤적을 켜거나 바꾸려면?" | `docs/reference/weapon-trail-authoring.md` — 유닛에 붙이기·룩 추가·모양 튜닝·본 없는 호스트 레시피 + 증상→원인 표. **코드 0 이 원칙**. 설계 이력은 `docs/spec/spine-weapon-trail/` |
-| "맵 스테이지 프리팹을 직접 만들려면?" | `docs/reference/map-stage-authoring.md` — 구성 스크립트·양자화 규칙·형식 제약(하드 실패 목록)·절차 예시·증상→원인 표. bake 없음 — 프리팹이 곧 정본. 설계 이력은 `docs/spec/map-diorama-stage/` |
+| "적이 어떻게 길을 찾고 움직이나?" | `docs/reference/enemy-movement-algorithm.md` — 틱 의사결정 순서도(`TickPipeline` 단계 · `AiMovePhase` 이동 분기 · 평활화 · 충돌 · 분리) + 쓴 알고리즘 계보와 **쓰지 않은 것의 이유** + 값 바꾸는 곳 |
+| "무기 궤적을 켜거나 바꾸려면?" | `docs/reference/weapon-trail-authoring.md` — 유닛에 붙이기·룩 추가·모양 튜닝·본 없는 호스트 레시피 + 증상→원인 표. **코드 0 이 원칙** |
+| "맵 스테이지 프리팹을 직접 만들려면?" | `docs/reference/map-stage-authoring.md` — 구성 스크립트·양자화 규칙·형식 제약(하드 실패 목록)·절차 예시·증상→원인 표. bake 없음 — 프리팹이 곧 정본 |
 | "적을 새로 만들거나 등장 조건을 바꾸려면?" | `.claude/skills/enemy-wave-integration/` 스킬 — 풀 삽입 위치·시드 재기준·컨셉 자동 귀속·튜토리얼 로스터 계약. **`AttackUnitData` 신설 또는 `minWaveNumber`/`maxPerWave`/`enemyClass`/`traversalLayers` 변경 시 필수** |
 | "웨이브 생성 로직을 밸런스로 손보려면?" | 위와 **같은 스킬**. 그 문서의 규칙이 코어 `WaveGenerator`(`Scripts/BattleCore/Wave/`)·`AttackDeck`·`WaveConceptData`·`WavePlanAsset` 에 매여 있어, 그 코드를 바꾸면 **같은 커밋에서 스킬을 갱신**한다(스킬 안의 「갱신 트리거」 표). 밸런스 값 자체를 바꾸는 위치는 `docs/reference/map-wave-balancing.md` |
 | "VFX 를 만드려면?" | `.claude/skills/unity-vfx-authoring/` + `unity-vfx-integration/` 스킬 |
@@ -206,9 +205,9 @@ docs/spec/{feature-slug}/
 
 ### 참고 예시
 
-- `docs/spec/map-system/` — 맵 시스템 재설계 (21 작업 단위, 프로토타이핑 종료 시점의 최종 spec)
-- `docs/spec/defender-on-place-skills/` — 방어 유닛 배치 시 스킬 pipeline spec
-- `docs/spec/defender-drag-drop-deployment/` — D&D 배치 전환 spec
+- `docs/spec/skill-data-table/` — 1부 · 2부로 이어 쓴 spec(보류 unit · 사용자 결정 표 · 인계 2개)
+- `docs/spec/unified-effect-layer/` — 작은 spec(units 0~7 + 인계)
+- `docs/spec/battle-core-rebuild/` — 대형 spec(하위 번호 5a~9c · 이식 제외 표 · 장부)
 
 ### design.md 와의 관계
 

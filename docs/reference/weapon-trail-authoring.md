@@ -1,7 +1,6 @@
 # 무기 궤적 — 붙이고, 바꾸고, 늘리는 법
 
 > 공격할 때 무기가 지나간 자리에 남는 리본. **켜고 끄고 바꾸는 일은 전부 authoring 이고 코드는 안 건드린다.**
-> 설계 이력·시행착오·기각된 대안은 `docs/spec/spine-weapon-trail/`.
 > 파이프라인 정거장 대조표는 `docs/reference/object-pipeline-map.md` "본 부착 VFX — 무기 궤적".
 
 ## 세 줄 요약
@@ -217,8 +216,6 @@ Assets/Hovl Studio/                      벤더. HSFiles(184) + Epic Sword Slash
 > 그 씬은 빌드 세팅에 없다.
 
 ## 확장 후보
-
-`docs/spec/README.md` Follow-up Backlog 에 등록돼 있다.
 
 - **보스 전용 크기** [S] · 호 ~4타일 vs 사거리 2. 보스 Variant 에서 Point A/B 만 좁힌다
 - **무기 종류별 프리셋 분기** [S] · 도끼/둔기/마법무기에 다른 색·수명

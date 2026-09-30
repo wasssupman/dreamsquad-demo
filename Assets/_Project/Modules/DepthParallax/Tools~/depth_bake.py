@@ -30,7 +30,7 @@ MODEL / LICENSING  (HARD CONSTRAINT — read before swapping models)
         * Depth Anything V1 Large                     -> Apache-2.0
     This script refuses to load a known-forbidden model id.
 
-PROCEDURE (per docs/spec/depth-parallax/4_depth_baker_editor.md)
+PROCEDURE
     1. DEFAULT — SINGLE STATIC DEPTH. Infer ONE representative frame (the
        most zoomed / sharpest) and reuse it for every color frame. Cutscene
        zoom is tiny and parallax amplitude is <=4%, so per-frame drift is

@@ -105,7 +105,6 @@ $RECYCLE.BIN/
 
 # Claude Code — share project config (settings.json, skills, agents, hooks) so a
 # fresh clone reproduces the workflow; ignore only personal/local state.
-# See docs/spec/workflow-reproducibility.
 .claude/settings.local.json
 .claude/worktrees/
 CLAUDE.local.md
