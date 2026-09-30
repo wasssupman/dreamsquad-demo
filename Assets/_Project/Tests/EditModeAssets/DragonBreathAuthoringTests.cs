@@ -1,5 +1,11 @@
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
+using UnityEngine.TestTools;
+using Wassup.BattleCore.Combat;
+using Wassup.BattleCoreUnity;
 using Wassup.Data;
 using Wassup.BattleCore.Trigger;
 
@@ -62,6 +68,46 @@ namespace Wassup.Tests.EditMode
                 "반각 >= 90 은 부채꼴 게이트(`SkillMath.SectorGate` · 볼록 쐐기)의 정의역 밖 — bake 가 거절한다");
             Assert.AreNotEqual(45f, m.payload.coneHalfAngleDeg,
                 "45° 는 셀 대각선 경계에 정확히 걸린다 — 부동소수 비교가 플랫폼별로 갈릴 수 있다");
+        }
+
+        // skill-data-table 감사 — 정의역 (0, 90) 의 **양끝 다** 굽기가 거절한다(Error + 건너뜀). 0 은 평평한 값 칸의 기본 = 비워 둔
+        // 반각이지 「정면 한 줄」 저작이 아니다. 라이브 드래곤 줄의 효과만 바꿔 적 소유 줄로 굽는다.
+        [TestCase(0f)]
+        [TestCase(-10f)]
+        [TestCase(90f)]
+        public void Bake_ConeHalfAngle_OutsideOpenDomain_ErrorsAndSkips(float halfDeg)
+        {
+            LogAssert.Expect(LogType.Error, new Regex(@"AreaBreath 반각\(.*\) (>= 90|<= 0)"));
+            Assert.AreEqual(0, BakeDragonBreath(halfDeg), "정의역 밖 반각은 건너뛴다");
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void Bake_LiveConeHalfAngle_BakesSilently()
+        {
+            Assert.AreEqual(1, BakeDragonBreath(null), "라이브 반각은 굽힌다");
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        // 라이브 드래곤 소유 줄 하나를 적 소유자로 굽는다(`halfDeg` 가 있으면 효과 사본의 반각만 바꾼다) → 굽힌 줄 수.
+        private static int BakeDragonBreath(float? halfDeg)
+        {
+            var live = Load(DragonPath).bindings[0];
+            Assert.IsNotNull(live.effect);
+            var fx = Object.Instantiate(live.effect);
+            try
+            {
+                if (halfDeg.HasValue) fx.values.coneHalfDeg = halfDeg.Value;
+                var spec = live;
+                spec.effect = fx;
+                var mine = new List<int>();
+                bool recall = false;
+                BindingSpecBuilder.Bake(new[] { spec }, new RuleOwner { Origin = BindingOrigin.UnitAuthored, Label = "fixture_dragon", IsEnemy = true },
+                                        new List<ProjectileData>(), new List<ProjectilePatternData>(), System.Array.Empty<HazardSO>(),
+                                        new List<BindingDef>(), new List<EffectDef>(), mine, new List<AttackModDef>(), null, ref recall, null);
+                return mine.Count;
+            }
+            finally { Object.DestroyImmediate(fx); }
         }
 
         // 화염 스택 계약 — 킨들러와 같은 부등식 여유를 갖는지 실제 값으로 확인한다.

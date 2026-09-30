@@ -263,10 +263,11 @@ namespace Wassup.BattleCoreUnity
                     if (b.Trigger == TriggerKind.PeriodicTimer && m.trigger.periodSeconds < p.duration) Warn($"{label}: 주기 < 지속 — 화염구가 겹쳐 쌓인다.");
                     return true;
                 case EffectKind.AreaBreath:
-                    // 판정 게이트(`SkillMath.SectorGate`)는 볼록 쐐기(반각 < 90°)만 잰다 — 그 이상은 반평면·reflex 라
-                    // 조용히 다른 도형이 된다. 거절(`AttackShapeBake` 가 reflex 를 거절하는 것과 같은 규율).
+                    // 반각 정의역 = 열린 구간 (0, 90)(`EffectValues.coneHalfDeg`). 판정 게이트(`SkillMath.SectorGate`)는 볼록 쐐기(반각 < 90°)만
+                    // 잰다 — 그 이상은 반평면·reflex 라 조용히 다른 도형이 된다. 거절(`AttackShapeBake` 가 reflex 를 거절하는 것과 같은 규율).
+                    // 0 이하도 같다 — 평평한 값 칸의 기본(0)이라 «비워 둔 반각»이고, 굽히면 부채꼴이 아니라 광선이 된다(skill-data-table 감사).
                     if (p.coneHalfAngleDeg >= 90f) { Error($"{label}: AreaBreath 반각({p.coneHalfAngleDeg}°) >= 90 — 부채꼴 게이트의 정의역(볼록 쐐기) 밖이다. 건너뛴다."); return false; }
-                    if (p.coneHalfAngleDeg <= 0f) Warn($"{label}: AreaBreath 반각이 0 이하 — 정면 한 줄만 맞는다.");
+                    if (p.coneHalfAngleDeg <= 0f) { Error($"{label}: AreaBreath 반각({p.coneHalfAngleDeg}°) <= 0 — 반각이 비었다(정의역 (0, 90) 밖 · 부채꼴이 아니라 광선이 된다). 건너뛴다."); return false; }
                     if (p.tileRange <= 0) Warn($"{label}: AreaBreath 사거리가 0 — 같은 셀만 맞는다.");
                     if (p.magnitude <= 0f) Warn($"{label}: AreaBreath 피해가 0 이하 — 발동해도 아무 일이 없다.");
                     return true;
