@@ -1,7 +1,7 @@
 # 5 — 새 시트 연결 (저작)
 
 ## 목적
-unit 0 의 표 구조로 시트 export/import 를 새로 만든다. 기존 `DcSheetApplier`(카드 전용) 는 은퇴.
+unit 0 의 표 구조로 시트 export/import 를 새로 만든다. ~~기존 `DcSheetApplier`(카드 전용) 는 은퇴.~~ → 정정: `DcSheetApplier` 는 **남는다** — 은퇴한 것은 카드 규칙 탭(`DcMechanics`)과 카드 자식 탭(unit 8 의 `DcCardEffects` · `DcAttackMods`)이고, 평면 탭(`Cards` · `DcSkills` · `DcConfig` — `DcSheetImportDto`)은 계속 그것이 적용한다. 효과 · 소유 줄은 새 임포터 `SkillSheet`.
 
 ## 변경 대상
 - `Editor/UnitStatImport/` · `Scripts/Data/StatImport/` — 표별 export/import(효과 · 소유 줄 · 탄 · 패턴 · 장판 · 소유자). 임포터 하나 · 표마다 id 조회.
@@ -15,7 +15,7 @@ unit 0 의 표 구조로 시트 export/import 를 새로 만든다. 기존 `DcSh
 ## 기록 (2026-09-29 · 5 1부)
 
 - **탭 이름 = U19**: `tables.md` 의 `Effects` → 시트 탭 `Skills` · `tables.md` 의 `Skills`(소유 줄) → `SkillOwners` · `owner_kind` = `card` · `defender` · `enemy` · 한국어 표시 열 `kind_ko`(보기 전용 — 임포터가 안 읽는다). `subject` 값 = 코어 멤버 이름(`Self` · `Any`).
-- **탭 계약 하나** = `Scripts/Data/StatImport/DcSheetTabs.cs`(7탭 — `DcCards` · `DcCardEffects` · `DcAttackMods` · `DcSkills`(U18 유지) · `DcConfig` · `Skills` · `SkillOwners`). 옛 `DcMechanics` 은퇴(DTO · 차단 분기 삭제). ⚠ unit 8 단계 B(`5825fed06`) — `DcCardEffects` · `DcAttackMods` 도 은퇴 → **5탭**(`DcCards` · `DcSkills` · `DcConfig` · `Skills` · `SkillOwners`).
+- **탭 계약 하나** = `Scripts/Data/StatImport/DcSheetTabs.cs`(7탭 — `DcCards` · `DcCardEffects` · `DcAttackMods` · `DcSkills`(U18 유지) · `DcConfig` · `Skills` · `SkillOwners`). 옛 `DcMechanics` 은퇴(DTO · 차단 분기 삭제). ⚠ unit 8 단계 B(`5825fed06`) — `DcCardEffects` · `DcAttackMods` 도 은퇴 → **5탭**(`DcCards` · `DcSkills` · `DcConfig` · `Skills` · `SkillOwners`). ⚠ unit 9 — `DcCards` → **`Cards`** 개명(현행 5탭 = `Cards` · `DcSkills` · `DcConfig` · `Skills` · `SkillOwners` · push 전체 = 스탯 2 + 이 5 + `CostConfig` = 8탭).
 - **임포터 하나** = `SkillSheet`(`Scripts/Data/StatImport/SkillSheet.cs`): 계획 → 쓰기 전 diff 표(`[skills-diff]`) → apply. 없는 id(효과 · 소유자 · 탄 · 패턴 · 장판)는 보고만. `Skills` = id 별 부분 갱신(빈 칸 = 그대로) · `SkillOwners` = 탭에 나온 소유자의 `bindings` 재구성(시트-정본). 에디터 창에 「diff 미리보기(쓰지 않음)」 버튼.
 - 경로: 로그인 자동 import · 로비 refresh(`DcSheetRuntimeRefresher` — 방어유닛 · 적 카탈로그 배선) · 에디터 창 import/export · push 바디 · 합본 export.
 - U18: 액티브 문안의 비용 = 정의표 카드 값(`CardDef.Cost` = `AwakeningConfig.costActive`) · 모르면 비용 칸을 뺀다.
@@ -23,7 +23,7 @@ unit 0 의 표 구조로 시트 export/import 를 새로 만든다. 기존 `DcSh
 
 ## 남은 것 · 알려진 한계
 
-- **모양 탭(`Projectiles` · `Patterns` · `PatternShots` · `Hazards` · `HazardEffects` · `Blockers`) 은 이 1부 밖** — 오늘 시트에 없는 값이라 회귀가 없고, 패턴 · 장판 SO 에 U10 이전 옛 피해 칸이 남아 있어 먼저 열면 죽은 열이 시트에 보인다. 소유자 표(`Cards` · `Units` · `Enemies`)는 기존 `DcCards` · `Defenders` · `Enemies` 탭 그대로.
+- **모양 탭(`Projectiles` · `Patterns` · `PatternShots` · `Hazards` · `HazardEffects` · `Blockers`) 은 이 1부 밖** — 오늘 시트에 없는 값이라 회귀가 없고, 패턴 · 장판 SO 에 U10 이전 옛 피해 칸이 남아 있어 먼저 열면 죽은 열이 시트에 보인다. 소유자 표(`Cards` · `Units` · `Enemies`)는 기존 탭 그대로(`Defenders` · `Enemies` · 카드 탭은 unit 9 에서 `DcCards` → `Cards` 개명 · 전 탭 열 스네이크).
 - 런타임 refresh 는 효과가 **지금 가리키는** 탄 · 패턴 · 장판만 안다(에셋 스캔 없음 — 보고됨). 에디터 import 는 전부 안다.
 - 빈 칸 = 그대로라 참조를 **비우는** 방법이 없다 · bool 을 끄려면 `FALSE` 를 적는다.
 - `Skills` export 는 그 종류가 쓰는 칸을 **기본값이어도** 적는다(`buff_stat` = `AttackDamage` 처럼 첫 enum 값이 빈 칸으로 숨지 않게) · 비율 칸(`basis_stat` · `ratio`)은 `magnitude_mode = Flat` 줄에서 비운다.

@@ -42,4 +42,4 @@
 - 결정: 안 쓰는 칸 = **경고하고 무시**(쓰지 않음 · 요약 `ignored cells N`) · 라이브 효과 62 개가 안 쓰는 칸(`cc_kind` Stun · `stack_kind` Fire — unit 4 이전 기본값)을 들고 있다 → 에셋에만 남고 해시에 그대로(재베이크 0) · 시트엔 안 보인다 · 폐기 호환 열 `attack_damage` 는 DTO 에 남되 헤더 문서에서 뺐다.
 - 리드 · Unity 2026-09-29 — EditMode 3어셈블리 2639 중 선행 빨강 3만(전 탭 왕복 · 헤더 문서 대조 · 쿨다운 칸 · U20 전부 초록) · `435650b45` 실제 시트 대조에서 발견: `Skills` export 가 쓰는 칸의 기본값을 비워 「공격력 버프」의 `buff_stat`(첫 enum)이 숨었다 → 쓰는 칸은 기본값이어도 적는다(비율 칸은 Flat 줄에서 비움).
 - 교체 전 실제 시트 대조(읽기 전용 GET · 2026-09-29): 시트에만 있고 에셋에 없는 값 **0**. 차이는 전부 예상분 — 은퇴 열(`deployDelaySec` · `DcSkills` 수치 · `_target`) · 기본값 생략(`atk` 0) · 액티브 6장 문안 「비용 N → 20」(U18 에셋 갱신) · 새 카드 2장(`gaesagi` · `star_strike`) · 폭탄맨 `atk` 87(시트) — 공격 출력이 없어 import 가 늘 건너뛰던 죽은 값(`UnitStatApplier.ProjectMagnitude`).
-- 남은 것(사용자): `5_sheet_io.md` 「실제 시트 설정」 절차대로 8탭 재생성 · 서버 키 · 옛 탭 보관/삭제.
+- ~~남은 것(사용자): `5_sheet_io.md` 「실제 시트 설정」 절차대로 8탭 재생성 · 서버 키 · 옛 탭 보관/삭제.~~ → 2026-09-30 **실제 시트 8탭 재구성 · export 와 동일 확인**(읽기 전용 GET). 남은 사용자 몫 = 다음 Push **전에** 새 탭의 Apps Script 업서트 키 설정(`Skills` = `effect_id` · `SkillOwners` = (`owner_kind`, `owner_id`, `slot`) — `5_sheet_io.md` 「실제 시트 설정」).

@@ -5,9 +5,9 @@
 
 ## 변경 대상
 - 이 폴더 `tables.md` — 표마다 (한 줄의 뜻 · 열 · 키 · 참조 · 검증 규칙):
-  - **Effects**: `effect_id` · 효과 종류(`DcPayloadKind` 이름) · 수치 칸들 · 수치 방식(고정 / 비율 + 기준 스탯, U7) · 탄/패턴/장판 id · 착탄 예고(U1).
+  - **Effects**(→ U19: 시트 탭 이름 `Skills`): `effect_id` · 효과 종류(`DcPayloadKind` 이름 → unit 4 거울 enum 은퇴 뒤 코어 `EffectKind` 이름) · 수치 칸들 · 수치 방식(고정 / 비율 + 기준 스탯, U7) · 탄/패턴/장판 id · 착탄 예고(U1).
   - **Projectiles · Patterns · Hazards**: 기존 SO 필드를 열로 — 단 **피해 칸은 없다**(U10: 피해는 효과 줄). `id` 는 오늘의 `string Id` 그대로(표 안에서 유일 — README 계약 10).
-  - **소유 줄**(Skills): `owner_kind`(card · unit · enemy) · `owner_id` · 트리거(종류 · 주기 · 경계 · N · 주체 · 게이트) · 수명 · `effect_id`. 한 소유자가 여러 줄.
+  - **소유 줄**(Skills → U19: 시트 탭 이름 `SkillOwners`): `owner_kind`(card · unit · enemy → U19: `card` · `defender` · `enemy`) · `owner_id` · 트리거(종류 · 주기 · 경계 · N · 주체 · 게이트) · 수명 · `effect_id`. 한 소유자가 여러 줄.
   - **Cards · Units · Enemies**: 소유자 고유 값만(스킬 칸 없음). 카드 `host_kinds`(U5 기본 = 방어유닛).
 - **비율 적용 칸 표**: 효과 종류마다 「비율형이 적용되는 칸」을 닫힌 표로(피해 · 실드량 — 회복 종류는 오늘 없다 · 결과 = `tables.md` §9). 적용 칸이 없는 종류(버프 배율 · CC 시간 …)는 비율형 저작 거절.
 - **소유자 종류 전수**: 카드 · 방어유닛 능력 · 적 악몽 · **실드 캐스트 · 드림스톤 · 액티브 카드 · 스쿼드 규칙 · 카드 공격 수식자(`AttackModDef` — 규칙 줄이 아닌 효과)** — 각각 이 표로 옮기나 / 범위 밖인가를 대조표에 적는다.

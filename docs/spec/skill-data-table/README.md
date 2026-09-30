@@ -1,6 +1,6 @@
 # skill-data-table — 스킬 데이터 표 재설계
 
-> **상태: units 0~5 구현 완료 2026-09-29 · 2부(units 7~10 — 시트 구조 리팩토링): unit 7 보류 · unit 8 완료 2026-09-29(단계 A · 이전 적용 · 단계 B · 재직렬화 · EditMode · PlayMode Core · core-reviewer APPROVE) · unit 9 완료 2026-09-29(시트 8탭 · 스네이크 · U20 · EditMode 2639 선행 3만 · 실제 시트 대조 손실 0 — 사용자 시트 교체 대기) · unit 10 미착수.** 2부 근거 = 시트 export 에서 드러난 옛 형식 잔존(카드 전용 탭 2 · 열 이름 혼용 · 쿨다운 두 원천) + 독립 비평(Fable) 검토. 1부 인계 = `6_handoff_summary.md`. core-reviewer 묶음 2회 APPROVE(1a–3 · 4–5). 선행 = `docs/spec/unified-effect-layer/`(완료 — 실행 층 통일 · 하드 케이스 1~4). 근거 = 그 README 「하드 케이스 3·4 막는 곳」 표 + 3자 토론(리드 · 독립 비판 · 게임 선례 조사) 합의. **기존 시트 구조는 폐기 전제** — 새 표는 이 spec 이 정한다.
+> **상태: units 0~5 구현 완료 2026-09-29 · 2부(units 7~10 — 시트 구조 리팩토링): unit 7 보류 · unit 8 완료 2026-09-29(단계 A · 이전 적용 · 단계 B · 재직렬화 · EditMode · PlayMode Core · core-reviewer APPROVE) · unit 9 완료 2026-09-29(시트 8탭 · 스네이크 · U20 · EditMode 2639 선행 3만 · 실제 시트 대조 손실 0) — 실제 시트 8탭 재구성 · export 와 동일 확인 2026-09-30(남은 사용자 몫 = 다음 Push 전 새 탭의 Apps Script 업서트 키) · unit 10 인계 대기.** 2부 근거 = 시트 export 에서 드러난 옛 형식 잔존(카드 전용 탭 2 · 열 이름 혼용 · 쿨다운 두 원천) + 독립 비평(Fable) 검토. 1부 인계 = `6_handoff_summary.md`. core-reviewer 묶음 2회 APPROVE(1a–3 · 4–5). 선행 = `docs/spec/unified-effect-layer/`(완료 — 실행 층 통일 · 하드 케이스 1~4). 근거 = 그 README 「하드 케이스 3·4 막는 곳」 표 + 3자 토론(리드 · 독립 비판 · 게임 선례 조사) 합의. **기존 시트 구조는 폐기 전제** — 새 표는 이 spec 이 정한다.
 
 ## 상위 목표
 
@@ -81,6 +81,9 @@
 ## 후속 후보 (2부)
 
 **unit 7 전체**(방어유닛 · 적의 진영 버프 · 공격 변형 3종 배선 — 숙주 적합성 `HostProfile.OfDef` 포함) · 배치 오라 ↔ 진영 버프 관계 정리(코어 줄 모양이 같다 — 오라는 이후 배치분만 · 수면 동반) · `DcSkills` 은퇴(U18) · 설정 탭 통합(`DcConfig` 두 스키마 + `CostConfig`) · 분열 적 칸(`Enemies.split_*` — `tables.md` §8) · 드림스톤 시트 · 순찰 소환물의 진영 버프 수혜(D2) · 적 소유 진영 버프의 적 직업 필터.
+
+- **옛 메커닉 번역 층 제거**(unit 4 「`DcPayloadSpec` 을 보기 전용 이름으로」의 미완분). 소유 줄을 옛 모양으로 비추는 `BindingSpecView.ToMechanic` → `DcMechanic` · `DcPayloadSpec` 을 굽기의 잎 검증(`BindingSpecBuilder.Legacy`)과 카드 문안(`DreamcatcherCard.RuleView` → `DreamcatcherCardText`)이 아직 읽는다 · 보기 창 전용 번호의 거울 enum `DcCcKind` · `DcStackKind` · `EffectSlots` 의 이전 함수 — `FromLegacy`(테스트 픽스처 `TestBindings` 만) · `FromActive` · `FromShieldCast`(호출 0) · `CcFromLegacy` · `StackFromLegacy`(`FromLegacy` 와 테스트만) · `CcToLegacy` · `StackToLegacy`(보기 창 `ToMechanic` 과 테스트만). ⚠ `EffectSlots.ToLegacy` 는 지우는 대상이 아니다 — 굽기가 효과 값을 코어 겸직 칸(`EffectDef.Magnitude` · `TileRange` · `Duration`)에 싣는 살아 있는 경로다(`CardDefinitionBuilder` 액티브 · 보기 창). 이름만 후보.
+- **센서스 개명 미실행 2**(`naming-census.md`): **B7** `CardBuffKind` → `BuffStat`(타입만 · 정수 불변 · `StatKind` 와 합치지 말 것) · **B10** `BindingOrigin { UnitAuthored, Card, Gimmick, Match }` → `OwnerKind { Unit, Card, Gimmick, Match }`(`UnitAuthored` 어휘 포함 · 정수가 해시된다 — 값 · 해시 키 `"origin"` · 스냅샷 `origin=` 문자열 유지).
 
 ## 하지 않는 것
 
