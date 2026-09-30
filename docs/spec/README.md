@@ -106,7 +106,7 @@ code + git history        구현 상세
 
 ## 진행 중 spec
 
-- `skill-data-table/` — **스킬 데이터 표 재설계**(스킬 = 효과 id · 소유 = 참조 줄 · 시트 `Skills`/`SkillOwners`). **1부(units 0~5) 완료 · 2부 unit 8 · 9 완료 · unit 7 보류(후속) · unit 10 인계 대기** · 실제 시트 8탭 재구성 · export 와 동일 확인 2026-09-30 · 1부 인계 `6_handoff_summary.md` · 남은 것 = 아래 Follow-up Backlog 「스킬 데이터 표 — 남은 것」.
+- `skill-data-table/` — **스킬 데이터 표 재설계**(스킬 = 효과 id · 소유 = 참조 줄 · 시트 `Skills`/`SkillOwners`). **1부(units 0~5) 완료 · 2부 unit 8 · 9 · 10 완료 2026-09-30 · unit 7 보류(후속) · 병합 · 푸시 대기** · 실제 시트 8탭 재구성 · export 와 동일 확인 2026-09-30 · 1부 인계 `6_handoff_summary.md` · 2부 인계 `10_handoff_summary.md` · 남은 것 = 아래 Follow-up Backlog 「스킬 데이터 표 — 남은 것」.
 
 ## 은퇴한 spec
 
@@ -121,7 +121,7 @@ code + git history        구현 상세
 
 ## Follow-up Backlog
 
-### 스킬 데이터 표 — 남은 것 (`skill-data-table` — 1부 완료 · 2부 unit 10 인계 대기)
+### 스킬 데이터 표 — 남은 것 (`skill-data-table` — 완료 · unit 7 보류)
 
 정본 = [`skill-data-table/README.md`](skill-data-table/README.md) 「후속 후보 (2부)」 — 상세는 옮기지 않는다.
 

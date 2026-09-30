@@ -1,6 +1,6 @@
 # skill-data-table — 스킬 데이터 표 재설계
 
-> **상태: units 0~5 구현 완료 2026-09-29 · 2부(units 7~10 — 시트 구조 리팩토링): unit 7 보류 · unit 8 완료 2026-09-29(단계 A · 이전 적용 · 단계 B · 재직렬화 · EditMode · PlayMode Core · core-reviewer APPROVE) · unit 9 완료 2026-09-29(시트 8탭 · 스네이크 · U20 · EditMode 2639 선행 3만 · 실제 시트 대조 손실 0) — 실제 시트 8탭 재구성 · export 와 동일 확인 2026-09-30(남은 사용자 몫 = 다음 Push 전 새 탭의 Apps Script 업서트 키) · unit 10 인계 대기.** 2부 근거 = 시트 export 에서 드러난 옛 형식 잔존(카드 전용 탭 2 · 열 이름 혼용 · 쿨다운 두 원천) + 독립 비평(Fable) 검토. 1부 인계 = `6_handoff_summary.md`. core-reviewer 묶음 2회 APPROVE(1a–3 · 4–5). 선행 = `docs/spec/unified-effect-layer/`(완료 — 실행 층 통일 · 하드 케이스 1~4). 근거 = 그 README 「하드 케이스 3·4 막는 곳」 표 + 3자 토론(리드 · 독립 비판 · 게임 선례 조사) 합의. **기존 시트 구조는 폐기 전제** — 새 표는 이 spec 이 정한다.
+> **상태: units 0~5 구현 완료 2026-09-29 · 2부(units 7~10 — 시트 구조 리팩토링): unit 7 보류 · unit 8 완료 2026-09-29(단계 A · 이전 적용 · 단계 B · 재직렬화 · EditMode · PlayMode Core · core-reviewer APPROVE) · unit 9 완료 2026-09-29(시트 8탭 · 스네이크 · U20 · EditMode 2639 선행 3만 · 실제 시트 대조 손실 0) — 실제 시트 8탭 재구성 · export 와 동일 확인 2026-09-30(남은 사용자 몫 = 다음 Push 전 새 탭의 Apps Script 업서트 키) · unit 10 인계 2026-09-30(`10_handoff_summary.md` — 병합 전 감사 반영 · EditMode 2650 선행 3만 · PlayMode Core 97/97) · **병합 · 푸시 대기**.** 2부 근거 = 시트 export 에서 드러난 옛 형식 잔존(카드 전용 탭 2 · 열 이름 혼용 · 쿨다운 두 원천) + 독립 비평(Fable) 검토. 1부 인계 = `6_handoff_summary.md`. core-reviewer 묶음 2회 APPROVE(1a–3 · 4–5). 선행 = `docs/spec/unified-effect-layer/`(완료 — 실행 층 통일 · 하드 케이스 1~4). 근거 = 그 README 「하드 케이스 3·4 막는 곳」 표 + 3자 토론(리드 · 독립 비판 · 게임 선례 조사) 합의. **기존 시트 구조는 폐기 전제** — 새 표는 이 spec 이 정한다.
 
 ## 상위 목표
 
@@ -59,7 +59,7 @@
 | 7 | 코어 | **보류(후속)** — 진영 버프를 누가 들어도 같게(U21 · U22 · U23 · U24 · D1 · D2 · D4). 소비 콘텐츠 0 · 설계만 보존 |
 | 8 | 저작 | 상시 효과(스쿼드 스탯 15 · 공격 수식자 3)를 효과 줄 + 소유 줄로 · 효과 종류 4 append · `ally_filter` · 액티브 문안 한 원천 · 이전(dry-run → 사용자 확인) · 방어유닛 · 적 × 새 4종 = 배선 전 거절 |
 | 9 | 시트 | 10탭 → 8탭 · 전 탭 스네이크 · `Cards` 에 쿨다운 칸 · `DcSkills` 수치 칸 삭제 · export 사용 칸만 · U20 검증 |
-| 10 | 인계 | |
+| 10 | 인계 | `10_handoff_summary.md` — 2부 커밋 지도 · 병합 전 감사(4갈래) 반영 · 검증 |
 
 검증 질문 ① 은 **빌더를 거친 픽스처**(같은 효과 SO 를 두 소유자가 참조)로 증명한다 — 라이브 개사기·캐논 폭격 병합은 값이 달라 별도 사용자 결정(unit 4 dry-run).
 
