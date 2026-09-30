@@ -81,6 +81,16 @@ namespace Wassup.BattleCoreUnity
                                     BindingDef b, EffectDef fx, string id)
         {
             fx.Id = id ?? "";
+            // skill-data-table 감사(계약 10 — 효과 id 는 표 안에서 유일) — 같은 id 가 **다른 해석 값**으로 또 오면 크게 짖는다. 서버 어휘(효과 id)
+            // 하나가 두 값을 가리키면 「그 id 의 값」이 판마다 · 소유자마다 갈린다. 줄은 그대로 싣는다(굽기 결과 무변 · 저작을 고칠 일).
+            // 빌더 파생 id(`{id}.sleep` · `match.N`)도 같은 규칙이다(저작 id 규칙 `^[a-z][a-z0-9_]*$` 는 에셋 테스트가 본다).
+            if (fx.Id.Length > 0)
+                for (int i = 0; i < effects.Count; i++)
+                    if (effects[i].Id == fx.Id && !effects[i].Equals(fx))
+                    {
+                        Error($"{b.Label}: 효과 id '{fx.Id}' 가 다른 해석 값으로 두 번 구워졌다(효과 표 {i} 번 줄과 다르다) — 효과 id 는 표 안에서 유일해야 한다(계약 10).");
+                        break;
+                    }
             b.EffectIndex = EffectDef.Intern(effects, in fx);
             mine?.Add(rows.Count);
             rows.Add(b);
