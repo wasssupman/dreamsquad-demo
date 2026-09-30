@@ -284,10 +284,7 @@ namespace Wassup.BattleCoreUnity
                     if (fx.Kind == EffectKind.SelfTileAoe && p.magnitude <= 0f) { Warn($"{label}: SelfTileAoe magnitude <= 0 — 건너뛴다."); return false; }
                     fx.DataIndex = CombatDefinitionBuilder.IndexOf(projectiles, p.projectile);
                     fx.VisualScale = 0f;   // 유닛 bake 는 탄 배율을 안 실었다(0 = 뷰가 1 로 읽는다) — 카드는 빌더가 덧씌운다
-                    // unit 7d — 「생존당 1회」는 **`fireCap 1`** 이다(정정 5 의 짝). 옛 전투는 `fraction ≥ 0.5` 라 둘째 경계가
-                    // 음수가 되어 **우연히** 1회였다 — 값 한 칸이 0.4 가 되면 조용히 2회가 된다. ⚠ **궁극기에만** 준다 —
-                    // 같은 경계 트리거를 빈사폭주·진동갑주·가호가 쓰고 그쪽은 다회 발동이 사양이다.
-                    if (fx.Kind == EffectKind.UltimateLeap) b.FireCap = 1;
+                    // 궁극기 「생존당 1회」(`FireCap 1`)는 소유 줄의 `fireCap` 칸이 든다 — `BindingSpecBuilder` 가 이 뒤에 싣고 1 이 아니면 말한다.
                     return true;
                 case EffectKind.SelfBlink:
                 case EffectKind.AllyMoveSpeedAura:
