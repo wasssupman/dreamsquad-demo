@@ -1,6 +1,6 @@
 # unified-effect-layer — 통합 효과 층
 
-> **상태: 완료 2026-09-28**(사용자 플레이 확인 — 실사용 카드 개사기 · 별똥 타격 `1824f1fd2`). 인계 = `6_handoff_summary.md`. 탐침 보류 5건 전부 해제 · core-reviewer 3회 APPROVE(unit 1 · 묶음 A · 묶음 B). 출발 맥락 = `docs/spec/battle-core-rebuild/12_next_unified_effect_layer_guide.md`(하드 케이스 실측 · 코드 지도). 계약의 근원 = 그 spec README 「조각 E 사용자 결정」 ⑪ + 아래 U1~U3.
+> **상태: 완료 2026-09-28**(사용자 플레이 확인 — 실사용 카드 개사기 · 별똥 타격 `1824f1fd2`). unit 7(브레스 콘 도달 정본화 — 사용자 승인 규칙 변경) 포함. 인계 = `6_handoff_summary.md`. 탐침 보류 5건 전부 해제 · core-reviewer 3회 APPROVE(unit 1 · 묶음 A · 묶음 B). 출발 맥락 = `docs/spec/battle-core-rebuild/12_next_unified_effect_layer_guide.md`(하드 케이스 실측 · 코드 지도). 계약의 근원 = 그 spec README 「조각 E 사용자 결정」 ⑪ + 아래 U1~U3.
 
 ## 상위 목표
 
@@ -26,7 +26,7 @@ H4 를 이 spec 에서 뺀 이유: 효과 값의 정본은 시트다(`DcSheetApp
 3. **호밍 여부는 탄 궤적의 성질** — 요청 조립은 궤적 결합 종류로만 갈린다.
 4. **귀속·발사 자리 = 발동 주체 · 수명 = 발동 주체 ∧ 바인딩을 든 자**(U2 · U3). 출처(`BindingOrigin`)는 수명·표기 꼬리표.
 5. **검증은 하나** — 출처는 검증 입력이 아니다.
-6. **라이브 동작 무변.** 증거 = 라이브 조합 표(`Data/**` 의 트리거 × 효과 실측 42쌍 — unit 0 `census.md`)의 행별 무변 단언 · 빌더 스냅샷(굽힌 `BindingDef` 필드 동치) · `EffectWitness` · 골든 11(합성이라 보조).
+6. **라이브 동작 무변.** 증거 = 라이브 조합 표(`Data/**` 의 트리거 × 효과 실측 42쌍 — unit 0 `census.md`)의 행별 무변 단언 · 빌더 스냅샷(굽힌 `BindingDef` 필드 동치) · `EffectWitness` · 골든 11(합성이라 보조). **예외 = unit 7**(브레스 콘 도달이 넓어지는 규칙 변경 — 사용자 승인 2026-09-28 · `7_cone_breath_reach.md`).
 7. **판정 자는 하나**(제약 13) · **enum append-only** · 새 사건 필드는 트레이스에 싣거나 「뷰 전용이라 미기록」을 명시.
 
 ## 사용자 결정 (2026-09-26)
@@ -35,7 +35,7 @@ H4 를 이 spec 에서 뺀 이유: 효과 값의 정본은 시트다(`DcSheetApp
 - **U2 연사 중 발동 주체가 사라지면 멈춘다**(호스트가 사라져도 멈춘다 — 오늘 그대로).
 - **U3 킬은 탄이 나간 유닛 몫** — ⑪ 의 「출처 = 귀속 꼬리표」 중 귀속은 「발동 주체」로 정정.
 
-- **U4 적이 든 플레이어 자원 효과는 효과 없음**(2026-09-28) — 코스트 획득 · 쿨다운 단축 · 손패 회수. 현행은 플레이어 자원을 늘린다(하드 케이스 4 `현행_` 박제) — 후속 spec 에서 막는다.
+- **U4 적이 든 플레이어 자원 효과는 효과 없음**(2026-09-28) — 코스트 획득 · 쿨다운 단축 · 손패 회수. 현행은 플레이어 자원을 늘린다(하드 케이스 4 `현행_` 박제) — 후속 spec 에서 막는다. → **해결 `skill-data-table` unit 2**(메타 의도 진영 게이트 — 시전자가 플레이어 편이 아니면 코스트 획득 · 쿨다운 단축은 무효).
 - **U5 방어유닛 기준 드림캐쳐는 방어유닛에만 붙는 카드가 전제**(2026-09-28) — 「적이 든 남의-배치 규칙이 누구 편인가」는 따지지 않는다. 열어 두는 것은 **「적도 스킬을 소유·사용할 수 있다」는 전제**뿐이고, 드림캐쳐 전량의 적 숙주 정합은 이 결정의 범위 밖이다.
 
 ## 하드 케이스 3·4 — 「소유자를 자유롭게」 탐색 결과 (2026-09-28)
@@ -45,9 +45,9 @@ H4 를 이 spec 에서 뺀 이유: 효과 값의 정본은 시트다(`DcSheetApp
 | 층 | 막나 | 위치 |
 |---|---|---|
 | 실행(트리거 → 효과) | 안 막음 — 누가 들든 발동 · 진영은 시전자 상대 | `TriggerDispatcher.cs` Collect/CollectAny |
-| 소유 설정(저작) | 막음(구조) — 소유자 종류별 저장 자리: 카드 `mechanics` · 방어유닛 `UnitSkillAbility` 참조 · 적 `nightmareMechanics`. 다른 종류는 복사만 가능 | `DcMechanic` 세 저장처 |
-| 굽기 | 카드는 숙주 = 방어유닛 가정 | `CardDefinitionBuilder.cs` `hostIsEnemy: false` |
-| 검증 | **결함** — 적 숙주의 `Any` 규칙을 NeverFires 로 오판(실제로는 발화) | `EffectComboRule.cs:52` |
+| 소유 설정(저작) | 막음(구조) — 소유자 종류별 저장 자리: 카드 `mechanics` · 방어유닛 `UnitSkillAbility` 참조 · 적 `nightmareMechanics`. 다른 종류는 복사만 가능 → **해결 `skill-data-table` unit 4**(세 소유자 = `bindings` 한 형식 · 효과 SO 참조) | `DcMechanic` 세 저장처 |
+| 굽기 | 카드는 숙주 = 방어유닛 가정 → **해결 `skill-data-table` unit 4**(카드 `HostKinds` — 붙을 수 있는 숙주 종류마다 조합 검증) | `CardDefinitionBuilder.cs` `hostIsEnemy: false` |
+| 검증 | **결함** — 적 숙주의 `Any` 규칙을 NeverFires 로 오판(실제로는 발화) → **해결 `skill-data-table` unit 2**(주체 `Any` 를 숙주 종류 감지자 판정보다 먼저 본다) | `EffectComboRule.cs:52` |
 | 부착 관문 | 게임 규칙(표식 외 방어유닛만) — 설계 결함 아님 | `CardBindings.cs:44` |
 | 소유자 쪽 가정 | 방어유닛은 안 움직인다(칸 점유가 몸을 안 따라감) — 스킬과 별개 | `PlacementService` 점유 · `IntentApplier.Blink` |
 
@@ -82,10 +82,10 @@ H4 를 이 spec 에서 뺀 이유: 효과 값의 정본은 시트다(`DcSheetApp
 
 ## 손대지 않는 것
 
-결정 ⑦-2 · ⑦-3 · ⑧ · ⑨ 의 규칙 · 서버 권위(⑩ — 목표만) · 저작 값·밸런스 · **새 카드·콘텐츠 추가**.
+결정 ⑦-2 · ⑦-3 · ⑧ · ⑨ 의 규칙 · 서버 권위(⑩ — 목표만) · 저작 값·밸런스 · **새 카드·콘텐츠 추가**. — 예외: 플레이 확인용 실사용 카드 2장(개사기 · 별똥 타격 `1824f1fd2` — 데이터만 · 이 spec 이 연 조합을 사람이 확인하려고 넣었다).
 
 ## 후속 후보
 
-- **효과 정체(H4) + 시트 Effects 탭** — 한 spec 으로. 효과 SO 참조 · 소유자 탭(UnitSkills · Dreamcatcher · Nightmares) 열 스키마 통일 · 임포터 → 출처 꼬리표 · 죽은 컬럼 4 정리(`docs/spec/README.md` 「시트 ↔ 저작 ↔ 코어 정합 감사」) · 새 주체 축·예고 체크의 시트 열. 대상 수: 카드 52 · 유닛 능력 18(`UnitSkillAbility` 17 + 실드 캐스트 1 — 능력 에셋 26 중 규칙 레일을 타는 것) · 악몽 저작 6.
+- ~~**효과 정체(H4) + 시트 Effects 탭** — 한 spec 으로.~~ → **해소 = `docs/spec/skill-data-table/`**(효과 SO `EffectData` + 소유 줄 · 시트 `Skills` · `SkillOwners`). 효과 SO 참조 · 소유자 탭(UnitSkills · Dreamcatcher · Nightmares) 열 스키마 통일 · 임포터 → 출처 꼬리표 · 죽은 컬럼 4 정리(`docs/spec/README.md` 「시트 ↔ 저작 ↔ 코어 정합 감사」) · 새 주체 축·예고 체크의 시트 열. 대상 수: 카드 52 · 유닛 능력 18(`UnitSkillAbility` 17 + 실드 캐스트 1 — 능력 에셋 26 중 규칙 레일을 타는 것) · 악몽 저작 6.
 - 「범위 안 전부」를 발사 명세 선정 규칙으로 승격(지금은 전원 손잡이로 충분).
-- **브레스 콘 사거리 인라인 자**(unit 0 발견 3) — `SkillCone.IsInCone` 의 거리 컷(`Skills/SkillCone.cs:46`)에 원점·대상 몸 항이 없다(후보 질의만 정본). 라이브 = 드래곤. 고치면 도달이 넓어지는 규칙 변경이라 계약 6(라이브 무변) 밖 — 제약 13 확인 · 사용자 결정.
+- ~~**브레스 콘 사거리 인라인 자**(unit 0 발견 3) — `SkillCone.IsInCone` 의 거리 컷(`Skills/SkillCone.cs:46`)에 원점·대상 몸 항이 없다(후보 질의만 정본). 라이브 = 드래곤. 고치면 도달이 넓어지는 규칙 변경이라 계약 6(라이브 무변) 밖 — 제약 13 확인 · 사용자 결정.~~ → **해결 unit 7**(사용자 승인 2026-09-28 — 후보 원 AND `SkillMath.SectorGate` · `7_cone_breath_reach.md`).
