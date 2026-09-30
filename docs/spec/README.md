@@ -106,8 +106,7 @@ code + git history        구현 상세
 
 ## 진행 중 spec
 
-- `skill-data-table/` — **스킬 데이터 표 재설계**(스킬 = 효과 id · 소유 = 참조 줄 · 시트 `Skills`/`SkillOwners`). **구현 완료 2026-09-29 · 사용자 확인 대기** · 인계 `6_handoff_summary.md`.
-- `unified-effect-layer/` — **통합 효과 층**(트리거 검사·효과 발동이 출처와 무관하게 한 경로). **완료 2026-09-28**(플레이 확인) · 인계 `6_handoff_summary.md` · 전수 표 `census.md`.
+- `skill-data-table/` — **스킬 데이터 표 재설계**(스킬 = 효과 id · 소유 = 참조 줄 · 시트 `Skills`/`SkillOwners`). **1부(units 0~5) 완료 · 2부 unit 8 · 9 완료 · unit 7 보류(후속) · unit 10 인계 대기** · 실제 시트 8탭 재구성 · export 와 동일 확인 2026-09-30 · 1부 인계 `6_handoff_summary.md` · 남은 것 = 아래 Follow-up Backlog 「스킬 데이터 표 — 남은 것」.
 
 ## 은퇴한 spec
 
@@ -122,20 +121,39 @@ code + git history        구현 상세
 
 ## Follow-up Backlog
 
+### 스킬 데이터 표 — 남은 것 (`skill-data-table` — 1부 완료 · 2부 unit 10 인계 대기)
+
+정본 = [`skill-data-table/README.md`](skill-data-table/README.md) 「후속 후보 (2부)」 — 상세는 옮기지 않는다.
+
+- **unit 7 전체**(보류) · 방어유닛 · 적의 진영 버프 · 공격 변형 3종 배선(숙주 적합성 `HostProfile.OfDef` 포함).
+- 배치 오라 ↔ 진영 버프 관계 정리 · `DcSkills` 은퇴(U18 — 액티브를 드림캐쳐에서 분리할 때) · 설정 탭 통합(`DcConfig` · `CostConfig`) · 분열 적 칸(`Enemies.split_*`) · 드림스톤 시트 · 순찰 소환물의 진영 버프 수혜(D2) · 적 소유 진영 버프의 직업 필터.
+- **옛 메커닉 번역 층 제거** — `BindingSpecView.ToMechanic` → `DcMechanic`/`DcPayloadSpec`(굽기 잎 검증 · 카드 문안이 아직 읽는다) · 거울 enum `DcCcKind`/`DcStackKind` · `EffectSlots` 의 이전 함수(테스트만 부르거나 호출 0). unit 4 「`DcPayloadSpec` 을 보기 전용 이름으로」의 미완분.
+- **센서스 개명 미실행 2** — B7 `CardBuffKind` → `BuffStat` · B10 `BindingOrigin` → `OwnerKind`(`UnitAuthored` 어휘 · 정수 해시 유지). (`skill-data-table/naming-census.md`)
+- (사용자 몫) 다음 Push **전에** 새 탭의 Apps Script 업서트 키(`Skills` = `effect_id` · `SkillOwners` = `owner_kind`+`owner_id`+`slot` — `skill-data-table/5_sheet_io.md` 「실제 시트 설정」).
+
+### 통합 효과 층 — 남은 것 (`unified-effect-layer` — **spec 완료 2026-09-28**)
+
+정본 = [`unified-effect-layer/README.md`](unified-effect-layer/README.md) 「후속 후보」 · 인계 `6_handoff_summary.md` Follow-up.
+
+- **「범위 안 전부」를 발사 명세 선정 규칙으로 승격** · 지금은 전원 손잡이(`FanOutToAllCandidates`)로 충분하다(옛 감사의 `AllInRange` 후보).
+- **개사기 · 별똥 타격 전용 아트** · 복사 원본 그림을 공유해 `DreamcatcherCardArtTests.VisibleCards_HaveUniquePortraitSpriteArtwork` 가 빨갛다.
+- **부착 판정의 도발 가디언 검사 · `CastHazardSkill` 미등록 죽은 파일 처리.**
+- 해소됨(다시 올리지 말 것): 효과 정체(H4) + 시트 Effects 탭 → `skill-data-table` · 브레스 콘 사거리 인라인 자 → 그 spec unit 7(사용자 승인 규칙 변경 · 후보 원 AND `SectorGate` · 반각 ≤ 0° 도 굽기 거절).
+
 ### 전투 코어 전환 — 남은 것 (`battle-core-rebuild` — **spec 완료 2026-09-25**, 머지 `fecb0fef3`)
 
 **후속 spec 「통합 효과 층」 = [`unified-effect-layer/`](unified-effect-layer/README.md)** (완료 2026-09-28 · 전수 표 `census.md` · 인계 `6_handoff_summary.md`). 출발 맥락 = `battle-core-rebuild/12_next_unified_effect_layer_guide.md`(결정 ⑪ · 탐침 보류 5건 = 완료 기준 · 코드 지도).
 
-- **효과 정체(H4) + 시트 Effects 탭** — `unified-effect-layer` 에서 뺀 후속(그 README 「후속 후보」). 효과 SO 참조와 시트 Effects 탭을 한 spec 으로(참조만 먼저 두면 시트 정본이 뒤집힌다) · 소유자 탭 열 스키마 통일 · 임포터 → 출처 꼬리표 · 아래 감사의 죽은 컬럼·거짓 문안 정리. 대상 = 카드 52 · 유닛 능력 18 · 악몽 저작 6.
+- ~~**효과 정체(H4) + 시트 Effects 탭**~~ → **`skill-data-table` 로 해소**(효과 SO `EffectData` + 소유 줄 · 시트 `Skills` · `SkillOwners`). 옛 서술: `unified-effect-layer` 에서 뺀 후속(그 README 「후속 후보」). 효과 SO 참조와 시트 Effects 탭을 한 spec 으로(참조만 먼저 두면 시트 정본이 뒤집힌다) · 소유자 탭 열 스키마 통일 · 임포터 → 출처 꼬리표 · 아래 감사의 죽은 컬럼·거짓 문안 정리. 대상 = 카드 52 · 유닛 능력 18 · 악몽 저작 6.
 
 #### 시트 ↔ 저작 ↔ 코어 정합 감사(2026-09-26, 읽기 전용) — 후속 후보
-- **효과 자산화(하드 케이스 「유닛 배치 스킬 A = 드림캐쳐 AA 가 시전」)**: `DcMechanic` 이 값 struct 라 같은 효과가 유닛 능력·카드에 값으로 복사된다(한 번 정의 실패). 효과를 참조 가능한 SO(`SkillEffectData`)로 승격해 트리거 행이 참조만 갖게 + 발사 명세 대상 선정 `AllInRange` 추가 + `EffectWitness` 로 「A 발동 == AA 발동」 증언. 시트도 효과 탭 하나로 유닛 스킬·카드·악몽을 함께 밸런싱(아래 8 해소).
-- **하드 케이스 탐침(2026-09-26, `06441f875` `HardCaseUnifiedSkillProbeTests` 7 ○ · 2 Ignore)**: A(유닛 배치 → N 안 모든 적에게 호밍 1발씩 100) ○ — 발사 명세 「전원 손잡이(FanOutToAllCandidates)」 + 호밍 탄. AA(호스트 생존 동안 신규 배치 유닛이 A 시전) × — 배치 상속 바인딩(Subject.Any·PlacedDefender·Lifetime.Owner)은 발화·해제까지 되지만 **발사 명세 버스트 슬롯이 바인딩 소유자(호스트) 목록에 들어가 호스트 자리에서 쏜다**(`IntentApplier.cs:301-306` · `CombatPhase.cs:975-979`; 원점·Owner 가 H). 저작 경로도 `CardDefinitionBuilder.cs:261` 이 카드의 OnPlace 를 거절. 효과 자산화 spec 계약에 추가할 것: ① 버스트 원점 = **발동 시전자(사건 주체)**, 귀속만 바인딩 소유자 ② 카드 경로에 OnPlace + Subject.Any 허용 ③ 「A 발동 == AA 발동」 증언(대상 집합 동치).
-- **하드 케이스 2 탐침(2026-09-26, `fab244046` `HardCaseMeteorProbeTests` 12 ○ · 3 Ignore)** — 액티브 운석(지정 칸·100) vs 타격 운석(적 위치·30): **착탄 해석은 하나**(같은 탄 줄 · SkyFall × TileAoe → `ResolveTileAoe` → `ReachFromImpact` · 원점 항 = 칸 반폭 · 피해는 바인딩 Magnitude 라 탄 줄 하나로 100/30 · 착탄 VFX 키 동일). **갈리는 것 3**: ① 대상 조준 갈래가 바인딩 TileRange 를 재조준 반경으로 쓰고 착탄 반경은 탄 정의값(`IntentApplier.cs:271` · `TickProjectilePhase.cs:459`) — 같은 탄 줄로 N 이 다른 운석 불가 ② 대상 갈래는 예고·비행시간을 안 채워 즉발 → 착탄 예고(6c) 없음 + 뷰가 사건 배달 시점(틱 끝)에 월드 탄을 못 찾아 **낙하 그림 없음**(`CoreProjectileViewPool.cs:95-97` · `EventBus.cs:72-76` — 비행 0 인 모든 대상 조준 SkyFall 탄 공통) ③ 저작: 카드 빌더가 셀 바인딩 탄을 거절(`CardDefinitionBuilder.cs:313`), 받는 운석형 `SkyFallOnTarget` 은 직격+비산으로 번역돼 착탄 해석이 다르고 비산 도달이 인라인 자(`TickProjectilePhase.cs:874` — 제약 13 확인 필요). 효과 자산화 spec 계약 추가분: 발사 요청 조립을 **한 갈래**(자리 원천만 다름: 지정 칸 / 사건 대상 자리 / 시전자 자리)로 · 반경·예고·비행시간은 탄/효과 정의에서 · 즉발 탄도 뷰 키를 사건에 싣기.
-- (c) 거짓 문안: 액티브 카드 「비용 N」이 `SkillData.cost`(2~4)를 쓰는데 차감은 `AwakeningConfig.CostFor`(20) — `DreamcatcherCardText.cs:549` · 은퇴한 유출 허용치 문구 `:149-151`(`Card_IncubusPact`) · `tileRange`/`magnitude` 한 열 다의미(BountyMark %·SelfStatBuff 중첩·스윕 사거리) · `SkillMath.cs:28-33` 반올림 주석 stale.
-- (a) 죽은 컬럼: `Defenders.aggroRange`(SO 필드 은퇴) · `Enemies.aggroAttackDamage/Cooldown/Range`(코어 소비 0, 이식 제외) · `DcSkills.cost`(문안만).
-- (b) 시트 밖 저작: 방어유닛 `UnitSkillAbility.mechanics` · 적 `nightmareMechanics` · 능력 SO(실드·폭탄·다연발·장판) 전부 SO 손저작 전용 · 카드 게이트/원뿔/구슬 3 필드(CorneredBurst·ExecutionStrike·FlameSpinner) · 적중 CC·적 tier/detectionRange/stabilityDamage/웨이브 한도.
-- 판정: 배치 스킬 통합이 시트를 깬 것은 아니다(유닛 시트에 배치 스킬 열은 원래 없었고 카드 메커닉 탭은 코어가 그대로 읽는다). 어긋남은 다른 은퇴 작업의 잔재 + 통합된 스킬 어휘를 시트가 한 번도 다룬 적 없는 커버리지 공백. 실제 구글 시트 헤더는 미확인.
+- ~~**효과 자산화**~~ → **`skill-data-table` 로 해소**(효과 SO = `EffectData` — 옛 가칭 `SkillEffectData` · 시트 `Skills` 한 탭으로 유닛 · 카드 · 적을 함께 밸런싱) · 버스트 원점 · 카드 OnPlace · 「A 발동 == AA 발동」 증언은 `unified-effect-layer` 로 해소 · 남은 것 = `AllInRange` 승격(위 「통합 효과 층 — 남은 것」). 옛 서술 — **효과 자산화(하드 케이스 「유닛 배치 스킬 A = 드림캐쳐 AA 가 시전」)**: `DcMechanic` 이 값 struct 라 같은 효과가 유닛 능력·카드에 값으로 복사된다(한 번 정의 실패). 효과를 참조 가능한 SO(`SkillEffectData`)로 승격해 트리거 행이 참조만 갖게 + 발사 명세 대상 선정 `AllInRange` 추가 + `EffectWitness` 로 「A 발동 == AA 발동」 증언. 시트도 효과 탭 하나로 유닛 스킬·카드·악몽을 함께 밸런싱(아래 8 해소).
+- (→ **`unified-effect-layer` 로 해소** — 탐침 보류 해제 · H3 · H5) **하드 케이스 탐침(2026-09-26, `06441f875` `HardCaseUnifiedSkillProbeTests` 7 ○ · 2 Ignore)**: A(유닛 배치 → N 안 모든 적에게 호밍 1발씩 100) ○ — 발사 명세 「전원 손잡이(FanOutToAllCandidates)」 + 호밍 탄. AA(호스트 생존 동안 신규 배치 유닛이 A 시전) × — 배치 상속 바인딩(Subject.Any·PlacedDefender·Lifetime.Owner)은 발화·해제까지 되지만 **발사 명세 버스트 슬롯이 바인딩 소유자(호스트) 목록에 들어가 호스트 자리에서 쏜다**(`IntentApplier.cs:301-306` · `CombatPhase.cs:975-979`; 원점·Owner 가 H). 저작 경로도 `CardDefinitionBuilder.cs:261` 이 카드의 OnPlace 를 거절. 효과 자산화 spec 계약에 추가할 것: ① 버스트 원점 = **발동 시전자(사건 주체)**, 귀속만 바인딩 소유자 ② 카드 경로에 OnPlace + Subject.Any 허용 ③ 「A 발동 == AA 발동」 증언(대상 집합 동치).
+- (→ **`unified-effect-layer` 로 해소** — 탐침 보류 해제 · H2 · H6 · H5 · 비산 자) **하드 케이스 2 탐침(2026-09-26, `fab244046` `HardCaseMeteorProbeTests` 12 ○ · 3 Ignore)** — 액티브 운석(지정 칸·100) vs 타격 운석(적 위치·30): **착탄 해석은 하나**(같은 탄 줄 · SkyFall × TileAoe → `ResolveTileAoe` → `ReachFromImpact` · 원점 항 = 칸 반폭 · 피해는 바인딩 Magnitude 라 탄 줄 하나로 100/30 · 착탄 VFX 키 동일). **갈리는 것 3**: ① 대상 조준 갈래가 바인딩 TileRange 를 재조준 반경으로 쓰고 착탄 반경은 탄 정의값(`IntentApplier.cs:271` · `TickProjectilePhase.cs:459`) — 같은 탄 줄로 N 이 다른 운석 불가 ② 대상 갈래는 예고·비행시간을 안 채워 즉발 → 착탄 예고(6c) 없음 + 뷰가 사건 배달 시점(틱 끝)에 월드 탄을 못 찾아 **낙하 그림 없음**(`CoreProjectileViewPool.cs:95-97` · `EventBus.cs:72-76` — 비행 0 인 모든 대상 조준 SkyFall 탄 공통) ③ 저작: 카드 빌더가 셀 바인딩 탄을 거절(`CardDefinitionBuilder.cs:313`), 받는 운석형 `SkyFallOnTarget` 은 직격+비산으로 번역돼 착탄 해석이 다르고 비산 도달이 인라인 자(`TickProjectilePhase.cs:874` — 제약 13 확인 필요). 효과 자산화 spec 계약 추가분: 발사 요청 조립을 **한 갈래**(자리 원천만 다름: 지정 칸 / 사건 대상 자리 / 시전자 자리)로 · 반경·예고·비행시간은 탄/효과 정의에서 · 즉발 탄도 뷰 키를 사건에 싣기.
+- (c) 거짓 문안(부분 해소 — 액티브 「비용 N」 → `skill-data-table` U18 · 한 열 다의미 → 효과 표의 뜻 이름 칸 `tables.md` §3 · 남은 것 = 유출 허용치 문구 · `SkillMath` 반올림 주석): 액티브 카드 「비용 N」이 `SkillData.cost`(2~4)를 쓰는데 차감은 `AwakeningConfig.CostFor`(20) — `DreamcatcherCardText.cs:549` · 은퇴한 유출 허용치 문구 `:149-151`(`Card_IncubusPact`) · `tileRange`/`magnitude` 한 열 다의미(BountyMark %·SelfStatBuff 중첩·스윕 사거리) · `SkillMath.cs:28-33` 반올림 주석 stale.
+- (a) 죽은 컬럼: `Defenders.aggroRange`(SO 필드 은퇴) · `Enemies.aggroAttackDamage/Cooldown/Range`(코어 소비 0, 이식 제외) · ~~`DcSkills.cost`(문안만)~~ → `skill-data-table` unit 9 에서 열 삭제로 해소.
+- (b) 시트 밖 저작(부분 해소 — 방어유닛 · 적 규칙 · 실드 캐스트 · 카드 게이트/원뿔/구슬 → `skill-data-table` 의 `SkillOwners` · `Skills` 탭 · 남은 시트 밖 = 폭탄 · 다연발 · 장판 능력 SO · 적중 CC · 적 tier 등): 방어유닛 `UnitSkillAbility.mechanics` · 적 `nightmareMechanics` · 능력 SO(실드·폭탄·다연발·장판) 전부 SO 손저작 전용 · 카드 게이트/원뿔/구슬 3 필드(CorneredBurst·ExecutionStrike·FlameSpinner) · 적중 CC·적 tier/detectionRange/stabilityDamage/웨이브 한도.
+- 판정: 배치 스킬 통합이 시트를 깬 것은 아니다(유닛 시트에 배치 스킬 열은 원래 없었고 카드 메커닉 탭은 코어가 그대로 읽는다). 어긋남은 다른 은퇴 작업의 잔재 + 통합된 스킬 어휘를 시트가 한 번도 다룬 적 없는 커버리지 공백. 실제 구글 시트 헤더는 미확인(→ 2026-09-30 8탭 재구성 · export 와 동일 확인 — `skill-data-table/9_sheet_rebuild.md`).
 
 인계: `docs/spec/battle-core-rebuild/11_handoff_summary.md`. 분류는 사용자 방향(그 README 결정 ⑩ — 서버 권위 실시간 서버 예정 · 커맨드 = 서버 로직 키워드 · UI/에셋은 데모 · CI 시기상조)을 따른다. 상세는 옮기지 않았다 — 출처를 연다. 약칭: `BCR` = `docs/spec/battle-core-rebuild/`.
 
