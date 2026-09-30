@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using Wassup.Editor.UnitStatImport;
@@ -56,6 +57,54 @@ namespace Wassup.Tests.EditMode.UnitStatImport
                     $"'{(string)row["id"]}': 제한 없는 행에 attachValue 키가 있으면 안 된다");
             }
             Assert.Greater(checked_, 0, "제한 없는 카드 행이 하나 이상 검사되어야 한다");
+        }
+
+        // skill-data-table 감사 — 액티브 전용 칸(cooldown_sec · needs_two_tiles)은 액티브 카드 줄에만(기본값이어도) · 나머지 카드 줄은 키 없음.
+        [Test]
+        public void CardRows_ActiveOnlyColumns_OnlyOnActiveCards()
+        {
+            var unit = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.DreamcatcherCard>();
+            unit.id = "u"; unit.type = Wassup.Data.CardType.Unit;
+            var squad = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.DreamcatcherCard>();
+            squad.id = "s"; squad.type = Wassup.Data.CardType.Squad;
+            var active = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.DreamcatcherCard>();
+            active.id = "a"; active.type = Wassup.Data.CardType.Active; active.cooldownSec = 0f; active.needsTwoTiles = false;
+            try
+            {
+                var rows = JArray.Parse(DcSheetExporter.ToJson(DcSheetExporter.CardRows(new[] { unit, squad, active })));
+                foreach (JObject row in rows)
+                {
+                    bool isActive = (string)row["id"] == "a";
+                    Assert.AreEqual(isActive, row["cooldown_sec"] != null, $"'{row["id"]}' cooldown_sec");
+                    Assert.AreEqual(isActive, row["needs_two_tiles"] != null, $"'{row["id"]}' needs_two_tiles");
+                }
+                var a = (JObject)rows.Single(r => (string)r["id"] == "a");
+                Assert.AreEqual(0f, (float)a["cooldown_sec"], "액티브는 기본값이어도 적는다");
+                Assert.AreEqual(false, (bool)a["needs_two_tiles"]);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(unit);
+                UnityEngine.Object.DestroyImmediate(squad);
+                UnityEngine.Object.DestroyImmediate(active);
+            }
+        }
+
+        [Test]
+        public void Export_LiveCards_NonActiveRowsHaveNoActiveOnlyColumns()
+        {
+            DcSheetExporter.ExportToFolder(_dir, DcSheetTabs.Default(), DcFolder, SkillFolder);
+            var rows = JArray.Parse(File.ReadAllText(Path.Combine(_dir, DcSheetTabs.Cards + ".json")));
+            int active = 0, other = 0;
+            foreach (JObject row in rows)
+            {
+                if ((string)row["type"] == "Active") { active++; Assert.IsNotNull(row["cooldown_sec"], (string)row["id"]); continue; }
+                other++;
+                Assert.IsNull(row["cooldown_sec"], $"'{row["id"]}': 비-액티브 줄에 cooldown_sec");
+                Assert.IsNull(row["needs_two_tiles"], $"'{row["id"]}': 비-액티브 줄에 needs_two_tiles");
+            }
+            Assert.Greater(active, 0);
+            Assert.Greater(other, 0);
         }
 
         [Test]

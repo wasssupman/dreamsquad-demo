@@ -79,6 +79,13 @@ namespace Wassup.Editor.UnitStatImport
                     row.attachType = null;
                     row.attachValue = null;
                 }
+                // skill-data-table 감사 — 액티브 전용 칸(대기 · 두 칸 조준)은 **액티브 카드만** 적는다. 값 칸이라 늘 읽히는데, 비-액티브 48장에
+                // `cooldown_sec 0` · `needs_two_tiles FALSE` 가 깔리면 시트가 뜻 없는 칸으로 찬다(import 는 그대로 — 빈 칸 = 그대로).
+                if (so.type != CardType.Active)
+                {
+                    row.cooldownSec = null;
+                    row.needsTwoTiles = null;
+                }
                 cardRows.Add(row);
             }
             return cardRows;
