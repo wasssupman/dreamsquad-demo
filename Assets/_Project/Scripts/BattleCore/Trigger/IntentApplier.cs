@@ -34,7 +34,10 @@ namespace Wassup.BattleCore.Trigger
         // skill-data-table unit 3 — 이번 발동의 **해석된** 효과 값(비율형은 시전 순간 고정값 · 계약 9). `_binding.Effect` 는 저작값이라
         // 실행 중 효과 값은 이것만 읽는다.
         private EffectDef _effect = EffectDef.Default();
-        private Faction _casterFaction = Faction.DefenderUnit;
+        // skill-data-table 감사 — 기본값 = **None**(옛 기본 DefenderUnit 은 발동 문맥 없이 적용되면 조용히 플레이어 편을 골랐다). 소비처는
+        // `CasterSide` 가 푼다 — 문맥 없이 모르면 말하고 버린다. 라이브 적용은 전부 `Begin` 을 지난다(디스패처 드레인 · 퇴근 임계 운석).
+        private Faction _casterFaction = Faction.None;
+        private bool _inContext;
         private TickContext _ctx;
 
         public System.Action<string> Report;
@@ -66,10 +69,28 @@ namespace Wassup.BattleCore.Trigger
             _binding = b;
             _effect = effect;
             _casterFaction = casterFaction;
+            _inContext = true;
             _ctx = ctx ?? _home;
         }
 
-        public void End() { _binding = null; _effect = EffectDef.Default(); _casterFaction = Faction.DefenderUnit; _ctx = _home ?? _ctx; }
+        public void End() { _binding = null; _effect = EffectDef.Default(); _casterFaction = Faction.None; _inContext = false; _ctx = _home ?? _ctx; }
+
+        /// <summary>
+        /// 이 의도가 누구 편인가 — 주인(있으면 그 진영) → 발동 문맥의 시전 진영. 둘 다 None 이면 **조용히 편을 고르지 않는다**: 발동 문맥 없이
+        /// 적용됐으면(= `Begin` 을 안 거쳤다) 말하고 버린다(false) · 문맥은 있는데 None 이면 말하고 그대로 둔다(옛 동작 — 아무 편도 아니다).
+        /// </summary>
+        private bool CasterSide(Faction owner, string what, out Faction side)
+        {
+            side = owner != Faction.None ? owner : _casterFaction;
+            if (side != Faction.None) return true;
+            if (!_inContext)
+            {
+                Warn($"[Intent] {what}: 발동 문맥(Begin) 없이 적용 — 시전 진영을 모른다(조용히 플레이어 편을 고르지 않는다). 버린다.");
+                return false;
+            }
+            Warn($"[Intent] {what}: 발동 문맥의 시전 진영이 None — 어느 편도 아니다.");
+            return true;
+        }
 
         private int Tick => _ctx != null ? _ctx.Tick : 0;
         private float TileSize => _map != null ? _map.TileSize : 1f;
@@ -238,8 +259,7 @@ namespace Wassup.BattleCore.Trigger
             else u.Position = i.Position;
         }
 
-        private int OpponentMask(Faction owner)
-            => (int)FactionRelation.OpponentUnitsOf(owner != Faction.None ? owner : _casterFaction);
+        private static int OpponentMask(Faction side) => (int)FactionRelation.OpponentUnitsOf(side);
 
         private bool ValidProjectile(int defIndex, string what)
         {
@@ -254,7 +274,7 @@ namespace Wassup.BattleCore.Trigger
             if (!ValidProjectile(i.DataIndex, "스킬 탄")) return;
             ref var pd = ref _def.Projectiles[i.DataIndex];
             var owner = U(i.Source);
-            var ownerFaction = owner != null ? owner.Faction : _casterFaction;
+            if (!CasterSide(owner != null ? owner.Faction : Faction.None, "스킬 탄", out var ownerFaction)) return;
 
             var req = ProjectileRequest.Empty;
             req.DefIndex = i.DataIndex;
@@ -365,9 +385,10 @@ namespace Wassup.BattleCore.Trigger
         private void SpawnZone(in SimIntent i)
         {
             var src = U(i.Source);
+            if (!CasterSide(src != null ? src.Faction : Faction.None, "장판", out var zoneSide)) return;
             // U10 — 장판의 DoT 피해 = 까는 효과 줄의 피해(장판 줄은 모양·비피해 수치만).
             var h = HazardSpawn.Spawn(_world, _map, _def, i.DataIndex, i.Cell, Id(i.Source),
-                                      src != null ? src.Faction : _casterFaction, i.TargetTraversalLayers, Tick,
+                                      zoneSide, i.TargetTraversalLayers, Tick,
                                       _binding != null ? _effect.Damage : 0f);
             if (h == null) Warn($"[Intent] 장판 줄 {i.DataIndex} 이 없다 — 깔지 않는다.");
         }
@@ -395,7 +416,8 @@ namespace Wassup.BattleCore.Trigger
                     Warn($"[Intent] 모르는 장 {(SkillFieldKind)i.Selector} — 깔지 않는다.");
                     return;
             }
-            f.Faction = (int)_casterFaction;
+            if (!CasterSide(Faction.None, "장", out var fieldSide)) return;
+            f.Faction = (int)fieldSide;
             f.Source = Id(i.Source);
             _world.SpawnField(f, Tick);
         }
@@ -486,6 +508,8 @@ namespace Wassup.BattleCore.Trigger
                     var dst = U(i.Target);
                     var at = dst != null ? new Site(dst.Position, dst.HitRadius) : Site.AtCell(i.Position);
                     var from = src != null ? new Site(src.Position, src.HitRadius) : Site.AtCell(i.Position);
+                    // 연출은 편을 **정하지 않는다**(버리지 않는다) — 모르면 None 을 싣고 말한다.
+                    if (_casterFaction == Faction.None && !_inContext) Warn("[Intent] 연출: 발동 문맥(Begin) 없이 적용 — 진영 None 으로 싣는다.");
                     _bus.Publish(CoreEvent.SkillVisual(Tick, Id(i.Source), Id(i.Target), from, at, _casterFaction,
                                                        i.Selector, i.Duration, i.DataIndex));
                     return;
@@ -505,7 +529,7 @@ namespace Wassup.BattleCore.Trigger
         {
             if (!ValidProjectile(i.DataIndex, "궤도 탄")) return;
             var owner = U(i.Source);
-            var ownerFaction = owner != null ? owner.Faction : _casterFaction;
+            if (!CasterSide(owner != null ? owner.Faction : Faction.None, "궤도 탄", out var ownerFaction)) return;
             var req = ProjectileRequest.Empty;
             req.DefIndex = i.DataIndex;
             req.Movement = MovementKind.OrbitAroundPoint;
@@ -567,6 +591,11 @@ namespace Wassup.BattleCore.Trigger
             // skill-data-table unit 2 (U4) — 코스트·손패 대기는 **플레이어 자원**이다. 시전자가 플레이어 편이 아니면(적이 든 규칙)
             // **무효** — 적에게는 그 자원이 없다(플레이어 것을 뺏거나 적 전용 자원으로 바꾸지 않는다). 주체 없는 시전(판 · 액티브)의
             // 진영은 발동 문맥(`Begin`)이 싣는다. 오류가 아니라 규칙이라 말하지 않는다.
+            if (_casterFaction == Faction.None && !_inContext)
+            {
+                Warn($"[Intent] 메타 {i.Kind}: 발동 문맥(Begin) 없이 적용 — 시전 진영을 모른다(조용히 플레이어 자원에 쓰지 않는다). 버린다.");
+                return;
+            }
             if (((int)_casterFaction & Factions.AnyDefender) == 0) return;
             switch (i.Kind)
             {

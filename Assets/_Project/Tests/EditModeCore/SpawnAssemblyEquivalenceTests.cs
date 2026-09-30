@@ -70,7 +70,10 @@ namespace Wassup.Tests.EditMode.Core
         {
             _ctx.Emitted.Clear();
             int before = _m.World.ProjectileRequests.Count;
-            skill.Execute(caster, target, p, _ctx);
+            // 디스패처처럼 발동 문맥을 연다(시전 진영 = 시전자의 진영 — 주체 없는 시전의 편은 문맥만 안다).
+            _m.Intents.Begin(null, caster.Faction, null);
+            try { skill.Execute(caster, target, p, _ctx); }
+            finally { _m.Intents.End(); }
             Assert.AreEqual(1, _ctx.Emitted.Count, "의도 하나");
             Assert.AreEqual(before + 1, _m.World.ProjectileRequests.Count, $"요청 하나(버려지지 않는다) — {string.Join(" / ", _said)}");
             AssertSame(_ctx.Emitted[0], _m.World.ProjectileRequests[before], Faction.DefenderUnit);
@@ -255,9 +258,15 @@ namespace Wassup.Tests.EditMode.Core
         public void 자리형이_궤적을_명시하지_않으면_대상_결합으로_새어_버리고_말한다()
         {
             // 옛 applier 강제가 걷힌 뒤의 그물 — Homing 저작 탄 × 대상 없음 = 조용한 오발사가 아니라 경고.
-            _m.Intents.Apply(new SimIntent { Kind = SimIntentKind.SpawnProjectile, Position = _e.Position,
-                                             Source = SkillEntityId.None, Target = SkillEntityId.None,
-                                             Amount = 1f, TileRange = 1, DataIndex = MeteorRow });
+            // skill-data-table 감사 — 주인 없는 탄은 발동 문맥이 편을 밝힌다(문맥 없이 적용하면 쓰기 표면이 말하고 버린다).
+            _m.Intents.Begin(null, BattleMatch.PlayerFaction, null);
+            try
+            {
+                _m.Intents.Apply(new SimIntent { Kind = SimIntentKind.SpawnProjectile, Position = _e.Position,
+                                                 Source = SkillEntityId.None, Target = SkillEntityId.None,
+                                                 Amount = 1f, TileRange = 1, DataIndex = MeteorRow });
+            }
+            finally { _m.Intents.End(); }
             Assert.AreEqual(0, _m.World.ProjectileRequests.Count);
             Assert.IsTrue(_said.Exists(s => s.Contains("조준 대상이 없다")));
         }

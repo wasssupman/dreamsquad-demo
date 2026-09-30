@@ -45,9 +45,36 @@ namespace Wassup.Tests.EditMode.Core
             _m.Report = _said.Add;
             _d = SpawnDefender(_m, new int2(5, 2));
             _e = SpawnEnemy(_m, new int2(6, 2));
+            // skill-data-table 감사 — 직접 적용도 **편을 밝힌다**(발동 문맥 없이 적용하면 쓰기 표면이 말하고 버린다 · 옛 기본 = 조용히 플레이어 편).
+            _m.Intents.Begin(null, BattleMatch.PlayerFaction, null);
         }
 
+        [TearDown]
+        public void TearDown() => _m?.Intents.End();
+
         private void Apply(SimIntent i) => _m.Intents.Apply(in i);
+
+        [Test]
+        public void 발동_문맥_없이_적용하면_편을_조용히_고르지_않고_말하고_버린다()
+        {
+            _m.Intents.End();   // 문맥 없음(SetUp 이 연 플레이어 문맥을 닫는다)
+            float cost = _m.Cost.Current;
+            _m.Intents.Apply(new MetaIntent { Kind = MetaIntentKind.GainCost, Amount = 3f });
+            Assert.AreEqual(cost, _m.Cost.Current, 1e-4f, "플레이어 자원에 쓰지 않는다");
+            Apply(new SimIntent { Kind = SimIntentKind.SpawnFieldCarrier, Selector = (int)SkillFieldKind.Pull,
+                                  Cell = new int2(6, 2), TileRange = 2, Amount = 3f, Duration = 2f });
+            Assert.AreEqual(0, _m.World.Fields.Count, "편을 모르는 장은 깔지 않는다");
+            Apply(new SimIntent { Kind = SimIntentKind.SpawnProjectile, Source = SkillEntityId.None, Target = S(_e),
+                                  Position = _e.Position, Amount = 1f, DataIndex = 0 });
+            Assert.AreEqual(0, _m.World.ProjectileRequests.Count, "주인도 문맥도 없는 탄은 쏘지 않는다");
+            Assert.AreEqual(3, _said.FindAll(x => x.Contains("발동 문맥(Begin) 없이")).Count, "셋 다 말한다");
+
+            // 주인이 있으면 그 진영이다(문맥 없이도).
+            Apply(new SimIntent { Kind = SimIntentKind.SpawnProjectile, Target = S(_e), Source = S(_d),
+                                  Position = _d.Position, Amount = 9f, DataIndex = 0 });
+            Assert.AreEqual(1, _m.World.ProjectileRequests.Count);
+            Assert.AreEqual(_d.Faction, _m.World.ProjectileRequests[0].OwnerFaction);
+        }
 
         [Test]
         public void 피해는_출처를_실어_인박스로_간다()
