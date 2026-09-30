@@ -1,5 +1,7 @@
 # 드림캐쳐 메커닉 이식 가이드 — 아키텍처 비의존 설계 + 적용 시행착오
 
+> ⚠ **설계 이력 문서다.** 카드 · 효과 · 소유 줄의 현재 스키마 정본은 [`docs/spec/skill-data-table/tables.md`](../spec/skill-data-table/tables.md) 로 옮겼다(정의 계층 = 효과 SO `EffectData` + 소유 줄 `BindingSpec` — `Scripts/Data/Effects/` · 카드 · 방어유닛 · 적 공용). 아래 §2 설계 계약과 §5 함정의 **교훈은 유효하다**. §3 의 파일 · 타입 이름은 작성 당시의 것이다.
+>
 > unit-trigger / attack-mod-bounce / content-1 / card-taxonomy / squad-warmup (전부 완료 2026-07-09) 산출물.
 > **목적**: 드림캐쳐 메커닉을 "아키텍처에 의존하지 않는 정의"로 설계하고, 그 정의를 특정 아키텍처(작성 당시 하이브리드 ECS — 지금은 순수 C# 전투 코어)에 **해석해 앉힐 때** 무엇을 새로 써야 하고 어떤 함정을 밟는지 남긴 지도. 코드 모듈 이식이 아니라 **설계 방법 + 실제 시행착오**의 이식이 목적이다.
 > 카드 어휘 카탈로그가 아니다 — 조합 가능한 트리거/페이로드 목록은 각 spec README 가 source of truth. 여기선 **왜 이 구조인지**와 **적용의 지뢰**만 담는다.
@@ -38,8 +40,8 @@
 
 | 파일 | 역할 |
 |---|---|
-| `Assets/_Project/Scripts/Data/Dreamcatcher/DcMechanic.cs` | 정의 계층 enum/struct (`DcTriggerKind`/`DcPayloadKind`/`DcAttackModKind`, `DcMechanic`/`DcPayloadSpec`/`DcAttackModSpec`). **ECS 무참조.** |
-| `Assets/_Project/Scripts/Data/Dreamcatcher/DreamcatcherCard.cs` | 카드 SO. `mechanics[]`(트리거형) + `attackMods[]`(개조형) + `CardType`(덱 캡 키) + `placementWarmupSec`. |
+| `Assets/_Project/Scripts/Data/Dreamcatcher/DcMechanic.cs` | (이력) 정의 계층 enum/struct (`DcTriggerKind`/`DcPayloadKind`/`DcAttackModKind`, `DcMechanic`/`DcPayloadSpec`/`DcAttackModSpec`). **ECS 무참조.** → 지금: 거울 enum · `DcAttackMod*` 은퇴(`skill-data-table` unit 4 · 8), 파일에는 저작 트리거 칸 `TriggerSpec` 과 옛 모양 보기 창(`DcMechanic` · `DcPayloadSpec` — 보기 전용)이 남았다. 정의 계층 = `Scripts/Data/Effects/`(`EffectData` · `EffectValues` · `BindingSpec`) + 코어 enum `TriggerKind` · `EffectKind`. |
+| `Assets/_Project/Scripts/Data/Dreamcatcher/DreamcatcherCard.cs` | 카드 SO. (이력) `mechanics[]`(트리거형) + `attackMods[]`(개조형) + `CardType`(덱 캡 키) + `placementWarmupSec`. → 지금: `bindings`(소유 줄 — 트리거형 · 상시 수식자 · 진영 버프 전부) + `hostKinds` + `CardType`. |
 | `Assets/_Project/Scripts/Data/Authoring/DcTrigger.cs` | `DcTrigger.Tick(ref counter, period)` — 인자 없는 순수함수. EditMode 단독 테스트. 코어는 같은 의미의 `TriggerCounters.Tick`(`Scripts/BattleCore/Trigger/TriggerEvent.cs`)을 쓴다. |
 | `Assets/_Project/Scripts/BattleCore/Combat/Projectile/BounceRetarget.cs` | `BounceRetarget.FindNext(...)` — 최근접 재타겟 순수 기하. 아키텍처 중립(옛 `Scripts/Battle/Combat/Projectile/` 사본은 이력 — unit 9 에서 제거). |
 | `Assets/_Project/Scripts/Data/Dreamcatcher/DeckRuleConfig.cs` + `DeckRules.cs` | 덱 제약(크기/타입별 캡) config SO + 검증 로직. 수치는 SO, 상수는 fallback. |
