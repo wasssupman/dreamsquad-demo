@@ -24,8 +24,8 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 저작 SO | `DefenderUnitData`(+`DefenderCatalog`) · 고유 능력 = `Data/Abilities/`(`DefenderAbilityData` 서브에셋) | 신규 유닛은 **`DefenderCatalog` 등록까지**(미등록 = 로스터 미노출). 편성은 로비 → `MatchEntry.ResolveSquadUnits` |
-| 정의표 행 | `MatchDefinitionBuilder.ToUnitDef` → `UnitDef` · 공격 = `CombatDefinitionBuilder.BuildDefenderAttack` · 배치 스킬·실드 = `BindingDefinitionBuilder` | 배치 저작 7칸(코스트 등)이 정의표로 안 옮겨져 배치가 공짜였던 선례(함정 8) |
+| 저작 SO | `DefenderUnitData`(+`DefenderCatalog`) · 평타 경로 능력 = `Data/Abilities/`(`DefenderAbilityData` 서브에셋) · 규칙(배치 스킬 · 실드 캐스트) = `bindings`(소유 줄 `BindingSpec`) → 효과 SO `EffectData`(`Data/Effects/`) | 신규 유닛은 **`DefenderCatalog` 등록까지**(미등록 = 로스터 미노출). 편성은 로비 → `MatchEntry.ResolveSquadUnits` · 효과 SO 는 카드 · 적과 같은 표다(같은 id 를 참조하면 복사 0 — 시트 `Skills` · `SkillOwners`) |
+| 정의표 행 | `MatchDefinitionBuilder.ToUnitDef` → `UnitDef` · 공격 = `CombatDefinitionBuilder.BuildDefenderAttack` · 소유 줄 = `BindingDefinitionBuilder` → `BindingSpecBuilder`(카드 · 적과 한 경로) → 규칙 줄 `BindingDef` + 효과 줄 `MatchDefinition.Effects` | 배치 저작 7칸(코스트 등)이 정의표로 안 옮겨져 배치가 공짜였던 선례(함정 8) |
 | 코어 스폰 · 사건 | 커맨드 `PlaceDefender` → `PlacementService.TryPlace` → `PlacementService.SpawnDefender` → `Placed`(25) · 비행 착지 커맨드 → `DefenderActivated`(28) · 퇴근 → `Retired`(26) · 거절 → `PlacementRejected`(27) | 「배치 중」은 코어가 소유한 페이즈다(`PlacementService.StepActivation`) — 길이 = 배치 모션 |
 | 뷰 풀 | `CoreUnitViewPool`(`UnitSpawned`·`DefenderActivated`·`AttackResolved`·`Knockup`·`UnitSlain`) → `CoreSpineUnitView` / `CoreSpriteUnitView` / 폴백 `CoreQuadUnitView` · 배치 비행 `CoreDeployFlightPresenter` · 퇴근 비행 `CoreRetireFlightPresenter` · 드래그 `CoreDragPreviewPresenter` | ★백엔드 선택은 **`CoreUnitViewPool.TrySpawn` 한 곳**(스프라이트 모션이 있으면 스프라이트, 비면 Spine). 무기 궤적은 `CoreSpriteUnitView` 가 붙인다(`WeaponTrailRig`) |
 | 뷰 순서 | `ViewOrder.Unit`(비행·퇴근 포함) · 체력 = `ViewOrder.Overhead` | |
@@ -52,7 +52,7 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 저작 SO | `AttackUnitData` · 웨이브 = `AttackDeck`/`WavePlanAsset`/`WaveConceptData` | 새 적·등장 조건은 `enemy-wave-integration` 스킬 필수 |
+| 저작 SO | `AttackUnitData`(규칙 = `bindings` → 효과 SO `EffectData` — 방어유닛 · 카드와 같은 표) · 웨이브 = `AttackDeck`/`WavePlanAsset`/`WaveConceptData` | 새 적·등장 조건은 `enemy-wave-integration` 스킬 필수 |
 | 정의표 행 | `MatchDefinitionBuilder.CollectEnemies` → `EnemyDef` · 공격 = `CombatDefinitionBuilder.BuildEnemyAttack` · 웨이브 = `MatchDefinitionBuilder.ToDeckDef`/`ToPlanDef`/`ToBonusDef` | 적 목록 순서가 정의표 번호다 — 재현(modeId + seed)이 여기에 기댄다 |
 | 코어 스폰 · 사건 | `WaveScheduler` → `EnemySpawn.At` → `UnitSpawned`(2) · 웨이브 `WaveQueued`(20)/`WaveStarted`(21) · 분열 `EnemySplit` · 골 도달 `GoalReached`(5) · 감지 `Detected`(6) | 보스는 `UnitSpawned` 의 정의표 번호로 판별한다(`CoreBossWarning`) |
 | 뷰 풀 | `CoreUnitViewPool` · 히트바 `CoreEnemyHitBarSpawner`(`DamageApplied`) · 감지 표식 `CoreVfxSpawner`(`Detected`) · 스폰 예고선 `CoreSpawnAlertPresenter`(`WaveScheduler.CollectForecast` 폴링) · 보스 경보 `CoreBossWarning` | 예고선은 사건 구독이 아니라 매 프레임 읽기다 — 예고는 「아직 안 일어난 일」이라 사건이 없다 |
@@ -147,8 +147,8 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 저작 SO | `DreamcatcherCard` · `DreamcatcherCardCatalog` · 드림스톤 | 문안은 `DreamcatcherCardText`(로비·새 층 공유) |
-| 정의표 행 | `CardDefinitionBuilder.Fill` → `CardDef` · 덱 = `CoreDeckComposition.Compose`(확정 덱 + 판 시드 액티브 롤) | 52장 자동 증언 = `CardProbe`(7e) |
+| 저작 SO | `DreamcatcherCard` · `DreamcatcherCardCatalog` · 드림스톤 · 규칙 = `bindings`(소유 줄 `BindingSpec`) → 효과 SO `EffectData`(`Data/Effects/`) | 문안은 `DreamcatcherCardText`(로비·새 층 공유) · 카드 규칙은 카드 SO 안이 아니라 효과 SO 에 있다 — 새 카드 = 효과 SO(또는 기존 효과 id 참조) + 소유 줄 |
+| 정의표 행 | `CardDefinitionBuilder.Fill` → `CardDef`(소유 줄 = `BindingSpecBuilder` — 유닛 · 적과 한 경로) · 덱 = `CoreDeckComposition.Compose`(확정 덱 + 판 시드 액티브 롤) | 52장 자동 증언 = `CardProbe`(7e) |
 | 코어 스폰 · 사건 | `HandDeck.TryAttach`/`HandDeck.TryCast` → `CardAttached`(60)/`CardDetached`(61)/`CardCast`(62) · 규칙 = `BindingRegistry` → `BindingAttached`(57)/`TriggerFired`(56)/`SkillVisual`(59) | 트랜잭션 = ① 적용 → ② 차감 → ③ 순환 |
 | 뷰 풀 | 손패 `CoreHandView`·`CoreCardDragSlot`·`CoreCardFocusPresenter` · 각성 항아리 `CoreAwakeningGaugeView` · 선택 패널 `CoreSelectionPanel` · 부착 범위 링 `CoreMapOverlay.ShowAttachRange` · 표식·오라 `CoreStatusFxSpawner`·`CoreDcAuraVisualPool` · 발동 임팩트·빔 `CoreVfxSpawner`·`CoreBeamPresenter` | 부착 범위 링은 사건 구독자가 아니다 — 손패 드래그가 오버레이에 민다 |
 | 뷰 순서 | `ViewOrder.Hand` · 표식 `ViewOrder.Status` · 오버헤드 카드 줄 `ViewOrder.Overhead` | 카드 사건 한 건이 몸에 붙는 것을 먼저 세운 뒤 손패가 창을 다시 읽는다 |

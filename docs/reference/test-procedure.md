@@ -22,6 +22,10 @@
 컴파일해 Unity 없이 돌리는 빠른 확인이다. `dotnet build …/BattleCore.csproj` · `dotnet test …/BattleCore.Tests.csproj` ·
 `dotnet build …/BattleCoreUnity.Check.csproj`(Unity 층 컴파일 확인). 골든은 제외한다(계약 5: 골든의 정본 런타임은 Unity
 — Mono 와 .NET 의 float 결과가 갈린다).
+한 번에 돌리려면 `tools/battle-core-rebuild/headless/verify-fresh-skills.sh [ref=HEAD] [워크트리 파일 …]` — 커밋을 클린 export 해
+`Wassup.Skills.dll` 을 **그 소스로 새로 구운 뒤** 위 셋 + `Retire.Check` 를 돈다(csproj 는 Skills dll 을 워크트리 `Library/ScriptAssemblies` 에서
+받아, 에디터 재컴파일 전이면 옛 dll 로 거짓 빨강/초록이 난다). ⚠ `BattleCoreUnity.Check` 는 여전히 워크트리의 `Wassup.Runtime.dll` 을
+참조한다 — `Data/` 저작 타입이 바뀐 커밋은 그 lane 이 거짓 빨강이고, 증거는 전 소스 컴파일인 `Retire.Check` 다.
 
 **lane 판별 한 줄**: 바꾼 파일이 `Scripts/BattleCore/` 면 `EditMode.Core`(+ 헤드리스),
 `Scripts/BattleCoreUnity/` 면 거기에 `PlayMode.Core` 를 더한다. 아웃게임(로비·프로필·토너먼트 UI)이면 `EditMode`,
@@ -42,6 +46,7 @@
 | spec 종료·머지 전 | `mode="PlayMode"` 전체(`PlayMode.Core` + 아웃게임 `PlayMode`) | 분 단위 |
 
 - **카드(시트·SO) 편집 후** Assets lane 의 `CardEffectWitnessTests`(카드 한 장 = 케이스 하나 · 붙이고/시전하고 강제 발동해 효과 종류가 걸리나)와 `CardBakeSnapshotTests`(굳힌 굽기 텍스트와 같나)를 본다. 스냅샷이 빨갛고 **의도한 변경이면** 메뉴 `Wassup/BattleCore/Debug/카드 스냅샷 갱신` → `Tests/EditModeAssets/Fixtures/card_bake_snapshot.txt` diff 를 같은 커밋에 싣는다(테스트는 파일을 쓰지 않는다).
+- **유닛 · 적 규칙(소유 줄 · 효과 SO) 편집 후** 같은 lane 의 `BindingBakeSnapshotTests`(방어유닛 · 적 굽기 규칙 줄 + 카드 굽기 로그 = `Tests/EditModeAssets/Fixtures/binding_bake_snapshot.txt`)를 본다. 카드 스냅샷과 **갱신 방법이 다르다** — 메뉴가 없고 **테스트가 파일을 쓴다**: 파일이 없으면 구워 쓰고 「기준선 생성됨 — 커밋 필요」로 빨갛게 끝난다. 의도한 변경이면 파일을 지우고 다시 돌린 뒤 diff 를 같은 커밋에 싣는다. SO 를 읽으므로 Unity 에서만 구워진다(헤드리스 불가).
 - `include_failed_tests=true` 로 돌리고 `failures_so_far` 를 읽는다. `failures_capped=false` 면
   거기 없는 테스트는 전부 통과다.
 - **PlayMode 판정은 에디터 실행으로 한다.** (이력 — 옛 ECS 전투, unit 9 에서 제거: 배치 `-batchmode -nographics`

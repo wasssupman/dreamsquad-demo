@@ -169,9 +169,11 @@ Play 중 스크립트를 고치면 도메인 리로드가 일어나는데, 리�
 - **curl 로는 안 된다.** Apps Script `/exec` 은 POST 를 googleusercontent 로 리다이렉트하는데
   거기서 **405** 가 떨어진다(`-L --post301/302/303` 도 동일). 에디터의 기존 경로
   (`SheetPushClient.Push`, UnityWebRequest)로 보내면 통한다.
-- **보내기 전에 읽기 전용으로 대조하라.** push 는 9탭 전량 업서트라 SO↔시트 드리프트가 있으면
-  **남이 시트에서 조정한 값이 되돌아간다.** 탭별 키가 다르다(`Defenders/Enemies`=`id`,
-  `DcCardEffects/DcMechanics`=`cardId`+`slot`) — 키를 잘못 잡으면 멀쩡한 탭이 200칸 바뀌는 것처럼 보인다.
+- **보내기 전에 읽기 전용으로 대조하라.** push 는 8탭 전량 업서트라 SO↔시트 드리프트가 있으면
+  **남이 시트에서 조정한 값이 되돌아간다.** 탭별 키가 다르다(`Skills`=`effect_id`,
+  `SkillOwners`=`owner_kind`+`owner_id`+`slot`, 나머지=`id` — 정본은 `docs/spec/skill-data-table/5_sheet_io.md`
+  「실제 시트 설정」의 서버 업서트 키) — 키를 잘못 잡으면 멀쩡한 탭이 200칸 바뀌는 것처럼 보인다.
+  (옛 `DcCardEffects`/`DcMechanics` 의 `cardId`+`slot` 키는 탭째 은퇴했다.)
 
 ## 워크트리마다 에디터 인스턴스가 따로 있고, 세션은 도메인 리로드마다 바뀐다
 
