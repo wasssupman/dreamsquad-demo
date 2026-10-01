@@ -39,10 +39,6 @@
 3. 최근 Demo spec 의 `README.md` + `{N}_handoff_summary.md` — 진행 중 작업 파악 (Claude Code 에선 `catchup` 스킬이 이걸 자동으로 함)
 4. **`docs/reference/lessons/`** — 프로젝트·환경 고유의 함정 모음 (작업 전 一讀 권장)
 
-`docs/production-transition/`은 기본 읽기 대상이 아니다. Project owner가 현재 요청에서
-production-transition 작업을 명시적으로 활성화한 경우에만 읽는 dormant downstream 자료이며,
-Demo의 설계·구현·검증과 다음 작업 선정에는 사용하지 않는다.
-
 ## 워크플로우 요약
 
 - **스펙 주도**: 기능 추가/변경은 `docs/spec/{feature-slug}/` 에 스펙 먼저, 작업 단위 파일(0~N) 순서로 구현. 1 파일 = 1 커밋

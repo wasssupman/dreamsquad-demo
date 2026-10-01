@@ -30,32 +30,17 @@ Use local files as source of truth. Do not infer status from memory when the rep
    - Relevant `docs/spec/{feature-slug}/README.md`
    - Latest `{N}_handoff_summary.md` or `_session_handoff.md` in that spec, if present.
 4. Project/product references only as needed
-   - `CLAUDE.md` for technical constraints (절대 제약 + 추가 제약); `docs/reference/battle-core-architecture.md` for the battle structure map.
-   - `docs/reference/ingame-flow.md` for product intent (설계 지향 7축). `docs/TRD.md`/`docs/PRD.md` were retired 2026-09-03.
+   - `docs/blueprint/README.md` for the current design summary; `docs/reference/battle-core-architecture.md` for the battle structure map and invariants (§8).
+   - `docs/reference/ingame-flow.md` for product intent (설계 지향 7축).
    - Pre-2026-10-01 specs, `docs/plans/` and `docs/prototype/` were deleted (spec reset). Only if explicitly needed: tag `archive/pre-spec-reset`.
 
 ## Finding the Likely Active Spec
-
-### Production-transition firewall
-
-`docs/production-transition/**` is owner-gated dormant downstream material. Unless the
-current user request explicitly activates production-transition work:
-
-- do not read or summarize that subtree;
-- exclude transition-only commits from active-spec and next-work inference;
-- never treat relocated governance/foundation documents as
-  `docs/spec/{feature-slug}` candidates;
-- do not report transition freshness, freeze, cutover, import, or follow-up as Demo work.
-
-Recent commits, stale records, watch-path drift, or links from historical documents are
-not activation. Demo work remains upstream and may proceed while transition material ages.
 
 Use evidence, in this order:
 
 1. User named a spec or feature in the current request.
 2. Dirty worktree paths point into a specific `docs/spec/{feature-slug}/` or feature code area.
-3. Most recent **Demo-relevant** commits mention a spec slug or feature name. Ignore commits
-   whose changed paths are entirely under `docs/production-transition/**` or transition-only tools.
+3. Most recent commits mention a spec slug or feature name.
 4. `docs/spec/README.md` Follow-up Backlog has an item that matches the request.
 5. If none of the above is clear, report "active spec unclear" and list the 2-3 most plausible candidates with evidence.
 
@@ -143,7 +128,5 @@ Rules:
 - Do not clean or revert local changes while recovering status.
 - Do not start implementation until the active spec and next work unit are clear enough.
 - If the next task is outside the active spec scope, recommend creating or extending a spec first.
-- Never recommend production-transition maintenance or freeze/cutover as a next Demo task without
-  explicit Project owner transition activation in the current request.
 - If `CLAUDE.md` and a spec conflict, treat `CLAUDE.md` as project workflow policy and the spec README as feature contract; call out the conflict.
 - Handoff summaries are maps, not source of truth. Prefer README/numbered spec files for contract, and code/git history for implementation details.

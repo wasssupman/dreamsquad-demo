@@ -28,6 +28,6 @@ blueprint 는 현재 설계의 입구(지도)다. 「정식 프로젝트로 옮�
 ## 후속 후보
 
 - **reference 정합** — 설계 전환 전에 쓴 문서 판정(유지 · 흡수 · 삭제): `dreamcatcher-portability.md` · `review-skill-comparison.md` · `드림캐쳐_각성안_최종스펙_v1.md` · `keyring-portability.md` · `arknights-defense-mechanics.md`. `object-pipeline-map.md` 는 제약 번호 참조만 고쳤고 옛 전투 이름은 아직 섞여 있다.
-- **보관 자료 처분**(사용자 결정) — `docs/production-transition/`(+ `tools/verify_demo_transition_firewall.py` 는 옛 `CLAUDE.md` 문구를 검사한다) · 로컬 브랜치 `blueprint` · `prd.zip`.
+- **보관 자료 처분**(사용자 결정) — 로컬 브랜치 `blueprint` · `prd.zip`. (`docs/production-transition/` 은 2026-10-01 사용자 결정으로 전용 검사 도구와 함께 삭제 — 필요하면 태그 `archive/pre-spec-reset`.)
 - **기계 장치로 옮길 가드레일**(사용자 결정) — `git push` 확인창 · 경로 없는 `git commit` / `--amend` 거절 훅 · `refresh_unity mode=force` 거절.
 - 저장소 밖: OMC 세션 시작 훅이 `AGENTS.md`(= `CLAUDE.md`)를 한 번 더 주입한다 · 자동 메모리 목록의 ECS 시절 항목 정리 · `/doctor prompt-audit`.
