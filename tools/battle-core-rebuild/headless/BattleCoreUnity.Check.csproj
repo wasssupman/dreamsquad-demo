@@ -60,7 +60,6 @@
     <Reference Include="$(UnityScriptAssemblies)/spine-unity.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/spine-csharp.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/PrimeTween.Runtime.dll" Private="false" />
-    <Reference Include="$(UnityScriptAssemblies)/Wassup.DepthParallax.dll" Private="false" />
     <!-- unit 8a — `CorePhaseFeed` 가 `BattleCoreUnity/` 로 들어오며 스테이지 포스트 `Volume`(URP core)을 찾는다. 5b 에는 그 파일이 이 lane 밖(`Presentation/`)이었다. -->
     <Reference Include="$(UnityScriptAssemblies)/Unity.RenderPipelines.Core.Runtime.dll" Private="false" />
   </ItemGroup>

@@ -14,7 +14,6 @@
         "spine-unity",
         "spine-csharp",
         "PrimeTween.Runtime",
-        "Wassup.DepthParallax",
         "Hovl.HSFiles"
     ],
     "includePlatforms": [],
