@@ -31,3 +31,12 @@ blueprint 는 현재 설계의 입구(지도)다. 「정식 프로젝트로 옮�
 - **보관 자료 처분**(사용자 결정) — 로컬 브랜치 `blueprint` · `prd.zip`. (`docs/production-transition/` 은 2026-10-01 사용자 결정으로 전용 검사 도구와 함께 삭제 — 필요하면 태그 `archive/pre-spec-reset`.)
 - ~~기계 장치로 옮길 가드레일~~ — 2026-10-01 적용: `.claude/settings.json` 의 `git push` 확인창 · 강제 push / `--amend` 거절 + `.claude/hooks/guardrails.mjs`(옵션이 뒤에 붙은 강제 push · 아웃게임 PlayMode `run_tests` · `refresh_unity mode=force` 거절). 「경로 없는 커밋 거절」은 헝크 섞인 파일의 유일한 올바른 절차를 막아 넣지 않았다.
 - ~~OMC 세션 시작 훅의 CLAUDE.md 중복 주입~~ — 2026-10-01 `AGENTS.md` 를 심링크에서 `CLAUDE.md` 안내 두 줄로 바꿔 해소(OMC 는 루트 `AGENTS.md` 를 무조건 주입한다). 자동 메모리의 ECS 시절 항목도 같은 날 정리(기기 로컬). 남은 것: `/doctor prompt-audit`.
+- **새 세션에서 확인** — `CLAUDE.md` 가 새 본(제약 · 함정 · 검증)으로 들어오는가 · OMC 세션 시작 주입이 `AGENTS.md` 두 줄뿐인가 · `/doctor prompt-audit`(사용자 실행) 결과.
+- **격리 리뷰(2026-10-01) 잔여** — 반영하지 않은 작은 지적:
+  - 실맵 판 재현 레시피가 없다(`MatchDefinitionBuilder` + `MapStagePool` 엔트리 → EditMode.Assets 에서 N틱). 「버그는 재현 먼저」의 도구.
+  - 공유 에디터에 남는 지속 부작용 목록에 `DevMapOverride`(PlayerPrefs) · `BattleDriver._fixedMapSeed`(씬 필드)가 없다.
+  - 한글 표시명 → 에셋 id 찾는 법(에셋 YAML 이 유니코드 이스케이프라 한글 grep 이 0건).
+  - `core-reviewer` 의 도달 진입점 목록이 §8-7 과 어긋난다(`ReachWithOrigin` 누락 · `InCellReach`) — §8-7 하나만 가리키게.
+  - `CoreArchitectureTests` 에 결정론 검사가 없다(`System.Random` · `DateTime` · Dictionary 순회).
+  - blueprint 시스템 지도의 경로 존재를 기계로 확인하는 검사가 없다.
+  - 리뷰를 언제 돌리나(core-reviewer vs 일반 리뷰)가 `CLAUDE.md` 에 없다 · 리뷰 감지 훅이 선택 설치인 OMC 의 code-reviewer 를 추천한다.
