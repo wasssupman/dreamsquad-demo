@@ -26,7 +26,7 @@
 ## 2. 도구별 핵심 특징
 
 ### core-reviewer — 유일한 도메인 전문가 (현행)
-- 전투 코어 절대 제약(CLAUDE.md 「전투 코어 — 절대 제약」)과 `docs/spec/battle-core-rebuild/README.md` 계약을 hard constraint 로 본다.
+- 전투 코어 절대 제약(CLAUDE.md 「제약」 · `battle-core-architecture.md` §8)과 `docs/spec/battle-core-rebuild/README.md` 계약을 hard constraint 로 본다.
 - 우선순위(에이전트 정의 그대로): ① 코어 안에 매니저·브리지·컨트롤러가 다시 생기나 ② 엔진 타입이 코어로 새나 ③ 옛 ECS 의 «기계»를 «규칙» 대신 재현하나 ④ 커맨드/이벤트 혼동 ⑤ 파괴 사건 없는 파괴 경로 ⑥ 결정론 파손. 스타일은 마지막.
 - 쓰기 도구가 없다(읽기 전용 리뷰어).
 

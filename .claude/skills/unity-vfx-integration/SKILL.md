@@ -11,7 +11,7 @@ This skill consumes authored `_SKELETON.prefab` assets and connects them to the 
 ## The Iron Law
 "뷰는 판정하지 않는다. 사건이 나른 값으로만 그리고, 코어에 상태를 되묻지 않는다."
 
-- 반경·자리·몸은 사건이 나른 짝(`SiteFired`/`SiteTarget` 의 `Pos`·`OriginBody`, `AreaTiles`)으로만 그린다(CLAUDE.md 제약 13). 뷰가 반경을 다시 계산하면 화면이 규칙을 틀리게 가르친다.
+- 반경·자리·몸은 사건이 나른 짝(`SiteFired`/`SiteTarget` 의 `Pos`·`OriginBody`, `AreaTiles`)으로만 그린다(`docs/reference/battle-core-architecture.md` §8-7 — 판정 산식 하나). 뷰가 반경을 다시 계산하면 화면이 규칙을 틀리게 가르친다.
 - 뷰가 코어 개체를 고치지 않는다. `BattleDriver.Units`·`Find` 는 읽기 전용이다.
 
 ## When to Use

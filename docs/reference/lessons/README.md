@@ -1,6 +1,6 @@
 # 프로젝트 교훈 (Lessons)
 
-이 폴더는 작업 중 반복해서 부딪힌 **프로젝트·환경 고유의 함정과 검증 기법**을 모은다. CLAUDE.md/TRD 가 "규칙"이라면 여기는 "겪어보고 알게 된 것" — fresh clone 한 사람(또는 다른 경로로 재클론한 나)이 같은 지뢰를 다시 밟지 않게 한다.
+이 폴더는 작업 중 반복해서 부딪힌 **프로젝트·환경 고유의 함정과 검증 기법**을 모은다. CLAUDE.md 가 "규칙"이라면 여기는 "겪어보고 알게 된 것" — fresh clone 한 사람(또는 다른 경로로 재클론한 나)이 같은 지뢰를 다시 밟지 않게 한다.
 
 여기는 Demo 저장소를 안전하게 운영한 경험의 진실원이다. 현재 Demo 작업에서는 이 교훈을 활성 spec과 함께 사용하며, dormant production-transition 자료로 역해석하거나 설계를 바꾸지 않는다.
 
@@ -10,7 +10,7 @@
 |---|---|
 | `01-unity-mcp-operation.md` | Unity Editor 를 MCP 로 구동할 때의 함정 (포커스·reimport·execute_code·run_tests·Play 검증·스크린샷/Screen 컨텍스트·**워크트리별 인스턴스·Reload 모달·`[Explicit]` 누출**) |
 | `02-dev-workflow-git-scene.md` | 테스트 배치·격리 리그·git 샌드박스·병행 세션 커밋·씬 저장/checkout 위생·시트↔SO 드리프트·**서버 응답 실물 확인(swagger 타입 불신)**·**GitLab 미러(SSH 필수·조각 푸시·보호 브랜치)**·**공유 인덱스는 `git commit -- <경로>`**·**스모크가 실제 프로필에 기록** |
-| `03-rendering-assets.md` | Spine 4.2 고정·타일맵 렌더·프랍 authoring·투사체 VFX·카메라 페이즈·머리 위 뱃지 좌표계·UGUI/TMP 초기화·**런타임 중첩 캔버스(rect·sorting·알파)**·터치 입력 가드 |
+| `03-rendering-assets.md` | Spine 4.3 런타임·타일맵 렌더·프랍 authoring·투사체 VFX·카메라 페이즈·머리 위 뱃지 좌표계·UGUI/TMP 초기화·**런타임 중첩 캔버스(rect·sorting·알파)**·터치 입력 가드 |
 | `04-sim-design.md` | 전투 시뮬 설계 원칙 (구조적 결정론·시간 제어·런타임별 float 차이·**정의표 빌더 매핑 누락은 조용히 죽는다**·**동률 결정론 ≠ 기하 순서 규칙** · 이력: **Bursted ISystem 에서 순수 함수 부르기** — 옛 ECS 전투, unit 9 에서 제거) |
 | `05-agent-operations.md` | 리드 + 여러 에이전트 운용 (통과 주장 export 재검증·top-down 계획 리뷰·리뷰어 오판·옛 규칙 조용한 변경·테스트 이식 = 규칙 감사·장부 심볼 기계 검사·삭제 증명과 그물·에디터 사용권·spec 양쪽 갱신) |
 

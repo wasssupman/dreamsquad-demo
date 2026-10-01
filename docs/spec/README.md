@@ -94,6 +94,17 @@ code + git history        구현 상세
 - 단순 구현 설명 요구: handoff 에 짧게 쓰거나 생략
 - 미래 확장/취향 제안: 후속 후보 또는 Follow-up 으로 이동
 
+## 진행 규칙
+
+(2026-10-01 `CLAUDE.md` 재작성 때 그쪽 「작업 지침」에서 옮겼다.)
+
+- 새 feature 는 README(목표 + 작업 단위 표)를 먼저 쓰고 사용자 승인을 받은 뒤 `0_` 부터 **한 번에 한 파일**씩 구현한다. 같은 feature 의 추가 작업은 기존 폴더에 다음 번호로 이어 쓴다.
+- 작업 단위가 끝나면 사용자에게 확인 방법(에디터 · 실기기 중 무엇을 어떻게 보면 되는지)을 구체적으로 알리고 통과를 받는다. 통과하면 그 문서의 「완료 기준」 아래에 확인 일자 + 커밋 해시 한 줄을 남긴다. 확인 없이 다음 단위로 넘어가지 않는다.
+- feature 가 끝나면 README 상단에 「상태: 완료 YYYY-MM-DD」, 그리고 `{N+1}_handoff_summary.md`. 구조가 바뀌었으면(새 아키타입 · 정거장 · 앵커 파일 이동) `docs/reference/object-pipeline-map.md` 와 `docs/blueprint/` 의 해당 장을 같은 커밋에서 갱신한다.
+- 플레이 오브젝트(유닛 · 적 · 투사체 · 해저드 · VFX 등)를 신설하거나 생성→렌더 경로를 바꾸는 spec 의 README 에는 「파이프라인 커버리지」 섹션을 둔다 — `object-pipeline-map.md` 의 가장 가까운 아키타입 표를 복사해 대조하고, 해당 없는 정거장은 `N/A + 이유`.
+- 범위 밖 항목은 만들지 않고 README 「후속 후보」 나 아래 Follow-up Backlog 로 보낸다.
+- spec 에 넣지 않는 것: 세션 간 조율 로그(누가 무엇을 편집 중 · index.lock · 커밋 해시 추적), 완료된 다른 spec 의 구현 내역, 이 feature 밖 콘텐츠와의 우연한 상호작용. 재사용할 기존 코드의 포인터(이름 · 위치)는 넣는다.
+
 ## 예시
 
 - `docs/spec/skill-data-table/` — 1부 · 2부로 이어 쓴 spec(보류 unit · 사용자 결정 표 · 인계 2개)
@@ -115,7 +126,7 @@ code + git history        구현 상세
 
 ## 진행 중 spec
 
-- `design-blueprint/` — **현재 설계의 윤곽(blueprint) 다시 쓰기** · 착수 대기(2026-10-01 범위 합의 · 본 작업은 `wassup-core` 루트 세션). 시작 전 그 README 「다음 세션 진입 가이드」를 먼저 읽는다.
+- 없음. 직전 완료 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
 
 ## Follow-up Backlog
 
@@ -169,7 +180,7 @@ code + git history        구현 상세
 - **운영 관측 · 서버 우회** [S] · 계정 첫 판 참가 생략(`IsFirstMatch`)은 서버 `complete` 500 우회다(결정 ⑦-1 존치). 서버가 고쳐지면 별도 결정. (`BCR/8d`)
 
 **(나) 코드 레벨 정식 설계 후속** — 결정 ⑩ 의 선순위.
-- **판정 산식(제약 13)에 남은 사각 자** [S~M] · 폭탄맨 · 캐스터 4종의 일반 공격 대상 선정이 아직 체비셰프(`CombatPhase.PickChebyshevNearest` · `TargetRanking` — rules C20 현행 보류) · 최다 밀집 칸 선정도 사각(`CoreSkillContext` — 사용자 결정 ② 기본값). 사용자 재결정 대상(아래 (마)).
+- **판정 산식(`battle-core-architecture.md` §8-7)에 남은 사각 자** [S~M] · 폭탄맨 · 캐스터 4종의 일반 공격 대상 선정이 아직 체비셰프(`CombatPhase.PickChebyshevNearest` · `TargetRanking` — rules C20 현행 보류) · 최다 밀집 칸 선정도 사각(`CoreSkillContext` — 사용자 결정 ② 기본값). 사용자 재결정 대상(아래 (마)).
 - **조용한 기본값 폴백 → loud 거절 + enum 전수 테스트** [M] · 목표 종류 · 공격 정책 · 스탯 변환 · 해저드 모양. (`BCR/ledgers/rules.md` M2 · E7)
 - **겸용 파라미터 가방 분리** [M] · `SkillIntent` 보조 스칼라 · 25인자 생성자.
 - **거대 단계 파일 분할** [S~M] · `CombatPhase` · `TickProjectilePhase`. 틱 순서는 무변. (`BCR/ledgers/rules.md` C24)
@@ -179,8 +190,8 @@ code + git history        구현 상세
 - **디버그 커맨드 게이트** [S] · 릴리스 빌드에서의 차단 여부를 전수로 정한다.
 - **하네스 런타임 어셈블리 분리** [S] · `CardProbe` · 골든 코퍼스가 런타임에 실린다. (`BCR/7e`)
 - **`ClassFilter` Role 미설정 저작 검증** [S] · 미설정 저작을 빌더가 거절하게. (`BCR/9c`)
-- **`BlockingHazardPresenter` 의 `Shader.Find`** [S] · 추가 제약 위반. `RuntimeMaterialFactory` 경유로. (`BCR/8c`)
-- **`IntentApplier` 포탈 판정의 몸 반영 여부** [S] · 대상 몸이 붙는지 제약 13 으로 재확인. (`BCR/9c`)
+- **`BlockingHazardPresenter` 의 `Shader.Find`** [S] · 빌드 스트리핑 위험(CLAUDE.md 「Unity 함정」). `RuntimeMaterialFactory` 경유로. (`BCR/8c`)
+- **`IntentApplier` 포탈 판정의 몸 반영 여부** [S] · 대상 몸이 붙는지 판정 산식(§8-7)으로 재확인. (`BCR/9c`)
 - **효과 census 미배정** [S] · `regenPerSec` 음수 고정 처리 · 결합식 바닥/천장 4개 SO 저작화.
 - **틱 30Hz 실측 · 트리거 연쇄 깊이 근거** [S]
 - **`[Explicit]` 라이브 서버 테스트 격리** [S] · Unity 러너 어셈블리 실행에도 돌아 실서버 가입을 시도한다(`AuthE2ETest`).

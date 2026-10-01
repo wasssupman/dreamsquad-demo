@@ -96,9 +96,9 @@ iPhone batching 기본값, URP obsolete 필드 제거가 tracked diff로 남았�
 - **원인**: 인증서 발급자가 `O=Amazon`(ACM) = **AWS ALB 가 TLS 종단**. 대용량 응답에서 graceful close 없이 연결을 끊는다. 잘린 양이 매번 다르다(90/1,560/7,996/47,354 B) → 크기 한도가 아니라 **시간 기반 컷오프**. 같은 PC 에서 GitHub 수백MB 클론은 정상이고, GitLab housekeeping(팩 재정리+bitmap) 후에도 동일 → 클라이언트·회선·레포 상태 전부 무관. 작은 레포는 안 걸려서 "다른 프로젝트는 잘 되는데 이것만" 으로 보인다.
 - **진단 1줄**: `echo | openssl s_client -connect <host>:443 -servername <host> | openssl x509 -noout -issuer` → 발급자가 Amazon 이면 앞단이 AWS LB.
 - **처방**: **SSH remote 를 쓴다** (`git@gitlab.playlinks.co:<group>/<proj>.git`). HTTPS 정상화는 인프라 몫 — ALB **idle timeout**(기본 60s)·**desync mitigation mode**, 뒤단 nginx `client_max_body_size`.
-- **미러 동기화 절차**(GitHub 이 유일한 저작 지점): `git pull` → `git push gitlab main:refs/heads/master`(+ 원하면 `main`). 보호 브랜치라도 **fast-forward 면 직접 푸시가 통과**한다.
+- **미러 동기화 절차**(GitHub 이 유일한 저작 지점): `git push origin HEAD:main` → `git push gitlab HEAD:refs/heads/master`(GitLab `main` 은 은퇴 — 밀지 않는다). 보호 브랜치라도 **fast-forward 면 직접 푸시가 통과**한다.
 - **깨뜨리지 말 규칙 2개**: ① GitLab 에서 커밋하지 않는다(웹 편집·GitLab 발 MR) ② 프로젝트 merge method = **Fast-forward**. 어기면 master 에만 있는 커밋이 생겨 다음 fast-forward 가 막히고, 보호 브랜치라 force 도 불가해진다.
-- **운영 규칙의 정본은 `CLAUDE.md` "원격 저장소 · 푸시 전략"** 이다(여기는 함정·진단 기록). 2026-07-27 확정: GitHub 정본 · `GitHub main` ≡ `GitLab master` · **GitLab `main` 은퇴**(중복 계보로 분기를 만들어 정렬 후 폐기).
+- **운영 규칙의 정본은 `CLAUDE.md` 「git」** 이다(여기는 함정·진단 기록). 2026-07-27 확정: GitHub 정본 · `GitHub main` ≡ `GitLab master` · **GitLab `main` 은퇴**(중복 계보로 분기를 만들어 정렬 후 폐기).
 - **실제로 겪은 분기 사례**: 동료가 GitLab 에 직접 푸시(+ `main`/`master` 에 같은 작업을 따로 커밋)해 양방향 분기가 두 번 발생. 중복 여부는 **`git patch-id --stable` 대조**로 판정했다(SHA 는 달라도 도입 변경이 같으면 편입 불필요). 해소는 `git merge gitlab/master` → 양쪽 푸시.
 
 ## Git Bash 의 `ssh` 는 한글 사용자명 PC 에서 작동하지 않는다

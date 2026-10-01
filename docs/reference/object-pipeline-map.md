@@ -8,13 +8,13 @@
 
 | # | 정거장 | 어디 | 확인 포인트 |
 |---|---|---|---|
-| 1 | 저작 SO | `Data/**`(유닛·적·탄·해저드·카드 SO) · `Data/BattleView/**`(뷰 설정 SO 7종) | 수치는 SO 에서만 온다(제약 6). 뷰만 쓰는 값은 뷰 설정 SO 로, 판 규칙 값은 정의표로 |
+| 1 | 저작 SO | `Data/**`(유닛·적·탄·해저드·카드 SO) · `Data/BattleView/**`(뷰 설정 SO 7종) | 수치는 SO 에서만 온다(CLAUDE.md 「데이터」). 뷰만 쓰는 값은 뷰 설정 SO 로, 판 규칙 값은 정의표로 |
 | 2 | 정의표 행 | `MatchDefinitionBuilder.Build` → `MatchDefinition` 배열(`Units`·`Enemies`·`Projectiles`·`Patterns`·`Structures`·`Hazards`·`BlockingHazards`·`EffectTiles`·`Cards`·`Gimmicks`·…) | **빌더 매핑 누락은 조용히 죽는다**(인계 함정 8) — 새 SO 필드마다 빌더 매핑 테스트 + 열거 번호 핀 테스트(`BuilderEnumPinTests`) |
-| 3 | 코어 스폰 · 사건 | `BattleWorld.Spawn*` · 담당자(`PlacementService`·`WaveScheduler`·`GimmickHost`·`HandDeck`) → `CoreEvent`(`CoreEventKind` 번호) | 사건은 **값 스냅샷**이다(`SimEntityId` 키 · 자리↔몸 짝, 절대 제약 4). 뷰는 사건으로 코어 상태를 되묻지 않는다 |
+| 3 | 코어 스폰 · 사건 | `BattleWorld.Spawn*` · 담당자(`PlacementService`·`WaveScheduler`·`GimmickHost`·`HandDeck`) → `CoreEvent`(`CoreEventKind` 번호) | 사건은 **값 스냅샷**이다(`SimEntityId` 키 · 자리↔몸 짝, `battle-core-architecture.md` §6.1). 뷰는 사건으로 코어 상태를 되묻지 않는다 |
 | 4 | 뷰 풀 | `BattleDriver.Subscribe(order, handler)` 구독자 — `Core*ViewPool` · `Core*Presenter` · `Core*Spawner` | 풀마다 자기 구독(통합 뷰 없음). 틱 뒤 `BattleDriver` 가 사건을 순서대로 흘린다 |
 | 5 | 뷰 순서 | `ViewOrder`(Trace 0 → Leap 10 → Board 15 → Unit 20 → Projectile 30 → Effect 35 → Damage 40 → Status 45 → Overhead 50 → Hand 55 → Audio 60 → Outcome) | C# 이벤트 등록 순서(= 하이어라키 순서)에 기대지 않는다. 새 풀은 여기 상수 하나를 고른다 |
 | 6 | 소멸 사건 회수 | `UnitDestroyed`(3) · `ProjectileDespawned`(11) · `HazardDestroyed`(45) · `FieldDespawned`(47) · `PickupTaken`(49)/`PickupExpired`(52) · `ResignationConsumed`(53) · `CardDetached`(61) + 판 경계 `MatchStarted`(1) | 스폰 사건과 **짝**이 있어야 한다. 판 경계 회수가 없으면 다음 판에 남는다 |
-| 7 | 씬 배선 | `BattleCoreScene.unity` — 드라이버·뷰 풀 컴포넌트의 SerializeField · `MatchViewAssets`(정의표 번호 → 그림 SO) | UnityMCP 로 배선하고 Play 검증까지가 완료(CLAUDE.md 금지 행동). 폴백 `FindAnyObjectByType` + 경고는 배선 전 임시다 |
+| 7 | 씬 배선 | `BattleCoreScene.unity` — 드라이버·뷰 풀 컴포넌트의 SerializeField · `MatchViewAssets`(정의표 번호 → 그림 SO) | UnityMCP 로 배선하고 Play 검증까지가 완료(CLAUDE.md 「검증」). 폴백 `FindAnyObjectByType` + 경고는 배선 전 임시다 |
 
 정거장별 시공법 스킬: 씬 배선 = `unity-feature-wiring` · VFX 저작/통합 = `unity-vfx-authoring`/`unity-vfx-integration` · 프랍/타일 = `unity-prop-tile-authoring`.
 
@@ -68,8 +68,8 @@
 |---|---|---|
 | 저작 SO | `ProjectileData` · 발사 명세 `ProjectilePatternData` | 착탄 효과(부여·스택)는 탄 SO |
 | 정의표 행 | `CombatDefinitionBuilder.ToDef` → `ProjectileDef` · `PatternDef` | 선정 규칙 열거 번호 어긋남(12 중 11 오독) 선례 — `CombatDefinitionBuilder.ToCoreSelection` 핀 테스트 |
-| 코어 스폰 · 사건 | `BattleWorld.SpawnProjectile` → `ProjectileSpawned`(10) · `ProjectileHit`(12) · `ProjectileDespawned`(11) · 착탄 예고 = `ProjectileSpawned` 의 비행 시간·반경 | 즉발 폭발도 탄 파이프라인을 탈 수 있다 — 판정 원점의 몸은 사건이 실어 온다(제약 13) |
-| 뷰 풀 | `CoreProjectileViewPool` · 총구·착탄 VFX `CoreVfxSpawner` · 착탄 예고 링 `CoreMapOverlay.ShowTelegraph` | 탄 종류는 `ProjectileSpawned.DefIndex` 로 — **월드 탄을 되묻지 않는다**(제약 4). 생성 사건은 보류했다가 같은 배달 묶음에 `ProjectileDespawned` 가 오면 버린다(즉발 탄 = 비행 그림 없음 · `unified-effect-layer` unit 4) |
+| 코어 스폰 · 사건 | `BattleWorld.SpawnProjectile` → `ProjectileSpawned`(10) · `ProjectileHit`(12) · `ProjectileDespawned`(11) · 착탄 예고 = `ProjectileSpawned` 의 비행 시간·반경 | 즉발 폭발도 탄 파이프라인을 탈 수 있다 — 판정 원점의 몸은 사건이 실어 온다(판정 산식 — `battle-core-architecture.md` §8-7) |
+| 뷰 풀 | `CoreProjectileViewPool` · 총구·착탄 VFX `CoreVfxSpawner` · 착탄 예고 링 `CoreMapOverlay.ShowTelegraph` | 탄 종류는 `ProjectileSpawned.DefIndex` 로 — **월드 탄을 되묻지 않는다**(커맨드 ≠ 사건 — `battle-core-architecture.md` §6.1). 생성 사건은 보류했다가 같은 배달 묶음에 `ProjectileDespawned` 가 오면 버린다(즉발 탄 = 비행 그림 없음 · `unified-effect-layer` unit 4) |
 | 뷰 순서 | `ViewOrder.Projectile` · VFX `ViewOrder.Effect` | 유닛 뷰가 선 뒤라야 총구 앵커를 묻는다 |
 | 소멸 회수 | `ProjectileDespawned`(11) | |
 | 씬 배선 | `CoreProjectileViewPool` · `MatchViewAssets` | |
@@ -135,7 +135,7 @@
 |---|---|---|
 | 저작 SO | 시즌 기믹 SO · 뷰 = `PickupViewConfig` | 기믹이 뽑힌 판에서만 산다(기본 모드는 기믹 0) |
 | 정의표 행 | `MatchDefinitionBuilder.ToGimmickDefs` → `GimmickDef` | |
-| 코어 스폰 · 사건 | `GimmickHost` → `BattleWorld.SpawnPickup` → `PickupSpawned`(48)/`PickupTaken`(49)/`PickupExpired`(52) · 사직서 `BattleWorld.DropResignation` → `ResignationDropped`(50)/`ResignationThreshold`(51)/`ResignationConsumed`(53) · 디버그 커맨드 19~21(`CoreGimmickDebugMenu`) | 픽업 판정은 「칸 반폭 + 내 몸」 자(제약 13) |
+| 코어 스폰 · 사건 | `GimmickHost` → `BattleWorld.SpawnPickup` → `PickupSpawned`(48)/`PickupTaken`(49)/`PickupExpired`(52) · 사직서 `BattleWorld.DropResignation` → `ResignationDropped`(50)/`ResignationThreshold`(51)/`ResignationConsumed`(53) · 디버그 커맨드 19~21(`CoreGimmickDebugMenu`) | 픽업 판정은 「칸 반폭 + 내 몸」 자(판정 산식 §8-7) |
 | 뷰 풀 | `CorePickupViewPool`(+`CorePickupPresenter`) · `CoreResignationViewPool`(+`CoreResignationPresenter`) | |
 | 뷰 순서 | `ViewOrder.Board` | |
 | 소멸 회수 | `PickupTaken`·`PickupExpired`·`ResignationConsumed` · `MatchStarted` | |
@@ -218,7 +218,7 @@
 | 저작 SO | 타일 세트(`CoreMapOverlay._tileSet`) · 스테이지 프리팹 | |
 | 정의표 행 | `MatchDefinitionBuilder.BuildMap` → `MapSnapshot` | |
 | 코어 읽기 | `PlacementService`(칸의 상태) · `MapRuntime` | 사건 구독이 아니라 **입력이 민다** — 드래그 중에만 그린다 |
-| 뷰 | `CoreMapOverlay`(`ShowPlacement`·`PaintRange`·`ShowAimRing`·`ShowTelegraph`) · 평면 `CoreBoardPlane` · 판 경계 `CorePhaseFeed` | 도달 판정은 `AttackReach.InReach` **호출만**(제약 13) — 뷰가 자를 새로 만들지 않는다 |
+| 뷰 | `CoreMapOverlay`(`ShowPlacement`·`PaintRange`·`ShowAimRing`·`ShowTelegraph`) · 평면 `CoreBoardPlane` · 판 경계 `CorePhaseFeed` | 도달 판정은 `AttackReach.InReach` **호출만**(판정 산식 §8-7) — 뷰가 자를 새로 만들지 않는다 |
 | 씬 배선 | `CoreMapOverlay` · `CoreBoardPlane` | |
 
 이력: 옛 `TilemapMapView`(1,608줄).
@@ -236,5 +236,5 @@
 ## 유지 규칙
 
 - 이 표의 심볼이 코드에서 사라지면 같은 커밋에서 표를 고친다. unit 9 의 옛 전투 삭제 뒤에는 「모든 심볼이 남아 있다」를 grep 으로 다시 확인한다.
-- 새 사건 종류를 열면 `CoreEventKind` 번호와 트레이스 정거장(`CoreTrace`)을 같이 연다(추가 제약 「로깅은 첫 축」).
+- 새 사건 종류를 열면 `CoreEventKind` 번호와 트레이스 정거장(`CoreTrace`)을 같이 연다(CLAUDE.md 「전투 코어」 — 안 실으면 골든이 그 사건을 모른다).
 - 8c 가 찾은 옛 기능의 공백 3 정거장(효과 타일 그림 · 착지 예고 · 붕괴 연출)은 **8a2 에서 셋 다 실현**됐다(행 1·2·3). 새 공백을 찾으면 「⚠ 없다」로 적고 처분이 정해지면 고친다.

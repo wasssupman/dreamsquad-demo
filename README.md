@@ -34,7 +34,7 @@
 
 ## 읽는 순서 (규약과 현재 상태)
 
-1. **`CLAUDE.md`** — 절대 제약·전투 코어 제약·워크플로우 (에이전트 정책의 단일 소스)
+1. **`CLAUDE.md`** — 제약(멈추고 묻는 것)·값의 정본·함정·검증·일하는 방식 (에이전트 정책의 단일 소스, 200줄 이하)
 2. **`docs/spec/README.md`** — 스펙 구조 + Follow-up Backlog (다음 작업 후보)
 3. 최근 Demo spec 의 `README.md` + `{N}_handoff_summary.md` — 진행 중 작업 파악 (Claude Code 에선 `catchup` 스킬이 이걸 자동으로 함)
 4. **`docs/reference/lessons/`** — 프로젝트·환경 고유의 함정 모음 (작업 전 一讀 권장)

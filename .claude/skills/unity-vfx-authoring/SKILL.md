@@ -51,7 +51,7 @@ description: Use when authoring a new VFX (particle prefab + material) for this 
 | 메시 에셋 | `execute_code` (`new Mesh` + `AssetDatabase.CreateAsset`) | — |
 | 머티리얼 | `manage_material create / set_material_shader_property` (URP Particles/Unlit) | `.mat` YAML 은 손대지 않는다 |
 | 프리팹 저장 | `manage_prefabs` 또는 `PrefabUtility.SaveAsPrefabAsset` (`execute_code`) | — |
-| AI 텍스처 | `generate_image`(BYOK) — Visual Direction(캐주얼·소형 가독성·배경 검정 X) 프롬프트 규칙 준수 | — |
+| AI 텍스처 | `generate_image`(BYOK) — 아트 방향(캐주얼·소형 가독성·배경 검정 X) 프롬프트 규칙 준수 | — |
 | 동결·캡처 | `particle_set_time` / `ps.Simulate(t, true, true)` + `ScreenCapture` 또는 RenderTexture | — |
 
 ⚠ `execute_code` 는 CodeDom(C# 6)이다 — `default` 리터럴·튜플·로컬 함수 불가. `AssetDatabase.DeleteAsset` 은 safety_checks 에 막힌다.

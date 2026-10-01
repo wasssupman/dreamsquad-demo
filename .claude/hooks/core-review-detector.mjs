@@ -77,7 +77,7 @@ function createCoreContext(coreFiles) {
 ${fileList}
 
 리뷰는 core-reviewer 에이전트로 진행하세요:
-  Agent: core-reviewer — CLAUDE.md 「전투 코어 — 절대 제약」 6항 · spec 계약 13 · 장부 정합
+  Agent: core-reviewer — CLAUDE.md 「제약」 · battle-core-architecture.md §8 불변식
   병행: code-reviewer — spec 준수 · 일반 코드 품질
 </core-review-context>`;
 }

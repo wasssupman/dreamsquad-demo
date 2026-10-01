@@ -38,7 +38,7 @@ MCP 로 `play/stop` + `execute_code` 로 객체 생성/파괴·static 수정을 
 
 `refresh_unity mode=force`(특히 Play 중)는 **전 프로젝트 에셋 reimport** 를 트리거 → 수 분 정지 + **MCP 브리지 단절**(`instances` → `instance_count:0`). macOS 가 비포커스 Unity 를 스로틀해 자동 재연결 안 됨.
 
-- **머티리얼 값(색/두께/토글)**: reimport 불필요 → `execute_code` 로 `mat.SetFloat/SetColor` (+Play 중 즉시 반영) → 영속 필요 시 `SetDirty`+`AssetDatabase.SaveAssets()`(해당 에셋만). **`mode=force` 금지.**
+- **머티리얼 값(색/두께/토글)**: reimport 불필요 → `execute_code` 로 `mat.SetFloat/SetColor` (+Play 중 즉시 반영) → 영속 필요 시 `SetDirty`+`AssetDatabase.SaveAssetIfDirty(mat)`(해당 에셋만 — `SaveAssets()` 는 dirty 전부를 민다). **`mode=force` 금지.**
 - **셰이더 신규/수정**: `refresh_unity(mode=if_dirty, scope=assets)`, 컴파일 확인은 `ShaderUtil.ShaderHasError`.
 - 브리지가 `instance_count:0` 이면: 사용자에게 **Unity 창 클릭/포커스** 요청 → 수 초 내 재등록(CLI 복구 불가).
 
@@ -46,12 +46,9 @@ MCP 로 `play/stop` + `execute_code` 로 객체 생성/파괴·static 수정을 
 
 `run_tests(test_names=...)`/`group_names=...` 로 지정하면 이 셋업에선 total=0 으로 아무것도 안 돈다. **동작하는 유일한 입도 = `assembly_names`.**
 
-- **EditMode 는 두 lane** (test-suite-fast-lane unit 0, 2026-08-16 분리):
-  - `assembly_names=["Wassup.Tests.EditMode"]` = **고속 코어** (~2,230개 ~30초). 실제 프로젝트 에셋을 로드하지 않아 시트 임포트·에셋·맵 편집으로 깨지지 않는다. 코드 변경 루프는 이것만.
-  - `assembly_names=["Wassup.Tests.EditMode.Assets"]` = **에셋/어소링 검증** (~155개 ~10초). 실에셋(SO·맵·덱·카탈로그) 로드 테스트 전부. 시트 임포트·에셋·맵·콘텐츠 편집 후에는 이것을 **반드시 추가 실행**.
-  - `assembly_names` 를 아예 안 주면 둘 다 + `Wassup.DepthParallax.Tests`(6개)까지 전체 실행 — 커밋 전 게이트.
+- **lane(어셈블리 다섯 + 헤드리스)과 언제 무엇을 돌리나는 `docs/reference/test-procedure.md` 가 정본이다.** (옛 「EditMode 두 lane」 설명은 전투 코어 lane 분리 전 기록이라 지웠다.)
 - **처방**: `include_failed_tests=true` → `failures_so_far` 스캔. `failures_capped=false` 면 거기 없는 테스트는 통과.
-- **알려진 무관 사전실패**: `MultiGoalPoolSeparationTests` 4건(Coil/Twin/Spiral/Zig, 근접 차단칸 ≥40%)은 map-rework 재저작 대기의 **의도적 빨강** — Assets lane 에 있다. 회귀로 오판 금지. (~~ObstaclePlacerTests 상시 실패~~ 는 2026-08-16 실측에서 통과 — 해소된 것으로 보이며 재발 시 여기 갱신.)
+- 알려진 선행 실패는 가장 최근 spec 인계의 검증 줄에 개수로 적힌다(`test-procedure.md` 「빨강을 만났을 때」).
 
 ## 신규 `.cs` 는 `scope=all` refresh 필수
 

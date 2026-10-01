@@ -13,7 +13,7 @@
 | `Wassup.Tests.EditMode.Assets` | 실에셋(SO·맵·덱·카탈로그·프리팹) 저작 검증 |
 | `Wassup.Tests.EditMode.Core` | **전투 코어**(`Wassup.BattleCore`)의 규칙. 엔진을 안 쓰고 씬도 안 연다 |
 | `Wassup.Tests.PlayMode.Core` | 전투 씬(`BattleCoreScene`) 부팅 스모크 · 뷰 방출 순서 · 틱 발행률 · 배치 사슬 · 씬 배선 · 뷰가 자를 새로 만들지 않았나 |
-| `Wassup.Tests.PlayMode` | **아웃게임 PlayMode · 씬 부팅 없음.** 남은 것은 `AuthE2ETest`·`DeckInfoPresetApplyLiveE2ETest`(둘 다 `[Explicit]` — 라이브 서버가 필요하다. ⚠ Unity Test Runner 는 **어셈블리 단위 실행에서 `[Explicit]` 을 걸러 주지 않는다**(NUnit 어댑터의 알려진 제한) — 어셈블리째 돌리면 둘이 딸려 돌아 환경 빨강이 나고 `AuthE2ETest` 는 실서버에 가입을 시도한다. 아웃게임 lane 은 `PresetBarPopupLayerTest` 만 이름으로 지정해 돌린다)·`PresetBarPopupLayerTest`. 옛 전투 씬을 부팅하던 테스트는 unit 9 에서 은퇴했다(`retire-set.md` 7번 묶음) |
+| `Wassup.Tests.PlayMode` | **아웃게임 PlayMode · 씬 부팅 없음.** 남은 것은 `AuthE2ETest`·`DeckInfoPresetApplyLiveE2ETest`(둘 다 `[Explicit]` — 라이브 서버가 필요하다. ⚠ Unity Test Runner 는 **어셈블리 단위 실행에서 `[Explicit]` 을 걸러 주지 않는다**(NUnit 어댑터의 알려진 제한) — 어셈블리째 돌리면 둘이 딸려 돌아 환경 빨강이 나고 `AuthE2ETest` 는 실서버에 가입을 시도한다. 이름 지정 실행은 위 0-match 라 우회로가 아니다 — 이 어셈블리는 `[Explicit]` 격리(백로그) 전까지 돌리지 않는다)·`PresetBarPopupLayerTest`. 옛 전투 씬을 부팅하던 테스트는 unit 9 에서 은퇴했다(`retire-set.md` 7번 묶음) |
 
 `Wassup.DepthParallax.Tests` 는 모듈 로컬이라 전체 실행 때만 따라온다.
 
@@ -42,7 +42,7 @@
 | **전투 Unity 층(드라이버·뷰 풀·입력) 변경 후** | 위 + `mode="PlayMode" assembly_names=["Wassup.Tests.PlayMode.Core"]` | 분 단위 |
 | **시트 임포트·에셋·맵·콘텐츠 편집 후** | 위 + `["Wassup.Tests.EditMode.Assets"]` | 초 단위 |
 | 작업 단위 완료·커밋 전 | `assembly_names` 생략 = EditMode 전체 + 관련 PlayMode 파일 | 분 단위 |
-| spec 종료·머지 전 | `mode="PlayMode"` 전체(`PlayMode.Core` + 아웃게임 `PlayMode`) | 분 단위 |
+| spec 종료·머지 전 | `mode="PlayMode" assembly_names=["Wassup.Tests.PlayMode.Core"]` — 사용자에게 묻고 돌린다. 아웃게임 `PlayMode` 는 `[Explicit]` 격리(백로그) 전까지 돌리지 않는다 | 분 단위 |
 
 - **카드(시트·SO) 편집 후** Assets lane 의 `CardEffectWitnessTests`(카드 한 장 = 케이스 하나 · 붙이고/시전하고 강제 발동해 효과 종류가 걸리나)와 `CardBakeSnapshotTests`(굳힌 굽기 텍스트와 같나)를 본다. 스냅샷이 빨갛고 **의도한 변경이면** 메뉴 `Wassup/BattleCore/Debug/카드 스냅샷 갱신` → `Tests/EditModeAssets/Fixtures/card_bake_snapshot.txt` diff 를 같은 커밋에 싣는다(테스트는 파일을 쓰지 않는다).
 - **유닛 · 적 규칙(소유 줄 · 효과 SO) 편집 후** 같은 lane 의 `BindingBakeSnapshotTests`(방어유닛 · 적 굽기 규칙 줄 + 카드 굽기 로그 = `Tests/EditModeAssets/Fixtures/binding_bake_snapshot.txt`)를 본다. 카드 스냅샷과 **갱신 방법이 다르다** — 메뉴가 없고 **테스트가 파일을 쓴다**: 파일이 없으면 구워 쓰고 「기준선 생성됨 — 커밋 필요」로 빨갛게 끝난다. 의도한 변경이면 파일을 지우고 다시 돌린 뒤 diff 를 같은 커밋에 싣는다. SO 를 읽으므로 Unity 에서만 구워진다(헤드리스 불가).
