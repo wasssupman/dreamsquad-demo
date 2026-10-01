@@ -5,7 +5,7 @@
 ## 요구사항
 
 - **Unity 6000.4.3f1** (정확히 이 버전 — `ProjectSettings/ProjectVersion.txt`)
-- Git (macOS 기준. `AGENTS.md` 가 symlink 라 Windows 는 developer mode 필요)
+- Git
 - (선택) AI 하네스: Claude Code / Codex — 아래 부트스트랩 참조
 
 ## 첫 실행 (게임 재현)
@@ -21,14 +21,14 @@
 | 엔진 버전·패키지 lock·전체 소스/에셋 | Unity 설치 + 라이선스 |
 | 규약·스펙 문서 (`CLAUDE.md`, `docs/`) | Claude Code / Codex 설치·인증 |
 | `.claude/` 프로젝트 스킬·에이전트·훅·공용 permission | OMC/superpowers 등 개인 하네스 플러그인 |
-| `AGENTS.md`(=CLAUDE.md symlink, Codex 정책 로드) | MCP 서버 연결 (각자 설정) |
+| `AGENTS.md`(Codex 용 안내 — `CLAUDE.md` 로 보낸다) | MCP 서버 연결 (각자 설정) |
 | 프로젝트 교훈 (`docs/reference/lessons/`) | 개인 permission 축적 (`.claude/settings.local.json`) |
 
 ## AI 하네스 부트스트랩 체크리스트 (새 클론마다)
 
 - [ ] **Claude Code 첫 실행**: 클론된 `.claude/settings.json` 의 project 훅(전투 코어 리뷰 감지)을 1회 검토/승인 — 정상 보안 게이트
 - [ ] **(선택) oh-my-claudecode / superpowers 설치** — 미설치여도 바닐라 Claude Code 로 규약 준수 가능. 전투 코어 리뷰는 프로젝트 에이전트 `core-reviewer`(`.claude/agents/`)가 맡고, 병행하는 일반 리뷰는 OMC 의 code-reviewer 에이전트를 쓴다
-- [ ] **Codex 사용 시**: 인증 후 `AGENTS.md` 가 CLAUDE.md 전체 정책을 자동 로드하는지 확인
+- [ ] **Codex 사용 시**: `AGENTS.md` 는 `CLAUDE.md` 를 가리키는 안내 두 줄이다 — Codex 가 `CLAUDE.md` 를 읽고 시작하는지 확인
 - [ ] **MCP**: 각자 설정 (Unity MCP 서버 패키지는 프로젝트에 포함돼 있음 — 클라이언트 연결만)
 - [ ] **permission**: 공용 read-only 5종은 자동 적용, 그 외는 작업하며 각자 승인 (`settings.local.json` 에 축적)
 
