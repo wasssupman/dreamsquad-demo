@@ -115,7 +115,7 @@ code + git history        구현 상세
 
 ## 진행 중 spec
 
-- 없음.
+- `design-blueprint/` — **현재 설계의 윤곽(blueprint) 다시 쓰기** · 착수 대기(2026-10-01 범위 합의 · 본 작업은 `wassup-core` 루트 세션). 시작 전 그 README 「다음 세션 진입 가이드」를 먼저 읽는다.
 
 ## Follow-up Backlog
 
@@ -127,6 +127,17 @@ code + git history        구현 상세
 - Scope: **S** = 단일 unit, **M** = 2~5 unit spec, **L** = 5+ unit spec.
 - 같은 결의 작업은 테마 서브그룹(`###`)으로 묶고, 출처 spec 이 섞이면 항목 끝에 `(spec-slug)` 라벨.
 - 새 spec 으로 승격되면 줄을 `→ docs/spec/{slug}/` 링크로 바꾸고, 더 이상 유효하지 않으면 지운다.
+
+### spec 초기화 잔여 (2026-10-01)
+
+- **Assets 안 지운 spec 경로 6곳** [S] · Unity 가 플레이 중이 아닐 때 한 커밋으로(재컴파일 1회).
+  - `Scripts/UnitAi/UnitActionPhase.cs` — 머리 주석이 **옛 ECS 동작을 현재처럼 설명한다**(배치 중 · 사망 제외를 옛 쿼리가 한다 · 옛 공격/이동 시스템 추출 · Burst 호환). 지금은 `CombatPhase` 가 `u.Deploying || u.Dead` 로 건너뛰고 `DefenderAi` 가 배치 중을 입력으로 받는다 · asmdef 에 Burst 없음 → 주석을 다시 쓴다.
+  - `Scripts/Data/StatImport/UnitStatImportDto.cs` · `DcSheetImportDto.cs` · `Scripts/Core/CostConfigRuntimeRefresher.cs` — 옛 JSON 계약 문서 → 현행 정본 `skill-data-table/5_sheet_io.md` 「실제 시트 설정」으로.
+  - `Tests/EditModeAssets/UnitRosterInvariantTests.cs` — 주석 + **실패 메시지**의 「투영 규칙(spec unit 0)」 → `UnitStatFieldMapper`.
+  - `Shaders/Prop_Outline_Sprite.shader` — 경로 한 줄 삭제(머리 주석이 이미 설명한다).
+- **`attack_damage` 호환 코드 제거** [S] · 시트를 새로 만들어 그 열이 없다(`5_sheet_io.md` 「만들지 않는다」). `UnitStatImportDto.attackDamage` · `UnitStatApplier.WarnDeprecatedAttackDamage` · 테스트 3 · `SheetHeaderDocTests.NotInSheet`. 사용자 결정 대기.
+- **docs 잔여 5개 삭제** · 사용자 승인 대기 — `docs/superpowers/plans/2026-05-06-…`(드래프트 구현 계획 · 코드 없음) · `docs/milestone/` 2개(05-08 스냅샷 · 스스로 「정본 아님」 배너) · `docs/드림캐쳐_샘플덱_기획요약.md`(6월 초안) · `docs/CODEX-HARNESSING.md`(Phase · TRD 전제) · `docs/map-editor-reference-for-somnia.md`(다른 프로젝트용 조사 · 런타임 설명 12곳이 옛 전투 기준). 가리키는 곳 전부 0.
+- 코드 주석의 옛 출처 메모(510 파일)는 일괄 정리하지 않는다 — 현재 동작을 틀리게 말하는 것만 그 파일을 만질 때 고친다.
 
 ### 스킬 데이터 표 — 남은 것 (`skill-data-table`)
 

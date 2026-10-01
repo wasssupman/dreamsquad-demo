@@ -1,5 +1,9 @@
 # docs/blueprint — 콘텐츠 기획·발주 정본
 
+> ⚠ **다시 쓰기 대기(2026-10-01)** — 이 폴더는 **현재 설계의 윤곽**(어떤 세션 · 사람이 봐도 현재 설계를 쉽게 보는 입구)으로 다시 쓴다.
+> 계획 · 진입 가이드 = [`docs/spec/design-blueprint/README.md`](../spec/design-blueprint/README.md). 아래 3장은 그 작업에서 `units.md` · `decisions.md` 로 흡수된다.
+> 로컬 브랜치 `blueprint` 의 옛 PRD 묶음 · `prd.zip` 은 설계 전환 전 내용이라 근거로 쓰지 않는다.
+
 | 문서 | 내용 |
 |---|---|
 | [`ledger-ally-bodies.md`](ledger-ally-bodies.md) | 아군 원장 — footprint → 판정 반경·피벗·소켓, 아트 발주 규격 |
