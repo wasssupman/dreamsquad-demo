@@ -109,11 +109,11 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 ## 프랍이 눕거나 묻히면 = authoring 값, 배치 로직 아님
 
-프랍이 게임뷰에서 눕거나 바닥에 깔리면 원인은 billboardMode(FullCamera→`Tilted`)·sprite pivot(Center→`BottomCenter`) — 상세와 강제 도구는 `.claude/skills/unity-prop-tile-authoring/SKILL.md`. 여기 남길 진단 지식 하나: **visualOffset 은 접지 수단이 아니다** — 프랍은 90°X 회전 root 아래라 local +Y 가 월드 +Z(깊이)로 새서 수직으로 안 올라간다. 피벗을 고치면 visualOffset=0 이 정답.
+프랍이 게임뷰에서 눕거나 바닥에 깔리면 원인은 billboardMode(FullCamera→`Tilted`)·sprite pivot(Center→`BottomCenter`) — 강제 도구는 `Assets/_Project/Editor/PropDataEditor.cs`. 여기 남길 진단 지식 하나: **visualOffset 은 접지 수단이 아니다** — 프랍은 90°X 회전 root 아래라 local +Y 가 월드 +Z(깊이)로 새서 수직으로 안 올라간다. 피벗을 고치면 visualOffset=0 이 정답.
 
-## 프랍/타일 authoring 은 스킬 먼저 로드
+## 프랍/타일은 기존 애셋을 미러링하지 않는다
 
-코드베이스에 구세대(PPU 545, 프랍별 `_cast` mat)와 신세대(공용 mat) 패턴이 공존해 **"기존 애셋 미러링"이 그럴듯하지만 틀린 경로**다. 정식 파이프라인·강제 값은 `.claude/skills/unity-prop-tile-authoring/SKILL.md`.
+코드베이스에 구세대(PPU 545, 프랍별 `_cast` mat)와 신세대(공용 mat) 패턴이 공존해 **"기존 애셋 미러링"이 그럴듯하지만 틀린 경로**다. 프랍 임포트·프리팹 값은 `Assets/_Project/Editor/PropDataEditor.cs` 가 강제한다.
 
 ## PixPlays 이펙트는 duration 을 무시한다 (지속형은 loop 오버라이드)
 

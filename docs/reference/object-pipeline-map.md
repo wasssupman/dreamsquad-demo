@@ -16,7 +16,7 @@
 | 6 | 소멸 사건 회수 | `UnitDestroyed`(3) · `ProjectileDespawned`(11) · `HazardDestroyed`(45) · `FieldDespawned`(47) · `PickupTaken`(49)/`PickupExpired`(52) · `ResignationConsumed`(53) · `CardDetached`(61) + 판 경계 `MatchStarted`(1) | 스폰 사건과 **짝**이 있어야 한다. 판 경계 회수가 없으면 다음 판에 남는다 |
 | 7 | 씬 배선 | `BattleCoreScene.unity` — 드라이버·뷰 풀 컴포넌트의 SerializeField · `MatchViewAssets`(정의표 번호 → 그림 SO) | UnityMCP 로 배선하고 Play 검증까지가 완료(CLAUDE.md 「검증」). 폴백 `FindAnyObjectByType` + 경고는 배선 전 임시다 |
 
-정거장별 시공법 스킬: 씬 배선 = `unity-feature-wiring` · VFX 저작/통합 = `unity-vfx-authoring`/`unity-vfx-integration` · 프랍/타일 = `unity-prop-tile-authoring`.
+정거장별 시공법 스킬: 씬 배선 = `unity-feature-wiring` · VFX 통합 = `unity-vfx-integration`.
 
 ---
 
