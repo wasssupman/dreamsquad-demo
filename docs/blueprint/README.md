@@ -4,7 +4,7 @@
 > 수치는 적지 않는다 — 적는 날부터 낡는다. 값은 정본 위치(시트 · 에셋 · 코드)를 가리킨다.
 > `docs/reference/` 가 이미 말하는 것은 옮기지 않고 링크한다. 게임 언어가 먼저, 코드 이름은 괄호.
 >
-> 기준 커밋 `478c8c6c0`(2026-10-01). 설계를 바꾸는 spec 은 끝날 때 이 문서의 해당 줄을 고친다(`docs/spec/README.md` 「진행 규칙」).
+> 코드 대조 기준 `478c8c6c0`(2026-10-01). 설계를 바꾸는 spec 은 끝날 때 이 문서의 해당 줄을 고친다(`docs/spec/README.md` 「진행 규칙」).
 
 ## 1. 한 줄
 
@@ -26,7 +26,7 @@
 2. **참가 신청** — 계정이면 서버가 시도 id 와 **토너먼트 시드**를 준다. 게스트 · 테스트 모드 · 계정의 첫 판은 신청을 건너뛰고 아무것도 제출하지 않는다(첫 판은 서버 오류 우회 — 결정 ⑦-1). (`Core/Api/TournamentMatchReporter`)
 3. **판 조립** — 모드 SO 와 저작 SO 를 정의표로 굽고(`MatchDefinitionBuilder`), 시드가 맵과 그 맵에 짝지어진 적 덱 · 웨이브 플랜을 고른다(전원 동일). (`BattleCoreUnity/BattleDriver` · `MatchEntry`)
 4. **판** — 카운트다운 뒤 제한시간 동안 실시간. 코어(`BattleMatch`)가 고정 틱으로 돌고, 입력은 커맨드로 들어가고, 뷰는 사건을 받아 그린다.
-5. **종료** — 통로는 셋(시간 만료 · 마음 붕괴 · 유저 제출)뿐이고, 어느 쪽이든 그때까지의 처치 수가 결과다. 계정 판이면 점수 + 덱 스냅샷(id 만)을 제출하고 그 토너먼트의 랭킹을 받는다. 중도 이탈은 0점 제출. ([`../reference/score-formula.md`](../reference/score-formula.md))
+5. **종료** — 판을 끝내는 통로는 시간 만료 · 마음 붕괴 둘이고, 유저 제출은 언제든 빠져나가는 절차 밖 탈출구다(코드상 종료 사유는 이 셋뿐). 어느 쪽이든 그때까지의 처치 수가 결과다. 계정 판이면 점수 + 덱 스냅샷(id 만)을 제출하고 그 토너먼트의 랭킹을 받는다. 중도 이탈은 0점 제출. ([`../reference/score-formula.md`](../reference/score-formula.md))
 6. **로비 복귀** — 결과 화면에서. 제출이 실패했거나 판 도중 끊긴 시도는 다음 로비 진입 때 0점으로 닫는다 — 서버는 열린 시도가 있으면 다음 참가를 막기 때문이다(`Core/Api/PendingMatchStore` · `TournamentMatchReporter.ReconcilePending`).
 
 ## 4. 시스템 지도
@@ -41,7 +41,7 @@
 | 웨이브 | 적 덱(편성 knob)이 시드로 웨이브를 생성한다. 같은 맵 = 같은 웨이브 | `Scripts/Data/Decks/` · `Data/WaveConcepts/` · [`map-wave-balancing.md`](../reference/map-wave-balancing.md) | 코어 `Scripts/BattleCore/Wave/WaveGenerator` |
 | 맵 | 스테이지 프리팹이 맵의 정본이자 비주얼. 풀에서 시드로 고른다 | `Data/Maps/MapStagePool.asset` · [`map-stage-authoring.md`](../reference/map-stage-authoring.md) | `Scripts/Core/MapStage/` |
 | 적 이동 | 목적지별 흐름장 + 어그로 · 감지 · 웨이포인트 우선순위 | [`enemy-movement-algorithm.md`](../reference/enemy-movement-algorithm.md) | 코어 `Scripts/BattleCore/Move/` |
-| 드림캐쳐 | 카드가 유닛의 규칙을 바꾼다(스탯을 올리지 않는다). 큐 · 손패 · 각성 게이지 | 시트 `Cards` · `DcConfig` → `Data/Dreamcatcher/` · [`dreamcatcher-card-schema.md`](../reference/dreamcatcher-card-schema.md) | 코어 손패 `HandDeck` · 굽기 `CardDefinitionBuilder` |
+| 드림캐쳐 | 카드가 유닛의 규칙을 바꾼다(스탯을 올리지 않는다). 큐 · 손패 · 각성 게이지 | 시트 `Cards` · `DcSkills` · `DcConfig` → `Data/Dreamcatcher/` · 스키마 `docs/spec/skill-data-table/tables.md` §7 | 코어 손패 `HandDeck` · 굽기 `CardDefinitionBuilder` |
 | 스킬 · 효과 | 카드 · 방어유닛 · 적이 같은 소유 줄(트리거 → 효과 id)을 든다. 효과 표 하나 | 시트 `Skills` · `SkillOwners` → `Data/Effects/` · `docs/spec/skill-data-table/` | `Scripts/BattleCore/Trigger/` · `Scripts/Skills/` |
 | 드림스톤 | 판 밖 스탯 배율(체급 공급원). 스쿼드 프리셋에 장착 | `Data/Dreamstones/DreamstoneCatalog.asset` | `Scripts/Data/Dreamstone/` |
 | 경제 | 코스트(배치) · 각성(카드) · 당김 크레딧 · 쿨타임 | 시트 `CostConfig` → `Data/Config/DefaultCostConfig.asset` · `Data/Dreamcatcher/AwakeningConfig.asset` | 코어 `CostLedger` 등 담당자 |
@@ -50,7 +50,7 @@
 | 매치 모드 | 목표 종류(enum)를 고르는 SO. 현행 라이브는 하나(`KillScoreTimed`) | `Data/Modes/MatchMode_KillScore3Min.asset` · `docs/spec/battle-core-rebuild/match-mode-design.md` | `Scripts/BattleCore/Match/ModeDef` |
 | 시간 | 정지 · 슬로모는 도메인별 lease. 전투는 틱 발행률로 반영 | — | `Scripts/Core/TimeControl/TimeManager` · `BattleDriver` |
 | 뷰 · 연출 | 사건을 받아 그리는 뷰 풀들. 순서는 한 파일 | [`object-pipeline-map.md`](../reference/object-pipeline-map.md) · 무기 궤적 [`weapon-trail-authoring.md`](../reference/weapon-trail-authoring.md) | `Scripts/BattleCoreUnity/View/` · `ViewOrder` |
-| 로그인 · 세션 | 게스트(저장 없음) · Firebase 계정 · 이름 복구. 토큰은 401 때만 갱신 | 서버 | `Scripts/Core/Api/UserSession` · `UI/Outgame/LoginPanelView` |
+| 로그인 · 세션 | 게스트(저장 없음) · Firebase 계정 · 이름 복구. 토큰은 서버가 401/403 을 줄 때만 갱신 | 서버 | `Scripts/Core/Api/UserSession` · `UI/Outgame/LoginPanelView` |
 | 프로필 · 프리셋 | 기기 로컬 프로필 하나(스쿼드 · 덱 프리셋). 빈 칸만 기본 편성으로 채운다 | `persistentDataPath/profile.json` · 덱 규칙 `Data/Dreamcatcher/DeckRuleConfig_Default.asset` | `Scripts/Core/Profile/` · `Scripts/Core/Squad/` |
 | 토너먼트 | 참가 → 제출(점수 + 덱 id) → 랭킹 · 히스토리. 제출이 실패한 시도는 다음 로비 진입 때 0점으로 닫힌다(실제 점수 재전송 없음) | 서버 | `Scripts/Core/Api/TournamentApi` · `UI/Outgame/TournamentHistoryPanel` |
 | 테스트 · 골든 | 어셈블리 다섯 + 헤드리스 lane. 골든은 Unity 에서만 | [`test-procedure.md`](../reference/test-procedure.md) | `Tests/` · `Scripts/BattleCore/Harness/` |
@@ -84,7 +84,7 @@
 상세와 전체 목록은 `docs/spec/README.md` 「Follow-up Backlog」. 여기는 방향을 바꿀 수 있는 것만.
 
 - **서버 권위 spec**(아직 없음) — 열면 자연 해소되는 묶음: 토너먼트 맵 결정권(지금은 클라 우선순위 사슬) · 서버 API 확장(지금은 모드 · 리더보드 id 를 보내지 않는다) · 라이브 판 커맨드 기록과 리플레이 · 프로필 저장 원자성.
-- **규칙 재결정 대기** — 분류표 보류 30행(질문 20개로 묶임 — `docs/spec/battle-core-rebuild/ledgers/rules.md`) · 일반 공격 대상 선정에 남은 사각 자 · 기본값 박제 5.
+- **규칙 재결정 대기** — 분류표의 보류 행(질문 목록 — `docs/spec/battle-core-rebuild/ledgers/rules.md`) · 일반 공격 대상 선정에 남은 사각 자 · 기본값 박제.
 - **스킬 데이터 표 unit 7 보류** — 방어유닛 · 적의 진영 버프 · 공격 변형 배선(`docs/spec/skill-data-table/README.md`).
 - **보관 자료 처분** — 로컬 브랜치 `blueprint` · `prd.zip`(설계 전환 전 내용이라 근거로 쓰지 않는다).
 

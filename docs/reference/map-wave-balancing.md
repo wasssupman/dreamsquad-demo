@@ -9,8 +9,8 @@
 
 | 바꾸고 싶은 것 | 파일 / 도구 | 핵심 필드 |
 |---|---|---|
-| **어떤 맵이 등장하나** (맵 추가/제거) | `Assets/_Project/Data/Maps/MapDocumentPool.asset` | `entries` (맵+덱 쌍) |
-| **맵 지형** (경로·스폰·골·배치칸) | `Window/Wassup/Map Painter` 또는 execute_code | MapDocument (tiles/spawns/goals) |
+| **어떤 맵이 등장하나** (맵 추가/제거) | `Assets/_Project/Data/Maps/MapStagePool.asset` | `entries` (스테이지 프리팹 + 덱 + 플랜 짝) |
+| **맵 지형** (경로·스폰·골·배치칸) | 스테이지 프리팹(`MapStage`) — [`map-stage-authoring.md`](map-stage-authoring.md) | 마커 · 프랍 |
 | **웨이브 난이도** (몬스터 수·종류·보스) | 맵별 `Deck_{맵}.asset` (AttackDeck) | 아래 §웨이브 knob |
 | **웨이브의 «성격»** (편성 컨셉) | `Assets/_Project/Data/WaveConcepts/Concept_*.asset` | 아래 §웨이브 컨셉 블록 |
 | **개별 몬스터 강함** (HP·속도·공격) | `Enemy_*.asset` (AttackUnitData) | health/moveSpeed/attackRange/attackCooldown… |
@@ -67,7 +67,7 @@
 | **웨이브 컨셉** | `waveConceptPool` · `conceptHoldWaves` | 5종 · 3웨이브 |
 | **두 단계 곡선 + 클라이맥스**(공성 전용) | `waveRampBreakWave` · `waveRampBreakUnits` | 공성 3덱 15 · 12 / 라이브 0(끔) — break 전 평탄, 후 지수 + 변주 상시. **breakWave 값 변경 = 변주 구간 이동 = rng 갈림 → 시드 스캐너 재실행**(wave-ramp-two-phase) |
 | **웨이브 시작 → 첫 적 유예** | `waveSpawnLeadInSec` | 2s |
-| 골 안정도 최대치(패배 조건) | `goalStabilityMax` | 20 |
+| 골 안정도 최대치(마음 체력 — 0 이면 `stress_full` 로 판 종료) | `goalStabilityMax` | 20 |
 | 스트레스 한계(계약 카드 지불 대상, **패배와 무관**) | `defeatGoalReachedCount` | 10 |
 | 제한 시간 | `timerDurationSec` | 180 |
 
@@ -187,7 +187,7 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 - 새 맵/덱 추가 시에도 **덱 waveSeed 를 비0 유니크 값**으로.
 - **편성이 바뀌는 조정을 했으면 `waveGeneratorVersion` 을 +1 한다** (전 컨셉 덱 동일 값, 현재 7). 수량 knob·게이트·풀·컨셉 어느 쪽이든 결과 편성이 달라지면 대상이다. `waveSeed` 는 그대로 — 시드는 「같은 맵 같은 웨이브」의 키고, 버전은 「baseline 이 언제 바뀌었나」의 표식이다. 숫자를 하드코딩하던 pin 테스트(`GeneratorVersion_IsBumped_SoTheNewBaselineIsVisible`)는 옛 생성기를 굴리는 `WaveConceptAuthoringTests` 와 함께 (이력 — 옛 ECS 전투, unit 9 에서 제거). 지금은 `generatorVersion` 이 판 정의표 `configHash` 에 들어가므로(`WaveDefs.cs`) 올리면 골든이 「조건이 바뀌었다」로 말한다 — 골든 재베이크를 **같은 커밋에서** 한다.
 
-⚠ **여기서 값만 바꾸면 안 되는 변경**: 적 SO 신설, `minWaveNumber`/`maxPerWave`/`enemyClass`/`traversalLayers` 변경, `WaveGenerator`(코어)·컨셉 슬롯/필터·`WavePlanAsset` 로직 변경 — 이 경우 **`.claude/skills/enemy-wave-integration` 스킬이 필수**다(풀 삽입 위치·게이트 정합·튜토리얼 로스터 계약·가드 테스트까지 그쪽이 강제). 이 문서는 «어느 값이 어디 있나»의 정본이고, «바꿀 때 뭘 같이 해야 하나»의 정본은 그 스킬이다.
+⚠ **여기서 값만 바꾸면 안 되는 변경**: 적 SO 신설, `minWaveNumber`/`maxPerWave`/`enemyClass`/`traversalLayers` 변경, `WaveGenerator`(코어)·컨셉 슬롯/필터·`WavePlanAsset` 로직 변경 — 이 경우 **`.claude/skills/enemy-wave-integration` 스킬이 필수**다(풀 삽입 위치·게이트 정합·가드 테스트까지 그쪽이 강제). 이 문서는 «어느 값이 어디 있나»의 정본이고, «바꿀 때 뭘 같이 해야 하나»의 정본은 그 스킬이다.
 
 ---
 
@@ -195,20 +195,16 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 
 점수원은 **처치 하나**다(`docs/reference/score-formula.md`). 시간·스트레스 축은 은퇴했다. 그래서:
 
-- **몬스터 종류를 바꾸면 예산이 바뀐다** — `killScore` 가 티어별로 다르다(일반 1 / 엘리트 3 / 보스 10).
+- **몬스터 종류는 점수 단가를 바꾸지 않는다** — 처치는 종류 불문 1점이다. 종류는 처치 난이도(체력 · 속도)로만 예산에 관여한다.
 - **수·성장률·상한 간격을 바꾸면 예산이 변동한다**(3분 안에 몇 웨이브를 미느냐가 곧 점수).
-- **제한시간·안정도는 예산에 직접 관여하지 않는다** — 안정도는 동점 판정 tie-break 값이다.
+- **안정도는 점수에 관여하지 않는다** — 마음은 판을 끝낼 수 있지만(스트레스 100) 점수에 섞이지 않는다. 동점은 그냥 동점이다(`score-formula.md`).
 - **맵 간 점수 소폭 차등은 허용**(2026-07-23 사용자 결정) — 예산을 맵마다 똑같이 맞출 필요 없음. **유일 불변식은 "같은 맵=같은 웨이브"**. 맵별 난이도는 그 `Deck_*` 만 자유롭게 조정.
 
 ---
 
-## 맵 지형 규칙 (Map Painter / 신규 맵)
+## 맵 지형 규칙 (신규 맵)
 
-- **골 1~2개**(목표지점). 스폰 **2~4개**(1스폰 금지 — 런타임 `MapConnectivity` 가 `<2` 거부).
-- **복도는 골 셀에서만 만난다**: 분리 맵=각 스폰 자기 골(완전 분리), 수렴 맵=여러 스폰이 골에서 합류(non-goal 병합 금지).
-- 이동로(Walk) 스폰→골 **≥20**, Walk 1링=Place(배치칸), 나머지 Deco. **2×2 walk 블록 금지**. 그리드 **≤20×12**.
-- 수동 맵 관례: `authoringSeed=-1`, `generatorVersion=0`. 덮어쓰기는 **GUID 유지**(풀/덱 배선 불변).
-- 골 여러 개면 flow field 가 **최근접 골** 라우팅(`FlowFieldBuilder.BuildFromSources`). 복도 분리면 각 스폰이 자기 골로.
+스테이지 프리팹이 맵의 정본이다 — 형식 제약 · 하드 실패 목록 · 절차는 [`map-stage-authoring.md`](map-stage-authoring.md). 판 시작 때 `MapConnectivity.AllSpawnsReachGoal`(각 스폰이 아무 골에나 닿는가)이 막는다.
 
 ---
 
@@ -223,8 +219,8 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 
 ## 편집 경로 요약
 
-- **인스펙터 직접**: Deck_*.asset / Enemy_*.asset / MapDocumentPool.asset.
-- **Map Painter**: `Window/Wassup/Map Painter` (지형 그리기·검증·Bake).
+- **인스펙터 직접**: Deck_*.asset / Enemy_*.asset / MapStagePool.asset.
+- **스테이지 프리팹**: [`map-stage-authoring.md`](map-stage-authoring.md) (구성 스크립트 · 검증).
 - **execute_code**: 프로그래매틱 대량 편집(맵 bake·덱 생성). CodeDom C#6 — `in` 파라미터는 `ref`, delegate 파라미터명 외부 지역변수와 충돌 금지.
 - **Google Sheet 동기화**: 덱/유닛 값 시트 편집→import (프로젝트에 sheet-sync). import 전엔 디스크 SO 가 옛값.
 
@@ -248,11 +244,10 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 - **사거리 3 이 가장 아프다**(−25%, 12종). 재튜닝 1순위.
 - 저작 가중 평균 −17.8%.
 
-**값 바꾸는 곳**: 사거리 자체는 유닛 SO 의 `attackRange`(시트 정본). 판정 자를 다시 바꾸려면
-`Wassup.Skills.SkillMath.InBodyReachWithHalfExtent` — **거기가 술어 본문 유일한 자리**이고,
-표기(배치 프리뷰 링·채움)도 같은 함수에서 나오므로 코드 한 곳만 고치면 화면이 따라온다.
+**값 바꾸는 곳**: 사거리 자체는 유닛 SO 의 `attackRange`(시트 정본). 판정 자는 `battle-core-architecture.md` §8-7 이 정본이다
+(정본 진입점 `SkillMath` · 코어 어댑터 `AttackReach`) — 자를 바꾸는 것은 규칙 변경이라 사용자 결정이다.
 
-**보스 몸(`bodyRadius`)** — 아직 전부 0 이다. 값을 주면 「큰 몸 = 큰 표적」이 되고 사거리 1
-유닛의 대보스 허용 면적이 크게 는다(0.9 → **2.56배**). ⚠ `bodyRadius` 는 시트에 컬럼이 없어
+**보스 몸(`bodyRadius`)** — 보스는 크기 티어 대신 몸 반경을 개별 저작한다(`AttackUnitData.BodyRadiusTiles`). 몸이 크면
+「큰 몸 = 큰 표적」이 되어 사거리 1 유닛이 닿는 면적이 크게 는다. ⚠ `bodyRadius` 는 시트에 컬럼이 없어
 SO 저작이지만 **HP 보상은 시트가 정본**이다 — 둘을 같은 커밋에 하지 않으면 다음 로그인
 임포트가 HP 만 되돌린다.

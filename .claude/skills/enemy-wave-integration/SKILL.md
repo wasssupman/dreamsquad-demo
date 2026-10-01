@@ -53,8 +53,9 @@ for f in Assets/_Project/Scripts/Data/Decks/Deck_*.asset; do
   echo "$(basename "$f" .asset): $(sed -n '/attackUnitPool:/,/minWaveCount/p' "$f" | grep -c guid)종"
 done
 
-# 어느 덱이 맵 풀에 배선돼 있나 (본편 entries / dev 슬롯)
-grep -A2 -E "^  (entries|devEntries):" Assets/_Project/Data/Maps/MapDocumentPool.asset
+# 어느 덱이 맵 풀에 배선돼 있나 (본편 entries / dev 슬롯) — deck guid → 덱 이름
+grep -oE "deck: \{fileID: [0-9]+, guid: [0-9a-f]{32}" Assets/_Project/Data/Maps/MapStagePool.asset \
+  | grep -oE "[0-9a-f]{32}" | while read g; do grep -l "guid: $g" Assets/_Project/Scripts/Data/Decks/*.meta; done
 
 # 컨셉과 그 슬롯 필터
 for f in Assets/_Project/Data/WaveConcepts/Concept_*.asset; do
@@ -90,7 +91,7 @@ grep -l "<enemy-guid>" Assets/_Project/Scripts/Data/Decks/*.asset
 | # | 정거장 | 확인 |
 |---|---|---|
 | 1 | `Assets/_Project/Data/EnemyCatalog.asset` | 등재 |
-| 2 | 라이브 덱 `attackUnitPool` | **목록은 「값 재도출」로 뽑아라.** 맵 풀에 배선된 덱 전부 + Endless. 한 덱만 빠지면 그 맵에서만 안 나온다 |
+| 2 | 라이브 덱 `attackUnitPool` | **목록은 「값 재도출」로 뽑아라.** 맵 풀(`MapStagePool.asset`)에 배선된 덱 전부. 한 덱만 빠지면 그 맵에서만 안 나온다 |
 | 3 | **삽입 위치** | 맨 뒤 금지 — 아래 «전방 순환» 참조 |
 | 4 | `waveSeed` 갱신 + `waveGeneratorVersion` bump | 풀이 바뀌면 편성 전체가 재추첨된다. 새 baseline 을 diff 에 드러내라 |
 | 5 | 컨셉 배정 | `enemyClass` × 통행층이 **자동**으로 정한다. 신규 필터 축을 만들지 마라 |

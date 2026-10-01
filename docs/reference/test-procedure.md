@@ -41,7 +41,7 @@
 | **전투 코어 변경 후** | `assembly_names=["Wassup.Tests.EditMode.Core"]` (Unity 없이 먼저 보려면 헤드리스) | 초 단위 |
 | **전투 Unity 층(드라이버·뷰 풀·입력) 변경 후** | 위 + `mode="PlayMode" assembly_names=["Wassup.Tests.PlayMode.Core"]` | 분 단위 |
 | **시트 임포트·에셋·맵·콘텐츠 편집 후** | 위 + `["Wassup.Tests.EditMode.Assets"]` | 초 단위 |
-| 작업 단위 완료·커밋 전 | `assembly_names` 생략 = EditMode 전체 + 관련 PlayMode 파일 | 분 단위 |
+| 작업 단위 완료·커밋 전 | `assembly_names` 생략 = EditMode 전체. 전투 Unity 층을 건드렸으면 `PlayMode.Core` 를 사용자에게 묻고 | 분 단위 |
 | spec 종료·머지 전 | `mode="PlayMode" assembly_names=["Wassup.Tests.PlayMode.Core"]` — 사용자에게 묻고 돌린다. 아웃게임 `PlayMode` 는 `[Explicit]` 격리(백로그) 전까지 돌리지 않는다 | 분 단위 |
 
 - **카드(시트·SO) 편집 후** Assets lane 의 `CardEffectWitnessTests`(카드 한 장 = 케이스 하나 · 붙이고/시전하고 강제 발동해 효과 종류가 걸리나)와 `CardBakeSnapshotTests`(굳힌 굽기 텍스트와 같나)를 본다. 스냅샷이 빨갛고 **의도한 변경이면** 메뉴 `Wassup/BattleCore/Debug/카드 스냅샷 갱신` → `Tests/EditModeAssets/Fixtures/card_bake_snapshot.txt` diff 를 같은 커밋에 싣는다(테스트는 파일을 쓰지 않는다).
@@ -56,7 +56,7 @@
 
 ## 빨강을 만났을 때
 
-**EditMode lane 의 빨강은 회귀로 취급한다.** 알려진 선행 실패가 있으면 그 작업 단위의 완료 기준에 개수와 함께 적혀 있다(예: `battle-core-rebuild` unit 9 완료 기준의 「선행 2」) — 거기 없는 빨강은 회귀다.
+**EditMode lane 의 빨강은 회귀로 취급한다.** 알려진 선행 실패는 `docs/spec/README.md` 백로그 「(마) 사용자 몫」에 있다 — 거기 없는 빨강은 회귀다. 카드 전체를 한 번에 단언하는 집계형 테스트는 개수가 같아도 새 카드가 섞일 수 있으니 실패 메시지의 id 목록까지 대조한다.
 
 PlayMode 도 같다 — 알려진 선행 실패는 가장 최근 spec 인계의 검증 줄에 개수와 함께 적힌다
 (2026-09-30 `skill-data-table/10_handoff_summary.md` = EditMode 선행 3 · PlayMode Core 97/97).

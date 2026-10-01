@@ -1,8 +1,17 @@
 # tools/
 
-Session log analysis utilities for the Defense Tournament prototype.
+저장소 도구 모음.
+
+| 도구 | 쓰임 |
+|---|---|
+| `battle-core-rebuild/headless/` | 전투 코어를 .NET 으로 빌드·테스트하는 헤드리스 lane — `docs/reference/test-procedure.md` |
+| `battle-core-rebuild/check_ledgers.py` | 전투 코어 전환 장부(`docs/spec/battle-core-rebuild/ledgers/`) 검사 |
+| `key_sheet_alpha.py` | 흰 배경 스프라이트 시트 → 알파 (`lessons/03` 「흰 배경 시트는 …」) |
+| `analyze_sessions.py` | **휴면** — 아래 |
 
 ## analyze_sessions.py
+
+> **휴면.** 입력인 배틀 JSON 로그(`GameLogs/session-*.json`)를 새 전투 씬은 쓰지 않는다(로거를 들이지 않았다 — `score-formula.md`). 새 로그가 생기지 않는다.
 
 Aggregates `GameLogs/session-*.json` files and outputs H1/H2/H3 metrics
 tied to the prototype PRD §4 (`docs/PRD.md` was retired 2026-09-03 — see git history).

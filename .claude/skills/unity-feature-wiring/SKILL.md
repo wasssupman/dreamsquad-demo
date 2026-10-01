@@ -45,7 +45,7 @@ Invoke whenever the implementation touches any of these:
    - New GameObject with `CoreVfxSpawner` in `BattleCoreScene`
    - Its `_driver` SerializeField → the scene's `BattleDriver` (plus sibling refs such as `_units` → `CoreUnitViewPool`, `_projectiles` → `CoreProjectileViewPool`)
    - Its prefab slots (`_healAppliedPrefab` …)
-   - SaveScene so YAML persists the references
+   - Persist the references in the scene YAML (see the save rule in step 2 — a plain SaveScene can bake other sessions' unsaved work)
 
 2. **Do the wiring via UnityMCP, not user handoff:**
 
@@ -54,7 +54,7 @@ Invoke whenever the implementation touches any of these:
    | Create GO + add component | `mcp__UnityMCP__manage_gameobject action=create components_to_add=[...]` |
    | Set SerializeField (public) | `mcp__UnityMCP__manage_components action=set_property` |
    | Set SerializeField (private) | `mcp__UnityMCP__execute_code` + reflection (`BindingFlags.Instance \| BindingFlags.NonPublic`) |
-   | Save scene | `execute_code` → `EditorSceneManager.SaveScene(scene)` (must exit Play first) |
+   | Save scene | If the scene was already dirty before your change, **do not plain-save** — use delta isolation (`docs/reference/lessons/02-dev-workflow-git-scene.md` 「SaveScene 은 미저장 WIP 를 통째로 베이크한다」). Otherwise `execute_code` → `EditorSceneManager.SaveScene(scene)` (must exit Play first) |
    | Verify field populated | `grep '_fieldName: {fileID:' Assets/_Project/Scenes/BattleCoreScene.unity` — fileID must be non-zero |
 
 3. **Verify the wiring in the saved YAML** — grep the scene file for the field name. A field missing entirely or with `{fileID: 0}` means the ref is null.
@@ -75,6 +75,7 @@ var field = typeof(Wassup.BattleCoreUnity.View.CoreVfxSpawner).GetField("_driver
 field.SetValue(target, value);
 UnityEditor.EditorUtility.SetDirty(target);
 UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(target.gameObject.scene);
+// 씬이 손대기 전부터 dirty 였다면 여기서 저장하지 말고 delta 격리(lessons/02)로
 UnityEditor.SceneManagement.EditorSceneManager.SaveScene(target.gameObject.scene);
 return "wired+saved";
 ```
@@ -134,7 +135,7 @@ Before marking a Unity MonoBehaviour feature complete:
 - [ ] Material created at runtime → `sharedMaterial` + `Destroy(mat)` in OnDestroy
 - [ ] Shader.Find → `SerializeField Material override` slot for build safety
 - [ ] Play mode: feature triggered, visible/observable outcome, 0 console errors
-- [ ] Scene saved
+- [ ] Scene persisted — plain SaveScene only if the scene had no unsaved changes before; otherwise delta isolation (lessons/02)
 
 ## Real-World Incident (why this skill exists)
 

@@ -9,7 +9,7 @@
 | 스크립트 | 역할 | 핵심 필드 |
 |---|---|---|
 | `MapStage` (루트, 필수) | 스테이지 선언 | `playAreaCells`(논리 격자 크기) · `gridOriginLocal`(셀 (0,0) 최소 모서리의 로컬 위치, Y=유닛 발바닥 평면) · `previewTileSize`(기즈모 전용 — 런타임 정본 `BattleDriver._tileSize`(1, `BattleCoreScene` 의 드라이버)와 같아야) · `suppressEffectTiles`(본편 false) |
-| `SpawnMarker` (≥2) | 적 스폰 | `laneIndex`(0부터 연속·중복 금지 — 웨이브 결정론 키) · `routeIndex`(-1=골 직행 기본) · `visualRoot`(튜토리얼 포커스 앵커). **프랍은 저작하지 않는다** — 런타임에 공용 `MarkerPropStyle.spawnProp`(수직 빨간 포탈)이 붙는다. 맵 전용 연출만 `visualRoot` 를 직접 채운다(그쪽이 이김) |
+| `SpawnMarker` (≥2) | 적 스폰 | `laneIndex`(0부터 연속·중복 금지 — 웨이브 결정론 키) · `routeIndex`(-1=골 직행 기본) · `visualRoot`(맵 전용 연출 자리). **프랍은 저작하지 않는다** — 런타임에 공용 `MarkerPropStyle.spawnProp`(수직 빨간 포탈)이 붙는다. 맵 전용 연출만 `visualRoot` 를 직접 채운다(그쪽이 이김) |
 | `GoalMarker` (≥1) | 골(방어 마음) | 셀만 준다 — 골 HP 는 `AttackDeck.goalStabilityMax` 단독 소유. `visualRoot` = 균열/붕괴/스트레스 틴트 대상(틴트는 머티리얼 저작 색에 **곱**). **프랍은 저작하지 않는다** — 공용 `MarkerPropStyle.goalProp`(수직 노란 포탈) |
 | `PropFootprint` | 통행+배치 차단 | `size`(사각형만, 최소 1×1) · `anchorOffset`. **명시 선언이 정본(D6)** — 시각≠논리 저작 가능(가지가 3칸 드리워도 밑동 1칸만 차단) |
 | `PlacementBlockZone` | 배치만 금지(통행 불변) | `size` — 앵커 셀부터 +x/+z. 옛 placeMask 브러시 후계, «전선» 저작 수단 |

@@ -29,7 +29,7 @@ macOS 에서 한글명 Spine 에셋을 임포트하면 깨진다. 원인 3개 �
 
 1. **NFC/NFD 정규화(핵심)**: Spine 이 쓴 이름은 NFC 인데 macOS 파일시스템은 파일명을 NFD 로 저장 → 텍스처 못 찾음("Material is missing texture"). 한글 파일명을 NFC 로 rename(`unicodedata.normalize('NFC', ...)`), 깨진 `_Atlas`/`_Material` 삭제 후 refresh 재생성.
 2. **확장자**: `*.json.txt` 인식 안 됨 → `.json`(또는 `.skel.bytes`).
-3. **버전 문자열**(3.8 시절 이력): 4.x→3.8 다운 export 시 `"spine":"3.8-from-4.0-..."` 가 3.8 파서를 죽였음 → json 의 `"spine"` 필드를 수동 수정했던 사례. 4.2 체제에서는 다운 export 자체를 하지 않는다.
+3. **버전 문자열**(3.8 시절 이력): 4.x→3.8 다운 export 시 `"spine":"3.8-from-4.0-..."` 가 3.8 파서를 죽였음 → json 의 `"spine"` 필드를 수동 수정했던 사례. 4.x 체제에서는 다운 export 자체를 하지 않는다.
 
 가능하면 파일명 영문으로 두면 NFC/NFD 자체 회피(정상 레퍼런스: `player-main`).
 
@@ -60,7 +60,7 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 - **오답**: `Mathf.SmoothStep(0f, band, dist)` — band(페더 폭)를 출력 범위로 넣음.
 - **정답**: `Mathf.SmoothStep(0f, 1f, dist / band)` — band 를 **입력** 정규화에 쓰고 출력은 0..1.
-- 이 프로젝트에서 두 세션이 독립적으로 같은 실수(블롭·조준 화살표) — 절차적 스프라이트(`TilemapMapView` 의 Blob/Arrow/Pop 계열) 만들 때 반복되는 지뢰.
+- 이 프로젝트에서 두 세션이 독립적으로 같은 실수(블롭·조준 화살표) — 절차적 스프라이트(당시 `TilemapMapView` 의 Blob/Arrow/Pop 계열 — 그 클래스는 지금 없다) 만들 때 반복되는 지뢰.
 - **static 스프라이트 캐시 주의**: `_arrowSprite` 등이 static 이라 산식을 고쳐도 이전 텍스처가 남는다. 실측하려면 리플렉션으로 필드를 null 로 밀고 재생성.
 
 ## 보드에 눕는 스프라이트가 자글거리면 = 바닥과 코플레이너 z-acne (밉맵으로 안 풀린다)
@@ -79,7 +79,7 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 - 모든 dirt 경계를 **타일링되는(주기=셀폭) 노이즈로 warp**(진폭 ~11px) → 인접 타일이 주기성 덕에 갭 없이 이어짐.
 - inner/cross 케이스의 grass 노치는 **둥근 오목 곡선**(grass 1/4원)으로.
 - 가장자리엔 선명한 cobble, 내부(mask 511)는 **flat 단색**(텍스처 fill 반복=격자 위험 회피).
-- 분포: `ObstaclePlacer`(절차생성 = **실게임 맵에도 적용**됨, 주의). BFS 블롭 클러스터 + 시드 8-이웃 간격으로 작고 흩어진 패치. 사용자 선호 = 작은 유기적 패치(큰 연속 박스 ❌), zoom 스크린샷으로 검증.
+- 분포: 사용자 선호 = 작은 유기적 패치(큰 연속 박스 ❌), zoom 스크린샷으로 검증. (당시 구현은 `ObstaclePlacer` 의 BFS 블롭 클러스터 — 맵이 스테이지 프리팹으로 바뀌며 그 클래스는 없어졌다.)
 
 ## 타일맵 바닥은 tileSet 소관, 테마는 프랍만
 
@@ -87,8 +87,6 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 - **Tilemap 모드(당시 기본 — 이력, 옛 ECS 전투와 함께 unit 9 에서 제거)**: 바닥을 `BattleBridge.tileSet`(`TileSetData` scene 필드)이 칠함(env/place/walk/deco/terrainTile + surroundFarColor). **`MapThemeData`/`SeasonData` 의 tile 텍스처/틴트는 여기서 inert** — 테마는 프랍만 구동.
 - **지금**: 바닥은 디오라마 스테이지 프리팹이 그린다. `TileSetData` 는 전투 씬 `BattleCoreScene` 의 `CoreMapOverlay._tileSet` 이 **오버레이(격자·배치 가이드·조준 링 등)의 룩**으로만 읽는다. 「이름이 아니라 실제로 물린 에셋을 확인하라」는 아래 교훈은 그대로다.
-- **레거시 MapView**: 여기서만 `MapThemeData` 의 envTileTexture/surfaceRules 가 바닥에 쓰임.
-- 새 테마의 **바닥**을 바꾸려면 전용 `TileSetData` 필요. 테마별 선택은 **`MapThemeData.tileSet` 훅**(`theme.tileSet ?? scene tileSet`, 커밋 5ebe315). "테마만 바꾸면 바닥이 바뀐다"는 오답.
 
 ## 라이브 TileSetData 는 이름으로 고르면 틀린다 — guid 로 확인할 것
 
@@ -121,9 +119,9 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 `LocationVfx.Play(VfxData)` 는 위치/스케일만 잡고 `ParticleSystem.Play()` 한 번 — **VfxData.Duration 을 소비하지 않는다**. PixPlays AOE 계열(WaterAOE 등)은 "t=0 버스트 + 수명 0.6~2s + 사이클 5s"로 저작돼 있어 지속 스킬(포탈 8s)에 붙이면 앞 1~2초만 보이고 공백. **처방**: 소비 프리팹의 **중첩 인스턴스에만 오버라이드**(공용 에셋 무접촉) — 연속 계열에 `loop=true` + `duration≈startLifetime`(버스트 연속 재발화), 버스트 개수는 모바일 예산으로 감축. Flash 류는 캐스트 액센트로 원샷 유지. 수명 정리는 루트 GO 의 `Destroy(duration)` 에 위임. 검증은 에디트 모드 `Simulate(사이클 중간 t)` 파티클 카운트(0=공백 증명).
 
-## 벤더 투사체 VFX 를 ECS 파이프라인에 넣을 때
+## 벤더 투사체 VFX 를 투사체 뷰 풀에 넣을 때
 
-벤더 VFX(예: GabrielAguiar)를 `ProjectileViewPool`(ECS SyncTransforms 가 transform 구동)에 넣을 때 view-only 로 스트립, 3가지 필수:
+벤더 VFX(예: GabrielAguiar)를 `CoreProjectileViewPool`(`SyncTransforms` 가 transform 을 구동)에 넣을 때 view-only 로 스트립, 3가지 필수:
 
 1. **제거**: 무버 스크립트 + `Rigidbody` + `Collider`(안 떼면 물리가 SyncTransforms 를 이겨 제멋대로 날아감).
 2. **`TrailRenderer.autodestruct = false`**(풀링 재사용 GO 가 트레일 만료 시 자가파괴 → **정적 분석 안 보이고 Play 에서만 드러남**).
@@ -134,22 +132,22 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 ## 드래그 배치 프리뷰 튜닝 위치
 
 - sway 튜닝값 = **`Assets/_Project/Data/Config/DragSwaySettings.asset`**(SO, Play 중 실시간 반영). 코드 아님.
-- **왜 SO 인가**: `DefenderDragPlacementController` 가 런타임 `AddComponent` 로 붙어 씬 인스펙터 인스턴스가 없음 → SerializeField 튜닝 불가 → SO 주입. 이런 런타임-부착 MonoBehaviour 는 전부 같은 패턴.
+- **왜 SO 인가**: 같은 sway 값을 여러 뷰(`CoreDragPreviewPresenter` · `CoreDeployFlightPresenter` 등)가 `[SerializeField] DragSwaySettings` 로 공유한다 — 뷰마다 값을 따로 들지 않게.
 - sway 모델 = velocity-lean(목표각 ∝ 포인터 속도), 피벗 = 머리 위. 프리뷰 정렬 `BoardSortOrder.DragPreviewOrder=20000`.
 
 ## 평면 보드에서 sim-Y 는 화면 높이가 아니다
 
 `BoardSpace.ToView`(`Scripts/Core/BoardSpace.cs`)는 sim 의 XZ 만 셀로 매핑하고 **`simWorld.y` 를 완전히 버린다**(평면 tilemap 정책).
 
-- **함정**: 투사체 arc·유닛 높이를 sim-Y(`LocalTransform.Position.y`)에 실으면 화면 반영 0(곡사포가 arc 없이 미끄러짐).
-- **정답**: 높이는 **presentation 층**에서 — `ProjectileViewPool.SyncTransforms` 가 `view.y` 에 `heightOffset`/arc 를 더하는 패턴. sim(ArcPosition)/AOE(셀 XZ)/타이밍은 sim-Y 무관이라 그대로. (프랍 "90°root라 +Y가 깊이로 샘"과 같은 뿌리.)
+- **함정**: 투사체 arc·유닛 높이를 sim-Y 에 실으면 화면 반영 0(곡사포가 arc 없이 미끄러짐).
+- **정답**: 높이는 **presentation 층**에서 — `CoreProjectileViewPool.SyncTransforms` 가 뷰 위치에 `heightOffset`/arc 를 더하는 패턴. sim(ArcPosition)/AOE(셀 XZ)/타이밍은 sim-Y 무관이라 그대로. (프랍 "90°root라 +Y가 깊이로 샘"과 같은 뿌리.)
 
 ## 머리 위 뱃지를 월드 +Y 로 띄우면 외곽 타일에서 바깥으로 밀린다
 
 배틀 카메라는 **원근**(`CameraPreset_TilemapRect`: `orthographic: 0`, FOV 40)에 pitch 55°다. 이때 월드 up 은 카메라 공간에서 `(0, cosθ, -sinθ)` 로 분해된다 — 즉 뱃지를 `basePos + Vector3.up * h` 로 띄우면 **위로만 가는 게 아니라 카메라 쪽으로 당겨진다**. `view_z` 가 `h·sinθ` 만큼 줄고 `screen_x = f·view_x/view_z` 이므로 화면 x 가 그만큼 **확대**된다.
 
 - **증상**: 유닛 머리 위 아이콘이 화면 중앙에서 멀수록 좌우로 밀려 보인다. 오프셋 2.6 · 보드 끝에서 **≈57px@1080w**(화면 폭의 5%). 중앙 유닛은 `view_x≈0` 이라 멀쩡해서 "UI 레이어 문제인가?" 로 오진하기 쉽다 — **레이어와 무관하다**(문제의 뷰들은 이미 월드 SpriteRenderer 였다). 오프셋에 비례하므로 작은 값(히트바 1.0)은 티가 안 나 수년 잠복 가능.
-- **정답**: 오프셋을 **카메라 평면**에서 적용 — `HeadAnchor.Lift(basePos, offset, cam)`(`Scripts/Presentation/HeadAnchor.cs`). 카메라 up 은 시선축과 직교라 `view_z` 가 안 변해 어느 타일이든 같은 화면 거리를 유지하고, 페이즈별 pitch 변화(Draft 40°↔Battle 55°)에도 높이가 `cosθ` 로 안 흔들린다.
+- **정답**: 오프셋을 **카메라 평면**에서 적용 — `HeadAnchor.Lift(basePos, offset, cam)`(`Scripts/Presentation/HeadAnchor.cs`). 카메라 up 은 시선축과 직교라 `view_z` 가 안 변해 어느 타일이든 같은 화면 거리를 유지하고, 페이즈별 pitch 변화(당시 Draft 40°↔Battle 55°)에도 높이가 `cosθ` 로 안 흔들린다.
 - **값 이전 시 등가식**: `k = h·cosθ·view_z/(view_z − h·sinθ)` (55°/23u 기준 ≈ **0.63배**). 월드 기준으로 눈 튜닝한 값을 그대로 옮기면 뱃지가 너무 높이 뜬다. 실적용: DcIconStrip 2.6→1.64 · StatusFx 1.5→0.91/2.2→1.37 · HitBar 1.0→0.60 · DmgNum 1.4→0.85/driftUp 0.7→0.41.
 - **경계**: **billboard 여부가 기준**이다. 화면을 보는 뱃지 → 카메라 평면. 바닥에 눕힌 데칼(`TileHealthGaugeView`, Euler 90 BlobShadow 규약)의 z-fighting 리프트 → **월드 up 유지**(카메라 평면 적용하면 바닥에서 들림).
 - **동반 함정**: 위치를 카메라 회전에 묶는 순간 **실행 순서가 정답의 일부가 된다**. `CameraDirector`(`[DefaultExecutionOrder(-90)]`)가 **LateUpdate** 에서 포즈를 확정하므로, `Update` 에서 위치를 잡으면 지난 프레임 회전을 읽어 **위치만 1프레임 뒤처진다**(회전은 LateUpdate 라 최신 → 카메라 이동 중 뱃지가 유닛에서 미끄러짐). 위치·회전 **둘 다 LateUpdate** 로.
@@ -192,7 +190,6 @@ UGUI 위젯을 **비활성 루트 밑에** lazy 생성하면(`root.SetActive(fal
 `EventSystem` 은 `[DefaultExecutionOrder]` 가 **없어 순서 0** 이다(`ProjectSettings/MonoManager.asset` 에 커스텀 오버라이드도 없음). 따라서 **음수 실행 순서의 입력 핸들러는 항상 EventSystem 보다 먼저 돌아 지난 프레임 상태를 본다.**
 
 - **증상**: **마우스는 멀쩡, 터치만 깨진다.** 마우스는 hover 로 pointer 상태가 상시 유지돼 지난 프레임 값이 맞지만, **터치는 hover 가 없어 press 프레임에 pointer 상태 자체가 없다** → `stateIndex = -1` → `false`. 즉 손가락이 버튼/트레이 위에 있어도 **가드가 통과해 그 뒤 보드가 눌린다**. 에디터에선 **절대 재현되지 않는 Android 전용 결함**이다.
-- **`PlacementInput.cs:63~65` 를 선례로 삼지 말 것**: 같은 패턴을 쓰지만 클릭 배치가 은퇴(`clickPlacementEnabled=false`)해 실전 검증된 적이 없다. "기존 코드가 그러니 괜찮다"가 성립하지 않는 자리다.
 - **처방**: 실행 순서와 무관한 **즉석 UI 레이캐스트**로 대체한다. press 때만 도는 경로라 비용도 무시할 만하다.
   ```csharp
   var es = EventSystem.current;

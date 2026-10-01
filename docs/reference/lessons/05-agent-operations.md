@@ -7,7 +7,7 @@
 구현 에이전트의 통과 보고는 그 에이전트의 작업 트리 기준이다. 남의 dirty 파일, 커밋 안 된 수정, 스테일 어셈블리가 섞여도 초록이 나온다.
 
 - **처방**: 보고된 커밋 SHA 를 `git archive <sha> <경로들> | tar -x -C <scratch>` 로 클린 export 해 리드가 build · test · Check 를 재실행한다(명령 전문은 `docs/spec/battle-core-rebuild/handoff_session_2026-09-24.md` §5). 수치가 보고와 같을 때만 다음 단계로.
-- 테스트 총계가 기대만큼 안 늘었으면 새 테스트가 **안 돈 것**이다(신규 `.cs` 가 csproj 에 없는 경우 — 메모리 `project_dotnet_build_false_pass`).
+- 테스트 총계가 기대만큼 안 늘었으면 새 테스트가 **안 돈 것**이다(헤드리스 lane 에서 신규 `.cs` 가 csproj 에 안 잡히면 빌드가 1초 만에 「오류 0」으로 끝난다 — 그 짧은 빌드 시간이 신호다).
 
 ## 계획 리뷰는 내용만이 아니라 top-down 으로도 공격한다
 
@@ -57,7 +57,7 @@ unit 9 가 옛 전투를 지우며 제약 13(판정 산식) 위반을 막던 아
 
 리드가 「Unity 보류」를 지시했는데 에이전트가 `refresh_unity` 를 걸었다. 다른 에이전트가 「에디터 반납」을 보고한 뒤에도 테스트 러너가 돌고 `isPlaying` 이 참이었다. 둘이 겹치면 러너가 고착되거나 사용자 Play 가 끊긴다.
 
-- **처방**: 에디터 사용권은 리드가 한 에이전트에만 넘긴다. 넘기기 전에 `editor_state` 의 `isPlaying`·테스트 러너 상태를 직접 확인한다(메모리 `feedback_check_isplaying_before_unity_side_effects`).
+- **처방**: 에디터 사용권은 리드가 한 에이전트에만 넘긴다. 넘기기 전에 `editor_state` 의 `isPlaying`·테스트 러너 상태를 직접 확인한다(CLAUDE.md 「Unity 함정」).
 
 ## 지시는 상대의 마지막 보고 시각을 보고 낸다
 

@@ -19,8 +19,7 @@ Use local files as source of truth. Do not infer status from memory when the rep
 
 ## Mandatory Read Order
 
-1. `CLAUDE.md`
-   - Project rules, workflow, hard constraints, and current documentation structure.
+1. `CLAUDE.md` — already in context; apply it, do not re-read it.
 2. Git status and recent history
    - `git status --short`
    - `git log --oneline -12`
@@ -59,7 +58,6 @@ Prefer `rg` over slower recursive searches when possible.
 
 From `CLAUDE.md`:
 
-- Current workflow phase: prototype archive vs spec-driven work.
 - Hard constraints that affect the next task.
 - Required verification/commit/handoff expectations.
 
@@ -127,5 +125,5 @@ Rules:
 - Do not clean or revert local changes while recovering status.
 - Do not start implementation until the active spec and next work unit are clear enough.
 - If the next task is outside the active spec scope, recommend creating or extending a spec first.
-- If `CLAUDE.md` and a spec conflict, treat `CLAUDE.md` as project workflow policy and the spec README as feature contract; call out the conflict.
+- Which document decides what is right: follow the 정본 line in `CLAUDE.md` 「일하는 방식」; call out any conflict.
 - Handoff summaries are maps, not source of truth. Prefer README/numbered spec files for contract, and code/git history for implementation details.

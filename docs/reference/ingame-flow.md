@@ -45,7 +45,7 @@ flowchart TD
 
 **넷째 통로를 만들지 말 것.** 어느 쪽 통로든 결말은 같다 — 승패 표기 없이 그때까지의
 처치 수를 제출한다. 「이러이러하면 판을 끝낸다」를 하나 더 붙이는 순간 그게 곧 패배 조건의
-부활이다(`score-formula.md` 와 같은 계약). 설계 이력은 `../spec/heart-stress-axis/`.
+부활이다(`score-formula.md` 와 같은 계약). 설계 이력은 `heart-stress-axis`(태그 `archive/pre-spec-reset`).
 
 ---
 
@@ -91,7 +91,7 @@ flowchart TD
 > 섞이지 않는다. 3분을 버틴 판과 2분에 터진 판은 **같은 잣대**로 줄 세워진다.
 >
 > 마음 체력은 화면에 «스트레스 0~100»(차오르는 값)으로 보인다. 악몽을 처치하면 내려간다.
-> 상세는 `score-formula.md` · `../spec/heart-stress-axis/`.
+> 상세는 `score-formula.md` · `heart-stress-axis`(태그 `archive/pre-spec-reset`).
 
 ---
 
@@ -218,6 +218,6 @@ flowchart TD
 | 점수 · 종료 · 마음 | `score-formula.md` |
 | 맵 로테이션 · 웨이브 knob · 결정론 | `map-wave-balancing.md` |
 | 적이 어떻게 움직이나 | `enemy-movement-algorithm.md` |
-| 당김 설계 이력 | `../spec/wave-pull-revival/` |
-| 패배 제거 설계 이력 | `../spec/three-minute-kill-race/` |
-| 드림캐쳐 사용 방식 설계 이력 | `../spec/dreamcatcher-awakening-hand/` · `../spec/dreamcatcher-use-flow/` · `../spec/selection-hand-attach/` |
+| 당김 설계 이력 | `wave-pull-revival`(태그 `archive/pre-spec-reset`) |
+| 패배 제거 설계 이력 | `three-minute-kill-race`(태그 `archive/pre-spec-reset`) |
+| 드림캐쳐 사용 방식 설계 이력 | `dreamcatcher-awakening-hand`(태그 `archive/pre-spec-reset`) · `dreamcatcher-use-flow`(태그 `archive/pre-spec-reset`) · `selection-hand-attach`(태그 `archive/pre-spec-reset`) |

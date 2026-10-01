@@ -84,5 +84,5 @@
 ## 3. 초안 (프리팹 없음 — 필요해질 때 승인 후 승격)
 
 - **Fireball / Ice Shard / Lightning Bolt / Poison Drip**: 원거리 탄·착탄 아이디어. 현재 투사체 룩은 벤더 사본(`Projectiles/`)으로 충당.
-- **Shield Aura / Heal Glow**: 실드는 `ShieldGrantedEventsSingleton` 원샷 VFX 로, 회복은 `Heal_Applied_VFX` 로 이미 다른 이름으로 운용.
+- **Shield Aura / Heal Glow**: 실드는 코어 사건 `ShieldGranted` 를 받는 원샷 VFX 로, 회복은 `Heal_Applied_VFX` 로 이미 다른 이름으로 운용.
 - **Teleport Portal**: 입구/출구 같은 skeleton + 색 분기 아이디어. `Portal_SKELETON` 이 대체.

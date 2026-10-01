@@ -100,9 +100,9 @@ code + git history        구현 상세
 
 - 새 feature 는 README(목표 + 작업 단위 표)를 먼저 쓰고 사용자 승인을 받은 뒤 `0_` 부터 **한 번에 한 파일**씩 구현한다. 같은 feature 의 추가 작업은 기존 폴더에 다음 번호로 이어 쓴다.
 - 작업 단위가 끝나면 사용자에게 확인 방법(에디터 · 실기기 중 무엇을 어떻게 보면 되는지)을 구체적으로 알리고 통과를 받는다. 통과하면 그 문서의 「완료 기준」 아래에 확인 일자 + 커밋 해시 한 줄을 남긴다. 확인 없이 다음 단위로 넘어가지 않는다.
-- feature 가 끝나면 README 상단에 「상태: 완료 YYYY-MM-DD」, 그리고 `{N+1}_handoff_summary.md`. 구조가 바뀌었으면(새 아키타입 · 정거장 · 앵커 파일 이동) `docs/reference/object-pipeline-map.md` 와 `docs/blueprint/` 의 해당 장을 같은 커밋에서 갱신한다.
+- feature 가 끝나면 README 상단에 「상태: 완료 YYYY-MM-DD」, 그리고 `{N+1}_handoff_summary.md`. 설계(규칙 · 구조 · 정본 위치)가 바뀌었으면 `docs/blueprint/README.md` 의 해당 줄을, 파이프라인 구조(새 아키타입 · 정거장 · 앵커 파일 이동)가 바뀌었으면 `docs/reference/object-pipeline-map.md` 도 같은 커밋에서 갱신한다.
 - 플레이 오브젝트(유닛 · 적 · 투사체 · 해저드 · VFX 등)를 신설하거나 생성→렌더 경로를 바꾸는 spec 의 README 에는 「파이프라인 커버리지」 섹션을 둔다 — `object-pipeline-map.md` 의 가장 가까운 아키타입 표를 복사해 대조하고, 해당 없는 정거장은 `N/A + 이유`.
-- 범위 밖 항목은 만들지 않고 README 「후속 후보」 나 아래 Follow-up Backlog 로 보낸다.
+- 스코프(무엇을 넣고 뺄지) 논의가 필요하면 사용자에게 묻는다. 뺀 항목은 README 「후속 후보」 나 아래 Follow-up Backlog 로.
 - spec 에 넣지 않는 것: 세션 간 조율 로그(누가 무엇을 편집 중 · index.lock · 커밋 해시 추적), 완료된 다른 spec 의 구현 내역, 이 feature 밖 콘텐츠와의 우연한 상호작용. 재사용할 기존 코드의 포인터(이름 · 위치)는 넣는다.
 
 ## 예시
@@ -147,7 +147,7 @@ code + git history        구현 상세
   - `Tests/EditModeAssets/UnitRosterInvariantTests.cs` — 주석 + **실패 메시지**의 「투영 규칙(spec unit 0)」 → `UnitStatFieldMapper`.
   - `Shaders/Prop_Outline_Sprite.shader` — 경로 한 줄 삭제(머리 주석이 이미 설명한다).
 - **`attack_damage` 호환 코드 제거** [S] · 시트를 새로 만들어 그 열이 없다(`5_sheet_io.md` 「만들지 않는다」). `UnitStatImportDto.attackDamage` · `UnitStatApplier.WarnDeprecatedAttackDamage` · 테스트 3 · `SheetHeaderDocTests.NotInSheet`. 사용자 결정 대기.
-- **docs 잔여 5개 삭제** · 사용자 승인 대기 — `docs/superpowers/plans/2026-05-06-…`(드래프트 구현 계획 · 코드 없음) · `docs/milestone/` 2개(05-08 스냅샷 · 스스로 「정본 아님」 배너) · `docs/드림캐쳐_샘플덱_기획요약.md`(6월 초안) · `docs/CODEX-HARNESSING.md`(Phase · TRD 전제) · `docs/map-editor-reference-for-somnia.md`(다른 프로젝트용 조사 · 런타임 설명 12곳이 옛 전투 기준). 가리키는 곳 전부 0.
+- **docs 잔여 5개 삭제** · 사용자 승인 대기 — `docs/superpowers/plans/2026-05-06-…`(드래프트 구현 계획 · 코드 없음) · `docs/milestone/` 2개(05-08 스냅샷 · 스스로 「정본 아님」 배너) · `docs/드림캐쳐_샘플덱_기획요약.md`(6월 초안) · `docs/CODEX-HARNESSING.md`(Phase · TRD 전제) · `docs/map-editor-reference-for-somnia.md`(다른 프로젝트용 조사 · 런타임 설명 12곳이 옛 전투 기준) · `docs/spec/claude-code-documentation-note.md`(이 README 의 원칙을 복제한 고아 문서). 가리키는 곳 전부 0.
 - 코드 주석의 옛 출처 메모(510 파일)는 일괄 정리하지 않는다 — 현재 동작을 틀리게 말하는 것만 그 파일을 만질 때 고친다.
 
 ### 스킬 데이터 표 — 남은 것 (`skill-data-table`)

@@ -197,7 +197,7 @@ flowchart TD
 | 쓰지 않음 | 이유 |
 |---|---|
 | **적별 A\*** | 적 수만큼 경로를 만들고 들고 있어야 한다. 플로우 필드는 **1벌을 전부가 공유**하고, 동적 장애물에도 재빌드 1회로 대응된다 |
-| **Unity NavMesh** | bake 데이터가 엔진 내부에 묶여 **엔진-프리 이식과 양립하지 않는다**([이식성 감사](../spec/continuous-agent-movement/14_portability_audit.md)) |
+| **Unity NavMesh** | bake 데이터가 엔진 내부에 묶여 **엔진-프리 이식과 양립하지 않는다**(이식성 감사 `continuous-agent-movement/14_portability_audit.md` — 태그 `archive/pre-spec-reset`) |
 | **Funnel / SSFA** | 검토 후 기각. 격자에서 **대각 스텝은 변이 아니라 점 하나만 공유**해 포탈 폭이 0 이 되고, 반지름만큼 줄이면 음수가 된다. 게다가 unit 4 이후 대각이 기본 경로다 |
 | **RVO / ORCA** (상호 속도 장애물) | 속도 공간 최적화가 필요하고 결정론 관리가 어렵다. 이 규모(수십 기)에는 위치 기반 분리로 충분하다 |
 | **회피용 포텐셜 필드** | 오목 지형(U자 벽)에서 지역 최소값에 갇힌다. **전역 필드를 유지하는 이유가 이것** |
@@ -217,7 +217,7 @@ flowchart TD
 
 | 무엇 | 어디 |
 |---|---|
-| 유닛 반지름 | `Data/Config/MovementTuningConfig.asset` 의 `AgentRadiusTiles` → 코어 `MovementTuningDef.AgentRadiusTiles` ([unit 12](../spec/continuous-agent-movement/12_corridor_clearance.md) — 군집 통과로 검산한 값) |
+| 유닛 반지름 | `Data/Config/MovementTuningConfig.asset` 의 `AgentRadiusTiles` → 코어 `MovementTuningDef.AgentRadiusTiles` (`continuous-agent-movement/12_corridor_clearance.md` — 태그 `archive/pre-spec-reset` · 군집 통과로 검산한 값) |
 | 평활화 전방 탐색 K | `PathSmoothing.DefaultLookahead` (24) |
 | 대각/직교 비용 | `FlowFieldBuilder.CostOrtho` / `CostDiag` (10 / 14) |
 | 분리 강도·상한 | `Separation.DefaultStrength` (0.5, **프레임당**) · 상한 = 반지름 |

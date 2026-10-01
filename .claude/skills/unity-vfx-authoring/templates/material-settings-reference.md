@@ -33,7 +33,7 @@
 
 - 진짜 Shader Graph dissolve (Noise → Step → edge glow) 의 **edge burn** 효과는 없음
 - 텍스처 노이즈를 스크롤하는 재료 기반 연출 불가
-- **Phase 9+** 에서 사용자가 정식 `.shadergraph` 제작 후 대체 권장
+- 필요해지면 사용자가 정식 `.shadergraph` 제작 후 대체 권장
 
 ---
 

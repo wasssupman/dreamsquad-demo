@@ -50,13 +50,13 @@ iPhone batching 기본값, URP obsolete 필드 제거가 tracked diff로 남았�
 - **명시 경로 스테이징만** 사용, 커밋 직전 `git diff --cached --stat` 로 파일 목록 검수.
 - 같은 파일에 두 세션 변경이 섞이면 hunk 분리: 작은 diff 는 `git apply --cached`, 큰 재구성은 `git hash-object -w` + `git update-index --cacheinfo`(워크트리 무접촉).
 - 히스토리 수정은 임시 worktree 에서 cherry-pick 재구성 → 트리 동등성 검증 → 본 워크트리는 `git reset --soft` 로 ref 만 이동(dirty 파일 무접촉).
-- **`git add <p> && git commit` 도 남의 스테이징을 삼킨다**(battle-core-rebuild `acc3c572a` — 다른 에이전트가 스테이징해 둔 모드 배선 4파일이 리뷰 docs 커밋에 편승). plain `commit` 은 인덱스 전체를 커밋한다. 커밋은 **`git commit -m … -- <경로>`** 로만 한다(새 파일은 `git add -- <그 파일>` 뒤 같은 형). 한 파일에 두 세션 헝크가 섞이면 `git add -p` 로 자기 헝크만.
+- **`git add <p> && git commit` 도 남의 스테이징을 삼킨다**(battle-core-rebuild `acc3c572a` — 다른 에이전트가 스테이징해 둔 모드 배선 4파일이 리뷰 docs 커밋에 편승). plain `commit` 은 인덱스 전체를 커밋한다. 커밋은 **`git commit -m … -- <경로>`** 로만 한다(새 파일은 `git add -- <그 파일>` 뒤 같은 형). 한 파일에 두 세션 헝크가 섞이면 예외다 — 경로 지정 커밋은 스테이징을 무시하고 그 파일의 **작업 트리 전체**를 싣기 때문에 `add -p` 와 같이 쓰면 남의 헝크가 딸려 간다. 그때는 `git add -p` 로 내 헝크만 올리고 `git diff --cached` 로 남의 스테이징이 없음을 확인한 뒤 **경로 없이** `git commit`.
 
 ## SaveScene 은 미저장 WIP 를 통째로 베이크한다
 
 씬 컴포넌트(당시 예: `BattleBridge` — 이력, 옛 ECS 전투는 unit 9 에서 제거. 지금이면 `BattleDriver`)의 serialized 필드를 바꾸고 `EditorSceneManager.SaveScene` 하면, **그 시점 에디터에 떠 있던 사용자 미저장 변경(Volume·카메라·GO 토글·신규 필드 기본값)이 전부 디스크에 박힌다**. `git diff` 가 내 1줄 + 대량 WIP 로 부풀어 오름.
 
-- **처방**: 가능하면 저장 없이 in-memory 검증(→ `01-unity-mcp-operation.md`). 꼭 영속해야 하면 **내 delta 만 격리**: 씬 스냅샷(`cp`) → `git checkout HEAD -- Scene.unity` → 내 변경만 재적용 → `git add`+commit → 스냅샷 복원. 커밋 후 사용자에게 씬 WIP 잔존을 고지.
+- **처방**: 가능하면 저장 없이 in-memory 검증(→ `01-unity-mcp-operation.md`). 꼭 영속해야 하면 **내 delta 만 격리**: 씬 스냅샷(`cp`) → `git checkout HEAD -- Scene.unity` → 내 변경만 재적용 → `git commit -m … -- Scene.unity`(씬 파일이 이제 내 delta 뿐이라 경로 지정 커밋이 맞다) → 스냅샷 복원. 커밋 후 사용자에게 씬 WIP 잔존을 고지.
 
 ## dirty 씬 checkout 은 사용자 카메라를 날릴 수 있다
 
@@ -124,7 +124,7 @@ iPhone batching 기본값, URP obsolete 필드 제거가 tracked diff로 남았�
 
 ## `Assets/Screenshots/` 는 비추적 스크래치 — 통삭제 금지
 
-`Assets/Screenshots/` 는 dev 스크래치 폴더. git 은 폴더 `.meta` 만 추적하고 내부 PNG 는 **의도적 비추적**(MCP screenshot 결과물도 여기). `rm -rf` 같은 통삭제 금지 — **내가 만든 파일명만** 지운다(비추적은 git 복구 불가, `rm` 은 휴지통 안 거침).
+`Assets/Screenshots/` 는 dev 스크래치 폴더. 폴더째 **비추적**이다(폴더 `.meta` 포함 · MCP screenshot 결과물도 여기). `rm -rf` 같은 통삭제 금지 — **내가 만든 파일명만** 지운다(비추적은 git 복구 불가, `rm` 은 휴지통 안 거침).
 
 ## e2e 스모크는 게스트여도 이 머신의 실제 프로필에 기록한다
 

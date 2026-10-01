@@ -4,7 +4,7 @@ Unity Editor 를 MCP(MCP for Unity)로 구동·검증할 때 반복해서 겪은
 
 ## Play 시뮬은 에디터 포커스가 있어야 tick 한다
 
-MCP `execute_code` 로 Play 를 구동해도, **에디터 창이 포커스를 잃으면 시뮬레이션이 frame 을 진행하지 않는다** (Time.time/frameCount 고정, ECS 미실행 → 이동/aggro/공격/데미지 정지). `Application.runInBackground=true` 도 에디터에선 안 먹힘.
+MCP `execute_code` 로 Play 를 구동해도, **에디터 창이 포커스를 잃으면 시뮬레이션이 frame 을 진행하지 않는다** (Time.time/frameCount 고정 → `BattleDriver` 가 틱을 안 내 이동/aggro/공격/데미지 정지). `Application.runInBackground=true` 도 에디터에선 안 먹힘.
 
 - **처방**: 시뮬 진행이 필요한 라이브 측정(적 이동·전투·aggro)은 **사용자에게 Game 뷰 포커스를 요청**한 뒤 측정. 한 프레임 정적 스냅샷(위치/컴포넌트 읽기)은 포커스 없이 가능.
 
@@ -58,7 +58,7 @@ Write 로 만든 새 `.cs` 는 `refresh_unity(scope=scripts)` 로는 import 안 
 
 매치가 프레임 진행으로 저절로 끝나 UI 애니 검증이 날아갈 때:
 
-- 배틀 완전 동결은 `TimeManager.Request(TimeDomain.Battle, 0f)`. (`Time.timeScale=0` 은 time-manager 커밋 c2fe03d 이후 웨이브/타이머를 못 멈춘다 — `_battleClock` 이 unscaledDeltaTime 기반. → `04-sim-design.md`, `Time.timeScale` 금지.)
+- 배틀 완전 동결은 `TimeManager.Request(TimeDomain.Battle, 0f)`. (`Time.timeScale=0` 은 time-manager 커밋 c2fe03d 이후 웨이브/타이머를 못 멈춘다 — 전투 틱은 `BattleDriver` 가 `unscaledDeltaTime × TimeManager.ScaleOf(Battle)` 로 낸다. → `04-sim-design.md`, `Time.timeScale` 금지.)
 - sway/프리뷰 Update 는 `Time.unscaledDeltaTime` 을 써서 동결 중에도 애니메이트됨.
 - 컨트롤러 **`.enabled=false` 금지** — `OnDisable→CleanupSession` 이 프리뷰를 파괴. 정적 고정은 상태 필드 직접 세팅.
 
@@ -189,4 +189,4 @@ git 워크트리를 따로 열면 MCP 에 인스턴스가 둘 뜬다(`wassup@…
 
 `run_tests(assembly_names=[…])` 로 어셈블리를 통째로 돌리면 `[Explicit]` 테스트도 딸려 돈다. battle-core-rebuild unit 9(2026-09-25)에서 라이브 서버 e2e(`AuthE2ETest`)가 실서버에 **가입을 시도**했다.
 
-- **처방**: 외부 부작용이 있는 테스트는 `[Explicit]` 에 기대지 말고 별도 어셈블리로 떼거나 환경 변수 가드를 건다. 그 전까지는 해당 어셈블리를 이름 지정 실행 외에 돌리지 않는다.
+- **처방**: 외부 부작용이 있는 테스트는 `[Explicit]` 에 기대지 말고 별도 어셈블리로 떼거나 환경 변수 가드를 건다. 그 전까지는 그 어셈블리를 돌리지 않는다(이름 지정 실행은 0-match 라 우회로가 아니다).
