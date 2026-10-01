@@ -33,4 +33,6 @@
 - [ ] EditMode 전체 실행에서 **`DepthParallax` 테스트 케이스 0건**, 나머지 3 어셈블리 결과는 선행 빨강(백로그 「(마) 사용자 몫」 3건) 외 초록. ※ 「total 이 6 줄어든다」는 틀린 기준이었다 — 기존 집계(2,650)는 MCP `assembly_names` 실행이라 모듈 asmdef `Wassup.DepthParallax.Tests` 를 애초에 세지 않았다
 - [ ] 헤드리스 `BattleCoreUnity.Check.csproj` 가 `-p:UnityScriptAssemblies=<Library/ScriptAssemblies>` 로 빌드됨
 - [ ] 위 `rg` 가 문서 2곳 외 0건
-- [ ] 커밋(경로 지정): 모듈 폴더 · `LobbyBackgroundParallax.cs` · `LobbyBackgroundDissolve.cs` · `Background_Dissolve_UI.shader` · `DefenderUnitData.cs` · `Wassup.Runtime.asmdef` · `GraphicsSettings.asset` · csproj
+- [x] 커밋(경로 지정): 모듈 폴더 · `LobbyBackgroundParallax.cs` · `LobbyBackgroundDissolve.cs` · `Background_Dissolve_UI.shader` · `DefenderUnitData.cs` · `Wassup.Runtime.asmdef` · `GraphicsSettings.asset` · csproj
+
+확인 2026-10-01 · 커밋 `879d661ac`. 배치 EditMode 2650: 컴파일 0 에러 · DepthParallax 0건 · 빨강 12 = 선행 3 + 이 클론 CRLF 체크아웃 기인 9(`LiveDefinitionSmokeTests` 8 · `MarkerPropStyleAssetTests` 1 — 씬 텍스트 파싱, 변경 무관). 헤드리스 Check 빌드 통과.

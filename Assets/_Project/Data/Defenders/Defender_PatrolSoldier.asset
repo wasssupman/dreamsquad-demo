@@ -76,8 +76,6 @@ MonoBehaviour:
   deployCutsceneFps: 24
   deployCutsceneScale: 1
   deployCutsceneOffset: {x: 0, y: 0}
-  deployCutsceneDepth: []
-  deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0
   sleepOnHitSec: 0
