@@ -1,6 +1,6 @@
 # depth-parallax-removal — 뎁스맵 패럴랙스 기능 제거
 
-상태: 초안 2026-10-01 (사용자 승인 대기)
+상태: 완료 2026-10-01 — 단위 0 `879d661ac` · 단위 1 `362eafbc3` · 단위 2 = 문서 커밋(`git log -- docs/spec/depth-parallax-removal/2_docs.md`)
 
 ## 목표
 
@@ -23,7 +23,7 @@
 | 씬 | `Scenes/OutgameScene.unity` GameObject `1248283347` 의 `LobbyBackgroundParallax` 컴포넌트(`depthMap`·`settings` 참조 포함) | 컴포넌트 제거 |
 | SO | `Data/DepthParallaxSettings.asset`(참조 0) · `Data/LobbyParallaxSettings.asset`(씬 컴포넌트만 참조) | 삭제 |
 | 텍스처 | `Art/Depth/lobby_bg_depth.png`(참조 0) · `lobby_bg_neon_depth.png`(씬 컴포넌트만) · `Sprites/Cutscene/{Archer,Cannon,FireCaster,Guardian,Healer,Ranger,Sniper}/Depth/*_depth.png` 7장(디펜더 SO 의 고아 필드만 참조) | 삭제(`Depth/` 폴더째) |
-| 디펜더 SO | `Data/Defenders/Defender_*.asset` 30개의 `deployCutsceneDepth:` · `deployCutsceneTiltGain:` 줄 | 필드 삭제 후 YAML 줄 정리 |
+| 디펜더 SO | `Data/Defenders/Defender_*.asset` 27개의 `deployCutsceneDepth:` · `deployCutsceneTiltGain:` 줄 | 필드 삭제 후 YAML 줄 정리 |
 | 문서 | `docs/reference/test-procedure.md:18`(모듈 테스트 asmdef 언급) · `docs/reference/lessons/03-rendering-assets.md:167`(2026-07-15 셰이더 스트리핑 사고 사례 — **이력이라 유지**, 주석 1줄) | 갱신 |
 | 없음(확인) | 시트 컬럼 · 테스트 참조(모듈 밖) · `.gitattributes` · 스킬 · CLAUDE.md · `LobbyBackgroundDissolve.mat` 저장 프로퍼티 · 다른 셰이더의 `.cginc` include | — |
 

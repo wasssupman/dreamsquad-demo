@@ -122,11 +122,12 @@ code + git history        구현 상세
   - `battle-core-rebuild/` — 순수 C# 전투 코어 · 계약 13 · 장부(`ledgers/` — `tools/battle-core-rebuild/check_ledgers.py` 가 읽는다)
   - `unified-effect-layer/` — 스킬 = 효과 한 층 · 인계 `6_handoff_summary.md`
   - `skill-data-table/` — 효과 표 · 소유 줄 · 시트 8탭(헤더 정본 `5_sheet_io.md` — `SheetHeaderDocTests` 가 읽는다) · 인계 `6_` · `10_handoff_summary.md`
+- **초기화 뒤 완료된 spec**: `depth-parallax-removal/` — 뎁스맵 패럴랙스 기능 제거(2026-10-01). 의존성 전수표가 README 에 있다(삭제 spec 이라 handoff 없음).
 - 옛 문서가 꼭 필요하면 태그 `archive/pre-spec-reset` 에서 꺼낸다(`git show archive/pre-spec-reset:docs/spec/<slug>/README.md`). 남은 문서 안의 옛 spec 이름 · 경로도 그 태그 기준이다. 평소엔 읽지 않는다.
 
 ## 진행 중 spec
 
-- 없음. 직전 완료 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
+- 없음. 직전 완료 = `depth-parallax-removal/`(2026-10-01 — 뎁스맵 패럴랙스 기능·모듈·에셋 제거, 단위 0~2). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
 
 ## Follow-up Backlog
 

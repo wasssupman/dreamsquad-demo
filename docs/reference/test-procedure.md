@@ -15,7 +15,6 @@
 | `Wassup.Tests.PlayMode.Core` | 전투 씬(`BattleCoreScene`) 부팅 스모크 · 뷰 방출 순서 · 틱 발행률 · 배치 사슬 · 씬 배선 · 뷰가 자를 새로 만들지 않았나 |
 | `Wassup.Tests.PlayMode` | **아웃게임 PlayMode · 씬 부팅 없음.** 남은 것은 `AuthE2ETest`·`DeckInfoPresetApplyLiveE2ETest`(둘 다 `[Explicit]` — 라이브 서버가 필요하다. ⚠ Unity Test Runner 는 **어셈블리 단위 실행에서 `[Explicit]` 을 걸러 주지 않는다**(NUnit 어댑터의 알려진 제한) — 어셈블리째 돌리면 둘이 딸려 돌아 환경 빨강이 나고 `AuthE2ETest` 는 실서버에 가입을 시도한다. 이름 지정 실행은 위 0-match 라 우회로가 아니다 — 이 어셈블리는 `[Explicit]` 격리(백로그) 전까지 돌리지 않는다)·`PresetBarPopupLayerTest`. 옛 전투 씬을 부팅하던 테스트는 unit 9 에서 은퇴했다(`retire-set.md` 7번 묶음) |
 
-`Wassup.DepthParallax.Tests` 는 모듈 로컬이라 전체 실행 때만 따라온다.
 
 **헤드리스 lane**(`tools/battle-core-rebuild/headless/`)은 위 어셈블리와 **별개**다 — 코어를 .NET 으로
 컴파일해 Unity 없이 돌리는 빠른 확인이다. `dotnet build …/BattleCore.csproj` · `dotnet test …/BattleCore.Tests.csproj` ·

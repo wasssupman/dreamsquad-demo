@@ -18,5 +18,7 @@
 
 ## 완료 기준
 
-- [ ] `rg -i 'depthparallax|패럴랙스' docs` 결과가 이 spec 폴더와 `lessons/03` 의 이력 1줄뿐
-- [ ] 커밋(경로 지정): 문서 3개 + 이 spec 폴더
+- [x] `rg -i 'depthparallax|패럴랙스' docs` 결과가 이 spec 폴더와 `lessons/03` 의 이력 1줄뿐
+- [x] 커밋(경로 지정): 문서 3개 + 이 spec 폴더
+
+확인 2026-10-01 · 커밋 = 이 파일을 포함한 문서 커밋.
