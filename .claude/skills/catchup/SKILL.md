@@ -31,7 +31,7 @@ Use local files as source of truth. Do not infer status from memory when the rep
 4. Project/product references only as needed
    - `docs/blueprint/README.md` for the current design summary; `docs/reference/battle-core-architecture.md` for the battle structure map and invariants (§8).
    - `docs/reference/ingame-flow.md` for product intent (설계 지향 7축).
-   - Pre-2026-10-01 specs, `docs/plans/` and `docs/prototype/` were deleted (spec reset). Only if explicitly needed: tag `archive/pre-spec-reset`.
+   - The 2026-10-01 spec reset deleted older specs (the kept ones are listed under 「시작점」 in `docs/spec/README.md`), `docs/plans/` and `docs/prototype/`. Only if explicitly needed: tag `archive/pre-spec-reset`.
 
 ## Finding the Likely Active Spec
 

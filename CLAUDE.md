@@ -57,7 +57,7 @@
 - 런타임 코드의 에디터 전용 API 는 `#if UNITY_EDITOR` 로 막는다 — CI 가 없어 모바일 빌드에서야 깨진다.
 - 에디터는 사용자·여러 세션과 공유한다. 스크립트 저장·refresh·테스트·Play 전에 `isPlaying` 을 확인한다 — 사용자 플레이가 끊긴다.
 - 열린 씬의 YAML 을 밖에서 고치면 Reload 모달이 MCP 를 멈춘다. 열린 씬은 MCP 로, YAML 직접 편집은 안 열린 씬에만.
-- `EditorSceneManager.SaveScene` · `AssetDatabase.SaveAssets()` 는 남의 미저장 WIP 와 임포터가 메모리에 덮은 값까지 디스크로 민다. 저장은 `SaveAssetIfDirty(대상)` 로, 씬 검증은 가능하면 저장 없이 in-memory 로. 열린 씬에 배선을 영속해야 하면 `lessons/02` 의 delta 격리(스냅샷 → HEAD 로 되돌림 → 내 변경만 재적용 → 커밋 → 복원).
+- `EditorSceneManager.SaveScene` · `AssetDatabase.SaveAssets()` 는 남의 미저장 WIP 와 임포터가 메모리에 덮은 값까지 디스크로 민다. 저장은 `SaveAssetIfDirty(대상)` 로, 씬 검증은 가능하면 저장 없이 in-memory 로. 열린 씬에 배선을 영속해야 하는데 손대기 전부터 씬이 dirty 였으면 `lessons/02` 의 delta 격리(스냅샷 → HEAD 로 되돌림 → 내 변경만 재적용 → 커밋 → 복원), 아니면 SaveScene 해도 된다(남의 헝크는 커밋 때 「git」 제약대로 거른다).
 - MCP 운용(포커스 없으면 Play 가 안 돈다 · `run_tests` 는 `assembly_names` 만 동작 · 새 `.cs` 는 `refresh_unity scope=all` · `mode=force` 금지 · 워크트리마다 에디터 인스턴스가 따로)은 `docs/reference/lessons/01-unity-mcp-operation.md`.
 - `Assets/Screenshots/` 안은 비추적 스크래치다 — 폴더째 지우지 않는다(복구 불가).
 - e2e 스모크는 게스트여도 이 머신의 실제 프로필에 판을 기록한다 — 전후로 프로필을 백업·복원한다.
@@ -80,7 +80,7 @@
 - 스코프(이 작업에 무엇을 넣고 뺄지) 논의가 필요하면 사용자에게 묻는다.
 - 기능 작업은 `docs/spec/{slug}/`(README + 번호 작업 단위)로 한다. 형식·진행 규칙·후속 백로그는 `docs/spec/README.md`. 작업 단위 하나가 끝나면 사용자 확인을 받고 다음으로 간다.
 - 정본: **지금 어떻게 동작하나**는 코드·에셋이 답한다. **무엇이 맞나**는 규칙 문서가 정한다 — 위 「제약」 · 게임 규칙 `docs/reference/ingame-flow.md` · 설계 불변식 `battle-core-architecture.md` §8 · blueprint 「알고 뺀 것」 · 진행 중 spec 계약. 코드가 규칙 문서와 다르면 문서를 코드에 맞춰 고치지 말고 묻는다. 그 밖의 설명 문서(값 바꾸는 곳 · 절차 · 지도)가 코드와 다르면 그 문서가 낡은 것이다.
-- 2026-10-01 이전 spec·plans·prototype 은 지웠다. 평소 읽지 않고, 꼭 필요하면 태그 `archive/pre-spec-reset` 에서 꺼낸다. reference 문서에 남은 옛 spec 이름도 그 태그 기준이다.
+- 2026-10-01 spec 초기화로 옛 spec·plans·prototype 은 지웠다(남긴 spec 은 `docs/spec/README.md` 「시작점」). 지운 문서는 평소 읽지 않고, 꼭 필요하면 태그 `archive/pre-spec-reset` 에서 꺼낸다. reference 문서에 남은 옛 spec 이름도 그 태그 기준이다.
 - 응답·문서는 한국어(기술 용어는 영어). 설명은 게임에서 무슨 일이 일어나는지 먼저, 코드 이름은 괄호로.
 
 ## git
