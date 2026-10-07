@@ -25,8 +25,14 @@
 - `BoardSpace` 는 static 이라 PlayMode 테스트 픽스처(`CoreSceneFixture`)가 `BattleDriver` 경유로 다시 `Configure` 한다 — 픽스처 수정 없음(드라이버 내부 교체).
 - `CoreBoardPlane` 에 `Grid` 가 `[SerializeField]` 로 직렬화돼 있다 — 필드 삭제 뒤 씬 YAML 의 `_grid:` 줄은 5 의 MenuItem 저장이 함께 걷어낸다.
 
+## 구현 결과 (2026-10-07)
+
+- `BoardSpace.Configure(simOrigin, tileSize, Transform boardPlane)`: `ToView` = `plane.TransformPoint((Δx + 0.5t, Δz + 0.5t, 0))`, `ToSim` 은 역산, `RaycastPlane` 은 평면 forward/position — `GridLayout` 호출 0. `CoreBoardPlane` 은 `Grid` 필드·`EnsureGrid` 를 버리고 `Plane => transform` · `TileSize` 만 노출. `BattleDriver.BoardGrid`(GridLayout) → `BoardPlane`(Transform). `CorePhaseFeed.PushBoard` 의 네 모서리는 `plane.TransformPoint((x·t, y·t, 0))`.
+- 테스트: `BoardSpaceAuthorityTests` 를 평면 계약으로 다시 썼다(비균일 cellSize 케이스 삭제, 셀 중심 = 로컬 `((x+0.5)t, (y+0.5)t)` 단언 추가) + **동치 고정 테스트**(`옛_Grid_권위와_평면_식이_같은_자리를_낸다` — 회전 3종 × 임의 점 20, 1e-5; 단위 2 에서 `Grid` 와 함께 삭제). `CoreProjectileVariationTests` 픽스처는 빈 Transform, `CoreViewYardstickTests` 는 `BoardPlane`.
+- **씬의 `Grid` 컴포넌트(BoardPlane &502)는 아직 남아 있다** — 씬이 사용자 에디터에 열려 있어(Play 중) YAML 을 손대지 않았다. 코드가 더는 읽지 않으므로 무해하고, `CoreBoardPlane._grid` 직렬화 줄은 고아다. 제거는 일회용 MenuItem `Wassup/Tilemap Untangle/Remove Board Grid`(`Editor/BattleCore/TilemapUntangleMenu.cs`, 미커밋)를 사용자가 Play 밖에서 한 번 눌러 씬을 저장하면 끝난다 → 그 뒤 씬 파일을 경로 지정 커밋하고 스크립트를 지운다. 단위 2 의 모듈 제거는 그 뒤에만(씬에 `Grid` 가 남은 채 모듈을 끄면 그 컴포넌트가 unknown 이 된다).
+
 ## 완료 기준
 
-- [ ] `rg "GridLayout|<Grid>|\.Grid\b|BoardGrid" Assets/_Project/Scripts Assets/_Project/Tests` → 0
-- [ ] 씬에 `Grid:` 블록 0 · 에디터 컴파일 0 · Play: 유닛 배치 위치 · 드래그 고스트 · 카메라 프레이밍이 전과 같다(동치 테스트 초록)
-- [ ] 커밋(경로 지정) — 씬 변경은 「git」 제약대로 남의 헝크 없이
+- [x] `rg "GridLayout|<Grid>|\.Grid\b|BoardGrid" Assets/_Project/Scripts Assets/_Project/Tests` → 동치 테스트 1건(단위 2 에서 삭제) 외 0
+- [ ] 씬에 `Grid:` 블록 0(MenuItem 실행 대기) · 에디터 컴파일 0 · Play: 유닛 배치 위치 · 드래그 고스트 · 카메라 프레이밍이 전과 같다(동치 테스트 초록 — 사용자 Test Runner)
+- [x] 커밋(경로 지정) `c4d90ff26` — 코드·테스트. 씬은 MenuItem 뒤 별도 커밋
