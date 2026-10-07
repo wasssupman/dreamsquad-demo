@@ -105,7 +105,7 @@ namespace Wassup.BattleCoreUnity.View
             var billboard = gameObject.AddComponent<Billboard>();
             billboard.Setup(BillboardMode.Tilted, _knobs.CharacterBillboardTilt);
 
-            ApplyTilemapShadow();
+            ApplyShadowCasting();
 
             // time-manager Unit 4 — 스폰 순간의 Battle 스케일을 pull 해 초기화(슬로우모/정지 중
             // 스폰된 유닛도 즉시 동기화; ScaleChanged 이벤트는 스폰 이후 변화만 전달하므로 레이스 방지).
@@ -147,13 +147,13 @@ namespace Wassup.BattleCoreUnity.View
             return current != null && current.Loop;
         }
 
-        // tilemap-real-shadows — Tilemap 모드 그림자.
+        // tilemap-real-shadows — 보드 평면 그림자(캐스트 on/off + 블롭).
         // **rev 2026-09-04(사용자 결정 · unit 20 리뷰 M-1): 상호배타 폐기.** 블롭은 **상시**이고
         // `UseRealShadows` 는 캐스트 그림자를 **더하기만** 한다. 근거: 둘은 애초에 다른 축이다 —
         // 블롭은 「이 몸이 이만하다」는 판정 UI(계약 8)이고 캐스트는 조명 연출이다. 배타로 두면
         // 캐스트를 켜는 순간 크기 정보가 통째로 사라져 계약 11(「닿아 보이면 맞는다」)이 조용히
         // 거짓이 됐다. 앞으로 블롭을 그림자처럼 안 보이게(마커 룩) 바꿔도 이 구조가 그대로 산다.
-        private void ApplyTilemapShadow()
+        private void ApplyShadowCasting()
         {
             var renderers = GetComponentsInChildren<Renderer>(true);
             var mode = _knobs.UseRealShadows
@@ -264,7 +264,7 @@ namespace Wassup.BattleCoreUnity.View
 
         // knockup-fighter-defender unit 3 — 넉업 띄우기. sim 은 이 유닛이 떠 있다는 사실을
         // 모른다(심의 실체는 짧은 Stun) — 여기서만 해석하는 순수 뷰 오프셋이다.
-        // ⚠ sim-Y 에 넣으면 안 된다: 평면 tilemap 보드라 BoardSpace.ToView 가 sim-Y 를 버려
+        // ⚠ sim-Y 에 넣으면 안 된다: 평면 보드라 BoardSpace.ToView 가 sim-Y 를 버려
         // 화면에 아무 변화가 없다. 그래서 ToView **뒤에** view 공간 Y 로 더한다.
         private float _hopElapsed = -1f;   // <0 = 비활성
         private float _hopDuration;

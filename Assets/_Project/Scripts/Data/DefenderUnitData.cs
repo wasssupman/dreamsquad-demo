@@ -127,7 +127,7 @@ namespace Wassup.Data
         public bool attackVfxAtAttacker;
         // 히트 VFX 기본 자세 보정(로컬 오일러, 계산된 회전 **뒤에** 곱해진다).
         // 필요한 이유: 벤더 VFX 는 대개 "바닥 = 월드 XZ" 관례로 저작되는데, 이 게임의 보드는
-        // Tilemap 그리드라 **바닥이 월드 XY 평면**이다(BoardSpace.ToView 가 sim XZ → 셀 XY).
+        // 보드 평면이 월드 XY 평면(을 눕힌 것)이다 — **바닥이 평면 로컬 XY** 다(BoardSpace.ToView 가 sim XZ → 셀 XY).
         // 그래서 지면형 이펙트는 X축 -90° 같은 보정이 필요하다. 값은 눈으로 맞추는 knob —
         // 코드가 추측하지 않는다(실제로 네 번 헛짚었다).
         public Vector3 attackVfxEulerOffset;
@@ -326,7 +326,7 @@ namespace Wassup.Data
         // 떠오르는 연출은 뷰(unit 3)가 이 필드 보유를 보고 재생한다 — 심은 Stun 그대로다.
         public float knockupOnHitSec;     // seconds. 0 = disabled
         // 띄우기 연출 최고 높이(view 공간 단위). 심은 안 쓰고 뷰만 해석한다.
-        // ⚠ sim-Y 가 아니다 — 평면 tilemap 보드라 BoardSpace 가 sim-Y 를 버린다(화면에 안 보임).
+        // ⚠ sim-Y 가 아니다 — 평면 보드라 BoardSpace 가 sim-Y 를 버린다(화면에 안 보임).
         public float knockupVisualHeight = 1.2f;
 
         // unit 2g — 배치 밀쳐냄 3필드도 함께 은퇴했다. **저작 소비자가 0** 이었다

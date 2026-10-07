@@ -1,6 +1,6 @@
 # 렌더링 · 에셋 · authoring
 
-Spine, 타일맵 렌더, 프랍/VFX authoring, 카메라에서 겪은 함정.
+Spine, 보드 오버레이(「Tilemap」 절은 옛 타일맵 전투 기준 — tilemap-untangle 2026-10-07 로 소멸, 이력), 프랍/VFX authoring, 카메라에서 겪은 함정.
 
 ## Spine 런타임은 4.3 — export 는 같은 major.minor(4.3.xx)만
 
