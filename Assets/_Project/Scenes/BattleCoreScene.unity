@@ -620,7 +620,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 501}
-  - component: {fileID: 502}
   - component: {fileID: 503}
   m_Layer: 0
   m_Name: BoardPlane
@@ -644,18 +643,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!156049354 &502
-Grid:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 500}
-  m_Enabled: 1
-  m_CellSize: {x: 1, y: 1, z: 1}
-  m_CellGap: {x: 0, y: 0, z: 0}
-  m_CellLayout: 0
-  m_CellSwizzle: 0
 --- !u!114 &503
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -668,7 +655,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e2f2c12580524391b7a55dd2e45bbd60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _grid: {fileID: 502}
 --- !u!1 &510
 GameObject:
   m_ObjectHideFlags: 0
@@ -2505,7 +2491,7 @@ MonoBehaviour:
   _showGrid: 1
   _gridColor: {r: 1, g: 1, b: 1, a: 0.09}
   _gridWidth: 0.02
-  _tileSet: {fileID: 11400000, guid: d780c834df42b40c18b728204ba621fb, type: 2}
+  _style: {fileID: 11400000, guid: d780c834df42b40c18b728204ba621fb, type: 2}
   _ghostOkColor: {r: 0.45, g: 0.92, b: 0.5, a: 0.55}
   _ghostBadColor: {r: 0.95, g: 0.32, b: 0.3, a: 0.5}
   _guideRepaintSeconds: 0.15
