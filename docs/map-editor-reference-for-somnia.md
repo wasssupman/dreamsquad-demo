@@ -18,7 +18,7 @@ Somnia 적용성 분류에는 사용자 제공 전제인 **designer-authored sou
 
 - Branch: `master`
 - Commit SHA: `40bb3af3480a119c5c88fddc3c6abe69ae28eca1`
-- Unity Version: `6000.4.3f1` (`39d1a88d4dd1`)
+- Unity Version: `6000.6.3f1` (`45d8eee7de74`)
 - Working Tree at original investigation start: clean (`## master...origin/master`)
 - Path/Wave reinforcement preflight: 기존 신규 문서 `docs/map-editor-reference-for-somnia.md` 한 파일만 untracked였고 tracked/cached 변경은 없었다.
 - Repository instructions: 루트 `AGENTS.md`가 가리키는 `CLAUDE.md` 적용

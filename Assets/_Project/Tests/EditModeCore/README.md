@@ -1,7 +1,7 @@
 # `Wassup.Tests.EditMode.Core` — 전투 코어 lane
 
 `Wassup.Runtime` 도 `Unity.Entities` 도 **참조하지 않는다.** 참조는 코어 셋
-(`Wassup.BattleCore` · `Wassup.Skills` · `Wassup.UnitAi`) + `Unity.Mathematics` +
+(`Wassup.BattleCore` · `Wassup.Skills` · `Wassup.UnitAi`) + `Unity.Mathematics`(6.6 부터 엔진 모듈 `UnityEngine.MathematicsModule`) +
 테스트 러너뿐이다. 그래서 이 lane 의 초록은 「코어가 혼자 선다」를 증언한다 —
 옛 lane(`Wassup.Tests.EditMode`)은 Runtime 을 끌고 있어 그 질문에 답할 수 없다.
 

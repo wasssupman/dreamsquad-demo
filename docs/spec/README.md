@@ -122,12 +122,12 @@ code + git history        구현 상세
   - `battle-core-rebuild/` — 순수 C# 전투 코어 · 계약 13 · 장부(`ledgers/` — `tools/battle-core-rebuild/check_ledgers.py` 가 읽는다)
   - `unified-effect-layer/` — 스킬 = 효과 한 층 · 인계 `6_handoff_summary.md`
   - `skill-data-table/` — 효과 표 · 소유 줄 · 시트 8탭(헤더 정본 `5_sheet_io.md` — `SheetHeaderDocTests` 가 읽는다) · 인계 `6_` · `10_handoff_summary.md`
-- **초기화 뒤 완료된 spec**: `depth-parallax-removal/` — 뎁스맵 패럴랙스 기능 제거(2026-10-01). 의존성 전수표가 README 에 있다(삭제 spec 이라 handoff 없음).
+- **초기화 뒤 완료된 spec**: `depth-parallax-removal/` — 뎁스맵 패럴랙스 기능 제거(2026-10-01). 의존성 전수표가 README 에 있다(삭제 spec 이라 handoff 없음). · `unity-6-6-upgrade/` — Unity 6000.6.3f1 전환(2026-10-07). 원인 6종 표와 「코어 경계」 보장의 이동(컴파일러 → 테스트 + 헤드리스)이 README 에 있다.
 - 옛 문서가 꼭 필요하면 태그 `archive/pre-spec-reset` 에서 꺼낸다(`git show archive/pre-spec-reset:docs/spec/<slug>/README.md`). 남은 문서 안의 옛 spec 이름 · 경로도 그 태그 기준이다. 평소엔 읽지 않는다.
 
 ## 진행 중 spec
 
-- 없음. 직전 완료 = `depth-parallax-removal/`(2026-10-01 — 뎁스맵 패럴랙스 기능·모듈·에셋 제거, 단위 0~2). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
+- `demo-diet/`(2026-10-06~ — 전투 로직만 남기는 정리. 단위 0+1 완료 `df85f0151`, 단위 2~4 남음 — 6.6 위에서). 직전 완료 = `unity-6-6-upgrade/`(2026-10-07 — 6000.6.3f1 핀 · Mathematics 엔진 모듈화 대응 · unity-mcp 제거. 커밋 `08dbd96f9` · `dc607b059` · `d73c0d86e` + 문서). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
 
 ## Follow-up Backlog
 
@@ -212,3 +212,9 @@ code + git history        구현 상세
 - **규칙 재결정 — 분류표 보류 30행**(질문 20개로 묶여 있다 — `BCR/ledgers/rules.md` 「보류 항목의 재결정 질문 목록」) · **기본값 박제 5**(보스 도약 착지 선정의 사각 자 · 자는 유닛의 주기 스킬 · 저작 `CcOnHit` 이 탄을 타나 · 실드 부여 한 틱 지연 · 폭탄맨 · 회복 산출물의 공격자 배율).
 - **방향 지정 배치(facing) 미이식** · 커맨드 자리는 있고 조준 입력이 없다. (`BCR/5b`)
 - **마음 N개 공유 체력** [M] · `HeartMeter` 가 체력을 들어 이사 비용 0. (rules X29 · E13)
+
+### unity-6-6-upgrade 잔여 (2026-10-07)
+
+- **6.6 골든 드리프트 확인** [S] · 배치 검증을 생략해 `CoreGoldenTests` 를 6.6 에서 아직 안 돌렸다. 다음 EditMode.Core 실행 때 본다 — 빨강이면 재굽기는 사용자 결정(결정론).
+- **벤더 obsolete 경고** [S] · GabrielAguiar `PrefabStage.prefabAssetPath` 등. demo-diet 단위 3 벤더 추림 뒤 남은 것만.
+- **헤드리스 테스트 lane 과 Smart App Control** [S] · 이 머신은 새로 링크된 서명 없는 테스트 DLL 로드를 차단한다. 빌드 lane 만 쓴다 — 서명 또는 다른 러너는 필요해지면.

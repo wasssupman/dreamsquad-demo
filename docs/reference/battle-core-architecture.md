@@ -38,7 +38,7 @@ flowchart LR
         INPUT["Input/ — 드래그 배치 · 카드 · 선택 · 제출<br/>→ Command"]
         VIEW["뷰 풀 · HUD · 손패<br/>풀마다 ViewOrder 로 구독"]
     end
-    subgraph CORE["전투 코어 — Wassup.BattleCore (noEngineReferences)"]
+    subgraph CORE["전투 코어 — Wassup.BattleCore (엔진 모듈은 MathematicsModule 만)"]
         BM["BattleMatch<br/>조립 지점: 담당자 생성 + 틱 순서 나열"]
         OWN["담당자 8 + 규칙 레이어<br/>MatchClock · CostLedger · ScoreLedger · HeartMeter<br/>WaveScheduler · PlacementService · HandDeck · GimmickHost"]
         PIPE["TickPipeline<br/>Command → FieldPrep → AiMove → TickProjectile → Combat<br/>→ 담당자 단계 → Goal → Clock → Flush"]
@@ -248,7 +248,7 @@ flowchart LR
 
 | 층 | 어셈블리 · 폴더 | 갖는 것 | 갖지 않는 것 |
 |---|---|---|---|
-| **전투 코어** | `Wassup.BattleCore`(`BattleCore/`, `noEngineReferences`). 참조 = `Unity.Mathematics` · `Wassup.Skills` · `Wassup.UnitAi` 셋뿐 | 판정 · 상태 · 순서 전부. 폴더 = `Match/`(조립·정의표·커맨드·사건) · `Owners/`(담당자) · `Phases/`(틱 단계) · `World/`(개체) · `Map/` · `Move/` · `Combat/` · `Effects/` · `Trigger/`(트리거→발동) · `Wave/` · `Goals/`(매치 목표) · `Trace/` · `Harness/`(골든 러너) | `UnityEngine` 타입 · SO · 아트 참조 · 프레임 시간 · 로거(진단은 `BattleMatch.Report` 통로로 **밖에** 넘긴다) |
+| **전투 코어** | `Wassup.BattleCore`(`BattleCore/`). 참조 = `Wassup.Skills` · `Wassup.UnitAi` + 엔진 모듈 `UnityEngine.MathematicsModule`(6.6 부터 `Unity.Mathematics` 의 자리 — 그래서 `noEngineReferences` 는 꺼져 있다) | 판정 · 상태 · 순서 전부. 폴더 = `Match/`(조립·정의표·커맨드·사건) · `Owners/`(담당자) · `Phases/`(틱 단계) · `World/`(개체) · `Map/` · `Move/` · `Combat/` · `Effects/` · `Trigger/`(트리거→발동) · `Wave/` · `Goals/`(매치 목표) · `Trace/` · `Harness/`(골든 러너) | `UnityEngine` 타입 · SO · 아트 참조 · 프레임 시간 · 로거(진단은 `BattleMatch.Report` 통로로 **밖에** 넘긴다) |
 | **Unity 층** | `Wassup.Runtime` 안의 `BattleCoreUnity/` | ① **정의표 물질화** — `MatchDefinitionBuilder`(+ `CombatDefinitionBuilder` · `CardDefinitionBuilder` · `BindingDefinitionBuilder` · `BoardEffectDefinitionBuilder`) ② **시간** — `BattleDriver` ③ **뷰** — `View/` · `Hud/` · `Cards/` · `CoreBattleAudio` · `CoreMatchOutcomePresenter` ④ **입력** — `Input/`(`DragPlacementInput` · `CardInput` · `SelectionInput` · `SubmitInput`) ⑤ **진입** — `MatchEntry` · `ModeSelection` | 규칙. 판정·상태·저장이 여기 들어오면 그것이 새 브리지의 첫 줄이다 |
 
 - 세 축이 코어에서 무엇으로 존재하나:
@@ -426,7 +426,7 @@ flowchart TD
 
 1. **매니저·브리지를 두지 않는다.** 판정·상태·저장은 그 일의 담당자만, 담당자 간 순서는 사건 구독 순서. 「여기 두면 편한데」가 매니저의 신호다 — `CLAUDE.md` 「제약」 · 계약 12.
 2. **쓰기는 소유자만.** 마음 체력은 `HeartMeter` 만, 종료는 `MatchClock.EndMatch` 만, 스킬 경로의 세계 쓰기는 `IntentApplier` 만. 한 함수가 담당자 둘을 차례로 부르지 않는다.
-3. **엔진-프리 로직 레이어가 셋이고, 경계는 컴파일러가 지킨다.** `Wassup.Skills`(무엇을 할 것인가) · `Wassup.UnitAi`(지금 무엇을 하고 있나) · `Wassup.BattleCore`(판 전체) 모두 `noEngineReferences`. 엔진 타입을 쓰면 빌드가 깨진다 — 규율이 아니라 구조다. 새 판정은 plain 값 입력 → 결정 출력 형태를 따른다.
+3. **엔진-프리 로직 레이어가 셋이고, 경계는 테스트와 헤드리스 빌드가 지킨다.** `Wassup.Skills`(무엇을 할 것인가) · `Wassup.UnitAi`(지금 무엇을 하고 있나) · `Wassup.BattleCore`(판 전체). 엔진 모듈은 `UnityEngine.MathematicsModule` 하나만 본다(6.6 부터 `Unity.Mathematics` 가 엔진 모듈이라 `noEngineReferences` 는 껐다 — `unity-6-6-upgrade`). `UnityEngine`·`UnityEditor` 토큰은 `CoreArchitectureTests.코어에는_엔진_참조가_없다` 가 세 디렉터리를 스캔해 막고, 헤드리스 `BattleCore.csproj` 는 `CoreModule` 없이 빌드된다 — 규율이 아니라 자동 검사다. 새 판정은 plain 값 입력 → 결정 출력 형태를 따른다.
 4. **감지는 분산, 실행은 단일.** 감지자(공격·피해·소멸·경계·주기·커맨드)가 `TriggerEvent` 를 값으로 올리고 `TriggerDispatcher` 가 seam 마다 드레인한다. seam 의 틱 안 순서는 enum 번호가 아니라 `SeamTickOrder` 가 정한다.
 5. **사건은 값 스냅샷이다.** 반경은 **자리와 짝**으로 다닌다(`SiteFired`/`SiteTarget` 의 `OriginBody`). 단일 필드면 시체폭발이 킬러의 몸으로 적 시체 위 폭발을 정한다 — `distance-based-range` unit 23b.
 6. **배치 판정은 층 비트 하나.** 클래스 분기 금지 — `MapSnapshot.PlaceableAt(cell, PlacementLayers)`. `placeMask` 로 통행을 판정하지 않는다 — `placement-mask` · `traversal-layers` unit 5.

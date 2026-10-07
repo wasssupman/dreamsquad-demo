@@ -19,11 +19,20 @@
 **헤드리스 lane**(`tools/battle-core-rebuild/headless/`)은 위 어셈블리와 **별개**다 — 코어를 .NET 으로
 컴파일해 Unity 없이 돌리는 빠른 확인이다. `dotnet build …/BattleCore.csproj` · `dotnet test …/BattleCore.Tests.csproj` ·
 `dotnet build …/BattleCoreUnity.Check.csproj`(Unity 층 컴파일 확인). 골든은 제외한다(계약 5: 골든의 정본 런타임은 Unity
-— Mono 와 .NET 의 float 결과가 갈린다).
+— Mono 와 .NET 의 float 결과가 갈린다). 6.6 부터 `Unity.Mathematics` 는 엔진 모듈이라 세 csproj 가 `UnityEngine.MathematicsModule.dll` 을
+`$(UnityEngineDir)`(기본값 `Directory.Build.props` = 이 머신의 6.6 설치 폴더, 다른 머신은 `-p:UnityEngineDir=<Editor/Data/Managed/UnityEngine>`)에서
+받는다. 코어 lane 은 그 모듈 **하나만** 참조해 「엔진 없음」 게이트가 된다(`CoreModule` 타입을 쓰면 여기서 빨개진다). 테스트 lane 은 net9.0 — 런타임이 없으면 `DOTNET_ROLL_FORWARD=Major`.
+⚠ **Windows Smart App Control 이 켜진 머신에서는 `dotnet test` 가 안 돈다** — 새로 링크된 서명 없는 `BattleCore.Tests.dll` 을 testhost 가 로드할 때
+Code Integrity 가 차단한다(`0x800711C7`, 2026-10-07 실측). 빌드 lane(`BattleCore` · `Check`)은 DLL 을 로드하지 않아 유효하고, 같은 테스트는 Unity EditMode(`Wassup.Tests.EditMode.Core`)에서 돈다.
 한 번에 돌리려면 `tools/battle-core-rebuild/headless/verify-fresh-skills.sh [ref=HEAD] [워크트리 파일 …]` — 커밋을 클린 export 해
 `Wassup.Skills.dll` 을 **그 소스로 새로 구운 뒤** 위 셋 + `Retire.Check` 를 돈다(csproj 는 Skills dll 을 워크트리 `Library/ScriptAssemblies` 에서
 받아, 에디터 재컴파일 전이면 옛 dll 로 거짓 빨강/초록이 난다). ⚠ `BattleCoreUnity.Check` 는 여전히 워크트리의 `Wassup.Runtime.dll` 을
 참조한다 — `Data/` 저작 타입이 바뀐 커밋은 그 lane 이 거짓 빨강이고, 증거는 전 소스 컴파일인 `Retire.Check` 다.
+
+**배치(에디터 없이 Unity 테스트)**: 에디터가 그 프로젝트를 열고 있지 않을 때(`Temp/UnityLockfile` 없음)
+`"<Unity.exe>" -batchmode -projectPath <repo> -runTests -testPlatform EditMode|PlayMode [-assemblyNames <asm>] -testResults <xml> -logFile <log>`.
+종료 코드 2 = 실패 있음. 결과는 `<xml>` 의 `<test-case result=…>`. 사용자 에디터가 열려 있으면 Library 를 가진 검증 워크트리에서 돌린다 — 단 6.6 에디터
+두 인스턴스가 동시에 임포트하면 메모리(32 GB)가 모자라 죽는다. 배치 PlayMode.Core 는 포인터가 없어 드래그 미리보기 테스트 7건이 항상 빨갛다(환경, 회귀 아님).
 
 **lane 판별 한 줄**: 바꾼 파일이 `Scripts/BattleCore/` 면 `EditMode.Core`(+ 헤드리스),
 `Scripts/BattleCoreUnity/` 면 거기에 `PlayMode.Core` 를 더한다. 아웃게임(로비·프로필·토너먼트 UI)이면 `EditMode`,
@@ -103,4 +112,4 @@ atk→`outputs[].magnitude` · attackCooldown · cost · DC 의 percent·magnitu
 
 ## 관련 문서
 
-- [`lessons/01-unity-mcp-operation.md`](lessons/01-unity-mcp-operation.md) — `run_tests` MCP 운용 함정
+- [`lessons/01-unity-mcp-operation.md`](lessons/01-unity-mcp-operation.md) — 옛 unity-mcp 운용 함정(패키지는 6.6 전환에서 제거 · 에디터 공유 교훈은 유효)

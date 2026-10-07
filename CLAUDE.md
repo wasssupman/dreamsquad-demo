@@ -20,7 +20,7 @@
 ## 제약 — 어기게 되면 멈추고 묻는다
 
 - **결정론** — 고정 틱 1/60 · 단일 스레드 · 순회는 `SimEntityId` 오름차순 · 난수는 시드 스트림(`RngStreams`)으로만. 비동기 토너먼트는 같은 입력이 같은 판이어야 한다(리플레이 · 공정성). 깨지면 골든을 전부 다시 굽는다.
-- **코어 경계** — 전투 코어는 엔진도 I/O 도 모른다. 참조는 `Unity.Mathematics` · `Wassup.Skills` · `Wassup.UnitAi` 뿐(`noEngineReferences`). 코어는 나중에 서버로 옮겨 간다.
+- **코어 경계** — 전투 코어는 엔진도 I/O 도 모른다. 참조는 `Wassup.Skills` · `Wassup.UnitAi` 와 엔진 모듈 중 **`UnityEngine.MathematicsModule` 하나**(6.6 부터 `Unity.Mathematics` 가 엔진 모듈이라 asmdef 의 `noEngineReferences` 는 꺼져 있다). 경계는 컴파일러가 아니라 `CoreArchitectureTests` 의 소스 스캔(세 어셈블리에서 `UnityEngine`·`UnityEditor` 금지)과 헤드리스 lane(`CoreModule` 없이 빌드)이 지킨다. 코어는 나중에 서버로 옮겨 간다.
 - **전투 코어에 매니저 없음** — 코어 안의 판정·상태·저장은 그 일의 담당자만 한다(책임이 한 클래스로 다시 모이면 서버로 옮길 계약이 흐려진다). `BattleMatch` 는 담당자를 만들고 틱 순서를 나열하는 조립 지점일 뿐이다. 담당자는 모드를 모른다(모드는 SO `MatchModeData` 의 닫힌 집합, 재현은 modeId + seed). 판 밖 전역 매니저(`TimeManager` · `SoundManager`)는 이 제약 밖이다.
 - **커맨드 ≠ 사건** — 플레이어 입력은 커맨드(틱 시작에 적용 + receipt), 사건은 값 스냅샷(`SimEntityId` 키). 사건으로 상태를 되묻지 않는다. UI·뷰는 읽기 모델과 사건만 읽고 바꿀 것은 커맨드로 보낸다 — MonoBehaviour 에 전투 판정을 쓰지 않는다. 이 경계가 곧 서버 계약이 된다.
 - **도달 판정은 산식 하나** — `|좌표 차| ≤ 범위 + 원점 항 + 대상의 몸`. 정본 진입점(`Wassup.Skills.SkillMath` 공개 진입점 · 코어 어댑터 `AttackReach` — 방향 도형은 `InReachShaped` 하나)을 호출만 하고 인라인으로 쓰지 않는다. 원점 항은 효과의 형이 정한다(몸에서 나오는 것 = 그 몸 / 자리에 떨어지는 것 = 칸 반폭). 함수 뒤에 숨은 상수 가정 때문에 같은 결함이 두 번 났다 — 상세 `docs/reference/battle-core-architecture.md` §8-7.
@@ -30,7 +30,7 @@
 
 ## 스택 — 기본값과 다른 것
 
-- Unity `6000.4.3f1` · URP 17.4 · **Input System 전용**(레거시 `Input` 아님) · spine-unity **4.3** 런타임(export 는 같은 major.minor — `Assets/Spine/version.txt`) · 트윈은 PrimeTween.
+- Unity `6000.6.3f1` · URP 17.6 · **Input System 전용**(레거시 `Input` 아님) · spine-unity **4.3** 런타임(export 는 같은 major.minor — `Assets/Spine/version.txt`) · 트윈은 PrimeTween.
 - 전투 = 순수 C# 코어 `Assets/_Project/Scripts/BattleCore/`(asmdef `Wassup.BattleCore`) + Unity 층 `Scripts/BattleCoreUnity/`(시간 `BattleDriver` · 정의표 물질화 `MatchDefinitionBuilder` · 뷰 · 입력). 전투 밖(로비·아웃게임·UI)은 MonoBehaviour.
 - Entities/ECS 전투는 제거됐다. Burst·Collections 패키지는 남아 있다(URP 의존 + 맵 빌드가 `NativeArray`·`FixedList` 를 직접 쓴다) — 전투 코어에서는 쓰지 않는다.
 - 코드 주석의 「옛 `BattleBridge.X` 의 후계」 · 옛 spec 이름 꼬리표는 이력이다. 현재 동작은 코드 본문으로 확인한다. 「CLAUDE.md 제약 13」 같은 옛 번호는 `docs/reference/battle-core-architecture.md` §8 머리의 대조표로 찾는다.
@@ -56,9 +56,9 @@
 - `Shader.Find` 는 빌드에 포함된 셰이더만 찾는다(에디터에선 다 찾아서 모바일 빌드에서야 null 로 드러난다). 런타임 머티리얼은 `Wassup.Rendering.RuntimeMaterialFactory` 경유, 새 셰이더는 `Assets/Resources/RuntimeMaterials/` 머티리얼로 등록하거나 Always Included Shaders 에 넣는다.
 - 런타임 코드의 에디터 전용 API 는 `#if UNITY_EDITOR` 로 막는다 — CI 가 없어 모바일 빌드에서야 깨진다.
 - 에디터는 사용자·여러 세션과 공유한다. 스크립트 저장·refresh·테스트·Play 전에 `isPlaying` 을 확인한다 — 사용자 플레이가 끊긴다.
-- 열린 씬의 YAML 을 밖에서 고치면 Reload 모달이 MCP 를 멈춘다. 열린 씬은 MCP 로, YAML 직접 편집은 안 열린 씬에만.
+- 열린 씬의 YAML 을 밖에서 고치면 Reload 모달이 에디터를 멈춘다. 열린 씬은 에디터 안에서(일회용 MenuItem 스크립트 · 인스펙터), YAML 직접 편집은 안 열린 씬에만.
 - `EditorSceneManager.SaveScene` · `AssetDatabase.SaveAssets()` 는 남의 미저장 WIP 와 임포터가 메모리에 덮은 값까지 디스크로 민다. 저장은 `SaveAssetIfDirty(대상)` 로, 씬 검증은 가능하면 저장 없이 in-memory 로. 열린 씬에 배선을 영속해야 하는데 손대기 전부터 씬이 dirty 였으면 `lessons/02` 의 delta 격리(스냅샷 → HEAD 로 되돌림 → 내 변경만 재적용 → 커밋 → 복원), 아니면 SaveScene 해도 된다(남의 헝크는 커밋 때 「git」 제약대로 거른다).
-- MCP 운용(포커스 없으면 Play 가 안 돈다 · `run_tests` 는 `assembly_names` 만 동작 · 새 `.cs` 는 `refresh_unity scope=all` · `mode=force` 금지 · 워크트리마다 에디터 인스턴스가 따로)은 `docs/reference/lessons/01-unity-mcp-operation.md`.
+- unity-mcp 패키지는 6.6 전환(2026-10-07, `docs/spec/unity-6-6-upgrade/`)에서 뺐다 — 이 리포엔 MCP 가 없다(이식 뒤 somnia 의 `com.unity.ai.assistant` 를 쓴다). 에디터가 닫혀 있을 때의 테스트는 배치 CLI(`docs/reference/test-procedure.md` 「배치」). 에디터 공유·포커스·Reload 모달·워크트리별 인스턴스 교훈은 `docs/reference/lessons/01-unity-mcp-operation.md`(옛 MCP 기준)에 남아 있다.
 - `Assets/Screenshots/` 안은 비추적 스크래치다 — 폴더째 지우지 않는다(복구 불가).
 - e2e 스모크는 게스트여도 이 머신의 실제 프로필에 판을 기록한다 — 전후로 프로필을 백업·복원한다.
 
@@ -70,7 +70,7 @@
 - 새 테스트를 넣었으면 `total` 이 늘었는지 본다. 안 늘었으면 테스트가 아니라 컴파일 실패다(`read_console` 에서 `error CS`).
 - 골든은 Unity 에서만 굽고 대조한다(Mono 의 float 이 .NET 과 갈린다). 헤드리스 lane 은 Golden 을 뺀다.
 - 알려진 선행 빨강은 `docs/spec/README.md` 백로그 「(마) 사용자 몫」에 있다. 거기 없는 빨강은 회귀로 본다. 카드 전체를 한 번에 단언하는 집계형 테스트는 실패 개수가 같아도 새 카드가 섞일 수 있다 — 실패 메시지의 id 목록까지 대조한다(카드 효과 수치를 바꾸면 카드 설명 문안 테스트가 그 경우다).
-- 씬 배선은 사용자 수작업으로 미루지 않는다 — MCP 로 배선하고 Play 검증까지가 완료다.
+- 씬 배선은 사용자 수작업으로 미루지 않는다 — 에디터 스크립트(일회용 MenuItem · 배치 `-executeMethod`)로 배선하고 Play 검증까지가 완료다.
 
 ## 일하는 방식
 

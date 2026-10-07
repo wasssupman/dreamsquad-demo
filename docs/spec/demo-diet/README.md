@@ -25,7 +25,7 @@ Demo 리포에서 **전투 로직 외 전부를 제거**해 정리본을 만든�
 | Q2 | 시트 **에디터 임포터**(DTO 14 · `Editor/UnitStatImport` 9 · `SheetSync` 2) → **당분간 유지**(후속 제거 요청 예정). 런타임 덮어쓰기 그룹(`*RuntimeRefresher` 4 · `IRuntimeRefresher` · `LoginAutoImport`)은 제거 |
 | Q3 | 결과 화면(`ResultScreen` · `LeaderboardList` · `NoticePopup` · `UiOverlay`) + `CoreMatchOutcomePresenter` → **통째 제거**. 전투는 `MatchOutcome` 사건만 발행 |
 | Q4 | 개발 statics(`TestModeContext` · `DevMapOverride` · `TestModeConfig`) → **`MatchEntryInput` 값으로 접어 제거** |
-| 순서 | **다이어트 먼저**, Unity 6.6 전환은 그 뒤(`unity-6-6-upgrade` 별도 spec) |
+| 순서 | ~~다이어트 먼저~~ → **2026-10-07 정정: `unity-6-6-upgrade` 를 단위 2 보다 먼저**(사용자: 「에디터 에러부터 잡는 게 맞지 않나」 — 에디터가 살아야 단위 2 의 씬·에셋 정리를 눈으로 검증한다). 단위 2 부터는 6.6 위에서 |
 
 ## KEEP / REMOVE 요약 (전수표는 조사 기록 — 세션 스크래치 `battle-only-boundary.md`, 수치는 재측정)
 
@@ -49,8 +49,8 @@ Demo 리포에서 **전투 로직 외 전부를 제거**해 정리본을 만든�
 - 전투 입구는 `MatchEntryInput` **하나**로 모은다. 스쿼드·덱·플랜·로스터·맵 인덱스·시드 — 프로필·static·PlayerPrefs 를 전투 코드가 직접 읽지 않는다. Demo 안에서 BattleCoreScene 을 바로 Play 할 수 있도록 **기본 입력은 직렬화 에셋**(`MatchEntryConfig` SO 또는 `ModeSelection` 확장)에서 온다.
 - 전투 출구는 사건이다 — `MatchStarted` · `DeckLocked` · `MatchFinished(MatchOutcome)`. 통보·저장·화면·씬 복귀는 구독자(지금은 없음, somnia 에선 App) 몫.
 - 지우는 것의 git 이력은 그대로 남는다. 「되살릴 때 git 에서」가 보존 전략이다.
-- **검증 환경**: 사용자 에디터가 6.6 으로 열려 있어 메인 리포에선 배치 검증을 못 한다. 검증 워크트리 `D:\projects\dreamsquad-demo-new\wt47`(4.7, 단위 커밋을 checkout) 에서 EditMode 전체 + 헤드리스 lane 을 돌린다. Play 육안은 6.6 전환 뒤 사용자 에디터에서.
-- 커밋은 경로 지정. 6.6 이 메인 작업 트리에 남긴 churn(`ProjectVersion` · `manifest` · `lock` · `ProjectSettings` 신규 2 · Layer Lab meta 등)은 **이 spec 에서 스테이징하지 않는다**(6.6 spec 몫).
+- **검증 환경**: 단위 0+1 은 4.7 검증 워크트리 `wt47` 배치로 검증했다(사용자 에디터가 6.6 이라 메인에선 못 돌렸다). 단위 2 부터는 6.6 위다 — 배치는 사용자 에디터를 닫고 메인 리포(또는 6.6 워크트리 `wt66`)에서, Play 육안은 사용자 에디터에서.
+- 커밋은 경로 지정. Layer Lab meta·Spine 아틀라스·png meta 재임포트 churn 은 **스테이징하지 않는다**(단위 2 가 Layer Lab 을 지운다). 6.6 핀(`ProjectVersion` · `manifest` · `lock` · `ProjectSettings`)은 `unity-6-6-upgrade` 가 실었다.
 
 ## 분류 정정 (단위 0+1 구현 중 확인 — 조사표와 다른 점)
 

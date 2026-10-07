@@ -56,8 +56,9 @@ Burst error BC1055: Unable to resolve the definition of the method
 ```
 
 **호출하는 쪽이 아니라 정의된 쪽 asmdef 에 `Unity.Burst` 참조가 필요하다.** 없으면 Burst 가
-그 어셈블리를 로드하지 않아 메서드를 해석하지 못한다. `noEngineReferences: true` 는
-유지해도 된다 — Burst 는 엔진 어셈블리가 아니라 패키지다.
+그 어셈블리를 로드하지 않아 메서드를 해석하지 못한다. (당시엔 `noEngineReferences: true` 를
+유지해도 됐다 — Burst 는 엔진 어셈블리가 아니라 패키지다. 6.6 전환 뒤 코어 asmdef 는
+`noEngineReferences: false` 다 — `Unity.Mathematics` 가 엔진 모듈이 됐기 때문. `unity-6-6-upgrade`.)
 
 ⚠ **연쇄 증상에 속지 말 것.** BC1055 는 컴파일을 막지 않고, 실패는 **런타임에** 그 시스템이
 무너지는 모습으로 나온다. 실측에서는 EditMode 25건 이상이

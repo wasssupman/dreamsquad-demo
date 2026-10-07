@@ -2,6 +2,8 @@
 
 Unity Editor 를 MCP(MCP for Unity)로 구동·검증할 때 반복해서 겪은 것들.
 
+> **이력(2026-10-07)**: `com.coplaydev.unity-mcp` 패키지는 Unity 6.6 전환(`docs/spec/unity-6-6-upgrade/`)에서 제거했다(6.6 API 비호환). 이 리포엔 지금 MCP 가 없다 — 이식 뒤 somnia 의 `com.unity.ai.assistant` 를 쓴다. 아래 교훈 중 에디터 공유·포커스·Reload 모달·워크트리별 인스턴스·`[Explicit]` 누출은 도구와 무관하게 유효하다. 에디터가 닫혀 있을 때의 테스트는 배치 CLI(`test-procedure.md` 「배치」).
+
 ## Play 시뮬은 에디터 포커스가 있어야 tick 한다
 
 MCP `execute_code` 로 Play 를 구동해도, **에디터 창이 포커스를 잃으면 시뮬레이션이 frame 을 진행하지 않는다** (Time.time/frameCount 고정 → `BattleDriver` 가 틱을 안 내 이동/aggro/공격/데미지 정지). `Application.runInBackground=true` 도 에디터에선 안 먹힘.

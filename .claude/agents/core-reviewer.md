@@ -33,8 +33,12 @@ destroy event, (6) determinism breaks. Style last.
   other 담당자's methods in sequence (the old `TickBattleFrame` shape). `BattleMatch` may only
   construct 담당자 and list phase order.
 - **엔진 무참조**: `using UnityEngine` / `UnityEditor` / `Unity.Entities` / `Unity.Collections`
-  (NativeArray) anywhere under `Scripts/BattleCore/`; asmdef must be `noEngineReferences: true`
-  with references limited to `Unity.Mathematics`, `Wassup.Skills`, `Wassup.UnitAi`.
+  (NativeArray) anywhere under `Scripts/BattleCore/`, `Scripts/Skills/`, `Scripts/UnitAi/`. The only engine
+  module the core may touch is `UnityEngine.MathematicsModule` (`Unity.Mathematics` types — an engine module
+  since 6.6, so `noEngineReferences` is `false` on purpose). The guard is `CoreArchitectureTests.코어에는_엔진_참조가_없다`
+  plus the headless `BattleCore.csproj` (no `CoreModule` reference). asmdef `references` stay limited to
+  `Wassup.Skills`, `Wassup.UnitAi` — no `Unity.Mathematics` entry: on 6.6 that name is an empty forwarder
+  package and the types come from the engine module automatically.
 - **커맨드 ≠ 이벤트**: player input entering as an event; events that carry a live handle instead of a
   value snapshot (position + originBody pair, faction, traversal layers); code that re-queries an
   entity from an event at drain time.
