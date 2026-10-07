@@ -82,9 +82,8 @@ namespace Wassup.BattleCoreUnity
                  + "채우면 이 목록이 곧 덱이다(테스트·개발 판).")]
         [SerializeField] private DreamcatcherCard[] _cards = Array.Empty<DreamcatcherCard>();
 
-        [Header("드림캐쳐 덱 (unit 7c — 프로필 확정 덱 + 판마다 굴린 액티브)")]
-        [Tooltip("프로필(씬 간 메모리 캐시). 확정 덱이 없거나 검증에 실패하면 부착 덱은 비어 있다(기본 덱 폴백 없음 — D3).")]
-        [SerializeField] private Wassup.Core.PlayerProfileSO _profile;
+        [Header("드림캐쳐 덱 (unit 7c — 입력의 고른 덱 + 판마다 굴린 액티브)")]
+        [Tooltip("카드 카탈로그. 입력(`MatchEntryInput.DeckCardIds`)의 덱을 푼다 — 없거나 검증에 실패하면 부착 덱은 비어 있다(기본 덱 폴백 없음 — D3).")]
         [SerializeField] private DreamcatcherCardCatalog _cardCatalog;
         [Tooltip("판마다 굴리는 공용 액티브의 스킬 풀. 굴림 시드 = 판 시드(재현).")]
         [SerializeField] private SkillData[] _activePool = Array.Empty<SkillData>();
@@ -177,10 +176,33 @@ namespace Wassup.BattleCoreUnity
         public MatchEntryPlan Entry => _entry;
 
         /// <summary>
-        /// unit 8b — 이 판의 덱 스냅샷(`deckInfo`). 반입 때 유닛·돌, 덱 확정 뒤 카드까지(단조 증가 — G22).
-        /// 제출(`ReportResult`)·나가기(`AbandonMatch`)가 같은 문자열을 싣는다.
+        /// demo-diet unit 0 — 이 판에 확정된 **고른 덱**의 카드 id(판마다 굴린 액티브 제외 — G22 의 「카드」 몫).
+        /// 옛 `DeckInfoJson` 의 후계다. 직렬화·제출은 바깥(`DeckLocked` 구독자) 몫이라 여기는 id 만 든다.
         /// </summary>
-        public string DeckInfoJson { get; private set; } = "";
+        public IReadOnlyList<string> LockedDeckCardIds { get; private set; } = Array.Empty<string>();
+
+        /// <summary>나가기로 떠났나(판당 1회 래치). `Abandon()` 이 세운다.</summary>
+        public bool Abandoned { get; private set; }
+
+        // ── 판 생애 사건 (demo-diet unit 0) ─────────────────────────────────
+        // 옛 전투는 이 자리에서 토너먼트 리포터·프로필·결과 화면을 **직접** 불렀다. 그 셋은 아웃게임의 사정이라
+        // 전투 밖으로 나갔고, 전투는 「무슨 일이 일어났다」만 알린다. 뷰 사건(`Subscribe`)과 달리 C# 이벤트를 쓰는
+        // 이유: 구독자가 화면 순서를 다투는 뷰 풀이 아니라 **판 밖의 한둘**(제출·기록·씬 복귀)이고, 순서가 규칙이 아니다.
+        // 사건은 **값**을 나른다(`MatchOutcome` 은 값 타입) — 구독자가 코어를 되묻지 않는다(계약 7).
+
+        /// <summary>판이 걸렸다(`Begin(definition)` 직후). 옛 `TournamentMatchReporter.BeginMatch` 의 자리.</summary>
+        public event Action<BattleDriver> MatchStarted;
+
+        /// <summary>고른 덱이 확정됐다(판을 걸기 **전**). 옛 `PersistMatchDeck(DeckInfoJson)` 의 자리 — 카드 id 는 `LockedDeckCardIds`.</summary>
+        public event Action<BattleDriver> DeckLocked;
+
+        /// <summary>판이 끝났다 — 성적은 사건이 온 그 자리에서 받아 값으로 넘긴다. 옛 `CoreMatchOutcomePresenter.Submit` 의 자리.</summary>
+        public event Action<BattleDriver, Wassup.BattleCore.Goals.MatchOutcome> MatchFinished;
+
+        /// <summary>제출 전에 떠났다(0점 마감은 구독자 몫). 옛 `AbandonAndLeave` 의 자리.</summary>
+        public event Action<BattleDriver> MatchAbandoned;
+
+        private bool _finishedRaised;
 
         /// <summary>이 판을 짓는 데 쓴 맵 풀 인덱스(-1 = 풀 없이 `_stagePrefab`). 결정론 테스트의 창.</summary>
         public int MapPoolIndex { get; private set; } = -1;
@@ -265,14 +287,19 @@ namespace Wassup.BattleCoreUnity
             //
             // unit 5c — 씬 경계를 넘어온 선택을 **여기서 한 번 소비한다.** 이 자리가 유일한
             // 소비처라 「어느 판이 그 선택을 먹었나」를 물을 일이 없다.
-            // unit 8b — G21: 토너먼트 참가는 **로비가 발행한 것만 채택**한다. 로비 게이트를 거치지 않은 진입(에디터·테스트)은
-            // 상태만 리셋되고 참가가 생기지 않는다(옛 `GameManager.OnEnable`). 반입 기록(G22)보다 **먼저**여야 한다.
-            Wassup.Core.Api.TournamentMatchReporter.BeginMatch();
-            if (_beginOnStart && !Running) Begin(MatchEntryContext.Consume());
+            // demo-diet unit 0 — 선택과 **입력**을 같은 칸에서 한 번에 소비한다(옛 `TestModeContext`·토너먼트 리포터는 접혔다).
+            if (_beginOnStart && !Running)
+            {
+                var selection = MatchEntryContext.Consume(out var input);
+                Begin(selection, input);
+            }
         }
 
-        /// <summary>저작 그대로 짓는다(선택 없음 = 기본 모드 SO).</summary>
-        public void Begin() => Begin(ModeSelection.None);
+        /// <summary>저작 그대로 짓는다(선택 없음 = 기본 모드 SO · 입력 없음 = 드라이버 저작 편성).</summary>
+        public void Begin() => Begin(ModeSelection.None, null);
+
+        /// <summary>모드 선택만 — 입력 없음(에디터 메뉴·모드 테스트).</summary>
+        public void Begin(ModeSelection selection) => Begin(selection, null);
 
         /// <summary>
         /// 저작을 읽어 판을 짓고 건다. 스테이지가 없으면 **조용히 지나가지 않는다** —
@@ -281,8 +308,10 @@ namespace Wassup.BattleCoreUnity
         /// unit 5c — **모드 선택 3단**: 테스트 모드 강제 &gt; 로비/서버 지정 &gt; 기본 모드 SO.
         /// 서열을 아는 함수는 `MatchDefinitionBuilder.ResolveMode` 하나이고 여기는 그것을
         /// 부르기만 한다 — 세 칸을 여기서 다시 비교하면 그것이 두 번째 자다.
+        ///
+        /// demo-diet unit 0 — `input` 은 바깥이 넘긴 **값**(편성·돌·덱·플랜·맵 인덱스·서버 시드). null = 드라이버 저작.
         /// </summary>
-        public void Begin(ModeSelection selection)
+        public void Begin(ModeSelection selection, MatchEntryInput input)
         {
             var mode = MatchDefinitionBuilder.ResolveMode(selection.TestMode, selection.Lobby, _mode);
             if (mode == null)
@@ -299,31 +328,21 @@ namespace Wassup.BattleCoreUnity
                                + "BattleCoreScene 드라이버에 SeasonRegistry.asset 을 연결하라.", this);
             // unit 8b — **진입 해석**(G3·G5·G7·G13). 순서는 옛 것 그대로: 시드 → (기믹 = 코어가 시드로) → 맵.
             // 시드 0 은 「아무도 안 골랐다」다 — 고정 노브, 그것도 0 이면 새 난수(G3).
-            var entry = MatchEntry.Resolve(new MatchEntry.Sources
-            {
-                Profile = _profile,
-                DefenderCatalog = _defenderCatalog,
-                StoneCatalog = _stoneCatalog,
-                FixedSeed = _seed,
-            }, MatchEntry.ConsumeTestMode(), selection.Seed);
+            var entry = MatchEntry.Resolve(input, _defenderCatalog, _stoneCatalog, _seed, selection.Seed);
             _entry = entry;
             int seed = entry.Seed;
             _activeDefenders = entry.Defenders ?? _defenders ?? Array.Empty<DefenderUnitData>();
             var stones = entry.Stones ?? _dreamstones;
 
-            // G22 — 반입 편성·돌을 **배치 전에** 기록한다(앱이 죽어도 그 판이 편성을 갖는다). 참가가 없으면 저쪽이 no-op.
-            DeckInfoJson = MatchEntry.DeckInfoJson(entry, null);
-            Wassup.Core.Api.TournamentMatchReporter.PersistMatchDeck(DeckInfoJson);
-
             // 맵 풀 4갈래(옛 `BuildMapForBattle` `:1263~1300`). 모드 `mapPool` 이 비면 기본 풀.
+            // 강제 인덱스·서버 맵 시드는 입력이 값으로 준다(옛 `DevMapOverride`·`TournamentMatchReporter` static).
             var pool = mode.mapPool != null ? mode.mapPool : _mapPool;
             var stagePrefab = _stagePrefab;
             var poolDeck = _deck;
             WavePlanAsset encounterPlan = null;
             MapPoolIndex = -1;
-            if (MatchDefinitionBuilder.TrySelectEncounter(pool, Wassup.Core.DevMapOverride.Index, _fixedMapSeed,
-                    Wassup.Core.Api.TournamentMatchReporter.HasTournamentSeed,
-                    Wassup.Core.Api.TournamentMatchReporter.TournamentSeed,
+            if (MatchDefinitionBuilder.TrySelectEncounter(pool, input != null ? input.MapIndexOverride : -1, _fixedMapSeed,
+                    input != null && input.HasMapSeed, input != null ? input.MapSeed : 0UL,
                     out var encounter, out int poolIndex, out string poolSource))
             {
                 stagePrefab = encounter.stage;
@@ -337,12 +356,13 @@ namespace Wassup.BattleCoreUnity
             if (!BuildStage(stagePrefab)) return;
             _resolvedMode = mode;
 
-            // unit 7c — 덱. 개발용 덮어쓰기가 비었으면 프로필 확정 덱 + 판 시드로 굴린 액티브(판 밖에서 한 번).
+            // unit 7c — 덱. 개발용 덮어쓰기가 비었으면 입력의 고른 덱 + 판 시드로 굴린 액티브(판 밖에서 한 번).
             // ⚠ 모드에 각성 저작이 없으면 카드 **값**을 모른다(값의 주인 = `AwakeningConfig`) — 그 모드는 카드 없는 판이다.
             // 짓다가 카드마다 에러를 내지 않고 한 번 말한다(테스트 모드 SO · 각성 없는 모드).
             // ⚠ 각성 가드가 **먼저**다 — 개발용 덮어쓰기(`_cards`)도 이 가드를 지난다. 덮어쓰기 분기를 앞에 두면 각성 없는
             // 모드(테스트 모드 SO)에서 카드마다 빌더 에러가 난다(dev 덱 `d06ae0bcd` 이 그 구멍을 열었다).
-            // ⚠ unit 8b — **로비 판은 개발용 덮어쓰기(`_cards`)가 프로필 덱에 양보한다.** 덮어쓰기는 에디터 메뉴 판 전용이다.
+            // ⚠ unit 8b — **바깥에서 편성을 받은 판은 개발용 덮어쓰기(`_cards`)가 입력의 덱에 양보한다.** 덮어쓰기는 에디터 메뉴 판 전용이다.
+            IReadOnlyList<string> deckIds = input != null ? input.DeckCardIds : null;
             IReadOnlyList<DreamcatcherCard> cards;
             if (mode.awakeningConfig == null)
             {
@@ -351,7 +371,7 @@ namespace Wassup.BattleCoreUnity
                 cards = Array.Empty<DreamcatcherCard>();
             }
             else if (!entry.FromLobby && _cards != null && _cards.Length > 0) cards = _cards;
-            else cards = Cards.CoreDeckComposition.Compose(_profile, _cardCatalog, _activePool, _activeCount, _activeCards,
+            else cards = Cards.CoreDeckComposition.Compose(deckIds, _cardCatalog, _activePool, _activeCount, _activeCards,
                                                                       seed, msg => Debug.LogWarning(msg, this));
 
             // ⚠ **거점 목록을 반드시 넘긴다**(`55688ef5`). 격자 투영에는 셀과 진영밖에 없어
@@ -391,13 +411,13 @@ namespace Wassup.BattleCoreUnity
                 },
                 cards: cards, dreamstones: stones, entry: entryAuthoring);
 
-            // G22 — 덱 확정(카드)까지 **같은 통로로 갱신**한다(payload 단조 증가). 카드는 고른 덱만 — 굴린 액티브 제외.
+            // G22 — 덱 확정(카드)은 판을 걸기 **전**에 알린다. 카드는 고른 덱만 — 굴린 액티브 제외.
             var baseIds = new List<string>();
             if (entry.FromLobby)
-                foreach (var c in Cards.CoreDeckComposition.ResolveAttachDeck(_profile, _cardCatalog))
+                foreach (var c in Cards.CoreDeckComposition.ResolveAttachDeck(deckIds, _cardCatalog))
                     if (c != null) baseIds.Add(c.id);
-            DeckInfoJson = MatchEntry.DeckInfoJson(entry, baseIds);
-            Wassup.Core.Api.TournamentMatchReporter.PersistMatchDeck(DeckInfoJson);
+            LockedDeckCardIds = baseIds;
+            DeckLocked?.Invoke(this);
 
             Begin(def);
         }
@@ -409,8 +429,22 @@ namespace Wassup.BattleCoreUnity
             _match = new BattleMatch(definition);
             _accumulator = 0f;
             _prevPos.Clear();
+            _finishedRaised = false;
+            Abandoned = false;
             _match.Begin();
+            MatchStarted?.Invoke(this);
             DrainEvents();
+        }
+
+        /// <summary>
+        /// 제출 전에 떠난다 — 판당 한 번만 알린다(옛 `AbandonAndLeave` 의 0점 마감·기록·씬 복귀는 구독자 몫).
+        /// 판이 이미 끝났으면 무시한다(「성적 확정」 뒤의 나가기는 포기가 아니다).
+        /// </summary>
+        public void Abandon()
+        {
+            if (Abandoned || _match == null || _match.Clock.Ended) return;
+            Abandoned = true;
+            MatchAbandoned?.Invoke(this);
         }
 
         public void Pause(bool paused) => _paused = paused;
@@ -472,12 +506,23 @@ namespace Wassup.BattleCoreUnity
                 _subsDirty = false;
             }
 
+            bool ended = false;
             for (int i = 0; i < events.Count; i++)
             {
                 var e = events[i];
                 for (int s = 0; s < _dispatch.Count; s++) _dispatch[s].Handler(e);
+                if (e.Kind == CoreEventKind.MatchEnded) ended = true;
             }
             _match.ClearEvents();
+
+            // 성적은 사건이 온 그 자리에서 받는다(옛 발표자 주석 — 「나중에 물어도 된다」는 습관을 들이지 않는다).
+            // 조립 지점은 코어에 하나뿐이다(`BattleMatch.Outcome`). 값 타입이라 여기 담는 순간 복사본이다.
+            if (ended && !_finishedRaised)
+            {
+                _finishedRaised = true;
+                var outcome = _match.Outcome;
+                MatchFinished?.Invoke(this, outcome);
+            }
         }
 
         // ── 스테이지 → 격자·거점 ─────────────────────────────────────────────

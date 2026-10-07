@@ -33,7 +33,6 @@ namespace Wassup.Tests.PlayMode.Core
         [UnityTearDown]
         public IEnumerator TearDown()
         {
-            TestModeContext.Clear();
             CoreSceneFixture.EndErrorWatch();
             yield return null;
         }
@@ -229,20 +228,10 @@ namespace Wassup.Tests.PlayMode.Core
             found(driver, pick);
         }
 
-        // 부팅 편성은 기기 프로필을 상속한다 — 프로필을 잠시 끊고 테스트 모드 프리셋으로 다시 짓는다.
+        // demo-diet unit 0 — 편성을 **입력 값**으로 넘겨 다시 짓는다(옛 프로필 끊기·TestModeContext 반사 조작 제거).
         private static void RebeginWithRoster(BattleDriver driver, DefenderUnitData[] roster)
         {
-            var profile = typeof(BattleDriver).GetField("_profile", BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(profile, "BattleDriver._profile — 이름이 바뀌면 이 픽스처를 같이 고친다");
-            var saved = profile.GetValue(driver);
-            profile.SetValue(driver, null);
-            TestModeContext.Set(null, roster);
-            try { driver.Begin(); }
-            finally
-            {
-                profile.SetValue(driver, saved);
-                TestModeContext.Clear();
-            }
+            driver.Begin(ModeSelection.None, new MatchEntryInput { Kind = MatchEntryKind.TestMode, Defenders = roster });
             Assert.IsTrue(driver.Running, "편성을 바꿔 다시 지은 판이 안 걸렸다");
             for (int i = 0; i < roster.Length; i++)
                 Assert.AreEqual(roster[i].id, driver.Definition.Units[i].Id, $"유닛 표 {i} 줄이 편성과 다르다");

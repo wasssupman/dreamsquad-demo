@@ -98,7 +98,7 @@ namespace Wassup.Data
         public float focusLeanPerSpeed = 1.2f;
         [Tooltip("시선 리드 최대각(도).")]
         public float focusLeanMaxDeg = 2.5f;
-        [Tooltip("포인터 추종 스프링 강성(↑=빠릿). KeyringSim.SpringStep.")]
+        [Tooltip("포인터 추종 스프링 강성(↑=빠릿). MotionMath.SpringStep.")]
         public float focusSpring = 60f;
         [Tooltip("포인터 추종 감쇠(임계≈2√spring — 그 이상이면 출렁임 없음).")]
         public float focusDamping = 14f;

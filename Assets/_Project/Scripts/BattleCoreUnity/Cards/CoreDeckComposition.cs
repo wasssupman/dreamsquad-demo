@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Wassup.Core;
 using Wassup.Data;
 
 namespace Wassup.BattleCoreUnity.Cards
@@ -20,12 +19,14 @@ namespace Wassup.BattleCoreUnity.Cards
         /// <summary>굴림 시드 소금 — 판 시드를 그대로 쓰면 `HandDeck` 의 섞기와 같은 첫 난수를 공유한다(서로 상관되지 않게).</summary>
         private const uint RollSalt = 0x9E3779B9u;
 
-        public static List<DreamcatcherCard> Compose(PlayerProfileSO profile, DreamcatcherCardCatalog catalog,
+        // demo-diet unit 0 — 부착 덱의 출처가 프로필 SO 에서 **입력 값**(`MatchEntryInput.DeckCardIds`)으로 바뀌었다.
+        // 검증·카탈로그 풀기는 그대로다 — 「어느 카드가 덱에 드나」의 규칙은 여기, 「누가 골랐나」는 바깥.
+        public static List<DreamcatcherCard> Compose(IReadOnlyList<string> deckCardIds, DreamcatcherCardCatalog catalog,
                                                      IReadOnlyList<SkillData> activePool, int activeCount,
                                                      IReadOnlyList<DreamcatcherCard> activeCards, int seed,
                                                      System.Action<string> warn = null)
         {
-            var result = ResolveAttachDeck(profile, catalog);
+            var result = ResolveAttachDeck(deckCardIds, catalog);
             var picked = RollActives(FilterHiddenSkills(
                                          activePool ?? System.Array.Empty<SkillData>(), catalog),
                                      activeCount, seed);
@@ -61,15 +62,14 @@ namespace Wassup.BattleCoreUnity.Cards
             return result;
         }
 
-        /// <summary>D3 — 확정 덱(검증 통과)만. 없거나 무효면 빈 목록.</summary>
-        public static List<DreamcatcherCard> ResolveAttachDeck(PlayerProfileSO profile, DreamcatcherCardCatalog catalog)
+        /// <summary>D3 — 고른 덱(검증 통과)만. 없거나 무효면 빈 목록.</summary>
+        public static List<DreamcatcherCard> ResolveAttachDeck(IReadOnlyList<string> cardIds, DreamcatcherCardCatalog catalog)
         {
             var result = new List<DreamcatcherCard>();
-            var save = profile != null && profile.profile != null ? profile.profile.CommittedDeck() : null;
-            if (save == null || catalog == null || !DeckRules.Validate(save.cardIds, catalog, out _)) return result;
-            foreach (var id in save.cardIds)
+            if (cardIds == null || catalog == null || !DeckRules.Validate(cardIds, catalog, out _)) return result;
+            for (int i = 0; i < cardIds.Count; i++)
             {
-                var card = catalog.ById(id);
+                var card = catalog.ById(cardIds[i]);
                 if (card != null) result.Add(card);
             }
             return result;

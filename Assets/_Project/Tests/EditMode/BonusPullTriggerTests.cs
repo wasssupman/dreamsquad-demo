@@ -131,7 +131,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 마음이_없으면_스트레스_0_이라_게이트가_열린다()
         {
-            float noHeartStress = Wassup.Core.StressMath.FromHealth(0f, 0f);
+            float noHeartStress = Wassup.BattleCore.StressMath.FromHealth(0f, 0f);
             Assert.AreEqual(0f, noHeartStress, "마음 미저작은 스트레스 0 이 계약이다");
             Assert.IsTrue(BonusPullTrigger.NextLatched(false, 30, 0, T, noHeartStress, S));
         }

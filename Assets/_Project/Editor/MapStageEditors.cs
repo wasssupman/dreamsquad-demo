@@ -108,7 +108,7 @@ namespace Wassup.EditorTools
             }
 
             // unit 2 — «스크립트 붙이면 그 자체로 게임 진행 가능»의 마지막 마일: 풀 수동 편집 없이
-            // dev 슬롯에 등록해 DevMapOverride 스테퍼로 바로 Play (MapPainter dev 등록 선례 승계).
+            // dev 슬롯에 등록해 맵 인덱스 강제(`MatchEntryInput.MapIndexOverride`)로 바로 Play (MapPainter dev 등록 선례 승계).
             if (GUILayout.Button("Dev 엔트리로 등록 (MapStagePool)"))
             {
                 var prefab = PrefabUtility.GetCorrespondingObjectFromSource(stage) ?? stage;

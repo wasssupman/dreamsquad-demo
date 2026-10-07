@@ -347,7 +347,7 @@ namespace Wassup.BattleCoreUnity.Cards
             }
             else
             {
-                KeyringSim.SpringStep(ref _clearanceOffset, ref _clearanceVel, target,
+                MotionMath.SpringStep(ref _clearanceOffset, ref _clearanceVel, target,
                     dragClearanceSpring, dragClearanceDamping, 0f, Time.deltaTime);
             }
             var rt = (RectTransform)_panel.transform;

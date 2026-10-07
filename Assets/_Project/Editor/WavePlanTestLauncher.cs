@@ -6,13 +6,14 @@ using Wassup.Data;
 namespace Wassup.Editor
 {
     // wave-plan-authoring-inspector unit 1 — 인스펙터 "Test this plan" 런치.
-    // 선택 플랜 GUID 를 SessionState 에 적고 BattleScene Play 진입. 실제 소비는
-    // 런타임 TestModeContext 의 [RuntimeInitializeOnLoadMethod(BeforeSceneLoad)] 훅이
-    // GameManager.Start 보다 먼저 수행한다(playModeStateChanged 는 Start 보다 늦어 부적합).
+    // 선택 플랜 GUID 를 SessionState 에 적고 BattleCoreScene Play 진입. 실제 소비는 런타임
+    // `MatchEntryContext.ApplyEditorPlanCarry`([RuntimeInitializeOnLoadMethod(BeforeSceneLoad)])가
+    // 드라이버 `Start` 보다 먼저 수행한다(playModeStateChanged 는 Start 보다 늦어 부적합).
+    // demo-diet unit 0 — 옛 `TestModeContext` 는 `MatchEntryInput.PlanOverride` 로 접혔다.
     public static class WavePlanTestLauncher
     {
         public const string SessionKey = "WavePlanTest.guid";
-        // battle-core-rebuild unit 8b — 새 전투 씬. 소비는 새 드라이버의 진입 해석(`MatchEntry.ConsumeTestMode`)이 한다.
+        // battle-core-rebuild unit 8b — 새 전투 씬. 소비는 드라이버의 진입 해석(`MatchEntry.Resolve`)이 한다.
         private const string BattleScenePath = "Assets/_Project/Scenes/BattleCoreScene.unity";
 
         public static void LaunchInPlayMode(WavePlanAsset plan)

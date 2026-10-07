@@ -170,19 +170,12 @@ namespace Wassup.Tests.EditModeAssets
         {
             var catalog = AssetDatabase.LoadAssetAtPath<DreamcatcherCardCatalog>(CardsRoot + "/DreamcatcherCardCatalog.asset");
             Assert.IsNotNull(catalog);
-            var profile = UnityEngine.ScriptableObject.CreateInstance<PlayerProfileSO>();
-            try
-            {
-                profile.profile = new PlayerProfile();
-                // 확정 덱 없음 → 빈 목록(기본 덱 폴백 없음 — D3).
-                Assert.IsEmpty(CoreDeckComposition.ResolveAttachDeck(profile, catalog));
-                // 장수가 모자란 덱 → 검증 실패 → 빈 목록.
-                var preset = new DreamcatcherPreset { id = "t", cardIds = new List<string> { catalog.cards[0].id } };
-                profile.profile.dreamcatcherDecks = new List<DreamcatcherPreset> { preset };
-                profile.profile.selectedDeckId = "t";
-                Assert.IsEmpty(CoreDeckComposition.ResolveAttachDeck(profile, catalog), "무효 덱이 그대로 실렸다(D3)");
-            }
-            finally { UnityEngine.Object.DestroyImmediate(profile); }
+            // demo-diet unit 0 — 덱은 프로필이 아니라 입력 값(id 목록)이다.
+            // 고른 덱 없음 → 빈 목록(기본 덱 폴백 없음 — D3).
+            Assert.IsEmpty(CoreDeckComposition.ResolveAttachDeck(null, catalog));
+            // 장수가 모자란 덱 → 검증 실패 → 빈 목록.
+            Assert.IsEmpty(CoreDeckComposition.ResolveAttachDeck(new List<string> { catalog.cards[0].id }, catalog),
+                "무효 덱이 그대로 실렸다(D3)");
         }
     }
 }

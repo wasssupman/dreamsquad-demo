@@ -70,7 +70,7 @@ namespace Wassup.Presentation
 
         // unit 5 — 드래그 포커스 채널. 드래그 컨트롤러가 매 프레임 터치 스크린 좌표를 피드,
         // 프레임 staleness 로 자동 해제(명시 Clear 불필요 — 컨트롤러 파괴/정리 누락에도 붙박이 방지).
-        // rev 3: 입력 = 스크린 NDC(월드 비의존), 추종 = 스프링-댐핑(KeyringSim) — 스프링 속도가
+        // rev 3: 입력 = 스크린 NDC(월드 비의존), 추종 = 스프링-댐핑(MotionMath) — 스프링 속도가
         // 곧 스와이프 리드 속도(정지 시 0 수렴, 확확 안 바뀜).
         private Vector2 _focusNdcTarget;
         private Vector2 _focusNdc;
@@ -607,7 +607,7 @@ namespace Wassup.Presentation
                     _focusNdcVel = Vector2.zero;
                     _focusSpringInit = true;
                 }
-                Wassup.UI.KeyringSim.SpringStep(ref _focusNdc, ref _focusNdcVel, _focusNdcTarget,
+                Wassup.Presentation.MotionMath.SpringStep(ref _focusNdc, ref _focusNdcVel, _focusNdcTarget,
                     config.focusSpring, config.focusDamping, 0f,
                     Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
 
@@ -701,7 +701,7 @@ namespace Wassup.Presentation
             // 진입/복귀가 같은 스프링이라 여는 맛과 닫는 맛이 대칭이다.
             if (headroomActive)
             {
-                Wassup.UI.KeyringSim.SpringStep(ref _headroomWeight, ref _headroomVel,
+                Wassup.Presentation.MotionMath.SpringStep(ref _headroomWeight, ref _headroomVel,
                     headroomTarget, config.handHeadroomSpring, config.handHeadroomDamping, 0f,
                     Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
                 // localPos 는 상태 회전 기준(+Z = 카메라 전방)이라 음수 z = 후퇴 = 줌아웃.
@@ -721,7 +721,7 @@ namespace Wassup.Presentation
             // 이동모드 오버뷰 채널 — 헤드룸 미러. dolly(음수=후퇴=줌아웃) + 선택적 pitch 를 가중치로 곱한다.
             if (overviewActive)
             {
-                Wassup.UI.KeyringSim.SpringStep(ref _overviewWeight, ref _overviewVel,
+                Wassup.Presentation.MotionMath.SpringStep(ref _overviewWeight, ref _overviewVel,
                     overviewTarget, config.moveOverviewSpring, config.moveOverviewDamping, 0f,
                     Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
                 delta = CameraComposeMath.Add(delta, new CameraPoseDelta

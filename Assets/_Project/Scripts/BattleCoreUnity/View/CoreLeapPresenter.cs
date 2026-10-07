@@ -137,10 +137,10 @@ namespace Wassup.BattleCoreUnity.View
                 float raw = Mathf.Clamp01(t / duration);
                 float t01 = raw <= recoilFrac
                     ? raw
-                    : recoilFrac + (1f - recoilFrac) * Wassup.UI.KeyringSim.FlightTimeRemap(
+                    : recoilFrac + (1f - recoilFrac) * Wassup.Presentation.MotionMath.FlightTimeRemap(
                           (raw - recoilFrac) / (1f - recoilFrac), _config.BossHangPower);
 
-                Vector3 p = Wassup.UI.KeyringSim.DismountPoint(
+                Vector3 p = Wassup.Presentation.MotionMath.DismountPoint(
                     flatStart, Vector3.zero, flatEnd, Vector3.up,
                     recoilFrac, _config.BossRecoilDip,
                     _config.BossArcHeightFactor, _config.BossArcMinHeight,

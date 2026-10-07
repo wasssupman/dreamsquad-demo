@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
+using Wassup.BattleCoreUnity;
 using Wassup.Core;
 using Wassup.Data;
 
@@ -69,7 +70,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         //
         // 저작 실수를 코드로 막지는 않는다(런타임 하한선 없음) — 대신 여기서 잡는다.
         // 실패는 금지가 아니라 **재협상 신호**다: 정말로 유닛을 그만큼 감추고 싶다면
-        // SquadPreset.SlotCount 를 함께 낮춰야 한다.
+        // MatchEntry.FieldCount 를 함께 낮춰야 한다.
         [Test]
         public void VisibleDefenders_CanFillASquad()
         {
@@ -81,9 +82,9 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             // 정작 목록에는 안 뜨는 유닛으로 정원을 채운 것처럼 통과한다.
             int visible = CountSelectableDefenders(catalog);
 
-            Assert.GreaterOrEqual(visible, SquadPreset.SlotCount,
-                $"목록에 보이는 방어유닛이 {visible}기뿐이라 {SquadPreset.SlotCount}슬롯 편성을 채울 수 없다 — " +
-                "visible=0 을 되돌리거나 SquadPreset.SlotCount 를 재협상하라.");
+            Assert.GreaterOrEqual(visible, MatchEntry.FieldCount,
+                $"목록에 보이는 방어유닛이 {visible}기뿐이라 {MatchEntry.FieldCount}슬롯 편성을 채울 수 없다 — " +
+                "visible=0 을 되돌리거나 MatchEntry.FieldCount 를 재협상하라.");
         }
 
         // 시작 편성 저작이 숨김 유닛을 집으면 신규 프로필이 목록에 없는 유닛을 들고
@@ -111,7 +112,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             int checkedCount = 0;
             foreach (var id in catalog.AllIds())
             {
-                if (checkedCount >= SquadPreset.SlotCount) break;
+                if (checkedCount >= MatchEntry.FieldCount) break;
                 var unit = catalog.ById(id);
                 if (unit == null) continue;
                 Assert.AreNotEqual(0, unit.visible,

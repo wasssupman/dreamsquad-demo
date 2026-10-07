@@ -44,7 +44,7 @@ namespace Wassup.Data.StatImport
         {
             // envelope validation + errorDetail wording live in ApiEnvelope
             // (outgame-login-gate unit 0) — one definition for every consumer.
-            if (!Wassup.Core.Api.ApiEnvelope.TryGetData(body, out var data, out error)) return null;
+            if (!ApiEnvelope.TryGetData(body, out var data, out error)) return null;
 
             var rows = data as JArray;
             if (rows == null)

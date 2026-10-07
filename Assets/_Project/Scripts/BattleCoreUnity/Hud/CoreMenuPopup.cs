@@ -30,8 +30,6 @@ namespace Wassup.BattleCoreUnity.Hud
     public sealed class CoreMenuPopup : MonoBehaviour
     {
         [SerializeField] private BattleDriver _driver;
-        [Tooltip("나가기의 마감·기록 주인(G15 · 0점 마감).")]
-        [SerializeField] private CoreMatchOutcomePresenter _outcome;
 
         // 옛 `MenuPopup` 의 두 상수 그대로 — 스트립을 팝업 **아래**로 올리고 버튼은 그 위.
         private const int StripSortingOrder = 950;
@@ -154,14 +152,11 @@ namespace Wassup.BattleCoreUnity.Hud
                     Debug.LogWarning($"[CoreMenuPopup] 성적 확정이 거절됐다 — {receipt.Reason}", this);
                 return;
             }
-            // 나가기 — 리스를 놓고 떠난다(씬 전환의 도메인 리셋이 한 번 더 지워도 무해하다).
+            // 나가기 — 리스를 놓고 드라이버에 알린다. 0점 마감·기록·씬 복귀는 `BattleDriver.MatchAbandoned` 구독자 몫이다
+            // (demo-diet unit 0 — 전투는 바깥으로 가는 길을 모른다). 구독자가 없으면 판은 그대로 멈춰 있다.
             if (_paused) { _paused = false; Release(); }
-            if (_outcome != null) _outcome.AbandonAndLeave();
-            else
-            {
-                Debug.LogWarning("[CoreMenuPopup] 결과 주인이 배선되지 않았다 — 0점 마감·기록 없이 로비로 간다.", this);
-                Wassup.Core.SceneTransition.Go(Wassup.Core.SceneNames.Outgame);
-            }
+            if (_driver != null) _driver.Abandon();
+            else Debug.LogWarning("[CoreMenuPopup] 드라이버가 배선되지 않았다 — 나가기를 알릴 곳이 없다.", this);
         }
 
         // 옛 `MenuPopup.Open/Close` 의 스트립 몫. 여는 순간 **이 판의 플랜**으로 다시 그린다.

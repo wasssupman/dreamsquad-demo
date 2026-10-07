@@ -50,33 +50,68 @@ namespace Wassup.BattleCoreUnity
     // ⚠ **1회 소비**다. 안 지우면 다음 판이 지난 판의 모드를 물려받고, 그 사고는 「두 번째
     // 판만 이상하다」로만 보인다(옛 전투에서 stale attempt 로 같은 일이 났다).
     // 상태는 이 한 칸뿐이고 판정은 없다 — 매니저가 아니다(절대 제약 1).
+    //
+    // demo-diet unit 0 — 옛 `TestModeContext`(플랜·프리셋)와 `DevMapOverride`(맵 인덱스)를 **이 한 칸으로 접었다.**
+    // 선택(`ModeSelection`)과 입력(`MatchEntryInput`)이 같이 실려 같이 소비된다 — 둘이 다른 칸이면 「어느 판이
+    // 어느 쪽을 먹었나」가 갈린다.
     public static class MatchEntryContext
     {
         private static ModeSelection _pending;
+        private static MatchEntryInput _pendingInput;
 
         public static bool HasPending { get; private set; }
 
         // ⚠ **값으로 받는다**(`in` 아님). 참조 둘 + 정수 하나라 복사가 싸고, `in` 은 호출부를
         // C# 7.2 이상으로 묶는다 — 이 자리는 에디터 진단 코드(C# 6 컴파일)도 부른다.
-        public static void Set(ModeSelection selection)
+        public static void Set(ModeSelection selection) => Set(selection, null);
+
+        /// <summary>선택 + 입력. `input` null = 드라이버 저작 편성.</summary>
+        public static void Set(ModeSelection selection, MatchEntryInput input)
         {
             _pending = selection;
+            _pendingInput = input;
             HasPending = true;
         }
 
         public static void Clear()
         {
             _pending = default;
+            _pendingInput = null;
             HasPending = false;
         }
 
-        /// <summary>읽고 **지운다**. 비어 있으면 `ModeSelection.None`.</summary>
-        public static ModeSelection Consume()
+        /// <summary>읽고 **지운다**. 비어 있으면 `ModeSelection.None`(입력은 버린다 — 입력도 필요하면 `out` 판).</summary>
+        public static ModeSelection Consume() => Consume(out _);
+
+        /// <summary>선택과 입력을 함께 읽고 **지운다**. 비어 있으면 `ModeSelection.None` · null.</summary>
+        public static ModeSelection Consume(out MatchEntryInput input)
         {
-            if (!HasPending) return ModeSelection.None;
+            if (!HasPending) { input = null; return ModeSelection.None; }
             var s = _pending;
+            input = _pendingInput;
             Clear();
             return s;
         }
+
+#if UNITY_EDITOR
+        // 에디터 「Test this plan」 캐리(옛 `TestModeContext.ApplyEditorTestCarry`). `WavePlanTestLauncher` 가 SessionState 에
+        // 적은 플랜 GUID 를 씬 Awake/Start 보다 먼저(BeforeSceneLoad) 읽어 입력으로 무장한다. 빌드에선 strip.
+        // 이미 걸린 선택(에디터 메뉴의 모드)이 있으면 그 선택은 두고 입력만 더한다.
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ApplyEditorPlanCarry()
+        {
+            const string key = "WavePlanTest.guid";
+            string guid = UnityEditor.SessionState.GetString(key, string.Empty);
+            if (string.IsNullOrEmpty(guid)) return;
+            UnityEditor.SessionState.EraseString(key); // 1회 소비
+
+            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+            var plan = UnityEditor.AssetDatabase.LoadAssetAtPath<WavePlanAsset>(path);
+            if (plan == null) return;
+            var selection = HasPending ? _pending : ModeSelection.None;
+            Set(selection, new MatchEntryInput { Kind = MatchEntryKind.TestMode, PlanOverride = plan });
+            UnityEngine.Debug.Log($"[MatchEntryContext] 에디터 테스트 캐리 적용 — plan='{plan.displayName}'.");
+        }
+#endif
     }
 }

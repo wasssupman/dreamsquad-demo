@@ -164,26 +164,36 @@ namespace Wassup.Tests.PlayMode.Core
 
         // ── 결과 뒤 HUD ──────────────────────────────────────────────────────
 
+        // demo-diet unit 0 — 결과 화면은 전투 밖(App)으로 갔다. 게이트는 「덮는 쪽이 부르면 끄고, 새 판에서 켠다」만 한다.
         [UnityTest]
-        public IEnumerator 결과_화면이_뜨면_전투_HUD_가_숨는다()
+        public IEnumerator 결과를_덮는_쪽이_부르면_전투_HUD_가_숨고_새_판에서_다시_켜진다()
         {
             _mode = ShortMode();
             MatchEntryContext.Set(ModeSelection.ForTest(_mode));
             BattleDriver driver = null;
             yield return CoreSceneFixture.LoadAndBoot(d => driver = d);
             var gate = Object.FindAnyObjectByType<CoreHudGate>();
-            var presenter = Object.FindAnyObjectByType<CoreMatchOutcomePresenter>();
             Assert.IsNotNull(gate, "HUD 게이트가 새 씬에 없다");
             Assert.IsFalse(gate.Hidden, "판 중에 HUD 가 숨었다");
 
-            for (int i = 0; i < 900 && !presenter.ResultShown; i++) yield return null;
-            Assert.IsTrue(presenter.ResultShown, "짧은 판이 결과까지 안 갔다");
+            int finished = 0;
+            driver.MatchFinished += (d, o) => finished++;
+            for (int i = 0; i < 900 && finished == 0; i++) yield return null;
+            Assert.AreEqual(1, finished, "짧은 판이 끝까지 안 갔다");
             yield return null;
-            Assert.IsTrue(gate.Hidden, "결과 화면 뒤로 HUD 가 남았다(옛 씬은 Result 페이즈에서 숨겼다)");
+            Assert.IsFalse(gate.Hidden, "바깥이 부르기 전에는 HUD 가 남아 마지막 점수를 보여 준다");
 
+            gate.Hide(true);
+            Assert.IsTrue(gate.Hidden);
             var tray = Object.FindAnyObjectByType<CoreDefenderTray>();
             var canvas = tray != null ? tray.GetComponentInParent<Canvas>(true) : null;
             if (canvas != null) Assert.IsFalse(canvas.enabled, "트레이·점수판이 있는 HUD 캔버스가 켜져 있다");
+
+            // 새 판이 걸리면(코어 `MatchStarted` 사건) 자동으로 다시 켠다.
+            driver.Begin(ModeSelection.ForTest(_mode));
+            yield return null;
+            Assert.IsFalse(gate.Hidden, "새 판에서 HUD 가 켜지지 않았다");
+            if (canvas != null) Assert.IsTrue(canvas.enabled);
         }
 
         // ── 페이즈 먹이 · BGM ────────────────────────────────────────────────

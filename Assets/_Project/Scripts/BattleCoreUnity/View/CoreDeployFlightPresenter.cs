@@ -26,7 +26,7 @@ namespace Wassup.BattleCoreUnity.View
     // 지금까지처럼 즉시 착지한다.
     //
     // 값의 정본은 전부 `DragSwaySettings`(라이브 SO) 다 — 새 수치를 여기서 지어내지 않는다.
-    // 궤적 수학도 새로 만들지 않는다: `KeyringSim.DismountPoint` 는 도약 연출(`CoreLeapPresenter`)
+    // 궤적 수학도 새로 만들지 않는다: `MotionMath.DismountPoint` 는 도약 연출(`CoreLeapPresenter`)
     // 이 이미 쓰는 같은 함수다.
     [DisallowMultipleComponent]
     public sealed class CoreDeployFlightPresenter : MonoBehaviour
@@ -144,10 +144,10 @@ namespace Wassup.BattleCoreUnity.View
                 float raw = Mathf.Clamp01(elapsed / duration);
                 float f = raw <= recoilFrac
                     ? raw
-                    : recoilFrac + (1f - recoilFrac) * Wassup.UI.KeyringSim.FlightTimeRemap(
+                    : recoilFrac + (1f - recoilFrac) * Wassup.Presentation.MotionMath.FlightTimeRemap(
                           (raw - recoilFrac) / (1f - recoilFrac), _config.dropHangPower);
 
-                Vector3 p = Wassup.UI.KeyringSim.DismountPoint(
+                Vector3 p = Wassup.Presentation.MotionMath.DismountPoint(
                     start, Vector3.zero, end, camUp,
                     recoilFrac, _config.dropRecoilDip,
                     _config.dropArcHeightFactor, _config.dropArcMinHeight,
