@@ -218,3 +218,9 @@ code + git history        구현 상세
 - **6.6 골든 드리프트 확인** [S] · 배치 검증을 생략해 `CoreGoldenTests` 를 6.6 에서 아직 안 돌렸다. 다음 EditMode.Core 실행 때 본다 — 빨강이면 재굽기는 사용자 결정(결정론).
 - **벤더 obsolete 경고** [S] · GabrielAguiar `PrefabStage.prefabAssetPath` 등. demo-diet 단위 3 벤더 추림 뒤 남은 것만.
 - **헤드리스 테스트 lane 과 Smart App Control** [S] · 이 머신은 새로 링크된 서명 없는 테스트 DLL 로드를 차단한다. 빌드 lane 만 쓴다 — 서명 또는 다른 러너는 필요해지면.
+
+### demo-diet 중 발견 (2026-10-07 — 다이어트와 무관한 선행 상태)
+
+- **`Defender_ShieldShuttle` 의 무기 궤적 리그가 없는 본을 따른다** [S] · 궤적 프리팹(`WeaponTrail_Slash` 변형)의 `BoneFollower.boneName = Gear` 인데 이 유닛만 스켈레톤이 CH4(Gear 본 없음)다. Play 중 `Bone not found: Gear` 가 매 프레임 찍힌다(한 판 907회). 리그 본을 CH4 의 손 본으로 바꾸거나 트레일을 뗀다 — 저작 결정이라 사용자 몫.
+- **Hovl `HS_SwordMeshTrail.RefreshPresetPointAEffects` 가 씬 열기 때 1회 예외** [S] · `PrefabUtility.InstantiatePrefab` 의 parent 가 프리팹 에셋 안이라 거절. 벤더 스크립트의 에디터 타임 재생성 로직. 무해하지만 콘솔에 남는다.
+- **벤더 팩이 원래 들고 오지 않은 참조 129건**(GA 머티리얼 36 등 12 guid) · HEAD 트리에도 없던 셰이더·텍스처. 그 머티리얼이 실제 보이는지 Play 육안으로.
