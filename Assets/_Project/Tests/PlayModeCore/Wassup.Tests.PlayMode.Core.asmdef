@@ -6,7 +6,6 @@
         "Wassup.Runtime",
         "Wassup.Skills",
         "Wassup.UnitAi",
-        "Unity.Mathematics",
         "UnityEngine.UI",
         "Unity.TextMeshPro",
         "UnityEngine.TestRunner",

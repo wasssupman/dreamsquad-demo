@@ -10,7 +10,6 @@
         "Wassup.Editor.MobileBuild",
         "Wassup.SheetSync",
         "Unity.Collections",
-        "Unity.Mathematics",
         "Unity.TextMeshPro",
         "spine-unity",
         "spine-csharp",

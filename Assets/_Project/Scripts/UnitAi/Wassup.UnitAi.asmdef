@@ -1,9 +1,7 @@
 {
     "name": "Wassup.UnitAi",
     "rootNamespace": "Wassup.UnitAi",
-    "references": [
-        "Unity.Mathematics"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
