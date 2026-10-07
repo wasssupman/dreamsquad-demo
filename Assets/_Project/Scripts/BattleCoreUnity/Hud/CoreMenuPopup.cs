@@ -37,7 +37,7 @@ namespace Wassup.BattleCoreUnity.Hud
 
         private RectTransform _panel;
         private Image _dim;
-        private Wassup.UI.Draft.WavePatternStripView _strip;
+        private Wassup.UI.WavePatternStripView _strip;
         private Button _open;
         private TimeLease _lease;
         private bool _paused;
@@ -57,7 +57,7 @@ namespace Wassup.BattleCoreUnity.Hud
         public bool IsOpen => _paused;
 
         /// <summary>브리핑 스트립. 테스트가 「카드 수 = 코어 플랜 웨이브 수」를 증언하는 창이다.</summary>
-        public Wassup.UI.Draft.WavePatternStripView Strip => _strip;
+        public Wassup.UI.WavePatternStripView Strip => _strip;
 
         /// <summary>마지막으로 스트립에 넘긴 플랜의 웨이브 수(카드 상한 12 와 무관한 입력 쪽 수).</summary>
         public int BriefedWaveCount { get; private set; }
@@ -83,7 +83,7 @@ namespace Wassup.BattleCoreUnity.Hud
             var stripRt = CoreHudUi.Rect("WavePatternStrip", transform, new Vector2(0.5f, 0.5f),
                                          new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(10f, 10f));
             CoreHudUi.Stretch(stripRt);
-            _strip = stripRt.gameObject.AddComponent<Wassup.UI.Draft.WavePatternStripView>();
+            _strip = stripRt.gameObject.AddComponent<Wassup.UI.WavePatternStripView>();
 
             _panel = CoreHudUi.Rect("MenuPanel", transform, new Vector2(0.5f, 0.5f),
                                     new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(10f, 10f));
