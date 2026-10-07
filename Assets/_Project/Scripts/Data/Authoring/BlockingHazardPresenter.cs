@@ -261,18 +261,9 @@ namespace Wassup.Data.Authoring
             main.playOnAwake = false;
         }
 
+        // battle-content-finish unit 4 — 원본은 `RuntimeMaterialSet.hazardParticle`(SO 참조). `Shader.Find` 사슬은 빌드 스트리핑에
+        // 걸린다(백로그 BCR/8c). 없으면 null — 플레이스홀더가 마젠타로 보이는 것이 신호다.
         private static Material CreateParticleMaterial(Color color)
-        {
-            var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
-            if (shader == null) shader = Shader.Find("Particles/Standard Unlit");
-            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null) shader = Shader.Find("Standard");
-
-            var material = new Material(shader);
-            material.color = color;
-            if (material.HasProperty("_BaseColor"))
-                material.SetColor("_BaseColor", color);
-            return material;
-        }
+            => Wassup.Rendering.RuntimeMaterialFactory.CreateHazardParticle(color);
     }
 }

@@ -64,9 +64,9 @@ namespace Wassup.UI
         private void EnsureMaterial()
         {
             if (_matInstance != null) return;
-            var sh = Shader.Find("Wassup/UI/CardCrumple");
-            if (sh == null) return; // 폴백: 기본 UI 머티리얼(구김 없음)
-            _matInstance = new Material(sh) { name = "CardCrumpleInst", hideFlags = HideFlags.HideAndDontSave };
+            // battle-content-finish unit 4 — `Shader.Find` 대신 SO 참조 묶음의 복제(`RuntimeMaterialFactory`). 없으면 기본 UI 머티리얼(구김 없음).
+            _matInstance = Wassup.Rendering.RuntimeMaterialFactory.CreateCardCrumpleUi();
+            if (_matInstance == null) return;
             _matInstance.SetFloat("_Unfold", _unfold);
             _matInstance.SetFloat("_CreaseAO", creaseAO);
             material = _matInstance;
