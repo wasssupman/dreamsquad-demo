@@ -2,10 +2,9 @@
 
 > 무엇을 언제 돌리고, 새 테스트를 어디에 둘지.
 
-## 다섯 개의 어셈블리
+## 네 개의 어셈블리
 
-`run_tests` 의 `test_names`/`group_names` 필터는 이 셋업에서 0-match 다.
-**동작하는 유일한 입도는 `assembly_names`** — 그래서 어셈블리가 곧 실행 단위다.
+실행 단위는 어셈블리다 — 배치 CLI 의 `-assemblyNames`, Test Runner 의 어셈블리 노드. (옛 MCP `run_tests` 의 이름 필터는 0-match 였고, 배치 `-testFilter` 는 이 프로젝트에서 검증하지 않았다.)
 
 | 어셈블리 | 무엇 |
 |---|---|
@@ -58,8 +57,8 @@ Code Integrity 가 차단한다(`0x800711C7`, 2026-10-07 실측). 빌드 lane(`B
 - **PlayMode 판정은 에디터 실행으로 한다.** (이력 — 옛 ECS 전투, unit 9 에서 제거: 배치 `-batchmode -nographics`
   에서는 Entities 의 `EntitiesAssetGC` NRE 가 그때 돌던 테스트에 임의 귀속돼 실패가 부풀어 보였다. Entities 패키지가
   빠진 뒤 배치 PlayMode 가 믿을 만한지는 다시 확인하지 않았다 — 확인 전까지는 에디터 실행이 기준이다.)
-- 신규 `.cs` 를 만들었으면 실행 전 `refresh_unity(scope=all)` — `scope=scripts` 로는 .meta 가
-  안 생겨 어셈블리에서 통째로 빠진다.
+- 신규 `.cs` 를 만들었으면 실행 전 에디터가 임포트하게 한다(창 포커스 → refresh) — `.meta` 는 에디터가 만든다. meta 없이는
+  어셈블리에서 통째로 빠진다.
 
 ## 빨강을 만났을 때
 
@@ -99,7 +98,7 @@ atk→`outputs[].magnitude` · attackCooldown · cost · DC 의 percent·magnitu
 
 ## 새 테스트를 넣었으면 **총계를 확인한다**
 
-`run_tests` 결과의 `total` 이 **안 움직이면 그 테스트는 안 돈 것**이다. 초록은 「통과」가 아니라
+결과(XML 의 `total` · Test Runner 의 건수)의 **총계가 안 움직이면 그 테스트는 안 돈 것**이다. 초록은 「통과」가 아니라
 「실행된 것 중 실패가 없다」는 뜻이라, 파일이 컴파일에서 빠지면 **더 초록해 보인다.**
 
 실제 사고(2026-09-05, enemy-detection-range): `EditModeAssets` 에 새 테스트 4건을 넣었는데
