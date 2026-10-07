@@ -59,22 +59,23 @@ namespace Wassup.BattleCoreUnity.View
             PushPhase(director);
         }
 
-        // 격자가 선 뒤 **한 번**. 판이 바뀌면(맵 교체) 드라이버가 새 판을 걸므로 그때 다시 민다.
+        // 보드 평면이 선 뒤 **한 번**. 판이 바뀌면(맵 교체) 드라이버가 새 판을 걸므로 그때 다시 민다.
         private void PushBoard(CameraDirector director)
         {
             if (!BoardSpace.IsConfigured) return;
             var grid = _driver.GridSize;
             if (grid.x <= 0 || grid.y <= 0) return;
 
-            var plane = _driver.BoardGrid;
+            var plane = _driver.BoardPlane;
             if (plane == null) return;
+            float t = _driver.TileSize;
 
             // bounds 는 **플레이 그리드**다. 바닥 렌더러 실측이 아니다 — 그쪽은 주변 데코
-            // 지대까지 포함해(20×12 → 35×32) 카메라가 과하게 물러난다.
-            var b = new Bounds(plane.CellToWorld(new Vector3Int(0, 0, 0)), Vector3.zero);
-            b.Encapsulate(plane.CellToWorld(new Vector3Int(grid.x, 0, 0)));
-            b.Encapsulate(plane.CellToWorld(new Vector3Int(0, grid.y, 0)));
-            b.Encapsulate(plane.CellToWorld(new Vector3Int(grid.x, grid.y, 0)));
+            // 지대까지 포함해(20×12 → 35×32) 카메라가 과하게 물러난다. 셀 모서리 = 평면 로컬 (x·t, y·t).
+            var b = new Bounds(plane.TransformPoint(Vector3.zero), Vector3.zero);
+            b.Encapsulate(plane.TransformPoint(new Vector3(grid.x * t, 0f, 0f)));
+            b.Encapsulate(plane.TransformPoint(new Vector3(0f, grid.y * t, 0f)));
+            b.Encapsulate(plane.TransformPoint(new Vector3(grid.x * t, grid.y * t, 0f)));
             director.SetBoardBounds(b);
 
             // 스테이지가 볼륨을 안 들고 있으면 **조용히 지나가지 않는다** — 씬 Post 를

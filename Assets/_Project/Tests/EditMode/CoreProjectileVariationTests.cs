@@ -119,12 +119,9 @@ namespace Wassup.Tests.EditMode
 
         private void ConfigureBoard()
         {
-            var gridGo = new GameObject("CoreProjectileVariationGrid");
-            _made.Add(gridGo);
-            var grid = gridGo.AddComponent<Grid>();
-            grid.cellLayout = GridLayout.CellLayout.Rectangle;
-            grid.cellSize = Vector3.one;
-            BoardSpace.Configure(float3.zero, 1f, grid);
+            var planeGo = new GameObject("CoreProjectileVariationPlane");
+            _made.Add(planeGo);
+            BoardSpace.Configure(float3.zero, 1f, planeGo.transform);
         }
 
         // 변주 폭은 픽스처가 정한다(시트가 덮는 값 아님). 높이 오프셋 0 — 카메라 유무와 무관하게 자리가 같다.

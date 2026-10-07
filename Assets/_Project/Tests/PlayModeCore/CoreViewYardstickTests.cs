@@ -132,8 +132,9 @@ namespace Wassup.Tests.PlayMode.Core
 
             var cam = Camera.main;
             Assert.IsNotNull(cam);
-            var grid = driver.BoardGrid;
-            Assert.IsNotNull(grid, "보드 격자가 없다 — sim→view 가 성립하지 않는다");
+            var plane = driver.BoardPlane;
+            Assert.IsNotNull(plane, "보드 평면이 없다 — sim→view 가 성립하지 않는다");
+            float t = driver.TileSize;
 
             for (int i = 0; i < 10; i++) yield return null;
 
@@ -151,7 +152,7 @@ namespace Wassup.Tests.PlayMode.Core
             };
             for (int i = 0; i < corners.Length; i++)
             {
-                var vp = cam.WorldToViewportPoint(grid.CellToWorld(corners[i]));
+                var vp = cam.WorldToViewportPoint(plane.TransformPoint(new Vector3(corners[i].x * t, corners[i].y * t, 0f)));
                 Assert.Greater(vp.z, 0f, "판 모서리가 카메라 뒤에 있다");
                 // 여유 0.1 — 프레이밍이 가장자리를 약간 무는 것은 저작의 자유다.
                 // 잘린 판은 이 폭으로 안 들어온다(5a 의 회색 띠는 판 절반이 밖이었다).

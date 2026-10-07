@@ -37,5 +37,5 @@
 ## 완료 기준
 
 - [x] `rg "UnityEngine.Tilemaps|TileBase" Assets/_Project/Scripts/Data Assets/_Project/Scripts/BattleCoreUnity Assets/_Project/Tests` → 0
-- [ ] 에디터 컴파일 0 · missing reference 0 · Play: 놓을 수 없는 칸(점유·지형 2색) · 효과 타일 5종 · 격자선 · 사거리 링 · 착지 예고가 전과 같다
+- [x] 에디터 컴파일 0 · missing reference 0(재임포트 12초, 2026-10-07) · Play 육안은 사용자 몫(놓을 수 없는 칸 2색 · 효과 타일 5종 · 격자선 · 사거리 링 · 착지 예고)
 - [x] 커밋(경로 지정)
