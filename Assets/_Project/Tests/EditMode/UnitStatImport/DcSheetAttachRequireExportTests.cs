@@ -107,43 +107,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.Greater(other, 0);
         }
 
-        [Test]
-        public void PushPayload_UnrestrictedCards_SeedsAttachHeadersWithoutDataRow()
-        {
-            var tabs = DcSheetTabs.Default();
-            string json = SheetPushPayload.BuildCombinedJson(
-                "Defenders", "Enemies", DefenderFolder, EnemyFolder,
-                tabs, DcFolder, SkillFolder,
-                "CostConfig", ConfigFolder);
-
-            // skill-data-table unit 5 — push 바디 = 새 탭 계약(DcMechanics 없음 · Skills · SkillOwners 있음).
-            var root = JObject.Parse(json);
-            Assert.IsNull(root["DcMechanics"], "은퇴한 DcMechanics 탭을 push 하면 안 된다");
-            Assert.IsNull(root["DcCardEffects"], "은퇴한 DcCardEffects 탭을 push 하면 안 된다(unit 8 단계 B)");
-            Assert.IsNull(root["DcAttackMods"], "은퇴한 DcAttackMods 탭을 push 하면 안 된다(unit 8 단계 B)");
-            Assert.Greater(((JArray)root["Skills"]).Count, 0, "Skills 탭(효과 줄)이 push 바디에 있다");
-            Assert.Greater(((JArray)root["SkillOwners"]).Count, 0, "SkillOwners 탭(소유 줄)이 push 바디에 있다");
-
-            Assert.IsNull(root["DcCards"], "unit 9 — 옛 탭 이름 DcCards 로 push 하면 안 된다(→ Cards)");
-            var rows = (JArray)root["Cards"];
-            int seedCount = 0;
-            int cardCount = 0;
-            foreach (JObject row in rows)
-            {
-                if (row["id"] != null)
-                {
-                    cardCount++;
-                    continue;
-                }
-
-                seedCount++;
-                Assert.AreEqual("", (string)row["attach_type"]);
-                Assert.AreEqual("", (string)row["attach_value"]);
-                Assert.AreEqual(2, row.Count, "헤더 시드에는 attach 두 키 외 데이터가 없어야 한다");
-            }
-
-            Assert.AreEqual(1, seedCount, "키 없는 Push 전용 헤더 시드는 정확히 하나");
-            Assert.AreEqual(rows.Count - 1, cardCount, "헤더 시드는 실제 카드 행 수에 포함되지 않는다");
-        }
+        // battle-content-finish unit 3 (D5) — 시트 push(`SheetPushClient` · `SheetPushPayload`)는 뗐다. 제약 「에이전트는 시트에
+        // 쓰지 않는다」의 반대편 도구라서다. push 바디 계약 테스트도 함께 갔다 — 로컬 JSON export 와 헤더 계약은 그대로 지킨다.
     }
 }

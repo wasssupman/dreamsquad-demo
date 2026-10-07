@@ -37,10 +37,8 @@ namespace Wassup.Editor.UnitStatImport
 
         // sheet-export-push unit 4 — Apps Script /exec URL. 쓰기 권한 secret 이라
         // 프로젝트에 커밋하지 않고 에디터 로컬(EditorPrefs)에만 둔다.
-        private const string ScriptUrlPrefsKey = "Wassup.UnitStatImport.ScriptUrl";
 
-        // sheet-export-push unit 7 — CostConfig 탭(신규). DcConfig 와 같은 flat-config
-        // keyed-upsert(id) 라 push 경로에 그대로 얹힌다. 이번 스코프는 export 방향만.
+        // sheet-export-push unit 7 — CostConfig 탭. 시트 → SO 임포트와 SO → JSON export 만 있다(push 는 battle-content-finish 에서 뗐다).
         private const string CostTabPrefsKey = "Wassup.UnitStatImport.CostSheet";
         private const string DefaultCostTab = "CostConfig";
         private const string ConfigFolder = "Assets/_Project/Data/Config";
@@ -49,7 +47,6 @@ namespace Wassup.Editor.UnitStatImport
         private string _defenderSheet = "";
         private string _enemySheet = "";
         private string _dcSheets = "";
-        private string _scriptUrl = "";
         private string _costTab = "";
         private string _statusLog = "";
         private bool _requestInFlight;
@@ -63,7 +60,6 @@ namespace Wassup.Editor.UnitStatImport
             _defenderSheet = EditorPrefs.GetString(DefenderSheetPrefsKey, "Defenders");
             _enemySheet = EditorPrefs.GetString(EnemySheetPrefsKey, "Enemies");
             _dcSheets = EditorPrefs.GetString(DcSheetsPrefsKey, DefaultDcSheets);
-            _scriptUrl = EditorPrefs.GetString(ScriptUrlPrefsKey, "");
             _costTab = EditorPrefs.GetString(CostTabPrefsKey, DefaultCostTab);
             // hotfix ③ — serialized true survives a domain reload while the
             // completed callback does not; reset so the Import button never sticks.
@@ -172,31 +168,6 @@ namespace Wassup.Editor.UnitStatImport
                 }
             }
 
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Push to Sheet (유닛+DC+프리셋+코스트)", EditorStyles.boldLabel);
-            EditorGUI.BeginChangeCheck();
-            _scriptUrl = EditorGUILayout.TextField("Apps Script URL", _scriptUrl);
-            if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(ScriptUrlPrefsKey, _scriptUrl);
-            EditorGUILayout.LabelField("  쓰기 권한 secret — 커밋 금지", EditorStyles.miniLabel);
-
-            // 유닛 탭(Defenders/Enemies) + DC 탭(`DcSheetTabs`)을 한 번에 시트로 push. dcTabs 는 위에서
-            // 계산된 것을 재사용. URL·탭 입력이 온전할 때만 활성.
-            using (new EditorGUI.DisabledScope(_requestInFlight
-                || string.IsNullOrWhiteSpace(_scriptUrl)
-                || string.IsNullOrWhiteSpace(_defenderSheet) || string.IsNullOrWhiteSpace(_enemySheet)
-                || string.IsNullOrWhiteSpace(_costTab)
-                || dcTabs == null))
-            {
-                if (GUILayout.Button(_requestInFlight ? "..." : "Push to Sheet"))
-                {
-                    if (EditorUtility.DisplayDialog("Push to Sheet",
-                        $"유닛 2탭 + DC {DcSheetTabs.Count}탭(Skills · SkillOwners 포함) + CostConfig 탭은 업서트(고아 삭제 안 함, 리포트만).\n계속할까요?",
-                        "Push", "취소"))
-                    {
-                        StartPush(dcTabs);
-                    }
-                }
-            }
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Cost", EditorStyles.boldLabel);
@@ -219,7 +190,7 @@ namespace Wassup.Editor.UnitStatImport
                     });
                 }
             }
-            // unit 7 — export 는 로컬 SO → disk(API URL 불요). 시트 반영은 위 Push 버튼.
+            // unit 7 — export 는 로컬 SO → disk(API URL 불요). 시트 반영은 사용자가 시트에서 직접 한다(push 도구는 뗐다).
             using (new EditorGUI.DisabledScope(_requestInFlight || string.IsNullOrWhiteSpace(_costTab)))
             {
                 if (GUILayout.Button("Export CostConfig SO → JSON"))
@@ -435,38 +406,5 @@ namespace Wassup.Editor.UnitStatImport
             }, log);
         }
 
-        // sheet-export-push unit 4 — 전 8탭 push. payload 조립(동기, 자체 try/catch) 후
-        // SheetPushClient.Push(비동기). 콜백은 성공/거부/전송오류/예외 모두에서 발화하므로
-        // _requestInFlight 가 물리지 않는다(import 버튼과 동일 보장).
-        private void StartPush(string[] dcTabs)
-        {
-            _requestInFlight = true;
-            _statusLog = "Building payload...";
-            Repaint();
-
-            string payload;
-            try
-            {
-                payload = SheetPushPayload.BuildCombinedJson(
-                    _defenderSheet, _enemySheet, DefenderFolder, EnemyFolder,
-                    dcTabs, DcFolder, SkillFolder,
-                    _costTab, ConfigFolder);
-            }
-            catch (System.Exception e)
-            {
-                _statusLog = $"Payload build failed: {e}";
-                _requestInFlight = false;
-                Repaint();
-                return;
-            }
-
-            _statusLog = "Pushing...";
-            SheetPushClient.Push(_scriptUrl, payload, report =>
-            {
-                _statusLog = report;
-                _requestInFlight = false;
-                Repaint();
-            });
-        }
     }
 }
