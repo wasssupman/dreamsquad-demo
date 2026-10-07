@@ -39,7 +39,7 @@ Demo 리포에서 **전투 로직 외 전부를 제거**해 정리본을 만든�
 |---|---|---|
 | 0 | `0_seams.md` | 전투 입구·출구를 값/사건으로 — `MatchEntryInput` · `BattleDriver` 사건 · statics 접기 · `KeyringSim` 이동 · 나가기 알림 |
 | 1 | `1_remove_outgame_code.md` | 아웃게임 코드·테스트 삭제(≈150 .cs). **단위 0 과 한 커밋으로 실행** — 아웃게임이 새 seam 을 쓰도록 바꾸는 중간 어댑터는 다음 단위에서 통째로 지워질 코드라 만들지 않았다(2026-10-07) |
-| 2 | `2_remove_assets.md` | 아웃게임 에셋·컷신·필드·씬·Layer Lab 삭제. GUID 참조 0 |
+| 2 | `2_remove_assets.md` | 아웃게임 에셋·컷신·필드·씬 삭제. GUID 참조 0. **Layer Lab 은 삭제가 아니라 단위 3 추림으로 이관**(디펜더·적 42 유닛의 Spine 스켈레톤이 거기 있다 — 2026-10-07) |
 | 3 | `3_vendor_prune.md` | 벤더 6개를 참조 폐포로 추림(에디터 스크립트 1회) |
 | 4 | `4_docs_and_close.md` | CLAUDE.md·reference·spec 색인 현행화 · 전체 검증 · 종료 |
 
@@ -56,7 +56,8 @@ Demo 리포에서 **전투 로직 외 전부를 제거**해 정리본을 만든�
 
 - **KEEP 으로 재분류**: `Core/AppBootstrap`(60fps 캡·PrimeTween 용량 — 앱 전역 훅, 아웃게임 참조 0) · `UI/UiOverlay`(딤 상수 — 전투 브리핑 스트립이 읽음) · `UI/Layout/` 4(전투 HUD 가 씀) · `Data/{KeyringStyle,DragSwaySettings,UnitKitSummary,UnitLabels,UnitStatReadout}`(전투 뷰·카드 문안이 씀) · `Data/StatImport/SheetFetcher` + `*Applier`(에디터 임포터가 씀 — Q2) · `Core/Dreamcatcher/{CycleDeck,AttachEval}`(코어·빌더가 씀).
 - **이동**: `UI/Outgame/CardCategoryStyle` → `UI/Dreamcatcher/`(손패 카드면이 씀) · `Core/Api/ApiEnvelope` → `Data/StatImport/`(시트 임포터의 서버 프록시 응답 파서, 네임스페이스 `Wassup.Data.StatImport`) · `UI/KeyringSim` → `Presentation/MotionMath`.
-- **단위 2 로 이관**: `Editor/LayerLabPresetImporter`(`UnitVisualDataValidator`·`SpineUpgradeSmoke` 가 참조 — Layer Lab 벤더 삭제와 함께 떼어낸다).
+- **Layer Lab 은 KEEP(추림)**: 조사표의 「피참조 0」은 틀렸다 — `Casual Character_SkeletonData.asset` 이 디펜더 23 · 적 19 의 `skeletonDataAsset` 이다. `Editor/LayerLabPresetImporter` 도 그 외형 임포트 도구라 유지. 단위 3 에서 스켈레톤 세트 + `LayerLab.ArtMaker` 스크립트만 남긴다(2026-10-07).
+- **키링 → KEEP**: `CoreRetireFlightPresenter` 가 `DragSwaySettings.style`(ringSprite · worldRing/CordMaterial) 을 읽는다. 홀로그램 셰이더·머티리얼·스프라이트·`KeyringStyleHologram.asset` 유지(2026-10-07).
 - **옛 `Core/StressMath`**: 코드 소비처가 `UI/ResultScreen` 뿐이라 함께 삭제(데이터 파일의 언급은 주석). 테스트 1건은 코어 `Wassup.BattleCore.StressMath` 로 재조준.
 - **옛 `Core/GimmickSelection`**: 코어 `Owners/GimmickSelection` 과 API 동일 → 테스트를 코어로 재조준하고 옛 파일 삭제.
 

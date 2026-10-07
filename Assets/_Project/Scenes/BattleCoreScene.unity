@@ -459,7 +459,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: bebbf7bccd1f94f2f857b780398898c8, type: 2}
   - {fileID: 11400000, guid: c2156bc97318c334c90169a18c55dc80, type: 2}
   - {fileID: 11400000, guid: aee631d1aa88aa847a311bbf02546792, type: 2}
-  _profile: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   _cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
   _activePool:
   - {fileID: 11400000, guid: b2e8d5f3a96c5f708d4e9f1b3c7a8e21, type: 2}
@@ -563,7 +562,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreMenuPopup
   _driver: {fileID: 302}
-  _outcome: {fileID: 269632759}
 --- !u!114 &405
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1300,54 +1298,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &136373342
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 136373344}
-  - component: {fileID: 136373343}
-  m_Layer: 0
-  m_Name: ResultScreen
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &136373343
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 136373342}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ed3dc6e0fcfbf4a03aaed2b065179f3e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.ResultScreen
---- !u!224 &136373344
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 136373342}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &137040107
 GameObject:
   m_ObjectHideFlags: 0
@@ -1628,11 +1578,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ce29cca5177e4af5a49eaf2e5a49bcc2, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.CoreMatchOutcomePresenter
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.CoreMatchEndBeat
   _driver: {fileID: 302}
-  _resultScreen: {fileID: 136373343}
   _heartHud: {fileID: 11400000, guid: 1df5bd25f175423fa01bc16f433452e3, type: 2}
-  _profile: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
 --- !u!4 &269632760
 Transform:
   m_ObjectHideFlags: 0
@@ -2191,7 +2139,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreHudGate
   _driver: {fileID: 302}
-  _outcome: {fileID: 269632759}
   _hudRoots:
   - {fileID: 400}
   - {fileID: 513531}
@@ -2973,7 +2920,6 @@ SceneRoots:
   - {fileID: 599526117}
   - {fileID: 341322859}
   - {fileID: 1575143366}
-  - {fileID: 136373344}
   - {fileID: 269632760}
   - {fileID: 1978911363}
   - {fileID: 2098208961}
