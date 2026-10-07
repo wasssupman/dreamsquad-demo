@@ -22,5 +22,5 @@
 ## 완료 기준
 
 - [x] `rg -i "tilemap" Assets/_Project --type cs` → 이력 주석(`TilemapMapView` 인용 · spec 이름) 외 0 · `rg "tilemap" Packages/manifest.json` → 0
-- [ ] 에디터 컴파일 0(모듈 제거 뒤) · Play 한 판은 사용자 몫
+- [x] 에디터 컴파일 0(모듈 제거 뒤 전체 재컴파일 19.8초, 2026-10-07 — lock 의존 65) · Play 한 판은 사용자 몫
 - [x] 커밋(2a · lock · 씬 · 2b)

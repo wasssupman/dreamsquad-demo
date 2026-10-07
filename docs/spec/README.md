@@ -127,7 +127,7 @@ code + git history        구현 상세
 
 ## 진행 중 spec
 
-- 없음. 직전 완료 = `demo-diet/`(2026-10-07 — 단위 0~4, 커밋 12) · 그 전 `unity-6-6-upgrade/`(2026-10-07). 다음 후보: somnia-client 이식(`Somnia.Battle.*` 개명 — 세션 메모리 `somnia-migration-goal`). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
+- 없음. 직전 완료 = `tilemap-untangle/`(2026-10-07 — Tile 에셋 껍데기 → Sprite · `GridLayout` 권위 → 보드 평면 Transform + tileSize · Tilemap 패키지/모듈 제거, 단위 0~2) · 그 전 `demo-diet/`(2026-10-07 — 단위 0~4, 커밋 12) · `unity-6-6-upgrade/`(2026-10-07). 다음 후보: somnia-client 이식(`Somnia.Battle.*` 개명 — 세션 메모리 `somnia-migration-goal`). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
 
 ## Follow-up Backlog
 

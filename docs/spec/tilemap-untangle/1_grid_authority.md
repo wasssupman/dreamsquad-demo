@@ -34,5 +34,5 @@
 ## 완료 기준
 
 - [x] `rg "GridLayout|<Grid>|\.Grid\b|BoardGrid" Assets/_Project/Scripts Assets/_Project/Tests` → 동치 테스트 1건(단위 2 에서 삭제) 외 0
-- [ ] 씬에 `Grid:` 블록 0(MenuItem 실행 대기) · 에디터 컴파일 0 · Play: 유닛 배치 위치 · 드래그 고스트 · 카메라 프레이밍이 전과 같다(동치 테스트 초록 — 사용자 Test Runner)
+- [x] 씬에 `Grid:` 블록 0(사용자가 MenuItem 실행, 씬 커밋 `876c35638`) · 에디터 컴파일 0 · Play 육안(유닛 배치 위치 · 드래그 고스트 · 카메라 프레이밍)은 사용자 몫
 - [x] 커밋(경로 지정) `c4d90ff26` — 코드·테스트. 씬은 MenuItem 뒤 별도 커밋
