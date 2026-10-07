@@ -122,12 +122,12 @@ code + git history        구현 상세
   - `battle-core-rebuild/` — 순수 C# 전투 코어 · 계약 13 · 장부(`ledgers/` — `tools/battle-core-rebuild/check_ledgers.py` 가 읽는다)
   - `unified-effect-layer/` — 스킬 = 효과 한 층 · 인계 `6_handoff_summary.md`
   - `skill-data-table/` — 효과 표 · 소유 줄 · 시트 8탭(헤더 정본 `5_sheet_io.md` — `SheetHeaderDocTests` 가 읽는다) · 인계 `6_` · `10_handoff_summary.md`
-- **초기화 뒤 완료된 spec**: `depth-parallax-removal/` — 뎁스맵 패럴랙스 기능 제거(2026-10-01). 의존성 전수표가 README 에 있다(삭제 spec 이라 handoff 없음). · `unity-6-6-upgrade/` — Unity 6000.6.3f1 전환(2026-10-07). 원인 6종 표와 「코어 경계」 보장의 이동(컴파일러 → 테스트 + 헤드리스)이 README 에 있다.
+- **초기화 뒤 완료된 spec**: `depth-parallax-removal/` — 뎁스맵 패럴랙스 기능 제거(2026-10-01). 의존성 전수표가 README 에 있다(삭제 spec 이라 handoff 없음). · `unity-6-6-upgrade/` — Unity 6000.6.3f1 전환(2026-10-07). 원인 6종 표와 「코어 경계」 보장의 이동(컴파일러 → 테스트 + 헤드리스)이 README 에 있다. · `demo-diet/` — 전투 로직만 남기는 정리(2026-10-07, 단위 0~4): 입구 값 `MatchEntryInput` · 출구 사건 seam, 아웃게임 코드/에셋 삭제 전수표, 벤더 7 참조 폐포 추림. 이 정리본이 somnia-client 로 옮겨 가는 payload 다.
 - 옛 문서가 꼭 필요하면 태그 `archive/pre-spec-reset` 에서 꺼낸다(`git show archive/pre-spec-reset:docs/spec/<slug>/README.md`). 남은 문서 안의 옛 spec 이름 · 경로도 그 태그 기준이다. 평소엔 읽지 않는다.
 
 ## 진행 중 spec
 
-- `demo-diet/`(2026-10-06~ — 전투 로직만 남기는 정리. 단위 0+1 완료 `df85f0151`, 단위 2~4 남음 — 6.6 위에서). 직전 완료 = `unity-6-6-upgrade/`(2026-10-07 — 6000.6.3f1 핀 · Mathematics 엔진 모듈화 대응 · unity-mcp 제거. 커밋 `08dbd96f9` · `dc607b059` · `d73c0d86e` + 문서). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
+- 없음. 직전 완료 = `demo-diet/`(2026-10-07 — 단위 0~4, 커밋 12) · 그 전 `unity-6-6-upgrade/`(2026-10-07). 다음 후보: somnia-client 이식(`Somnia.Battle.*` 개명 — 세션 메모리 `somnia-migration-goal`). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
 
 ## Follow-up Backlog
 
@@ -195,7 +195,7 @@ code + git history        구현 상세
 - **`IntentApplier` 포탈 판정의 몸 반영 여부** [S] · 대상 몸이 붙는지 판정 산식(§8-7)으로 재확인. (`BCR/9c`)
 - **효과 census 미배정** [S] · `regenPerSec` 음수 고정 처리 · 결합식 바닥/천장 4개 SO 저작화.
 - **틱 30Hz 실측 · 트리거 연쇄 깊이 근거** [S]
-- **`[Explicit]` 라이브 서버 테스트 격리** [S] · Unity 러너 어셈블리 실행에도 돌아 실서버 가입을 시도한다(`AuthE2ETest`).
+- ~~`[Explicit]` 라이브 서버 테스트 격리~~ · `demo-diet` 가 아웃게임 테스트 어셈블리째 지웠다 — somnia 이관.
 - **헤드리스 lane 경로를 워크트리에서 떼기** [S] · csproj 4 의 `UnityScriptAssemblies` 기본값이 `wassup-core` 를 든다. 워크트리 정리 **전**에 main 으로. (`BCR/10`)
 
 **(다) 데모 UI/에셋이라 보류** — UI · 에셋이 정본이 되는 시점에.
@@ -207,8 +207,8 @@ code + git history        구현 상세
 - **EditMode 선행 빨강 3** · 카드 아트 중복(개사기 · 별똥 타격 전용 아트 없음) · 카드 설명 어긋남 7장 · `bomb_man` 문안. 시트 · 아트에서 고친다.
 - **Apps Script 업서트 키** · 다음 Push **전에** 새 탭(`Skills` = `effect_id` · `SkillOwners` = `owner_kind`+`owner_id`+`slot` · `Cards` = `id`). (`skill-data-table/5_sheet_io.md`)
 - **효과 한국어 이름 `kind_ko` 43 검토.**
-- **Android QA 빌드** · keystore 숨김 입력 · clean 트리 · 에디터 종료가 필요하다. (`BCR/8b` · `BCR/9`)
-- **실제 랭킹 확인**(로그인 계정 판) · **실서버 쓰레기 계정 정리**(`[Explicit]` 라이브 테스트가 가입을 시도했다).
+- ~~Android QA 빌드~~ · 모바일 빌드 스크립트(`scripts/mobile/`)는 `demo-diet` 에서 제거 — somnia CI 이관.
+- ~~실제 랭킹 확인 · 실서버 쓰레기 계정 정리~~ · somnia 이관(이 리포엔 서버 코드가 없다).
 - **규칙 재결정 — 분류표 보류 30행**(질문 20개로 묶여 있다 — `BCR/ledgers/rules.md` 「보류 항목의 재결정 질문 목록」) · **기본값 박제 5**(보스 도약 착지 선정의 사각 자 · 자는 유닛의 주기 스킬 · 저작 `CcOnHit` 이 탄을 타나 · 실드 부여 한 틱 지연 · 폭탄맨 · 회복 산출물의 공격자 배율).
 - **방향 지정 배치(facing) 미이식** · 커맨드 자리는 있고 조준 입력이 없다. (`BCR/5b`)
 - **마음 N개 공유 체력** [M] · `HeartMeter` 가 체력을 들어 이사 비용 0. (rules X29 · E13)

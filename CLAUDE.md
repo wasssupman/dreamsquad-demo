@@ -12,7 +12,8 @@
 # Defense Tournament (wassup)
 
 비동기 토너먼트 모바일 디펜스 게임. **프로덕션 초기 단계**다 — 지금 목표는 코드를 정식 설계에 맞추는 것이고,
-아웃게임·인게임 UI·에셋은 데모용이라 정본이 아니다. 방향은 서버 권위 실시간 게임 서버다: 매치 설정을 서버에서 받고
+아웃게임(로그인·로비·프로필·토너먼트·결과 화면)은 이 리포에 **없다** — somnia-client 가 담당하고, 이 리포는 전투만 든다(`demo-diet` 2026-10-07).
+인게임 UI·에셋은 데모용이라 정본이 아니다. 방향은 서버 권위 실시간 게임 서버다: 매치 설정을 서버에서 받고
 핵심 로직은 서버에서 돌며, 클라는 표시와 커맨드 전송을 맡는다. 그래서 전투 코어의 커맨드·사건·정의표가 곧 서버 계약 후보다.
 
 현재 설계의 요약은 `docs/blueprint/README.md` 에서 시작한다.
@@ -31,7 +32,7 @@
 ## 스택 — 기본값과 다른 것
 
 - Unity `6000.6.3f1` · URP 17.6 · **Input System 전용**(레거시 `Input` 아님) · spine-unity **4.3** 런타임(export 는 같은 major.minor — `Assets/Spine/version.txt`) · 트윈은 PrimeTween.
-- 전투 = 순수 C# 코어 `Assets/_Project/Scripts/BattleCore/`(asmdef `Wassup.BattleCore`) + Unity 층 `Scripts/BattleCoreUnity/`(시간 `BattleDriver` · 정의표 물질화 `MatchDefinitionBuilder` · 뷰 · 입력). 전투 밖(로비·아웃게임·UI)은 MonoBehaviour.
+- 전투 = 순수 C# 코어 `Assets/_Project/Scripts/BattleCore/`(asmdef `Wassup.BattleCore`) + Unity 층 `Scripts/BattleCoreUnity/`(시간 `BattleDriver` · 정의표 물질화 `MatchDefinitionBuilder` · 뷰 · 입력). 전투 입구는 값 `MatchEntryInput`, 출구는 사건(`BattleDriver.MatchStarted/DeckLocked/MatchFinished/MatchAbandoned`) — 바깥(somnia App)은 그 둘로만 통한다. 전투 UI·연출은 MonoBehaviour.
 - Entities/ECS 전투는 제거됐다. Burst·Collections 패키지는 남아 있다(URP 의존 + 맵 빌드가 `NativeArray`·`FixedList` 를 직접 쓴다) — 전투 코어에서는 쓰지 않는다.
 - 코드 주석의 「옛 `BattleBridge.X` 의 후계」 · 옛 spec 이름 꼬리표는 이력이다. 현재 동작은 코드 본문으로 확인한다. 「CLAUDE.md 제약 13」 같은 옛 번호는 `docs/reference/battle-core-architecture.md` §8 머리의 대조표로 찾는다.
 
@@ -44,7 +45,7 @@
 
 ## 데이터 — 값의 정본
 
-- 유닛 스탯·스킬·카드 값의 정본은 **구글 시트**다. 로그인/로비 진입 임포트가 SO 를 메모리에서 덮는다 — SO 파일만 고치면 되돌아가고, Play 중의 파일 수정은 조용히 무시된다. 시트와 에셋은 한 세트로 맞아야 한다(시트 쓰기는 제약 「에이전트는 시트에 쓰지 않는다」).
+- 유닛 스탯·스킬·카드 값의 정본은 **구글 시트**다. 시트는 에디터 임포터(`Editor/UnitStatImport`)가 SO 파일에 쓴다(로그인/로비 진입의 런타임 덮어쓰기는 `demo-diet` 에서 제거). SO 파일만 고치면 다음 임포트에 되돌아간다. 시트와 에셋은 한 세트로 맞아야 한다(시트 쓰기는 제약 「에이전트는 시트에 쓰지 않는다」).
 - 그래서 스탯·스킬·VFX 수치는 SO·시트·프리팹에 둔다. 코드 리터럴은 밸런싱에서 안 보인다. 테스트도 밸런스 수치를 리터럴로 박지 않는다(부호·배율·상대 비교·구조로 단언).
 - 시트 임포터는 대부분 미리보기 없이 즉시 에셋에 쓴다(`Skills`/`SkillOwners` 만 diff 미리보기가 있다). 시트와의 대조는 `curl` 읽기 전용으로. 탭·헤더 정본은 `docs/spec/skill-data-table/5_sheet_io.md`.
 - 저작 SO → 정의표 매핑이 빠지면 기본값 0 으로 조용히 산다(배치가 공짜였다). 정의표 필드를 늘리면 빌더 매핑 테스트를, 저작 enum 을 코어가 미러하면 번호 핀 테스트를 같은 커밋에 둔다.
@@ -60,13 +61,11 @@
 - `EditorSceneManager.SaveScene` · `AssetDatabase.SaveAssets()` 는 남의 미저장 WIP 와 임포터가 메모리에 덮은 값까지 디스크로 민다. 저장은 `SaveAssetIfDirty(대상)` 로, 씬 검증은 가능하면 저장 없이 in-memory 로. 열린 씬에 배선을 영속해야 하는데 손대기 전부터 씬이 dirty 였으면 `lessons/02` 의 delta 격리(스냅샷 → HEAD 로 되돌림 → 내 변경만 재적용 → 커밋 → 복원), 아니면 SaveScene 해도 된다(남의 헝크는 커밋 때 「git」 제약대로 거른다).
 - unity-mcp 패키지는 6.6 전환(2026-10-07, `docs/spec/unity-6-6-upgrade/`)에서 뺐다 — 이 리포엔 MCP 가 없다(이식 뒤 somnia 의 `com.unity.ai.assistant` 를 쓴다). 에디터가 닫혀 있을 때의 테스트는 배치 CLI(`docs/reference/test-procedure.md` 「배치」). 에디터 공유·포커스·Reload 모달·워크트리별 인스턴스 교훈은 `docs/reference/lessons/01-unity-mcp-operation.md`(옛 MCP 기준)에 남아 있다.
 - `Assets/Screenshots/` 안은 비추적 스크래치다 — 폴더째 지우지 않는다(복구 불가).
-- e2e 스모크는 게스트여도 이 머신의 실제 프로필에 판을 기록한다 — 전후로 프로필을 백업·복원한다.
 
 ## 검증
 
-- lane: `BattleCore/` → `Wassup.Tests.EditMode.Core`(Unity 없이는 헤드리스 `tools/battle-core-rebuild/headless/`) · `BattleCoreUnity/` → 거기에 `PlayMode.Core` · 아웃게임 → `EditMode` · 에셋·시트 → `EditMode.Assets`. 상세 `docs/reference/test-procedure.md`.
+- lane: `BattleCore/` → `Wassup.Tests.EditMode.Core`(Unity 없이는 헤드리스 `tools/battle-core-rebuild/headless/`) · `BattleCoreUnity/` → 거기에 `PlayMode.Core` · 전투 밖 순수 계산(맵 빌드·카메라 수학·UI 레이아웃) → `EditMode` · 에셋·시트 → `EditMode.Assets`. 상세 `docs/reference/test-procedure.md`.
 - 기본은 EditMode 까지다. PlayMode 는 `Wassup.Tests.PlayMode.Core` 만 돌리고, 에디터를 수 분 점유하니 lane 표에 있어도 사용자에게 묻고 돌린다.
-- 아웃게임 `Wassup.Tests.PlayMode` 는 돌리지 않는다 — Unity 러너가 `[Explicit]` 을 거르지 않고 이름 지정 실행은 0-match 라, 돌리면 실서버에 가입을 시도한다(격리는 백로그 · 같은 훅이 거절한다).
 - 새 테스트를 넣었으면 `total` 이 늘었는지 본다. 안 늘었으면 테스트가 아니라 컴파일 실패다(`read_console` 에서 `error CS`).
 - 골든은 Unity 에서만 굽고 대조한다(Mono 의 float 이 .NET 과 갈린다). 헤드리스 lane 은 Golden 을 뺀다.
 - 알려진 선행 빨강은 `docs/spec/README.md` 백로그 「(마) 사용자 몫」에 있다. 거기 없는 빨강은 회귀로 본다. 카드 전체를 한 번에 단언하는 집계형 테스트는 실패 개수가 같아도 새 카드가 섞일 수 있다 — 실패 메시지의 id 목록까지 대조한다(카드 효과 수치를 바꾸면 카드 설명 문안 테스트가 그 경우다).

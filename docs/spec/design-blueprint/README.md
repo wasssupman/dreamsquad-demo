@@ -27,7 +27,7 @@ blueprint 는 현재 설계의 입구(지도)다. 「정식 프로젝트로 옮�
 
 ## 후속 후보
 
-- **reference 정합** — 설계 전환 전에 쓴 문서 판정(유지 · 흡수 · 삭제): `dreamcatcher-portability.md` · `review-skill-comparison.md` · `드림캐쳐_각성안_최종스펙_v1.md` · `keyring-portability.md` · `arknights-defense-mechanics.md`. `object-pipeline-map.md` 는 제약 번호 참조만 고쳤고 옛 전투 이름은 아직 섞여 있다.
+- **reference 정합** — 설계 전환 전에 쓴 문서 판정(2026-10-07 `demo-diet` 단위 4): `keyring-portability.md`(로비 키링) · `review-skill-comparison.md`(옛 리뷰 도구 비교) **삭제** · `dreamcatcher-portability.md` · `arknights-defense-mechanics.md` **유지**(전투 메커닉 · 적 이동 설계 참고) · `드림캐쳐_각성안_최종스펙_v1.md` 는 사용자 확인 대기. `object-pipeline-map.md` 는 제약 번호 참조만 고쳤고 옛 전투 이름은 아직 섞여 있다.
 - **보관 자료 처분**(사용자 결정) — 로컬 브랜치 `blueprint` · `prd.zip`. (`docs/production-transition/` 은 2026-10-01 사용자 결정으로 전용 검사 도구와 함께 삭제 — 필요하면 태그 `archive/pre-spec-reset`.)
 - ~~기계 장치로 옮길 가드레일~~ — 2026-10-01 적용: `.claude/settings.json` 의 `git push` 확인창 · 강제 push / `--amend` 거절 + `.claude/hooks/guardrails.mjs`(옵션이 뒤에 붙은 강제 push · 아웃게임 PlayMode `run_tests` · `refresh_unity mode=force` 거절). 「경로 없는 커밋 거절」은 헝크 섞인 파일의 유일한 올바른 절차를 막아 넣지 않았다.
 - ~~OMC 세션 시작 훅의 CLAUDE.md 중복 주입~~ — 2026-10-01 `AGENTS.md` 를 심링크에서 `CLAUDE.md` 안내 두 줄로 바꿔 해소(OMC 는 루트 `AGENTS.md` 를 무조건 주입한다). 자동 메모리의 ECS 시절 항목도 같은 날 정리(기기 로컬). 남은 것: `/doctor prompt-audit`.

@@ -9,11 +9,10 @@
 
 | 어셈블리 | 무엇 |
 |---|---|
-| `Wassup.Tests.EditMode` | 전투 밖 순수 계산(맵 빌드·카메라 수학·프로필·UI 레이아웃 등) + 합성 픽스처 UI. **실제 프로젝트 에셋을 로드하지 않는다.** 옛 ECS 전투 테스트가 `battle-core-rebuild` unit 9 에서 대량 삭제돼(목록 = `docs/spec/battle-core-rebuild/ledgers/retire-set.md` 5번 묶음) 전보다 훨씬 작다 |
+| `Wassup.Tests.EditMode` | 전투 밖 순수 계산(맵 빌드·카메라 수학·UI 레이아웃 등) + 합성 픽스처 UI. **실제 프로젝트 에셋을 로드하지 않는다.** 옛 ECS 전투 테스트가 `battle-core-rebuild` unit 9 에서 대량 삭제돼(목록 = `docs/spec/battle-core-rebuild/ledgers/retire-set.md` 5번 묶음) 전보다 훨씬 작다 |
 | `Wassup.Tests.EditMode.Assets` | 실에셋(SO·맵·덱·카탈로그·프리팹) 저작 검증 |
 | `Wassup.Tests.EditMode.Core` | **전투 코어**(`Wassup.BattleCore`)의 규칙. 엔진을 안 쓰고 씬도 안 연다 |
 | `Wassup.Tests.PlayMode.Core` | 전투 씬(`BattleCoreScene`) 부팅 스모크 · 뷰 방출 순서 · 틱 발행률 · 배치 사슬 · 씬 배선 · 뷰가 자를 새로 만들지 않았나 |
-| `Wassup.Tests.PlayMode` | **아웃게임 PlayMode · 씬 부팅 없음.** 남은 것은 `AuthE2ETest`·`DeckInfoPresetApplyLiveE2ETest`(둘 다 `[Explicit]` — 라이브 서버가 필요하다. ⚠ Unity Test Runner 는 **어셈블리 단위 실행에서 `[Explicit]` 을 걸러 주지 않는다**(NUnit 어댑터의 알려진 제한) — 어셈블리째 돌리면 둘이 딸려 돌아 환경 빨강이 나고 `AuthE2ETest` 는 실서버에 가입을 시도한다. 이름 지정 실행은 위 0-match 라 우회로가 아니다 — 이 어셈블리는 `[Explicit]` 격리(백로그) 전까지 돌리지 않는다)·`PresetBarPopupLayerTest`. 옛 전투 씬을 부팅하던 테스트는 unit 9 에서 은퇴했다(`retire-set.md` 7번 묶음) |
 
 
 **헤드리스 lane**(`tools/battle-core-rebuild/headless/`)은 위 어셈블리와 **별개**다 — 코어를 .NET 으로
@@ -35,7 +34,7 @@ Code Integrity 가 차단한다(`0x800711C7`, 2026-10-07 실측). 빌드 lane(`B
 두 인스턴스가 동시에 임포트하면 메모리(32 GB)가 모자라 죽는다. 배치 PlayMode.Core 는 포인터가 없어 드래그 미리보기 테스트 7건이 항상 빨갛다(환경, 회귀 아님).
 
 **lane 판별 한 줄**: 바꾼 파일이 `Scripts/BattleCore/` 면 `EditMode.Core`(+ 헤드리스),
-`Scripts/BattleCoreUnity/` 면 거기에 `PlayMode.Core` 를 더한다. 아웃게임(로비·프로필·토너먼트 UI)이면 `EditMode`,
+`Scripts/BattleCoreUnity/` 면 거기에 `PlayMode.Core` 를 더한다. 전투 밖 순수 계산(맵·카메라·UI 레이아웃)이면 `EditMode`,
 에셋·시트면 `EditMode.Assets`.
 
 `PlayMode.Core` 는 씬을 `EditorSceneManager.LoadSceneAsyncInPlayMode` 로 연다(`Tests/PlayModeCore/CoreSceneFixture.cs`).
@@ -45,12 +44,12 @@ Code Integrity 가 차단한다(`0x800711C7`, 2026-10-07 실측). 빌드 lane(`B
 
 | 상황 | 실행 | 시간 |
 |---|---|---|
-| 아웃게임 코드 변경 루프 중 | `assembly_names=["Wassup.Tests.EditMode"]` | 초 단위 |
-| **전투 코어 변경 후** | `assembly_names=["Wassup.Tests.EditMode.Core"]` (Unity 없이 먼저 보려면 헤드리스) | 초 단위 |
-| **전투 Unity 층(드라이버·뷰 풀·입력) 변경 후** | 위 + `mode="PlayMode" assembly_names=["Wassup.Tests.PlayMode.Core"]` | 분 단위 |
-| **시트 임포트·에셋·맵·콘텐츠 편집 후** | 위 + `["Wassup.Tests.EditMode.Assets"]` | 초 단위 |
-| 작업 단위 완료·커밋 전 | `assembly_names` 생략 = EditMode 전체. 전투 Unity 층을 건드렸으면 `PlayMode.Core` 를 사용자에게 묻고 | 분 단위 |
-| spec 종료·머지 전 | `mode="PlayMode" assembly_names=["Wassup.Tests.PlayMode.Core"]` — 사용자에게 묻고 돌린다. 아웃게임 `PlayMode` 는 `[Explicit]` 격리(백로그) 전까지 돌리지 않는다 | 분 단위 |
+| 전투 밖 코드(맵 빌드·카메라·UI 레이아웃) 변경 루프 중 | `-assemblyNames Wassup.Tests.EditMode` | 초 단위 |
+| **전투 코어 변경 후** | `-assemblyNames Wassup.Tests.EditMode.Core` (Unity 없이 먼저 보려면 헤드리스) | 초 단위 |
+| **전투 Unity 층(드라이버·뷰 풀·입력) 변경 후** | 위 + `-testPlatform PlayMode -assemblyNames Wassup.Tests.PlayMode.Core` | 분 단위 |
+| **시트 임포트·에셋·맵·콘텐츠 편집 후** | 위 + `-assemblyNames Wassup.Tests.EditMode.Assets` | 초 단위 |
+| 작업 단위 완료·커밋 전 | `-assemblyNames` 생략 = EditMode 전체. 전투 Unity 층을 건드렸으면 `PlayMode.Core` 를 사용자에게 묻고 | 분 단위 |
+| spec 종료·머지 전 | `-testPlatform PlayMode -assemblyNames Wassup.Tests.PlayMode.Core` — 사용자에게 묻고 돌린다. | 분 단위 |
 
 - **카드(시트·SO) 편집 후** Assets lane 의 `CardEffectWitnessTests`(카드 한 장 = 케이스 하나 · 붙이고/시전하고 강제 발동해 효과 종류가 걸리나)와 `CardBakeSnapshotTests`(굳힌 굽기 텍스트와 같나)를 본다. 스냅샷이 빨갛고 **의도한 변경이면** 메뉴 `Wassup/BattleCore/Debug/카드 스냅샷 갱신` → `Tests/EditModeAssets/Fixtures/card_bake_snapshot.txt` diff 를 같은 커밋에 싣는다(테스트는 파일을 쓰지 않는다).
 - **유닛 · 적 규칙(소유 줄 · 효과 SO) 편집 후** 같은 lane 의 `BindingBakeSnapshotTests`(방어유닛 · 적 굽기 규칙 줄 + 카드 굽기 로그 = `Tests/EditModeAssets/Fixtures/binding_bake_snapshot.txt`)를 본다. 카드 스냅샷과 **갱신 방법이 다르다** — 메뉴가 없고 **테스트가 파일을 쓴다**: 파일이 없으면 구워 쓰고 「기준선 생성됨 — 커밋 필요」로 빨갛게 끝난다. 의도한 변경이면 파일을 지우고 다시 돌린 뒤 diff 를 같은 커밋에 싣는다. SO 를 읽으므로 Unity 에서만 구워진다(헤드리스 불가).
@@ -83,7 +82,7 @@ PlayMode 도 같다 — 알려진 선행 실패는 가장 최근 spec 인계의 
 
 밸런스 시트(`UnitStatImportDto`·`DcSheetImportDto` 가 덮는 필드 — health · attackRange ·
 atk→`outputs[].magnitude` · attackCooldown · cost · DC 의 percent·magnitude·duration 등)는
-**로그인 자동 임포트가 매번 에셋에 덮어쓴다.** 그 값을 리터럴로 못박으면 아무 회귀도
+**시트 임포트가 에셋 값을 덮어쓴다(값의 정본은 시트).** 그 값을 리터럴로 못박으면 아무 회귀도
 막지 못하면서 밸런스 패스마다 테스트가 빨개진다.
 
 - 쓰지 말 것: `Assert.AreEqual(12f, unit.outputs[0].magnitude)`

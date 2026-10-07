@@ -16,18 +16,18 @@
 
 - **프로덕션 초기.** 지금 하는 일은 코드를 정식 설계에 맞추는 것이다(결정 ⑩ — `docs/spec/battle-core-rebuild/README.md`).
 - **정본으로 다듬는 대상**: 전투 코어 · 정의표(`MatchDefinition`) · 커맨드와 사건 · 효과 표와 소유 줄 · 시트 스키마.
-- **데모(정본 아님)**: 아웃게임 UI · 인게임 UI · 에셋. 바꿔도 되고, 설계 근거로 삼지 않는다.
+- **데모(정본 아님)**: 인게임 UI · 에셋. 바꿔도 되고, 설계 근거로 삼지 않는다. 아웃게임은 이 리포에 없다(`demo-diet` 2026-10-07 — somnia-client 가 담당).
 - **방향**: 서버 권위 실시간 게임 서버. 서버가 매치 설정을 주고 핵심 로직을 돌리며, 클라는 표시 + 커맨드 전송을 맡는다. **커맨드가 곧 서버 로직의 키워드**다. CI 는 시기상조.
-- **지금 서버와 닿는 곳**: 로그인(Firebase 익명 가입 → 게임 서버 sign-in) · 토너먼트 참가 · 결과 제출 · 랭킹 조회 · 시트 읽기 프록시. 판 자체는 아직 클라에서 돈다.
+- **서버와 닿는 곳**: 이 리포엔 없다. 로그인 · 토너먼트 참가 · 결과 제출 · 랭킹은 somnia 아웃게임이 맡고, 전투는 입구 값(`MatchEntryInput`)과 출구 사건(`BattleDriver.MatchFinished(MatchOutcome)` 등)으로만 바깥과 통한다. 시트 읽기는 에디터 임포터(프록시 응답 파서 `Data/StatImport/ApiEnvelope`)만. 판 자체는 클라에서 돈다.
 
 ## 3. 한 판의 생애
 
-1. **로비** — 로그인 게이트를 지나 스쿼드(유닛 + 드림스톤)와 드림캐쳐 덱을 프리셋으로 고른다. START 전에 편성 검사(`LoadoutGate`)가 막는다. (`UI/Outgame/OutgameMenuController` · 프로필 `Core/Profile/`)
-2. **참가 신청** — 계정이면 서버가 시도 id 와 **토너먼트 시드**를 준다. 게스트 · 테스트 모드 · 계정의 첫 판은 신청을 건너뛰고 아무것도 제출하지 않는다(첫 판은 서버 오류 우회 — 결정 ⑦-1). (`Core/Api/TournamentMatchReporter`)
+1. **입구** — 바깥(somnia 로비)이 스쿼드(유닛 + 드림스톤) · 드림캐쳐 덱 · 시드를 값 `MatchEntryInput` 으로 넘긴다(편성 검사 · 프리셋 · 로그인은 아웃게임 소관). 입력이 없으면 `BattleDriver` 의 저작 필드가 기본값이다. (`BattleCoreUnity/MatchEntryInput` · `MatchEntryContext`)
+2. **시드** — 토너먼트 시드는 `MatchEntryInput.MapSeed` 로 들어온다(참가 신청 · 시도 id 는 아웃게임 소관). 없으면 드라이버의 고정 시드.
 3. **판 조립** — 모드 SO 와 저작 SO 를 정의표로 굽고(`MatchDefinitionBuilder`), 시드가 맵과 그 맵에 짝지어진 적 덱 · 웨이브 플랜을 고른다(전원 동일). (`BattleCoreUnity/BattleDriver` · `MatchEntry`)
 4. **판** — 카운트다운 뒤 제한시간 동안 실시간. 코어(`BattleMatch`)가 고정 틱으로 돌고, 입력은 커맨드로 들어가고, 뷰는 사건을 받아 그린다.
-5. **종료** — 판을 끝내는 통로는 시간 만료 · 마음 붕괴 둘이고, 유저 제출은 언제든 빠져나가는 절차 밖 탈출구다(코드상 종료 사유는 이 셋뿐). 어느 쪽이든 그때까지의 처치 수가 결과다. 계정 판이면 점수 + 덱 스냅샷(id 만)을 제출하고 그 토너먼트의 랭킹을 받는다. 중도 이탈은 0점 제출. ([`../reference/score-formula.md`](../reference/score-formula.md))
-6. **로비 복귀** — 결과 화면에서. 제출이 실패했거나 판 도중 끊긴 시도는 다음 로비 진입 때 0점으로 닫는다 — 서버는 열린 시도가 있으면 다음 참가를 막기 때문이다(`Core/Api/PendingMatchStore` · `TournamentMatchReporter.ReconcilePending`).
+5. **종료** — 판을 끝내는 통로는 시간 만료 · 마음 붕괴 둘이고, 유저 제출은 언제든 빠져나가는 절차 밖 탈출구다(코드상 종료 사유는 이 셋뿐). 어느 쪽이든 그때까지의 처치 수가 결과다. 결과는 사건 `MatchFinished(MatchOutcome)` 으로 나가고(덱 id 는 `DeckLocked`), 제출 · 랭킹은 구독자(somnia) 몫. 중도 이탈은 `Abandon()` → `MatchAbandoned`. ([`../reference/score-formula.md`](../reference/score-formula.md))
+6. **판 뒤** — 이 리포엔 결과 화면이 없다. 판이 끝나면 HUD 가 마지막 점수를 보여 주고 멈춘다(`CoreMatchEndBeat` 의 붕괴 박자만). 복귀 · 미제출 시도 정리는 somnia 아웃게임 소관.
 
 ## 4. 시스템 지도
 
@@ -50,16 +50,13 @@
 | 매치 모드 | 목표 종류(enum)를 고르는 SO. 현행 라이브는 하나(`KillScoreTimed`) | `Data/Modes/MatchMode_KillScore3Min.asset` · `docs/spec/battle-core-rebuild/match-mode-design.md` | `Scripts/BattleCore/Match/ModeDef` |
 | 시간 | 정지 · 슬로모는 도메인별 lease. 전투는 틱 발행률로 반영 | — | `Scripts/Core/TimeControl/TimeManager` · `BattleDriver` |
 | 뷰 · 연출 | 사건을 받아 그리는 뷰 풀들. 순서는 한 파일 | [`object-pipeline-map.md`](../reference/object-pipeline-map.md) · 무기 궤적 [`weapon-trail-authoring.md`](../reference/weapon-trail-authoring.md) | `Scripts/BattleCoreUnity/View/` · `ViewOrder` |
-| 로그인 · 세션 | 게스트(저장 없음) · Firebase 계정 · 이름 복구. 토큰은 서버가 401/403 을 줄 때만 갱신 | 서버 | `Scripts/Core/Api/UserSession` · `UI/Outgame/LoginPanelView` |
-| 프로필 · 프리셋 | 기기 로컬 프로필 하나(스쿼드 · 덱 프리셋). 빈 칸만 기본 편성으로 채운다 | `persistentDataPath/profile.json` · 덱 규칙 `Data/Dreamcatcher/DeckRuleConfig_Default.asset` | `Scripts/Core/Profile/` · `Scripts/Core/Squad/` |
-| 토너먼트 | 참가 → 제출(점수 + 덱 id) → 랭킹 · 히스토리. 제출이 실패한 시도는 다음 로비 진입 때 0점으로 닫힌다(실제 점수 재전송 없음) | 서버 | `Scripts/Core/Api/TournamentApi` · `UI/Outgame/TournamentHistoryPanel` |
+| 바깥과의 경계 | 입구 값 `MatchEntryInput`(스쿼드 · 드림스톤 · 덱 · 플랜 · 맵 · 시드) · 출구 사건 `MatchStarted` · `DeckLocked` · `MatchFinished(MatchOutcome)` · `MatchAbandoned`. 로그인 · 프로필 · 토너먼트는 somnia | [`../spec/demo-diet/0_seams.md`](../spec/demo-diet/0_seams.md) | `Scripts/BattleCoreUnity/MatchEntryInput` · `BattleDriver` |
 | 테스트 · 골든 | 어셈블리 다섯 + 헤드리스 lane. 골든은 Unity 에서만 | [`test-procedure.md`](../reference/test-procedure.md) | `Tests/` · `Scripts/BattleCore/Harness/` |
 
 ## 5. 값이 흐르는 길
 
 ```
 구글 시트(8탭) ──에디터 임포트(파일에 씀)──▶ ScriptableObject ──MatchDefinitionBuilder──▶ 정의표(plain) ──▶ 전투 코어
-        └──로비 진입 시 런타임 갱신(메모리만 · 개발 빌드와 에디터)──┘
 ```
 
 - 시트가 밸런스 값의 정본이고, SO 는 그 사본이다. 탭 · 헤더 · 업서트 키의 정본은 `docs/spec/skill-data-table/5_sheet_io.md`.
@@ -83,7 +80,7 @@
 
 상세와 전체 목록은 `docs/spec/README.md` 「Follow-up Backlog」. 여기는 방향을 바꿀 수 있는 것만.
 
-- **서버 권위 spec**(아직 없음) — 열면 자연 해소되는 묶음: 토너먼트 맵 결정권(지금은 클라 우선순위 사슬) · 서버 API 확장(지금은 모드 · 리더보드 id 를 보내지 않는다) · 라이브 판 커맨드 기록과 리플레이 · 프로필 저장 원자성.
+- **서버 권위 spec**(아직 없음) — 열면 자연 해소되는 묶음: 토너먼트 맵 결정권(지금은 클라 우선순위 사슬) · 라이브 판 커맨드 기록과 리플레이. (서버 API · 프로필 저장은 somnia 소관.)
 - **규칙 재결정 대기** — 분류표의 보류 행(질문 목록 — `docs/spec/battle-core-rebuild/ledgers/rules.md`) · 일반 공격 대상 선정에 남은 사각 자 · 기본값 박제.
 - **스킬 데이터 표 unit 7 보류** — 방어유닛 · 적의 진영 버프 · 공격 변형 배선(`docs/spec/skill-data-table/README.md`).
 - **보관 자료 처분** — 로컬 브랜치 `blueprint` · `prd.zip`(설계 전환 전 내용이라 근거로 쓰지 않는다).

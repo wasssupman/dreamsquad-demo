@@ -22,8 +22,28 @@
 - 수치 기록: .cs 수 전/후 · `Assets` 용량 전/후 · 리포 추적 파일 수 전/후.
 - `rg -i 'profile|tournament|login|lobby|keyring|UserSession' Assets/_Project/Scripts` → 전투 문맥의 주석 외 0.
 
+## 구현 결과 (2026-10-07)
+
+- 문서: `CLAUDE.md`(첫 단락 · 스택의 입구/출구 문장 · 데이터의 시트 임포트 · e2e 줄 삭제 · lane 표 · 아웃게임 PlayMode 줄 삭제) · `ingame-flow.md`(머리 · §2 도표를 입구 값/출구 사건으로 · 시트 문장) · `test-procedure.md`(`Wassup.Tests.PlayMode` 행 삭제 · 아웃게임 어휘 · MCP `run_tests` 인자 → 배치 CLI 인자) · `blueprint/README.md`(데모·서버 절 · 한 판의 생애 1·2·5·6 · 시스템 지도의 로그인/프로필/토너먼트 행 → 「바깥과의 경계」 한 행 · 값의 길 · 열린 것) · `docs/spec/README.md`(완료 목록 · 진행 중 · 백로그의 아웃게임 3건 somnia 이관) · `design-blueprint/README.md`(reference 문서 판정 기록) · `tools/README.md`.
+- 삭제: `docs/reference/keyring-portability.md`(로비 키링 지식) · `review-skill-comparison.md`(옛 리뷰 도구 비교) · `tools/analyze_sessions.py`(휴면 — 로거 없음) · `scripts/mobile/`(somnia CI).
+- **spec 과 달리 남긴 것**: `arknights-defense-mechanics.md`(적 이동 설계 대조군 — 전투 참고) · `dreamcatcher-portability.md`(드림캐쳐 메커닉 = 전투; 아웃게임 절 없음) · `tools/key_sheet_alpha.py`(유닛 스프라이트 시트 알파 도구 — 전투 아트 파이프라인, `lessons/03`) · `드림캐쳐_각성안_최종스펙_v1.md`(사용자 확인 대기). `.claude/skills/catchup/SKILL.md` 엔 아웃게임 언급이 없었다.
+- 코드의 `ModeSelection.Lobby/FromLobby` 이름은 그대로 — somnia 이식(`Somnia.Battle.*` 개명) 때 함께.
+
+**검증** — 사용자 결정(2026-10-07 「배치 검증 필요없음」)으로 배치 lane 은 돌리지 않았다. 단위마다 사용자 6.6 에디터의 재임포트·컴파일 에러 0 을 로그로 확인했고, 단위 3 뒤 사용자가 `BattleCoreScene` 을 Play 했다(선행 상태 `Bone not found: Gear` 외 전투 에러 없음). 헤드리스 코어 테스트는 이 머신의 Smart App Control 에 막혀 단위 0+1 때(4.7 워크트리)가 마지막이다.
+
+**수치 (다이어트 전 `6a8dc40b2` → 후)**
+
+| 항목 | 전 | 후 |
+|---|---|---|
+| 추적 파일 | 15,188 | 7,108 |
+| `.cs` | 1,213 | 1,066 (`_Project` 818) |
+| `Assets` 용량(du) | 803 MB | 511 MB |
+| 벤더 7 | 331 MB | 156 MB |
+
+`rg -i 'profile|tournament|login|lobby|UserSession' Assets/_Project/Scripts` → 47줄, 전부 전투 문맥(`HostProfile` · `AggroChaseMath` 의 profile 사거리 · `ModeSelection.Lobby`)과 주석.
+
 ## 완료 기준
 
-- [ ] 위 문서 전부 갱신 · 삭제 승인 항목은 사용자 확인 기록
-- [ ] 검증 4종 초록 · 수치표
-- [ ] 커밋(경로 지정) · README 상태 「완료 YYYY-MM-DD」
+- [x] 위 문서 전부 갱신 · 남긴 항목과 이유 기록 · `드림캐쳐_각성안` 은 사용자 확인 대기
+- [x] 검증: 사용자 에디터 컴파일 0 · Play(사용자) — 배치는 사용자 결정으로 생략 · 수치표
+- [x] 커밋(경로 지정) · README 상태 「완료 2026-10-07」
