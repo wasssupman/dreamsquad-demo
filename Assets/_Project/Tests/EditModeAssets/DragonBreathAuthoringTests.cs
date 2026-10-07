@@ -173,15 +173,11 @@ namespace Wassup.Tests.EditMode
         public void Dragon_IsInEveryLiveDeckPool_AndNotAtTheEnd()
         {
             var d = Load(DragonPath);
-            string[] decks =
-            {
-                "Deck_Serpent", "Deck_Coil", "Deck_Twin", "Deck_Spiral",
-                "Deck_Zig", "Deck_Hook",
-            };
+            string[] decks = { "Deck_Duel", "Deck_Serpent", "Deck_Zig", "Deck_Coil" };   // 라이브 맵 풀의 덱
             foreach (string name in decks)
             {
                 var deck = AssetDatabase.LoadAssetAtPath<AttackDeck>(
-                    $"Assets/_Project/Scripts/Data/Decks/{name}.asset");
+                    $"Assets/_Project/Data/Decks/{name}.asset");
                 Assert.IsNotNull(deck?.attackUnitPool, name);
                 int index = System.Array.IndexOf(deck.attackUnitPool, d);
                 Assert.GreaterOrEqual(index, 0,

@@ -136,15 +136,11 @@ namespace Wassup.Tests.EditMode
         public void Offspring_IsNotInAnyLiveDeckPool(string offspringPath)
         {
             var child = Load(offspringPath);
-            string[] decks =
-            {
-                "Deck_Serpent", "Deck_Coil", "Deck_Twin", "Deck_Spiral",
-                "Deck_Zig", "Deck_Hook",
-            };
+            string[] decks = { "Deck_Duel", "Deck_Serpent", "Deck_Zig", "Deck_Coil" };   // 라이브 맵 풀의 덱
             foreach (string name in decks)
             {
                 var deck = AssetDatabase.LoadAssetAtPath<AttackDeck>(
-                    $"Assets/_Project/Scripts/Data/Decks/{name}.asset");
+                    $"Assets/_Project/Data/Decks/{name}.asset");
                 if (deck?.attackUnitPool == null) continue;
                 foreach (var u in deck.attackUnitPool)
                     Assert.AreNotSame(child, u,

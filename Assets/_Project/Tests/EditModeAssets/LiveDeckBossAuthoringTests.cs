@@ -9,14 +9,12 @@ namespace Wassup.Tests.EditMode
     // 보스 재케이던스 로직 테스트(합성 덱)는 코어 lane 에 남는다.
     public class LiveDeckBossAuthoringTests
     {
-        private static readonly string[] MapDecks =
-        {
-            "Deck_Serpent", "Deck_Coil", "Deck_Twin", "Deck_Spiral", "Deck_Zig", "Deck_Hook",
-        };
+        // battle-content-finish unit 2 — 라이브 맵 풀(`MapStagePool`)의 덱 4. 사라진 맵의 덱(Twin · Spiral · Hook)은 지웠다.
+        private static readonly string[] MapDecks = { "Deck_Duel", "Deck_Serpent", "Deck_Zig", "Deck_Coil" };
 
         private static AttackDeck Load(string name) =>
             AssetDatabase.LoadAssetAtPath<AttackDeck>(
-                $"Assets/_Project/Scripts/Data/Decks/{name}.asset");
+                $"Assets/_Project/Data/Decks/{name}.asset");
 
         [Test]
         public void LiveDecks_UseIntervalNine()
@@ -78,8 +76,8 @@ namespace Wassup.Tests.EditMode
             }
 
             Assert.AreEqual(3, counts.Count, "보스 3종이 모두 어느 맵에든 배정돼야 한다");
-            foreach (var kv in counts)
-                Assert.AreEqual(2, kv.Value, $"{kv.Key.id}: 6맵 ÷ 3종 = 각 2맵");
+            // battle-content-finish unit 2 — 옛 「6맵 ÷ 3종 = 각 2맵」 균등 단언은 라이브 맵이 4 가 되며 성립하지 않는다(D4).
+            // 지키는 것은 3종 전부 등장뿐 — 균등 배정은 설계가 다시 정하는 날 되살린다.
         }
     }
 }

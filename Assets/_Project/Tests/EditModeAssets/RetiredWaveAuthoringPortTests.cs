@@ -23,16 +23,17 @@ namespace Wassup.Tests.EditMode
     public class RetiredWaveAuthoringPortTests
     {
         private const string ConceptDir = "Assets/_Project/Data/WaveConcepts";
-        private const string DeckDir = "Assets/_Project/Scripts/Data/Decks";
+        private const string DeckDir = "Assets/_Project/Data/Decks";
+        // battle-content-finish unit 2 — 킬 예산 기준 덱은 라이브 풀 밖의 **테스트 픽스처**다.
+        private const string FixtureDir = "Assets/_Project/Tests/Fixtures";
         private const string SkimmerPath = "Assets/_Project/Data/Enemies/Enemy_Skimmer.asset";
         private const string KillBudgetDeck = "WaveA";
 
-        private static readonly string[] MapDecks =
-        {
-            "Deck_Serpent", "Deck_Coil", "Deck_Twin", "Deck_Spiral", "Deck_Zig", "Deck_Hook",
-        };
+        // battle-content-finish unit 2 — 라이브 맵 풀(`MapStagePool`)의 덱만 증언한다. 사라진 맵의 덱(Twin · Spiral · Hook ·
+        // Ford · Isle)은 지웠다 — 테스트가 죽은 저작을 살려 두는 것이 더 나쁘다.
+        private static readonly string[] MapDecks = { "Deck_Serpent", "Deck_Coil", "Deck_Zig" };
 
-        private static readonly string[] SiegeDecks = { "Deck_Duel", "Deck_Ford", "Deck_Isle" };
+        private static readonly string[] SiegeDecks = { "Deck_Duel" };
 
         private static readonly string[] ConceptNames =
         {
@@ -54,6 +55,7 @@ namespace Wassup.Tests.EditMode
         private static AttackDeck LoadDeck(string name)
         {
             var deck = AssetDatabase.LoadAssetAtPath<AttackDeck>($"{DeckDir}/{name}.asset");
+            if (deck == null) deck = AssetDatabase.LoadAssetAtPath<AttackDeck>($"{FixtureDir}/{name}.asset");
             Assert.IsNotNull(deck, $"덱 에셋을 찾지 못했다: {name}");
             return deck;
         }
@@ -557,7 +559,7 @@ namespace Wassup.Tests.EditMode
                 var plan = Plan(name, 3);
                 distinct.Add(BlockSequence(plan, plan.WaveCount));
             }
-            Assert.Greater(distinct.Count, 1, "6맵이 전부 같은 컨셉 순서면 waveSeed 가 컨셉 뽑기에 안 닿고 있다");
+            Assert.Greater(distinct.Count, 1, "라이브 맵이 전부 같은 컨셉 순서면 waveSeed 가 컨셉 뽑기에 안 닿고 있다");
         }
 
         // 옛 WaveConceptAuthoringTests::SiegeDecks_MainPhase_ShowsFourPlusConcepts_IncludingAirstrike — 공성 본편 4종+ · 공습 포함
