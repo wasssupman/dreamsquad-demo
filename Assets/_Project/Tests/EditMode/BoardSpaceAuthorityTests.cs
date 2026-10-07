@@ -163,31 +163,8 @@ namespace Wassup.Tests.EditMode
                 "평면이 plane 높이(y=5)를 지난다");
         }
 
-        // tilemap-untangle 단위 1 — **동치 고정.** 옛 권위(`Grid`, Rectangle · 간격 0 · cellSize (t,t,1))와 새 식(평면 × t)이
-        // 같은 월드 좌표를 낸다. 단위 2 에서 Tilemap 모듈을 끌 때 `Grid` 와 함께 이 테스트를 지운다.
-        [Test]
-        public void 옛_Grid_권위와_평면_식이_같은_자리를_낸다()
-        {
-            foreach (var euler in new[] { Vector3.zero, new Vector3(90f, 0f, 0f), new Vector3(90f, 30f, 0f) })
-            {
-                var plane = CreatePlane(new Vector3(1.3f, -0.4f, 2.2f), euler);
-                var grid = _planeGo.AddComponent<Grid>();
-                grid.cellLayout = GridLayout.CellLayout.Rectangle;
-                grid.cellSize = new Vector3(1.5f, 1.5f, 1f);
-                var simOrigin = new float3(0.5f, 0f, -1f);
-                BoardSpace.Configure(simOrigin, 1.5f, plane);
-
-                var rng = new Unity.Mathematics.Random(7u);
-                for (int i = 0; i < 20; i++)
-                {
-                    float3 sim = simOrigin + new float3(rng.NextFloat(-3f, 9f), 0f, rng.NextFloat(-3f, 9f));
-                    float cx = (sim.x - simOrigin.x) / 1.5f + 0.5f, cy = (sim.z - simOrigin.z) / 1.5f + 0.5f;
-                    float3 viaGrid = grid.transform.TransformPoint(grid.CellToLocalInterpolated(new Vector3(cx, cy, 0f)));
-                    Assert.Less(math.distance(viaGrid, BoardSpace.ToView(sim)), 1e-5f,
-                        $"euler {euler} sim {sim}: Grid {viaGrid} vs plane {BoardSpace.ToView(sim)}");
-                }
-                Object.DestroyImmediate(_planeGo); _planeGo = null;
-            }
-        }
+        // tilemap-untangle 단위 1 의 동치 고정 테스트(옛 `Grid` 식 = 평면 × t, 회전 3종 × 임의 점 20, 1e-5)는
+        // 단위 2 에서 Tilemap 모듈과 함께 지웠다 — Rectangle · 간격 0 · cellSize (t,t,1) 에서 `CellToLocalInterpolated(v)` 는
+        // `v × cellSize` 라 두 식은 정의상 같다.
     }
 }

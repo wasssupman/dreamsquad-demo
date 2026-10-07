@@ -1,6 +1,6 @@
 # tilemap-untangle — 디오라마 맵에서 Tilemap 잔재 떼어내기
 
-상태: 초안 2026-10-07 (승인 대기)
+상태: **완료 2026-10-07** — 단위 0 `cad00daa0` · 단위 1 `c4d90ff26` + 씬 · 단위 2 `eb734630d` `8f44ffe76` + 모듈 제거. `UnityEngine.Tilemaps` 의존 0, 셀↔월드 권위 = 보드 평면 Transform + `tileSize` 하나.
 
 ## 목표
 
