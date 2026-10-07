@@ -25,7 +25,7 @@
 - **전투 코어에 매니저 없음** — 코어 안의 판정·상태·저장은 그 일의 담당자만 한다(책임이 한 클래스로 다시 모이면 서버로 옮길 계약이 흐려진다). `BattleMatch` 는 담당자를 만들고 틱 순서를 나열하는 조립 지점일 뿐이다. 담당자는 모드를 모른다(모드는 SO `MatchModeData` 의 닫힌 집합, 재현은 modeId + seed). 판 밖 전역 매니저(`TimeManager` · `SoundManager`)는 이 제약 밖이다.
 - **커맨드 ≠ 사건** — 플레이어 입력은 커맨드(틱 시작에 적용 + receipt), 사건은 값 스냅샷(`SimEntityId` 키). 사건으로 상태를 되묻지 않는다. UI·뷰는 읽기 모델과 사건만 읽고 바꿀 것은 커맨드로 보낸다 — MonoBehaviour 에 전투 판정을 쓰지 않는다. 이 경계가 곧 서버 계약이 된다.
 - **도달 판정은 산식 하나** — `|좌표 차| ≤ 범위 + 원점 항 + 대상의 몸`. 정본 진입점(`Wassup.Skills.SkillMath` 공개 진입점 · 코어 어댑터 `AttackReach` — 방향 도형은 `InReachShaped` 하나)을 호출만 하고 인라인으로 쓰지 않는다. 원점 항은 효과의 형이 정한다(몸에서 나오는 것 = 그 몸 / 자리에 떨어지는 것 = 칸 반폭). 함수 뒤에 숨은 상수 가정 때문에 같은 결함이 두 번 났다 — 상세 `docs/reference/battle-core-architecture.md` §8-7.
-- **에이전트는 시트에 쓰지 않는다** — 시트 push 는 8탭 전량 업서트라 동료가 시트에서 조정한 값까지 되돌린다. 에셋을 고치고 시트 반영은 사용자에게 요청한다.
+- **에이전트는 시트에 쓰지 않는다** — 시트 push 는 8탭 전량 업서트라 동료가 시트에서 조정한 값까지 되돌린다. 그래서 push 도구 자체를 뺐다(2026-10-07 `battle-content-finish`). 에셋을 고치고 시트 반영은 사용자에게 요청한다.
 - **신규 기능의 성질은 먼저 묻는다** — 무엇을 만들지, 그것이 플레이어에게 어떤 규칙인지는 설계를 제안하기 전에 묻는다. 물었을 때 에이전트가 상정한 두 답 밖의 축이 두 번 돌아왔다. 전투 코어의 아키텍처 결정(담당자 소속 · 커맨드냐 사건이냐 · 틱 단계 · 결정론 영향)도 묻는다 — 작업 전에 묶어서 한 번.
 - **git** — push 는 매번 사용자 승인 후. 커밋은 경로를 지정해서(`git commit -m … -- <경로>`) 하고 `--amend` 는 쓰지 않는다(여러 세션이 한 인덱스를 쓴다 — plain commit 이 남의 스테이징을 삼켰다). 단 한 파일에 다른 세션의 변경이 섞여 있으면 경로 지정 커밋이 그 파일의 작업 트리 전체를 싣는다 — 그때는 `git add -p` 로 내 헝크만 올리고 `git diff --cached` 로 남의 것이 없음을 확인한 뒤 경로 없이 `git commit`. GitLab 에서 직접 커밋하지 않는다(보호 브랜치라 미러의 fast-forward 가 막히면 force 도 못 한다). 강제 push · `--amend` 는 훅(`.claude/hooks/guardrails.mjs`)이 거절하고 push 는 확인창이 뜬다.
 
@@ -33,6 +33,7 @@
 
 - Unity `6000.6.3f1` · URP 17.6 · **Input System 전용**(레거시 `Input` 아님) · spine-unity **4.3** 런타임(export 는 같은 major.minor — `Assets/Spine/version.txt`) · 트윈은 PrimeTween.
 - 전투 = 순수 C# 코어 `Assets/_Project/Scripts/BattleCore/`(asmdef `Wassup.BattleCore`) + Unity 층 `Scripts/BattleCoreUnity/`(시간 `BattleDriver` · 정의표 물질화 `MatchDefinitionBuilder` · 뷰 · 입력). 전투 입구는 값 `MatchEntryInput`, 출구는 사건(`BattleDriver.MatchStarted/DeckLocked/MatchFinished/MatchAbandoned`) — 바깥(somnia App)은 그 둘로만 통한다. 전투 UI·연출은 MonoBehaviour.
+- 판 저작은 SO 두 장이다 — `Data/BattleContent.asset`(카탈로그 · 장판 · 스택 · 튜닝 · 시즌 · 보너스 · 공용 액티브 · 런타임 머티리얼 묶음)과 `Data/DefaultLoadout.asset`(바깥 입력이 없을 때의 유닛 · 돌 · 덱). 씬의 `BattleDriver` 는 그 둘과 모드 SO 를 참조만 든다.
 - Entities/ECS 전투는 제거됐다. Burst·Collections 패키지는 남아 있다(URP 의존 + 맵 빌드가 `NativeArray`·`FixedList` 를 직접 쓴다) — 전투 코어에서는 쓰지 않는다.
 - 코드 주석의 「옛 `BattleBridge.X` 의 후계」 · 옛 spec 이름 꼬리표는 이력이다. 현재 동작은 코드 본문으로 확인한다. 「CLAUDE.md 제약 13」 같은 옛 번호는 `docs/reference/battle-core-architecture.md` §8 머리의 대조표로 찾는다.
 
@@ -54,7 +55,7 @@
 
 - `Time.timeScale` 을 쓰지 않는다. 시간은 `TimeManager.Request(TimeDomain, scale)` lease 다(전투만 멈추고 UI 는 실시간으로 두기 위해).
 - `UnityEngine.Object` 에 `?.` / `??` 를 쓰지 않는다 — 파괴된 객체의 fake-null 을 몰라 `OnDestroy` 정리 루틴이 중간에 죽었다.
-- `Shader.Find` 는 빌드에 포함된 셰이더만 찾는다(에디터에선 다 찾아서 모바일 빌드에서야 null 로 드러난다). 런타임 머티리얼은 `Wassup.Rendering.RuntimeMaterialFactory` 경유, 새 셰이더는 `Assets/Resources/RuntimeMaterials/` 머티리얼로 등록하거나 Always Included Shaders 에 넣는다.
+- `Shader.Find` 는 빌드에 포함된 셰이더만 찾는다(에디터에선 다 찾아서 모바일 빌드에서야 null 로 드러난다). 런타임 머티리얼은 `Wassup.Rendering.RuntimeMaterialFactory` 경유이고 원본은 SO `Data/Materials/Runtime/RuntimeMaterialSet.asset` 의 슬롯이다 — 새 셰이더는 머티리얼을 만들어 슬롯을 늘린다(`Resources` 폴더 없음 · `Shader.Find` 폴백 없음).
 - 런타임 코드의 에디터 전용 API 는 `#if UNITY_EDITOR` 로 막는다 — CI 가 없어 모바일 빌드에서야 깨진다.
 - 에디터는 사용자·여러 세션과 공유한다. 스크립트 저장·refresh·테스트·Play 전에 `isPlaying` 을 확인한다 — 사용자 플레이가 끊긴다.
 - 열린 씬의 YAML 을 밖에서 고치면 Reload 모달이 에디터를 멈춘다. 열린 씬은 에디터 안에서(일회용 MenuItem 스크립트 · 인스펙터), YAML 직접 편집은 안 열린 씬에만.

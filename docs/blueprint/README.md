@@ -22,7 +22,7 @@
 
 ## 3. 한 판의 생애
 
-1. **입구** — 바깥(somnia 로비)이 스쿼드(유닛 + 드림스톤) · 드림캐쳐 덱 · 시드를 값 `MatchEntryInput` 으로 넘긴다(편성 검사 · 프리셋 · 로그인은 아웃게임 소관). 입력이 없으면 `BattleDriver` 의 저작 필드가 기본값이다. (`BattleCoreUnity/MatchEntryInput` · `MatchEntryContext`)
+1. **입구** — 바깥(somnia 로비)이 스쿼드(유닛 + 드림스톤) · 드림캐쳐 덱 · 시드를 값 `MatchEntryInput` 으로 넘긴다(편성 검사 · 프리셋 · 로그인은 아웃게임 소관). 입력이 없으면 기본 편성 SO `Data/DefaultLoadout.asset` 이 기본값이다. (`BattleCoreUnity/MatchEntryInput` · `MatchEntryContext`)
 2. **시드** — 토너먼트 시드는 `MatchEntryInput.MapSeed` 로 들어온다(참가 신청 · 시도 id 는 아웃게임 소관). 없으면 드라이버의 고정 시드.
 3. **판 조립** — 모드 SO 와 저작 SO 를 정의표로 굽고(`MatchDefinitionBuilder`), 시드가 맵과 그 맵에 짝지어진 적 덱 · 웨이브 플랜을 고른다(전원 동일). (`BattleCoreUnity/BattleDriver` · `MatchEntry`)
 4. **판** — 카운트다운 뒤 제한시간 동안 실시간. 코어(`BattleMatch`)가 고정 틱으로 돌고, 입력은 커맨드로 들어가고, 뷰는 사건을 받아 그린다.
@@ -60,6 +60,7 @@
 ```
 
 - 시트가 밸런스 값의 정본이고, SO 는 그 사본이다. 탭 · 헤더 · 업서트 키의 정본은 `docs/spec/skill-data-table/5_sheet_io.md`.
+- 판의 콘텐츠(카탈로그 · 장판 · 길막 · 스택 · 부여 상한 · 이동 튜닝 · 시즌 · 보너스 · 공용 액티브 풀)는 SO `Data/BattleContent.asset` 한 장, 바깥 입력이 없을 때의 편성은 `Data/DefaultLoadout.asset` 한 장이 든다 — 씬의 `BattleDriver` 는 그 둘과 모드 SO 를 **참조만** 든다(`battle-content-finish` 2026-10-07). 런타임이 복제하는 머티리얼 원본도 SO(`Data/Materials/Runtime/RuntimeMaterialSet.asset`) — `Resources` 폴더는 없다.
 - 코어가 SO 를 직접 읽는 곳은 없다. 읽는 곳은 `MatchDefinitionBuilder`(+ 옆의 `CombatDefinitionBuilder` · `CardDefinitionBuilder` · `BindingDefinitionBuilder` · `BoardEffectDefinitionBuilder`) 한 군데다.
 - 탄 · 패턴 · 장판 같은 모양 표는 아직 시트에 없다(에셋에서만 저작).
 

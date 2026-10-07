@@ -249,7 +249,7 @@ flowchart LR
 | 층 | 어셈블리 · 폴더 | 갖는 것 | 갖지 않는 것 |
 |---|---|---|---|
 | **전투 코어** | `Wassup.BattleCore`(`BattleCore/`). 참조 = `Wassup.Skills` · `Wassup.UnitAi` + 엔진 모듈 `UnityEngine.MathematicsModule`(6.6 부터 `Unity.Mathematics` 의 자리 — 그래서 `noEngineReferences` 는 꺼져 있다) | 판정 · 상태 · 순서 전부. 폴더 = `Match/`(조립·정의표·커맨드·사건) · `Owners/`(담당자) · `Phases/`(틱 단계) · `World/`(개체) · `Map/` · `Move/` · `Combat/` · `Effects/` · `Trigger/`(트리거→발동) · `Wave/` · `Goals/`(매치 목표) · `Trace/` · `Harness/`(골든 러너) | `UnityEngine` 타입 · SO · 아트 참조 · 프레임 시간 · 로거(진단은 `BattleMatch.Report` 통로로 **밖에** 넘긴다) |
-| **Unity 층** | `Wassup.Runtime` 안의 `BattleCoreUnity/` | ① **정의표 물질화** — `MatchDefinitionBuilder`(+ `CombatDefinitionBuilder` · `CardDefinitionBuilder` · `BindingDefinitionBuilder` · `BoardEffectDefinitionBuilder`) ② **시간** — `BattleDriver` ③ **뷰** — `View/` · `Hud/` · `Cards/` · `CoreBattleAudio` · `CoreMatchOutcomePresenter` ④ **입력** — `Input/`(`DragPlacementInput` · `CardInput` · `SelectionInput` · `SubmitInput`) ⑤ **진입** — `MatchEntry` · `ModeSelection` | 규칙. 판정·상태·저장이 여기 들어오면 그것이 새 브리지의 첫 줄이다 |
+| **Unity 층** | `Wassup.Runtime` 안의 `BattleCoreUnity/` | ① **정의표 물질화** — `MatchDefinitionBuilder`(+ `CombatDefinitionBuilder` · `CardDefinitionBuilder` · `BindingDefinitionBuilder` · `BoardEffectDefinitionBuilder`) ② **시간** — `BattleDriver` ③ **뷰** — `View/` · `Hud/` · `Cards/` · `CoreBattleAudio` · `CoreMatchEndBeat` ④ **입력** — `Input/`(`DragPlacementInput` · `CardInput` · `SelectionInput` · `SubmitInput`) ⑤ **진입** — `MatchEntry` · `ModeSelection` | 규칙. 판정·상태·저장이 여기 들어오면 그것이 새 브리지의 첫 줄이다 |
 
 - 세 축이 코어에서 무엇으로 존재하나:
   - **유닛** — `World/Unit.cs`(종류 `UnitKind`: Defender · Enemy · Patrol · Structure · BlockingHazard — 거점과 길막도 유닛의 종류다) + 부분(`UnitParts.cs` · `CombatParts.cs` 의 `AttackState` · `MoveState` · `Detection` · `Aggro` · `Footprint` …). 「그 부분이 있나」 분기 대신 nullable 부분 + 한 술어 `Unit.IsTargetable()`. 행동 상태의 **결정**은 `Wassup.UnitAi` 가 하고 코어(`AiMovePhase`)는 입력을 만들어 답을 저장한다.
@@ -263,26 +263,26 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    E["MatchEntry.Resolve<br/>어느 문(에디터 · 로비 · 테스트 플랜)"] --> M["MatchDefinitionBuilder.ResolveMode<br/>테스트 강제 > 로비/서버 지정 > 드라이버 기본 모드 SO"]
+    E["MatchEntry.Resolve<br/>어느 문(에디터 · 바깥 입력 · 테스트 플랜)"] --> M["MatchDefinitionBuilder.ResolveMode<br/>테스트 강제 > 바깥(App/서버) 지정 > 기본 모드 SO"]
     M --> B["BattleDriver.Begin<br/>스테이지 스캔 → TrySelectEncounter → Build → MatchDefinition"]
     B --> C["new BattleMatch(def)<br/>담당자 생성 · 구독 · TickPipeline 나열 · seam 표 설치"]
     C --> G["BattleMatch.Begin<br/>MatchStarted → 담당자마다 자기 Begin"]
     G --> T["BattleDriver.Update<br/>누산 → Tick() × n → Outbox 방출"]
     T --> X{"MatchClock.EndMatch"}
-    X --> O["MatchEnded → BattleMatch.Outcome<br/>→ CoreMatchOutcomePresenter"]
+    X --> O["MatchEnded → BattleMatch.Outcome<br/>→ BattleDriver.MatchFinished 사건(구독자 = somnia)"]
 ```
 
 | 단계 | 진입점 | 일어나는 일 |
 |---|---|---|
-| **진입** | `MatchEntry.Resolve` → `MatchEntryPlan` | 로비가 남긴 편성·덱·돌·테스트 플랜을 **값으로** 푼다(판정 0) |
-| **모드** | `MatchDefinitionBuilder.ResolveMode` | 3단 서열 — 테스트 강제 > 로비/서버 지정(`ModeSelection`) > `BattleDriver` 저작 기본 `MatchModeData`. 모드를 읽는 유일한 지점 |
+| **진입** | `MatchEntry.Resolve` → `MatchEntryPlan` | 바깥 입력(`MatchEntryInput`)의 편성·덱·돌·테스트 플랜을 **값으로** 푼다(판정 0). 입력이 없으면 기본 편성 SO `DefaultLoadout` |
+| **모드** | `MatchDefinitionBuilder.ResolveMode` | 3단 서열 — 테스트 강제 > 바깥 지정(`ModeSelection.External`) > `BattleDriver` 의 기본 `MatchModeData`. 모드를 읽는 유일한 지점 |
 | **맵 선택** | `MatchDefinitionBuilder.TrySelectEncounter` | dev 강제 인덱스 > 디버그 고정 맵 시드 > 서버 토너먼트 시드 > 0번. 맵·덱·플랜이 **같은 인덱스로 잠긴다** |
 | **정의표** | `MatchDefinitionBuilder.Build` → `MatchDefinition` | SO 를 plain 수치·열거형으로 굽는다(아트 참조 0). 적 목록을 여기서 모아 웨이브가 **인덱스**로 부른다. `ConfigHash` 를 박는다(§7) |
 | **조립** | `BattleMatch` 생성자 | 담당자 생성 순서 = 같은 `order` 구독의 tie-break(§6). 규칙 레이어(`BindingRegistry` · `TriggerDispatcher` · `CoreSkillContext` · `IntentApplier` · `ResignationBarrage` · `GimmickBindings`)를 꽂는다. `SeamTickOrder.From(pipeline)` 으로 seam 순서표를 만든다 |
 | **판 경계** | `BattleMatch.Begin` | `MatchStarted` 를 **첫 틱 전**에 발행 → `MatchClock` · `CostLedger` · `ScoreLedger` → 거점(`FieldPrepPhase.Begin` — **본능이 마음보다 먼저**, id 발급 순서라 골든 축) → `HeartMeter` · `PlacementService` · `WaveScheduler` · `HandDeck` · 판 수명 바인딩 · `GimmickHost` · 기믹 규칙 · `IMatchGoal.OnBegin` → 플러시. 「판 경계」를 부르는 한 함수는 없다 — 담당자마다 자기 `Begin` |
 | **배치 페이즈** | 국면 = `MatchClock` · 커맨드 `FinishPlacement` | 배치 창도 코어가 돌리는 틱 안이다(배치·착지·활성화는 `PlacementService`). 창을 닫는 경로는 `MatchClock.FinishPlacement` 하나(자동 시작 카운트다운도 합류) → `PlacementPhaseChanged` → `CostLedger` 재생 켜짐 |
 | **종료** | `MatchClock.EndMatch(MatchEndReason)` | 문은 **하나**, 사유 3(`Complete` · `Submitted` · `StressFull`), 호출처 4 — 시간 만료(`MatchClock`) · 목표 달성(`MatchGoalContext.Complete`) · 제출 커맨드(`CommandPhase`) · 마음 붕괴(`HeartMeter`). 종료 뒤 `Tick()` 은 no-op |
-| **성적** | `BattleMatch.Outcome` → `IMatchGoal.BuildOutcome` | 성적 조립 지점은 하나. 결과 화면·제출은 `CoreMatchOutcomePresenter`(`submitsReport && allowSubmit` 일 때만 보고) |
+| **성적** | `BattleMatch.Outcome` → `IMatchGoal.BuildOutcome` | 성적 조립 지점은 하나. 결과는 `BattleDriver.MatchFinished(MatchOutcome)` 사건으로 나간다 — 화면·제출은 somnia 몫(`demo-diet`) |
 
 ### 3.1 매치 모드 — 닫힌 집합
 
@@ -381,7 +381,7 @@ flowchart TD
 | Status | `View/CoreStatusFxSpawner` · `CoreDcAuraVisualPool` |
 | Overhead | `View/CoreUnitOverheadUiLayer` |
 | Hand | `Cards/CoreHandView` · `CoreAwakeningGaugeView` |
-| Audio · Outcome | `CoreBattleAudio` · `CoreMatchOutcomePresenter` |
+| Audio · 종료 박자 | `CoreBattleAudio` · `CoreMatchEndBeat`(결과 화면은 somnia — 성적은 `BattleDriver.MatchFinished` 사건) |
 
 - **통합 뷰는 없다.** 풀마다 `SimEntityId → 자기 뷰` 사전만 갖는다. 유닛 백엔드 선택은 `CoreUnitViewPool` 한 곳 — 스프라이트 모션 세트가 있으면 `CoreSpriteUnitView`, 아니면 `CoreSpineUnitView`(둘 다 추상 베이스 `CoreUnitView`), 둘 다 없으면 개발용 `CoreQuadUnitView`.
 - HUD(`Hud/`)는 담당자 **읽기 모델**(`BattleMatch.Clock` · `Cost` · `Score` · `Heart` · `Waves` · `GoalRead` …)과 사건을 읽는다. 쓰기는 커맨드뿐이다.
@@ -393,7 +393,7 @@ flowchart TD
 **값의 정본은 판 밖에 있고, 판 안으로는 한 방향으로만 흐른다.**
 
 ```
-구글 시트 ──(임포터: 로비 진입마다)──▶ SO ──(MatchDefinitionBuilder)──▶ MatchDefinition(plain) ──▶ 담당자 · 단계
+구글 시트 ──(에디터 임포터 · 사용자가 누를 때)──▶ SO ──(MatchDefinitionBuilder)──▶ MatchDefinition(plain) ──▶ 담당자 · 단계
 ```
 
 - 카드 임포터(`Data/StatImport/DcSheetApplier.cs`)의 의미가 둘이다: `RebuildEffects` 류는 **시트가 정본**, `OverlayMechanics` 는 **Unity 가 정본**(투사체 SO 참조를 들고 있어 값만 덮음). SO 만 고치면 로비 진입이 되돌린다.

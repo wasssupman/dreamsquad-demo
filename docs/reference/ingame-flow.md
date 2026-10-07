@@ -165,7 +165,7 @@ flowchart TD
 | 값 | 위치 |
 |---|---|
 | 제한시간 | `Data/Modes/MatchMode_KillScore3Min.asset` (`durationSec` — 판 길이는 모드 단독) |
-| 당김 상한 · 마음 최대치 | `Scripts/Data/Decks/Deck_*.asset` (`maxPullsPerClear` · `goalStabilityMax`) |
+| 당김 상한 · 마음 최대치 | `Data/Decks/Deck_*.asset` (`maxPullsPerClear` · `goalStabilityMax`) |
 | 코스트 시작/상한/리젠 | `Data/Config/DefaultCostConfig.asset` (모드의 `costConfig` 가 고른다) |
 | 자동 시작 카운트다운 · 인트로 페이즈 토글 2종 | `Data/Modes/MatchMode_KillScore3Min.asset` (`autoStartCountdownSec` · `placementPhaseEnabled` · `gimmickEnabled`) |
 | 각성 게이지/비용/손패 크기/부착 상한/슬로모 | `Data/Dreamcatcher/AwakeningConfig.asset` |

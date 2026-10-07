@@ -49,13 +49,13 @@ description: Use when (a) adding a new enemy AttackUnitData or changing an exist
 
 ```bash
 # 라이브 덱 목록과 각 풀 크기
-for f in Assets/_Project/Scripts/Data/Decks/Deck_*.asset; do
+for f in Assets/_Project/Data/Decks/Deck_*.asset; do
   echo "$(basename "$f" .asset): $(sed -n '/attackUnitPool:/,/minWaveCount/p' "$f" | grep -c guid)종"
 done
 
 # 어느 덱이 맵 풀에 배선돼 있나 (본편 entries / dev 슬롯) — deck guid → 덱 이름
 grep -oE "deck: \{fileID: [0-9]+, guid: [0-9a-f]{32}" Assets/_Project/Data/Maps/MapStagePool.asset \
-  | grep -oE "[0-9a-f]{32}" | while read g; do grep -l "guid: $g" Assets/_Project/Scripts/Data/Decks/*.meta; done
+  | grep -oE "[0-9a-f]{32}" | while read g; do grep -l "guid: $g" Assets/_Project/Data/Decks/*.meta; done
 
 # 컨셉과 그 슬롯 필터
 for f in Assets/_Project/Data/WaveConcepts/Concept_*.asset; do
@@ -63,7 +63,7 @@ for f in Assets/_Project/Data/WaveConcepts/Concept_*.asset; do
 done
 
 # 특정 적이 어느 덱에 들어 있나
-grep -l "<enemy-guid>" Assets/_Project/Scripts/Data/Decks/*.asset
+grep -l "<enemy-guid>" Assets/_Project/Data/Decks/*.asset
 ```
 
 ## When to Use
@@ -156,7 +156,7 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 
 ⚠ **키가 빠진 그룹에 기대지 말 것.** 필드 초기화값(-1)이 적용되는지 타입 기본값(0)이
 적용되는지에 기대면, 후자일 때 **모든 저작 플랜이 레인 0 으로 고정**되는 조용한 회귀가
-난다. 그래서 도입 시점에 `Assets/_Project/Scripts/Data/WavePlans/*.asset` 8장의 그룹
+난다. 그래서 도입 시점에 `Assets/_Project/Scripts/Data/WavePlans/*.asset` 8장(옛 경로 — 지금은 테스트 픽스처 `Tests/Fixtures/WavePlan_BossTest` 하나만 남았다)의 그룹
 56개 전부에 `laneIndex` 를 명시해 두었다 — 새 그룹을 손으로 쓸 때도 명시하라.
 
 레인 고정이 **어디서 눈에 보이는지**도 알아둘 것: `waypointPathIndex: -1` 인 적(대부분)은

@@ -122,12 +122,12 @@ code + git history        구현 상세
   - `battle-core-rebuild/` — 순수 C# 전투 코어 · 계약 13 · 장부(`ledgers/` — `tools/battle-core-rebuild/check_ledgers.py` 가 읽는다)
   - `unified-effect-layer/` — 스킬 = 효과 한 층 · 인계 `6_handoff_summary.md`
   - `skill-data-table/` — 효과 표 · 소유 줄 · 시트 8탭(헤더 정본 `5_sheet_io.md` — `SheetHeaderDocTests` 가 읽는다) · 인계 `6_` · `10_handoff_summary.md`
-- **초기화 뒤 완료된 spec**: `depth-parallax-removal/` — 뎁스맵 패럴랙스 기능 제거(2026-10-01). 의존성 전수표가 README 에 있다(삭제 spec 이라 handoff 없음). · `unity-6-6-upgrade/` — Unity 6000.6.3f1 전환(2026-10-07). 원인 6종 표와 「코어 경계」 보장의 이동(컴파일러 → 테스트 + 헤드리스)이 README 에 있다. · `demo-diet/` — 전투 로직만 남기는 정리(2026-10-07, 단위 0~4): 입구 값 `MatchEntryInput` · 출구 사건 seam, 아웃게임 코드/에셋 삭제 전수표, 벤더 7 참조 폐포 추림. 이 정리본이 somnia-client 로 옮겨 가는 payload 다.
+- **초기화 뒤 완료된 spec**: `depth-parallax-removal/` — 뎁스맵 패럴랙스 기능 제거(2026-10-01). 의존성 전수표가 README 에 있다(삭제 spec 이라 handoff 없음). · `unity-6-6-upgrade/` — Unity 6000.6.3f1 전환(2026-10-07). 원인 6종 표와 「코어 경계」 보장의 이동(컴파일러 → 테스트 + 헤드리스)이 README 에 있다. · `demo-diet/` — 전투 로직만 남기는 정리(2026-10-07, 단위 0~4): 입구 값 `MatchEntryInput` · 출구 사건 seam, 아웃게임 코드/에셋 삭제 전수표, 벤더 7 참조 폐포 추림. · `battle-content-finish/` — 「옵션은 SO · 전투 콘텐츠만」 마무리(2026-10-07, 단위 0~5): 판 저작 SO 두 장 · 순방향/역방향 도달 검사로 고른 삭제 장부(`ledger.md`) · `Resources` 없음. 이 정리본이 somnia-client 로 옮겨 가는 payload 다.
 - 옛 문서가 꼭 필요하면 태그 `archive/pre-spec-reset` 에서 꺼낸다(`git show archive/pre-spec-reset:docs/spec/<slug>/README.md`). 남은 문서 안의 옛 spec 이름 · 경로도 그 태그 기준이다. 평소엔 읽지 않는다.
 
 ## 진행 중 spec
 
-- 없음. 직전 완료 = `tilemap-untangle/`(2026-10-07 — Tile 에셋 껍데기 → Sprite · `GridLayout` 권위 → 보드 평면 Transform + tileSize · Tilemap 패키지/모듈 제거, 단위 0~2) · 그 전 `demo-diet/`(2026-10-07 — 단위 0~4, 커밋 12) · `unity-6-6-upgrade/`(2026-10-07). 다음 후보: somnia-client 이식(`Somnia.Battle.*` 개명 — 세션 메모리 `somnia-migration-goal`). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
+- 없음. 직전 완료 = `battle-content-finish/`(2026-10-07 — 판 저작 → SO 두 장 · 죽은 타입/코드 · 닿지 않는 에셋 장부 491 · 일회성 에디터 도구/시트 push/패키지 6 · `Resources` → `RuntimeMaterialSet` SO · 문서 8, 단위 0~5) · 그 전 `tilemap-untangle/`(2026-10-07 — Tile 에셋 껍데기 → Sprite · `GridLayout` 권위 → 보드 평면 Transform + tileSize · Tilemap 패키지/모듈 제거, 단위 0~2) · `demo-diet/`(2026-10-07 — 단위 0~4, 커밋 12) · `unity-6-6-upgrade/`(2026-10-07). 다음 후보: somnia-client 이식(`Somnia.Battle.*` 개명 — 세션 메모리 `somnia-migration-goal`). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
 
 ## Follow-up Backlog
 
@@ -144,11 +144,10 @@ code + git history        구현 상세
 
 - **Assets 안 지운 spec 경로 6곳** [S] · Unity 가 플레이 중이 아닐 때 한 커밋으로(재컴파일 1회).
   - `Scripts/UnitAi/UnitActionPhase.cs` — 머리 주석이 **옛 ECS 동작을 현재처럼 설명한다**(배치 중 · 사망 제외를 옛 쿼리가 한다 · 옛 공격/이동 시스템 추출 · Burst 호환). 지금은 `CombatPhase` 가 `u.Deploying || u.Dead` 로 건너뛰고 `DefenderAi` 가 배치 중을 입력으로 받는다 · asmdef 에 Burst 없음 → 주석을 다시 쓴다.
-  - `Scripts/Data/StatImport/UnitStatImportDto.cs` · `DcSheetImportDto.cs` · `Scripts/Core/CostConfigRuntimeRefresher.cs` — 옛 JSON 계약 문서 → 현행 정본 `skill-data-table/5_sheet_io.md` 「실제 시트 설정」으로.
+  - `Scripts/Data/StatImport/UnitStatImportDto.cs` · `DcSheetImportDto.cs` — 옛 JSON 계약 문서 → 현행 정본 `skill-data-table/5_sheet_io.md` 「실제 시트 설정」으로.
   - `Tests/EditModeAssets/UnitRosterInvariantTests.cs` — 주석 + **실패 메시지**의 「투영 규칙(spec unit 0)」 → `UnitStatFieldMapper`.
   - `Shaders/Prop_Outline_Sprite.shader` — 경로 한 줄 삭제(머리 주석이 이미 설명한다).
 - **`attack_damage` 호환 코드 제거** [S] · 시트를 새로 만들어 그 열이 없다(`5_sheet_io.md` 「만들지 않는다」). `UnitStatImportDto.attackDamage` · `UnitStatApplier.WarnDeprecatedAttackDamage` · 테스트 3 · `SheetHeaderDocTests.NotInSheet`. 사용자 결정 대기.
-- **docs 잔여 5개 삭제** · 사용자 승인 대기 — `docs/superpowers/plans/2026-05-06-…`(드래프트 구현 계획 · 코드 없음) · `docs/milestone/` 2개(05-08 스냅샷 · 스스로 「정본 아님」 배너) · `docs/드림캐쳐_샘플덱_기획요약.md`(6월 초안) · `docs/CODEX-HARNESSING.md`(Phase · TRD 전제) · `docs/map-editor-reference-for-somnia.md`(다른 프로젝트용 조사 · 런타임 설명 12곳이 옛 전투 기준) · `docs/spec/claude-code-documentation-note.md`(이 README 의 원칙을 복제한 고아 문서). 가리키는 곳 전부 0.
 - 코드 주석의 옛 출처 메모(510 파일)는 일괄 정리하지 않는다 — 현재 동작을 틀리게 말하는 것만 그 파일을 만질 때 고친다.
 
 ### 스킬 데이터 표 — 남은 것 (`skill-data-table`)
@@ -185,13 +184,12 @@ code + git history        구현 상세
 - **조용한 기본값 폴백 → loud 거절 + enum 전수 테스트** [M] · 목표 종류 · 공격 정책 · 스탯 변환 · 해저드 모양. (`BCR/ledgers/rules.md` M2 · E7)
 - **겸용 파라미터 가방 분리** [M] · `SkillIntent` 보조 스칼라 · 25인자 생성자.
 - **거대 단계 파일 분할** [S~M] · `CombatPhase` · `TickProjectilePhase`. 틱 순서는 무변. (`BCR/ledgers/rules.md` C24)
-- **어셈블리 분할**(Outgame / BattleView / Data) [M] · 지금은 `BattleCoreUnity` · UI · Outgame · Data 가 전부 `Wassup.Runtime` 한 asmdef 다.
+- **어셈블리 분할**(Outgame / BattleView / Data) [M] · 지금은 `BattleCoreUnity` · UI · Data 가 전부 `Wassup.Runtime` 한 asmdef 다.
 - **뷰 무음 구독 · `Find` 폴백 전수 검사** [S] · 배선 누락이 경고 없이 돈다.
 - **9b 규칙 증언 이식 잔여** [M] · (`BCR/ledgers/retire-test-pairs.md` 「부분 공백」)
 - **디버그 커맨드 게이트** [S] · 릴리스 빌드에서의 차단 여부를 전수로 정한다.
 - **하네스 런타임 어셈블리 분리** [S] · `CardProbe` · 골든 코퍼스가 런타임에 실린다. (`BCR/7e`)
 - **`ClassFilter` Role 미설정 저작 검증** [S] · 미설정 저작을 빌더가 거절하게. (`BCR/9c`)
-- **`BlockingHazardPresenter` 의 `Shader.Find`** [S] · 빌드 스트리핑 위험(CLAUDE.md 「Unity 함정」). `RuntimeMaterialFactory` 경유로. (`BCR/8c`)
 - **`IntentApplier` 포탈 판정의 몸 반영 여부** [S] · 대상 몸이 붙는지 판정 산식(§8-7)으로 재확인. (`BCR/9c`)
 - **효과 census 미배정** [S] · `regenPerSec` 음수 고정 처리 · 결합식 바닥/천장 4개 SO 저작화.
 - **틱 30Hz 실측 · 트리거 연쇄 깊이 근거** [S]
@@ -205,7 +203,6 @@ code + git history        구현 상세
 
 **(마) 사용자 몫**
 - **EditMode 선행 빨강 3** · 카드 아트 중복(개사기 · 별똥 타격 전용 아트 없음) · 카드 설명 어긋남 7장 · `bomb_man` 문안. 시트 · 아트에서 고친다.
-- **Apps Script 업서트 키** · 다음 Push **전에** 새 탭(`Skills` = `effect_id` · `SkillOwners` = `owner_kind`+`owner_id`+`slot` · `Cards` = `id`). (`skill-data-table/5_sheet_io.md`)
 - **효과 한국어 이름 `kind_ko` 43 검토.**
 - ~~Android QA 빌드~~ · 모바일 빌드 스크립트(`scripts/mobile/`)는 `demo-diet` 에서 제거 — somnia CI 이관.
 - ~~실제 랭킹 확인 · 실서버 쓰레기 계정 정리~~ · somnia 이관(이 리포엔 서버 코드가 없다).

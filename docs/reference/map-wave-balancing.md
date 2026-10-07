@@ -42,7 +42,7 @@
 
 (4번째 열 = 그 맵의 보스. 판당 보스가 1기라 덱마다 **1종을 저작**한다 — 시드 뽑기로는 어차피 맵마다 고정되고 «어느 맵이 어느 보스를 받나»만 시드에 맡겨진다. `wave-concept-blocks` unit 3.)
 
-- 덱 asset 위치는 `Assets/_Project/Scripts/Data/Decks/`. 무한 모드 전용 `Deck_Endless` 는 (이력 — 옛 ECS 전투의 브리지 `endlessEncounter` 슬롯이 들던 덱. 지금 저장소에 그 자산은 없다 — 모드는 `Data/Modes/MatchMode_*.asset` 이 고른다).
+- 덱 asset 위치는 `Assets/_Project/Data/Decks/`. 무한 모드 전용 `Deck_Endless` 는 (이력 — 옛 ECS 전투의 브리지 `endlessEncounter` 슬롯이 들던 덱. 지금 저장소에 그 자산은 없다 — 모드는 `Data/Modes/MatchMode_*.asset` 이 고른다).
 - 맵과 덱은 **같은 인덱스로 함께 선택**된다(`MapPoolSelect.SelectIndex(seed, count)`), 그래서 "맵마다 고정된 적 패턴".
 - 맵 추가 = 풀 `entries` 에 (새 MapStage 프리팹, 덱) 한 쌍 추가 — 라이브 엔트리는 덱 필수(`StagePoolBuildabilityTests` 가 막는다). **코드 변경 불필요**(GUID 참조).
 - `WaveA.asset`/`WaveB.asset` 은 레거시 원본(테스트 참조) — 풀은 안 씀, 삭제 금지.

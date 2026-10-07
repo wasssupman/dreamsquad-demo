@@ -31,7 +31,7 @@
 | 뷰 순서 | `ViewOrder.Unit`(비행·퇴근 포함) · 체력 = `ViewOrder.Overhead` | |
 | 체력 · 오버헤드 | `CoreUnitOverheadUiLayer`(+카드 아이콘 줄 `CoreUnitOverheadUiLayer.RebuildCardView`) | 폴링이 아니라 사건 구독 |
 | 소멸 회수 | `UnitDestroyed`(3) — 사망 모션 뒤 반납 · 판 경계 `MatchStarted` | |
-| 씬 배선 | `BattleDriver._defenders` · `CoreUnitViewPool` · `CoreUnitOverheadUiLayer` · 트레이 `CoreDefenderTray` | |
+| 씬 배선 | `DefaultLoadout.defenders`(SO — 바깥 입력이 없을 때) · `CoreUnitViewPool` · `CoreUnitOverheadUiLayer` · 트레이 `CoreDefenderTray` | |
 
 이력: 옛 정거장 = `BattleBridge.PlaceDefenderAs`/`CreateDefenderEntity` → ECS `DefenderUnitTag` → `DefenderDeathEventsSingleton` → `SpineUnitPool`/`SyncMonoUnitViews`(unit 9 에서 삭제).
 
@@ -58,7 +58,7 @@
 | 뷰 풀 | `CoreUnitViewPool` · 히트바 `CoreEnemyHitBarSpawner`(`DamageApplied`) · 감지 표식 `CoreVfxSpawner`(`Detected`) · 스폰 예고선 `CoreSpawnAlertPresenter`(`WaveScheduler.CollectForecast` 폴링) · 보스 경보 `CoreBossWarning` | 예고선은 사건 구독이 아니라 매 프레임 읽기다 — 예고는 「아직 안 일어난 일」이라 사건이 없다 |
 | 뷰 순서 | `ViewOrder.Unit` · 히트바 `ViewOrder.Damage` · 경보 `ViewOrder.Overhead` | |
 | 소멸 회수 | `UnitDestroyed`(3)(처치·유출 모두) | |
-| 씬 배선 | `BattleDriver` 의 덱·플랜·보너스 필드 · `CoreSpawnAlertPresenter` · `CoreBossWarning` | |
+| 씬 배선 | `BattleDriver` 의 덱·플랜 폴백 · `BattleContent.bonus` · `CoreSpawnAlertPresenter` · `CoreBossWarning` | |
 
 이력: 옛 `BattleBridge.SpawnUnit`/`QueueDueWaves` · `SyncMonoUnitViews` · `SpawnAlertPresenter`.
 
@@ -99,7 +99,7 @@
 | 뷰 풀 | `CoreHazardViewPool`(장판 그림 + 길막 프리팹 `Instantiate` · 스폰/파괴 VFX) | 스폰 VFX 는 SO 의 것이다(프리젠터에 안 넘겨 죽은 저작이 됐던 선례) |
 | 뷰 순서 | `ViewOrder.Board` | 바닥은 유닛보다 먼저 선다 |
 | 소멸 회수 | `HazardDestroyed`(45) · 길막 `UnitDestroyed`(3) · `MatchStarted` | |
-| 씬 배선 | `BattleDriver._hazards` · `MatchViewAssets` · `CoreHazardViewPool` | |
+| 씬 배선 | `BattleContent.hazards` · `MatchViewAssets` · `CoreHazardViewPool` | |
 
 이력: 옛 `EffectSpawner` · `HazardRuntimeEventsSingleton` · `BattleBridge` 길막 비주얼 맵.
 
@@ -125,7 +125,7 @@
 | 정의표 행 | `BoardEffectDefinitionBuilder.FillEffectTiles` → `EffectTileDef` | 스테이지 `suppressEffectTiles` 존중 |
 | 코어 스폰 · 사건 | `PlacementService.ArmedEffectTiles`(판 시작에 뽑고 판 내내 불변) · 적용은 배치 활성화 엣지 · 퇴근 회수 | 판정은 앵커 칸 하나 |
 | 뷰 풀 | `CoreMapOverlay.PaintEffectTilesOnce`(판마다 1회 · `PlacementService.ArmedEffectTiles` 순회) · 그림 `MatchViewAssets.EffectTile` · 정렬 `BoardSortOrder.EffectTileOrder` — 8a2 행 1 | 저작 그림이 없으면 안 그린다 |
-| 씬 배선 | `CoreMapOverlay` · `BattleDriver._seasonRegistry` → `SeasonRuntime.Bind`(8a2 행 1′ — 빠지면 효과 타일 0칸) | |
+| 씬 배선 | `CoreMapOverlay` · `BattleContent.seasonRegistry` → 활성 시즌의 맵 테마(빠지면 효과 타일 0칸) | |
 
 이력: 옛 `TilemapMapView.SetEffectTile`(미러) ↔ `BattleBridge._effectTilesByCell`(소유).
 
@@ -153,7 +153,7 @@
 | 뷰 풀 | 손패 `CoreHandView`·`CoreCardDragSlot`·`CoreCardFocusPresenter` · 각성 항아리 `CoreAwakeningGaugeView` · 선택 패널 `CoreSelectionPanel` · 부착 범위 링 `CoreMapOverlay.ShowAttachRange` · 표식·오라 `CoreStatusFxSpawner`·`CoreDcAuraVisualPool` · 발동 임팩트·빔 `CoreVfxSpawner`·`CoreBeamPresenter` | 부착 범위 링은 사건 구독자가 아니다 — 손패 드래그가 오버레이에 민다 |
 | 뷰 순서 | `ViewOrder.Hand` · 표식 `ViewOrder.Status` · 오버헤드 카드 줄 `ViewOrder.Overhead` | 카드 사건 한 건이 몸에 붙는 것을 먼저 세운 뒤 손패가 창을 다시 읽는다 |
 | 소멸 회수 | `CardDetached`(61) · 숙주 `UnitDestroyed` → `HandDeck.Recover` | |
-| 씬 배선 | `BattleDriver._cards`(dev 덱 — 비우면 프로필 경로) · 손패 캔버스 · `CoreSelectionPanel._defenderCatalog` | |
+| 씬 배선 | `DefaultLoadout.deck`(기본 덱 — 비우면 입력의 덱 + 굴린 액티브) · 손패 캔버스 · `CoreSelectionPanel._defenderCatalog` | |
 
 이력: 옛 `DreamcatcherHandController` · `DreamcatcherHandView` · `DcInspectController` · `DcIconStripSpawner`.
 
@@ -162,7 +162,7 @@
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
 | 저작 SO | `StatusFxRegistry` · `StackModifierSO` · `DcVisualConfig` | |
-| 정의표 행 | 스택 규칙 = `BattleDriver._stackModifiers` → `StackRuleDef` | |
+| 정의표 행 | 스택 규칙 = `BattleContent.stackModifiers` → `StackRuleDef` | |
 | 코어 사건 | `ModifierApplied`(34)/`ModifierRevoked`(35) · `StackChanged`(36)/`StackThreshold`(37) · `CcApplied`(38)/`CcCleared`(39) · `DotApplied`(40)/`DotCleared`(42) · `ShieldGranted`(41)/`ShieldBroken`(15) · `AggroAcquired`(7)/`AggroReleased`(54) · `LastRunEnded`(55) | 한 몸에 상태가 여럿일 때 무엇이 이겨 보이나는 데이터(6c) |
 | 뷰 풀 | `CoreStatusFxSpawner`(+`CoreStatusFxView`) · `CoreDcAuraVisualPool` | |
 | 뷰 순서 | `ViewOrder.Status` | 유닛 뒤 — 같은 틱에 태어난 유닛의 앵커가 선 뒤 |

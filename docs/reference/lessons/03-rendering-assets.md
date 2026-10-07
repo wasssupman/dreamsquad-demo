@@ -1,6 +1,6 @@
 # 렌더링 · 에셋 · authoring
 
-Spine, 보드 오버레이(「Tilemap」 절은 옛 타일맵 전투 기준 — tilemap-untangle 2026-10-07 로 소멸, 이력), 프랍/VFX authoring, 카메라에서 겪은 함정.
+Spine, 보드 오버레이, 프랍/VFX authoring, 카메라에서 겪은 함정. 옛 Tilemap 전투의 절(격자선 · Tile 캐시 · 오토타일 · tileSet · z-fighting)은 2026-10-07 `battle-content-finish` 에서 지웠다 — 이력은 git.
 
 ## Spine 런타임은 4.3 — export 는 같은 major.minor(4.3.xx)만
 
@@ -33,25 +33,6 @@ macOS 에서 한글명 Spine 에셋을 임포트하면 깨진다. 원인 3개 �
 
 가능하면 파일명 영문으로 두면 NFC/NFD 자체 회피(정상 레퍼런스: `player-main`).
 
-## 타일맵 격자선 원인 = 텍스처 압축
-
-Tilemap(rect) 채움 타일이 큰 영역으로 반복될 때 셀 경계마다 격자선이 보이는 문제. **원인은 Compression**(압축 블록이 bilinear 샘플 시 경계 블리딩) — solid 단색 타일이어도 압축이면 격자가 남는다.
-
-- **오답**: `FilterMode.Point`(격자는 사라지나 둥근 코너가 픽셀화).
-- **정답**: `FilterMode.Bilinear` + `TextureImporterCompression.Uncompressed` + mipmap off.
-- 1칸 폭 도로는 채움 반복이 없어 안 보여 오진하기 쉽다 — 큰 dirt/grass 에서만 드러남.
-
-## Tile 에셋 sprite 를 Inspector 로 바꿔도 tilemap 이 옛 sprite 를 찍는다 = Unity 6 EntityId 캐시
-
-Tile `.asset` 의 Sprite 필드를 Inspector 에서 교체하면 디스크/`.sprite` 프로퍼티는 새 sprite 인데, tilemap `SetTile` 스탬프는 계속 옛 sprite 가 나온다. `RefreshAllTiles()` 도, **Play 재시작도 무효** — "교체가 적용 안 된다"로 보인다.
-
-- **원인**: Unity 6 `Tile` 은 `m_Sprite` 옆에 `m_SpriteEntityId` 캐시 필드를 갖고 `GetTileData()` 가 이 캐시를 쓴다. Inspector(SerializedProperty) 쓰기는 `m_Sprite` 만 갱신하고 캐시를 무효화하지 않는다. 같은 객체에서 `.sprite` = 새것 / `GetTileData()` = 옛것이 동시에 나오는 걸 실측(6000.4.3f1).
-- Enter Play Mode Options = **DisableDomainReload** 라 stale 관리 객체가 Play 사이클을 넘어 생존한다. 도메인 리로드가 있었다면 재역직렬화로 풀렸을 문제.
-- **처방**: 프로퍼티 세터로 재할당하면 캐시가 재구축된다 — execute_code 로 `tile.sprite = null; tile.sprite = newSprite;` 두 줄. 아니면 에디터 재시작.
-- `GameObject to Instantiate` 필드도 동일하다(`m_InstancedGameObjectEntityId`) — Inspector 로 끼우면 `GetTileData().gameObject` 가 null 로 남아 "동작 안 함"으로 보인다. 처방 동일: `tile.gameObject` 세터 재할당.
-- **진단 시그니처**: `tile.sprite.name` ≠ `tilemap.GetSprite(cell).name` 이면 이 캐시다. 소비 경로(코드) 의심 전에 이것부터 확인.
-- 부가 함정: 그 전에 교체가 아예 증발하는 경우도 있다 — Inspector 의 .asset 편집은 **Save Project 전까지 메모리에만** 있어서 에디터 재시작/크래시로 날아간다. 디스크 YAML(`m_Sprite` guid)로 저장 여부부터 확인.
-
 ## `Mathf.SmoothStep(from, to, t)` 는 HLSL `smoothstep` 이 아니다 — 절차적 스프라이트가 유령이 된다
 
 Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한다(t 를 0..1 로 clamp 후 smooth). HLSL `smoothstep(edge0, edge1, x)`(x 가 두 엣지 사이 어디냐로 0..1 반환)와 인자 의미가 정반대다.
@@ -71,35 +52,6 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 - **정답 = world +Y 로 살짝 띄운다**(`PropGroundLift = 0.02`, 화살표는 `ArrowGroundLift = 0.05`). 이 코드베이스는 프랍에서 이미 이 패턴을 쓴다 — 새 보드 오버레이도 반드시 리프트.
 - 부모(grid)가 90° 회전이라 localPosition 으로는 +Y 를 못 맞춘다 → `transform.localPosition` 설정 후 `transform.position += Vector3.up * lift` 로 world 보정.
 - ZTest Always 로 강제로 앞에 그리는 건 오답 — 유닛이 앞에 서도 화살표가 위로 뚫고 나온다. 리프트가 occlusion 을 보존한다.
-
-## dirt 오토타일 유기적 경계
-
-박스형 원인 = 깨끗한 기하학적 타일(직선변/호가 격자 정렬). 자연스럽게:
-
-- 모든 dirt 경계를 **타일링되는(주기=셀폭) 노이즈로 warp**(진폭 ~11px) → 인접 타일이 주기성 덕에 갭 없이 이어짐.
-- inner/cross 케이스의 grass 노치는 **둥근 오목 곡선**(grass 1/4원)으로.
-- 가장자리엔 선명한 cobble, 내부(mask 511)는 **flat 단색**(텍스처 fill 반복=격자 위험 회피).
-- 분포: 사용자 선호 = 작은 유기적 패치(큰 연속 박스 ❌), zoom 스크린샷으로 검증. (당시 구현은 `ObstaclePlacer` 의 BFS 블롭 클러스터 — 맵이 스테이지 프리팹으로 바뀌며 그 클래스는 없어졌다.)
-
-## 타일맵 바닥은 tileSet 소관, 테마는 프랍만
-
-전투 보드 두 렌더 경로가 테마를 다르게 쓴다:
-
-- **Tilemap 모드(당시 기본 — 이력, 옛 ECS 전투와 함께 unit 9 에서 제거)**: 바닥을 `BattleBridge.tileSet`(`TileSetData` scene 필드)이 칠함(env/place/walk/deco/terrainTile + surroundFarColor). **`MapThemeData`/`SeasonData` 의 tile 텍스처/틴트는 여기서 inert** — 테마는 프랍만 구동.
-- **지금**: 바닥은 디오라마 스테이지 프리팹이 그린다. `TileSetData` 는 전투 씬 `BattleCoreScene` 의 `CoreMapOverlay._tileSet` 이 **오버레이(격자·배치 가이드·조준 링 등)의 룩**으로만 읽는다. 「이름이 아니라 실제로 물린 에셋을 확인하라」는 아래 교훈은 그대로다.
-
-## 라이브 TileSetData 는 이름으로 고르면 틀린다 — guid 로 확인할 것
-
-`TileSetData` 는 2개뿐이고 **이름이 직관과 반대**다:
-
-| 에셋 | guid | 쓰이는 곳 |
-|---|---|---|
-| `Generated/Tiles/AutoTileTest/TileSet_AutoTileTest` | `d780c834…` | 지금 `BattleCoreScene` 의 `CoreMapOverlay._tileSet`. 당시 BattleScene `BattleBridge.tileSet` = **씬 fallback** = forest 테마(= 현 시즌 overwork)의 라이브(이력) |
-| `Data/TileSets/TileSet_Desert` | `466c1d82…` | `Map/Theme/desert/desert.asset` — **사막 시즌에서만** |
-
-"Desert" 가 정본처럼 보여서 거기만 고치면 **현 시즌에서 아무 변화가 없다**(2026-07-31 사거리 색을 바꾸며 실제로 헛짚었다). 확인 순서는 씬 파일(지금 `BattleCoreScene.unity` 의 `_tileSet:`, 당시 `BattleScene.unity` 의 `tileSet:` — 이력, unit 9 에서 제거)의 guid → `*.asset.meta` 대조. **`.meta` 여러 개를 한 grep 으로 훑어 출력 순서로 짝짓지 말 것** — 그 착각이 이 사고의 원인이었다. 파일당 한 번씩 읽어라.
-
-곁가지 함정: 에디터가 켜진 채 `.asset` YAML 을 **밖에서** 고치면 아무 일도 안 일어난다. 에디터는 메모리의 옛 값을 계속 쓰고, 그 상태로 저장하면 되레 내 수정이 날아간다. `manage_asset action=import`(리임포트) 또는 인스펙터 직접 입력으로 반영시킨다.
 
 ## 배틀 카메라는 페이즈마다 pitch 가 바뀐다
 
@@ -144,7 +96,7 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 ## 머리 위 뱃지를 월드 +Y 로 띄우면 외곽 타일에서 바깥으로 밀린다
 
-배틀 카메라는 **원근**(`CameraPreset_TilemapRect`: `orthographic: 0`, FOV 40)에 pitch 55°다. 이때 월드 up 은 카메라 공간에서 `(0, cosθ, -sinθ)` 로 분해된다 — 즉 뱃지를 `basePos + Vector3.up * h` 로 띄우면 **위로만 가는 게 아니라 카메라 쪽으로 당겨진다**. `view_z` 가 `h·sinθ` 만큼 줄고 `screen_x = f·view_x/view_z` 이므로 화면 x 가 그만큼 **확대**된다.
+배틀 카메라는 **원근**(배틀 카메라 프리셋: `orthographic: 0`, FOV 40)에 pitch 55°다. 이때 월드 up 은 카메라 공간에서 `(0, cosθ, -sinθ)` 로 분해된다 — 즉 뱃지를 `basePos + Vector3.up * h` 로 띄우면 **위로만 가는 게 아니라 카메라 쪽으로 당겨진다**. `view_z` 가 `h·sinθ` 만큼 줄고 `screen_x = f·view_x/view_z` 이므로 화면 x 가 그만큼 **확대**된다.
 
 - **증상**: 유닛 머리 위 아이콘이 화면 중앙에서 멀수록 좌우로 밀려 보인다. 오프셋 2.6 · 보드 끝에서 **≈57px@1080w**(화면 폭의 5%). 중앙 유닛은 `view_x≈0` 이라 멀쩡해서 "UI 레이어 문제인가?" 로 오진하기 쉽다 — **레이어와 무관하다**(문제의 뷰들은 이미 월드 SpriteRenderer 였다). 오프셋에 비례하므로 작은 값(히트바 1.0)은 티가 안 나 수년 잠복 가능.
 - **정답**: 오프셋을 **카메라 평면**에서 적용 — `HeadAnchor.Lift(basePos, offset, cam)`(`Scripts/Presentation/HeadAnchor.cs`). 카메라 up 은 시선축과 직교라 `view_z` 가 안 변해 어느 타일이든 같은 화면 거리를 유지하고, 페이즈별 pitch 변화(당시 Draft 40°↔Battle 55°)에도 높이가 `cosθ` 로 안 흔들린다.
@@ -239,29 +191,6 @@ Mathf.SmoothStep(0f, 1f, t)       // → 이건 의도대로 동작 (a=0,b=1 이
   // 잘못:    0.150 0.075  0.009  0.000   ← 시작부터 무너짐
   // 올바름:  1.000 1.000  1.000  0.000   ← 끝에서만 떨어짐
   ```
-
-## 바닥 오버레이 z-fighting 은 "어느 타일맵이 불투명 큐인가"부터 찍는다
-
-이 프로젝트의 타일맵은 큐가 섞여 있다. **`Ground` 만 queue 2000(불투명)** 이고 나머지는 3000(투명)이다. 즉 바닥에 뭘 깔든 깊이 경합 상대는 사실상 `Ground` **하나**다.
-
-```
-Ground                   order=-20  queue=2000  Wassup/Tile_ShadowReceive   ← 유일한 불투명
-Overlay                  order=-10  queue=3000  Sprites/Default
-PropsTilemap             order= -5  queue=3000  URP/2D/Sprite-Unlit-Default
-EffectTiles              order=-15  queue=3000  Wassup/EffectTilePulse
-PlacementHighlightTiles  order=-13  queue=3000  Sprites/Default
-유닛(Spine/Quad)          order=+11~+75 queue=3000
-```
-
-- **읽는 법**: queue 3000끼리는 ZWrite 가 꺼져 있어 깊이가 무의미하고 `sortingOrder` 로만 앞뒤가 갈린다. 그러니 **정렬 순서가 아래인 오버레이는 오프셋을 아무리 키워도 위 레이어를 덮지 못한다.** 반대로 `Ground` 와는 깊이로 싸우므로 오프셋이 필요하다.
-- **처방**: 오프셋은 "정밀도를 넉넉히 이길 만큼" 준다(스폰 예고 라인 = 0.06). 아끼면 보드 위치에 따라 정밀도가 달라 **일부 구간만** z-fighting 하는 형태로 남아 "가끔 그런다"로 오진하기 쉽다.
-- **띄우는 축 주의**: `BoardSpace` 는 평면 뷰라 view +Y 는 높이가 아니라 **화면 위쪽**이다. +Y 로 띄우면 가로 구간에서 오버레이가 길 중앙을 벗어난다. `BoardSpace.RaycastPlane().normal` 을 카메라 쪽으로 정렬해 그 축으로 띄운다 — 화면 위치는 그대로, 깊이만 분리된다.
-- **진단 스니펫**: 추측하지 말고 찍는다.
-  ```csharp
-  foreach (var tr in FindObjectsByType<TilemapRenderer>(FindObjectsSortMode.None))
-      Debug.Log($"{tr.name} order={tr.sortingOrder} queue={tr.sharedMaterial?.renderQueue} shader={tr.sharedMaterial?.shader.name}");
-  ```
-- **덤(2026-07-20 실사례)**: 정렬을 양수(유닛 위) → 음수(바닥)로 고친 뒤에도 "오프셋을 키우면 유닛을 덮는다"는 옛 제약 메모가 남아 오프셋을 0.012로 조인 채 z-fighting 을 방치했다. **선행 수정이 후행 제약을 무효화했는지 되짚지 않으면 유령 제약이 남는다.**
 
 ## 스프라이트 시트를 스크립트로 슬라이스할 때 (실측 3건)
 

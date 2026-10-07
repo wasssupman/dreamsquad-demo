@@ -89,8 +89,8 @@
 | 단계 | 어디 | 하는 일 |
 |---|---|---|
 | 취합 | `IMatchGoal.BuildOutcome` (코어) | 담당자 읽기 모델(처치 수·마음·도달 웨이브·산화 수)을 `MatchOutcome` 하나로 |
-| 통보 | `CoreMatchOutcomePresenter` → `TournamentMatchReporter.ReportResult` | `outcome.Score` 를 서버로(모드가 `SubmitsReport` 일 때만) |
-| 표시 | `CoreMatchOutcomePresenter` → `ResultScreen.Show(in MatchOutcome)` | 총점 + 3줄 |
+| 통보 | `BattleDriver.MatchFinished(MatchOutcome)` 사건 | 구독자(somnia 아웃게임)가 `outcome.Score` 를 서버로 보낸다 — 이 리포엔 서버 코드가 없다 |
+| 표시 | HUD 가 마지막 점수를 보여 주고 멈춘다(`CoreMatchEndBeat`) | 결과 화면은 somnia(`demo-diet`) |
 
 (옛 「기록」 단계 `BattleLogger.SetResult/SetScore` 는 이력 — 옛 ECS 전투, unit 9 에서 제거. 새 전투 씬은 로거를 들이지 않았다.)
 
@@ -103,7 +103,7 @@
 | ~~적별 처치 점수~~ | **없다.** 1킬 = 1점 고정 |
 | 적별 각성 보상 | `Data/Enemies/*.asset` → `awakeningReward` |
 | 돌격형의 마음 직격 | 같은 파일 → `stabilityDamage` (라이브 Runner·Swift 50) |
-| 마음 최대치 = 스트레스 분모 | `Scripts/Data/Decks/Deck_*.asset` → `goalStabilityMax` (라이브 1500) |
+| 마음 최대치 = 스트레스 분모 | `Data/Decks/Deck_*.asset` → `goalStabilityMax` (라이브 1500) |
 | 처치 시 마음 회복 배율 | 같은 파일 → `killHealPerAwakening` (라이브 10) |
 | 제한시간 180초 | `Data/Modes/MatchMode_KillScore3Min.asset` → `durationSec` (판 길이는 모드 단독 — 덱의 `timerDurationSec` 는 판 길이에 안 쓰인다) |
 | 제출 개방 시점(P1) | 같은 모드 자산 → `submitUnlockSec`(경과 60초) |
