@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.EffectTileData
   id: effect_tile_regen
   displayName: "\uC7AC\uC0DD (+1 HP/s)"
-  overlayTile: {fileID: 11400000, guid: 0eaf0902739804296a412592c5b6c88c, type: 2}
+  overlaySprite: {fileID: 21300000, guid: 9d1576a4c9ad042b9b779a7ef4b49b01, type: 3}
   effects:
   - stat: 3
     op: 1

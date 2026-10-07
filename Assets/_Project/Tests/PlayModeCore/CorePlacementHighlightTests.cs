@@ -16,7 +16,7 @@ namespace Wassup.Tests.PlayMode.Core
     // **못 놓는 칸을 칠하고, 「지형·프랍이 막았다」와 「유닛이 서 있다」를 색으로 가른다.**
     // 놓을 수 있는 칸은 안 칠한다.
     //
-    // 단언은 값이 아니라 **출처**다: 그림과 두 색이 `TileSetData` 에서 나왔는가. 색 하나를
+    // 단언은 값이 아니라 **출처**다: 그림과 두 색이 `BoardOverlayStyle` 에서 나왔는가. 색 하나를
     // 못박으면 다음 튜닝이 이 테스트를 빨갛게 만들고, 그건 저작을 막는 테스트다.
     public sealed class CorePlacementHighlightTests
     {
@@ -29,13 +29,12 @@ namespace Wassup.Tests.PlayMode.Core
 
             var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
             Assert.IsNotNull(overlay, "맵 오버레이가 씬에 없다");
-            Assert.IsNotNull(overlay.TileSet,
+            Assert.IsNotNull(overlay.Style,
                 "오버레이에 타일셋이 없다 — 하이라이트 룩이 코드 상수라는 뜻이다");
 
-            var set = overlay.TileSet;
-            var tile = set.blockedTile as UnityEngine.Tilemaps.Tile;
-            Assert.IsNotNull(tile, "타일셋에 못 놓는 칸 타일(blockedTile)이 없다");
-            Assert.IsNotNull(tile.sprite, "그 타일에 스프라이트가 없다");
+            var set = overlay.Style;
+            var sprite = set.blockedSprite;
+            Assert.IsNotNull(sprite, "스타일에 못 놓는 칸 스프라이트(blockedSprite)가 없다");
             Assert.AreNotEqual(set.blockedColor, set.occupiedColor,
                 "지형과 유닛 점유가 같은 색이다 — 플레이어가 둘을 구분할 수 없다");
 
@@ -79,19 +78,19 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsTrue(hasOccupied, "유닛이 막은 칸이 하나도 없다 — 배치가 안 반영됐다");
 
             // (i) 놓을 수 있는 칸은 **안 칠한다**.
-            Assert.IsFalse(TryFindCellTint(overlay, driver, tile, freeCell, out _),
+            Assert.IsFalse(TryFindCellTint(overlay, driver, sprite, freeCell, out _),
                 "놓을 수 있는 칸이 칠해졌다 — 빈 땅이 곧 「여기 된다」여야 한다");
 
             // (ii) 지형·프랍 = blockedColor.
             Color got;
-            Assert.IsTrue(TryFindCellTint(overlay, driver, tile, terrainCell, out got),
+            Assert.IsTrue(TryFindCellTint(overlay, driver, sprite, terrainCell, out got),
                 "지형·프랍이 막은 칸이 안 칠해졌다");
-            AssertTint(set.blockedColor, tile.color, got, "지형·프랍");
+            AssertTint(set.blockedColor, got, "지형·프랍");
 
             // (iii) 유닛 점유 = occupiedColor.
-            Assert.IsTrue(TryFindCellTint(overlay, driver, tile, occupiedCell, out got),
+            Assert.IsTrue(TryFindCellTint(overlay, driver, sprite, occupiedCell, out got),
                 "유닛이 막은 칸이 안 칠해졌다");
-            AssertTint(set.occupiedColor, tile.color, got, "유닛 점유");
+            AssertTint(set.occupiedColor, got, "유닛 점유");
 
             overlay.HidePlacement();
         }
@@ -104,9 +103,9 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsNotNull(driver);
             var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
             Assert.IsNotNull(overlay);
-            Assert.IsNotNull(overlay.TileSet);
-            var tile = overlay.TileSet.blockedTile as UnityEngine.Tilemaps.Tile;
-            Assert.IsNotNull(tile);
+            Assert.IsNotNull(overlay.Style);
+            var sprite = overlay.Style.blockedSprite;
+            Assert.IsNotNull(sprite);
 
             driver.Apply(Command.FinishPlacement());
             Assert.IsTrue(TryFindPlaceable(driver, out int placedIndex, out int2 anchor),
@@ -127,7 +126,7 @@ namespace Wassup.Tests.PlayMode.Core
             yield return null;
             yield return null;
 
-            int painted = CountCellsTinted(overlay, driver, tile, overlay.TileSet.occupiedColor, tile.color);
+            int painted = CountCellsTinted(overlay, driver, sprite, overlay.Style.occupiedColor);
             Assert.AreEqual(w * h, painted,
                 $"유닛이 먹은 칸은 {w}×{h} 인데 {painted} 칸이 점유색으로 칠해졌다 — "
                 + "끌고 있는 유닛의 크기만큼 부풀었다");
@@ -167,9 +166,9 @@ namespace Wassup.Tests.PlayMode.Core
 
         // ── 공용 ─────────────────────────────────────────────────────────────
 
-        // 그 색으로 칠해진 칸 수. 색은 저작 × 타일색이고 알파는 페이드가 곱해져 있어 RGB 만 본다.
+        // 그 색으로 칠해진 칸 수. 알파는 페이드가 곱해져 있어 RGB 만 본다.
         private static int CountCellsTinted(CoreMapOverlay overlay, BattleDriver driver,
-                                            UnityEngine.Tilemaps.Tile tile, Color authored, Color tileColor)
+                                            Sprite sprite, Color authored)
         {
             var mpb = new MaterialPropertyBlock();
             var renderers = overlay.GetComponentsInChildren<SpriteRenderer>(true);
@@ -177,23 +176,23 @@ namespace Wassup.Tests.PlayMode.Core
             for (int i = 0; i < renderers.Length; i++)
             {
                 var sr = renderers[i];
-                if (!sr.enabled || sr.sprite != tile.sprite) continue;
+                if (!sr.enabled || sr.sprite != sprite) continue;
                 sr.GetPropertyBlock(mpb);
                 var c = mpb.GetColor(Shader.PropertyToID("_BaseColor"));
-                if (Mathf.Abs(c.r - authored.r * tileColor.r) > 1e-3f) continue;
-                if (Mathf.Abs(c.g - authored.g * tileColor.g) > 1e-3f) continue;
-                if (Mathf.Abs(c.b - authored.b * tileColor.b) > 1e-3f) continue;
+                if (Mathf.Abs(c.r - authored.r) > 1e-3f) continue;
+                if (Mathf.Abs(c.g - authored.g) > 1e-3f) continue;
+                if (Mathf.Abs(c.b - authored.b) > 1e-3f) continue;
                 n++;
             }
             return n;
         }
 
-        private static void AssertTint(Color authored, Color tileColor, Color got, string who)
+        private static void AssertTint(Color authored, Color got, string who)
         {
-            Assert.AreEqual(authored.r * tileColor.r, got.r, 1e-3f, who + " 칸의 R 이 저작에서 나오지 않았다");
-            Assert.AreEqual(authored.g * tileColor.g, got.g, 1e-3f, who + " 칸의 G 가 저작에서 나오지 않았다");
-            Assert.AreEqual(authored.b * tileColor.b, got.b, 1e-3f, who + " 칸의 B 가 저작에서 나오지 않았다");
-            Assert.LessOrEqual(got.a, authored.a * tileColor.a + 1e-3f,
+            Assert.AreEqual(authored.r, got.r, 1e-3f, who + " 칸의 R 이 저작에서 나오지 않았다");
+            Assert.AreEqual(authored.g, got.g, 1e-3f, who + " 칸의 G 가 저작에서 나오지 않았다");
+            Assert.AreEqual(authored.b, got.b, 1e-3f, who + " 칸의 B 가 저작에서 나오지 않았다");
+            Assert.LessOrEqual(got.a, authored.a + 1e-3f,
                 who + " 칸의 알파가 저작 상한을 넘었다 — 페이드가 아니라 덮어쓰기다");
             Assert.Greater(got.a, 0f, who + " 칸이 완전히 투명하다");
         }
@@ -201,7 +200,7 @@ namespace Wassup.Tests.PlayMode.Core
         // 그 칸 자리에 칠해진 슬래브가 있으면 그 틴트를 준다. 자리로 찾는 이유: 오버레이가
         // 「어느 칸을 칠했나」를 내주는 창구를 따로 두면 그게 테스트 전용 표면이 된다.
         private static bool TryFindCellTint(CoreMapOverlay overlay, BattleDriver driver,
-                                            UnityEngine.Tilemaps.Tile tile, int2 cell, out Color tint)
+                                            Sprite sprite, int2 cell, out Color tint)
         {
             float ts = driver.TileSize;
             Vector3 want = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(cell.x * ts, 0f, cell.y * ts));
@@ -210,7 +209,7 @@ namespace Wassup.Tests.PlayMode.Core
             for (int i = 0; i < renderers.Length; i++)
             {
                 var sr = renderers[i];
-                if (!sr.enabled || sr.sprite != tile.sprite) continue;
+                if (!sr.enabled || sr.sprite != sprite) continue;
                 // 표면 오프셋(z-fight 회피)만큼 떠 있으므로 반 칸 안이면 그 칸이다.
                 if (Vector3.Distance(sr.transform.position, want) > ts * 0.45f) continue;
                 sr.GetPropertyBlock(mpb);

@@ -74,9 +74,9 @@ namespace Wassup.Tests.PlayMode.Core
                 Assert.IsTrue(overlay.TryGetEffectTileCell(i, out var cell, out var sprite), $"칸 {i} 가 칠해지지 않았다");
                 Assert.AreEqual(armed[i], cell, "칠한 칸 = 코어가 뽑은 칸");
                 var data = driver.ViewAssets.EffectTile(placement.EffectTileKindAt(cell));
-                var tile = data != null ? data.overlayTile as UnityEngine.Tilemaps.Tile : null;
-                Assert.IsNotNull(tile, "종류의 저작 타일");
-                Assert.AreSame(tile.sprite, sprite, "그림 = 그 종류의 저작 타일(옛 SetEffectTile)");
+                var authored = data != null ? data.overlaySprite : null;
+                Assert.IsNotNull(authored, "종류의 저작 스프라이트");
+                Assert.AreSame(authored, sprite, "그림 = 그 종류의 저작 스프라이트(옛 SetEffectTile)");
             }
             AssertNoErrors();
         }
@@ -133,7 +133,7 @@ namespace Wassup.Tests.PlayMode.Core
             yield return Boot(d => driver = d);
             var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
             Assert.IsNotNull(overlay, "씬에 CoreMapOverlay 가 없다");
-            Assert.IsNotNull(overlay.TileSet, "오버레이 타일셋 저작이 없다");
+            Assert.IsNotNull(overlay.Style, "오버레이 타일셋 저작이 없다");
 
             var def = driver.Definition;
             int defIndex = -1;
@@ -168,7 +168,7 @@ namespace Wassup.Tests.PlayMode.Core
 
             // 링 안 채움 한 겹 — 알파 = 링이 있을 때의 채움(`rangeFillAlphaUnderRing`). 칸 채움은 링이 있으면 0(그리지 않는다).
             Assert.IsTrue(overlay.TryGetRangeFill(out var fill), "링 안 채움이 없다");
-            Assert.AreEqual(overlay.TileSet.rangeFillAlphaUnderRing, fill.a, 1e-4f, "채움 알파 = rangeFillAlphaUnderRing");
+            Assert.AreEqual(overlay.Style.rangeFillAlphaUnderRing, fill.a, 1e-4f, "채움 알파 = rangeFillAlphaUnderRing");
 
             overlay.HidePlacement();
             yield return null;

@@ -54,7 +54,7 @@ namespace Wassup.BattleCoreUnity
             if (rows != null) _blockers.AddRange(rows);
         }
 
-        // unit 8a2 행 1 — 효과 타일의 그림(옛 `EffectTileData.overlayTile` · 테마 `effectTileMaterial`). 같은 규율:
+        // unit 8a2 행 1 — 효과 타일의 그림(옛 `EffectTileData.overlaySprite` · 테마 `effectTileMaterial`). 같은 규율:
         // **`BoardEffectDefinitionBuilder.FillEffectTiles` 가 `MatchDefinition.EffectTiles` 줄을 매긴 그 순회**가 채운다 —
         // 정의표 줄이 0 이면(테마 없음·스테이지가 끔) 여기도 0 이다. 뷰는 칸의 종류 번호(`PlacementService.EffectTileKindAt`)로 되찾는다.
         private readonly List<EffectTileData> _effectTiles = new List<EffectTileData>();

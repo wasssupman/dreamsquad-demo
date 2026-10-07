@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.EffectTileData
   id: effect_tile_fragile
   displayName: "\uBC1B\uB294 \uD53C\uD574 +25%"
-  overlayTile: {fileID: 11400000, guid: 746349ce7bf5849eda604ebd8e2c3c40, type: 2}
+  overlaySprite: {fileID: 21300000, guid: bb6be35c8acbc412dbc59bf2ce9c5998, type: 3}
   effects:
   - stat: 2
     op: 0

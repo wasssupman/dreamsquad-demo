@@ -49,12 +49,12 @@ namespace Wassup.BattleCoreUnity.View
 
         [Header("배치 가이드")]
         // ⚠ **룩을 여기서 지어내지 않는다.** 못 놓는 칸의 그림·두 색·페이드는 전부 이 타일셋이
-        // 정본이다: `blockedTile`(흰 solid) · `blockedColor`(지형·프랍) · `occupiedColor`(유닛
+        // 정본이다: `blockedSprite`(흰 solid) · `blockedColor`(지형·프랍) · `occupiedColor`(유닛
         // 점유) · `placeableFadeInDuration`. 정적(펄스 없음)이고 초록은 안 쓴다 — 초록은 고스트
         // (hover)의 것이다. 비어 있으면 가이드를 **안 그린다** — 임시 색을 코드에 두면 그게
         // 다음 사람의 정본이 된다.
-        [Tooltip("못 놓는 칸의 타일·두 색·페이드 저작. 비면 가이드를 그리지 않는다.")]
-        [SerializeField] private TileSetData _tileSet;
+        [Tooltip("못 놓는 칸의 스프라이트·두 색·페이드 저작. 비면 가이드를 그리지 않는다.")]
+        [SerializeField, UnityEngine.Serialization.FormerlySerializedAs("_tileSet")] private BoardOverlayStyle _style;
         [SerializeField] private Color _ghostOkColor = new Color(0.45f, 0.92f, 0.5f, 0.55f);
         [SerializeField] private Color _ghostBadColor = new Color(0.95f, 0.32f, 0.3f, 0.5f);
         [Tooltip("가이드를 다시 칠하는 주기(초). 0 = 매 프레임.")]
@@ -115,8 +115,8 @@ namespace Wassup.BattleCoreUnity.View
         private bool _dragValid;
         private bool _hasDrag;
 
-        /// <summary>못 놓는 칸의 룩 저작(타일 · 두 색 · 페이드). 테스트가 「룩이 데이터에서 나오나」를 묻는 창구이기도 하다.</summary>
-        public TileSetData TileSet => _tileSet;
+        /// <summary>오버레이 룩 저작(스프라이트 · 색 · 페이드). 테스트가 「룩이 데이터에서 나오나」를 묻는 창구이기도 하다.</summary>
+        public BoardOverlayStyle Style => _style;
 
         /// <summary>드래그 중인 유닛과 그 앵커를 알린다. 매 프레임 불러도 된다.</summary>
         public void ShowPlacement(int defIndex, int2 anchor, bool valid)
@@ -172,7 +172,7 @@ namespace Wassup.BattleCoreUnity.View
         // ⚠ **반경을 여기서 재지 않는다**(구현 4 · 제약 13). 부착 링 = `RangeSpec.RadiusWithOrigin(host 몸)` — 판정과 같은 매핑
         // (`SkillMath.TryOriginRadius`)을 **부르기만** 한다. 대상 몸은 더하지 않는다(대상 그림자가 링에 닿으면 걸린다 = 판정식과 동치).
         // 조준 원의 반경은 드래그 슬롯이 같은 함수로 낸 값이다. 스타일은 저작(`DreamcatcherFocusConfig.attachRangeStyle` ·
-        // `TileSetData.aimRingStyle` — 옛 두 채널의 값 그대로).
+        // `BoardOverlayStyle.aimRingStyle` — 옛 두 채널의 값 그대로).
         // unit 7d — `Telegraph` = 낙하탄 착탄 예고(옛 `PinSkillTelegraph` — 옛 범위 채널의 `SkillTelegraph` 몫). 같은 채널이라
         // 「마지막에 쓴 자가 이긴다」·「반납은 주인만」이 옛 `SetRangeOwner`/`ClearRange` 규칙 그대로다.
         private enum AreaKind : byte { None = 0, Attach = 1, AimRing = 2, AimCells = 3, Telegraph = 4 }
@@ -208,11 +208,11 @@ namespace Wassup.BattleCoreUnity.View
         /// <summary>액티브 칸 조준 — 조준 칸 중심의 원(반경은 호출부가 판정과 같은 함수로 낸 값).</summary>
         public void ShowAimRing(float3 centerSim, float radiusTiles)
         {
-            if (radiusTiles <= 0f || _tileSet == null) { HideAim(); return; }
+            if (radiusTiles <= 0f || _style == null) { HideAim(); return; }
             _area = AreaKind.AimRing;
             _areaCenter = centerSim;
             _areaRadius = radiusTiles;
-            _areaStyle = _tileSet.aimRingStyle;
+            _areaStyle = _style.aimRingStyle;
         }
 
         /// <summary>액티브 칸 조준 — 칸 집합(반경 0 · 포탈 입구+출구 후보). 옛 `SetSkillAimCells`.</summary>
@@ -229,12 +229,12 @@ namespace Wassup.BattleCoreUnity.View
         /// </summary>
         public void ShowTelegraph(SimEntityId projectile, float3 centerSim, float radiusTiles)
         {
-            if (radiusTiles <= 0f || _tileSet == null) return;
+            if (radiusTiles <= 0f || _style == null) return;
             _area = AreaKind.Telegraph;
             _telegraphId = projectile;
             _areaCenter = centerSim;
             _areaRadius = radiusTiles;
-            _areaStyle = _tileSet.aimRingStyle;
+            _areaStyle = _style.aimRingStyle;
         }
 
         public void HideTelegraph(SimEntityId projectile)
@@ -272,7 +272,7 @@ namespace Wassup.BattleCoreUnity.View
         // 옛 `BattleBridge.AddEffectTile`(`:9075`) → `TilemapMapView.SetEffectTile`(`:1025`)의 후계. **어느 칸이 효과 타일인가**를
         // 판 위에 그린다. 소유는 코어다(`PlacementService.ArmedEffectTiles` — 판 시작에 한 번 뽑고 판 내내 안 바뀐다, 칸 소비
         // 없음). 여기는 「보이는 곳」만 — 판마다 한 번 칠한다(소비·회복 사건이 없어 구독할 것이 없다).
-        // 그림 = 그 종류의 저작 타일(`EffectTileData.overlayTile` 의 스프라이트·색) · 머티리얼 = 테마 `effectTileMaterial`(펄스) —
+        // 그림 = 그 종류의 저작 스프라이트(`EffectTileData.overlaySprite`) · 머티리얼 = 테마 `effectTileMaterial`(펄스) —
         // 둘 다 `MatchViewAssets` 가 정의표 줄과 같은 순회로 나른다. 정렬 = `BoardSortOrder.EffectTileOrder`(옛 −15).
         private readonly List<SpriteRenderer> _effectCells = new List<SpriteRenderer>(4);
         private readonly List<int2> _effectCellList = new List<int2>(4);
@@ -313,8 +313,8 @@ namespace Wassup.BattleCoreUnity.View
             {
                 var data = assets.EffectTile(match.Placement.EffectTileKindAt(cells[i]));
                 // 저작 그림이 없으면 **안 그린다**(절차적 사각을 지어내면 그게 다음 사람의 정본이 된다 — 가이드와 같은 규약).
-                var tile = data != null ? data.overlayTile as UnityEngine.Tilemaps.Tile : null;
-                if (tile == null || tile.sprite == null) continue;
+                var sprite = data != null ? data.overlaySprite : null;
+                if (sprite == null) continue;
 
                 while (_effectCells.Count <= used)
                 {
@@ -323,15 +323,15 @@ namespace Wassup.BattleCoreUnity.View
                     _effectCells.Add(go.AddComponent<SpriteRenderer>());
                 }
                 var sr = _effectCells[used++];
-                sr.sprite = tile.sprite;
+                sr.sprite = sprite;
                 sr.sortingOrder = BoardSortOrder.EffectTileOrder;
                 var mat = assets.EffectTileMaterial;
                 sr.sharedMaterial = mat != null ? mat : Material();
-                sr.color = tile.color;                     // 펄스 머티리얼은 정점색을 읽는다(옛 타일맵 = 타일 색 × 흰 타일맵)
-                if (mat == null) Tint(sr, tile.color);     // 오버레이 기본 머티리얼은 프로퍼티 블록 색을 읽는다
+                sr.color = Color.white;                    // 펄스 머티리얼은 정점색을 읽는다(흰 스프라이트 — 색은 머티리얼·틴트가 입힌다)
+                if (mat == null) Tint(sr, Color.white);   // 오버레이 기본 머티리얼은 프로퍼티 블록 색을 읽는다
                 sr.transform.position = ViewOf(CellCenterSim(cells[i]));
                 sr.transform.rotation = PlaneRotation();
-                float w = tile.sprite.bounds.size.x;
+                float w = sprite.bounds.size.x;
                 sr.transform.localScale = Vector3.one * (_driver.TileSize / (w > 1e-5f ? w : 1f));   // 한 칸을 덮는다
                 sr.enabled = true;
                 _effectCellList.Add(cells[i]);
@@ -500,13 +500,13 @@ namespace Wassup.BattleCoreUnity.View
                 }
             }
             if (ring) DrawAreaRing(); else HideAreaRing();
-            if (cells && _tileSet != null)
+            if (cells && _style != null)
             {
                 int used = 0;
                 for (int i = 0; i < _aimCellList.Count; i++)
                 {
                     var sr = Rent(_aimCells, used++, BoardSortOrder.PlacementHighlightOrder);
-                    Tint(sr, _tileSet.rangeColor);
+                    Tint(sr, _style.rangeColor);
                     sr.transform.position = ViewOf(CellCenterSim(_aimCellList[i]));
                     sr.transform.rotation = PlaneRotation();
                     sr.transform.localScale = Vector3.one * _driver.TileSize;
@@ -625,19 +625,19 @@ namespace Wassup.BattleCoreUnity.View
         // 「그 유닛을 여기 놓을 수 있나」는 고스트가 `Judge` 로 따로 묻는다.
         private void PaintGuide()
         {
-            var tile = GuideTile();
-            if (tile == null) { SetCount(_guideCells, 0); _guideUsed = 0; return; }
+            var sprite = GuideSprite();
+            if (sprite == null) { SetCount(_guideCells, 0); _guideUsed = 0; return; }
 
             if (_guideDefIndex != _dragDefIndex || Time.unscaledTime >= _nextGuideRepaint)
             {
                 _guideDefIndex = _dragDefIndex;
                 _nextGuideRepaint = Time.unscaledTime + _guideRepaintSeconds;
-                RebuildGuideCells(tile.sprite);
+                RebuildGuideCells(sprite);
             }
 
             // 색·알파는 **매 프레임** 민다 — 페이드인이 돌아야 하고(정적이지만 등장은 페이드),
             // Play 중 저작 튜닝도 그대로 보여야 한다.
-            ApplyGuideTint(tile);
+            ApplyGuideTint();
         }
 
         private void RebuildGuideCells(Sprite sprite)
@@ -665,33 +665,24 @@ namespace Wassup.BattleCoreUnity.View
             _guideUsed = used;
         }
 
-        // 최종 색 = 저작 틴트 × **타일 자신의 색**. 타일이 자기 색을 들고 있으면 그것도 곱해야
-        // 옛 타일맵과 같은 픽셀이 나온다(타일맵은 타일 색 × 타일맵 색을 정점색에 굽는다).
-        private void ApplyGuideTint(UnityEngine.Tilemaps.Tile tile)
+        // 최종 색 = 저작 틴트 × 페이드. 스프라이트는 흰색 solid 라 색은 저작에서만 온다.
+        private void ApplyGuideTint()
         {
             if (_guideUsed <= 0) return;
-            float fade = _tileSet.placeableFadeInDuration > 0f && _guideShownAt >= 0f
-                ? Mathf.Clamp01((Time.unscaledTime - _guideShownAt) / _tileSet.placeableFadeInDuration)
+            float fade = _style.placeableFadeInDuration > 0f && _guideShownAt >= 0f
+                ? Mathf.Clamp01((Time.unscaledTime - _guideShownAt) / _style.placeableFadeInDuration)
                 : 1f;
-            var t = tile.color;
-            var blocked = Multiply(_tileSet.blockedColor, t, fade);
-            var occupied = Multiply(_tileSet.occupiedColor, t, fade);
+            var blocked = Multiply(_style.blockedColor, fade);
+            var occupied = Multiply(_style.occupiedColor, fade);
             for (int i = 0; i < _guideUsed && i < _guideCells.Count; i++)
                 Tint(_guideCells[i], i < _guideOccupied.Count && _guideOccupied[i] ? occupied : blocked);
         }
 
-        private static Color Multiply(Color authored, Color tile, float fade)
-            => new Color(authored.r * tile.r, authored.g * tile.g, authored.b * tile.b,
-                         authored.a * tile.a * fade);
+        private static Color Multiply(Color authored, float fade)
+            => new Color(authored.r, authored.g, authored.b, authored.a * fade);
 
-        // 저작이 없거나 `Tile` 이 아니면 **안 그린다.** `TileBase` 는 스프라이트를 직접 노출하지
-        // 않고(타일맵만 물어볼 수 있다), 폴백으로 절차적 사각을 깔면 그게 다음 사람의 정본이 된다.
-        private UnityEngine.Tilemaps.Tile GuideTile()
-        {
-            if (_tileSet == null) return null;
-            var tile = _tileSet.blockedTile as UnityEngine.Tilemaps.Tile;
-            return tile != null && tile.sprite != null ? tile : null;
-        }
+        // 저작이 없으면 **안 그린다.** 폴백으로 절차적 사각을 깔면 그게 다음 사람의 정본이 된다.
+        private Sprite GuideSprite() => _style != null ? _style.blockedSprite : null;
 
         // ── ③ 고스트 ─────────────────────────────────────────────────────────
         private void PaintGhost()
@@ -781,7 +772,7 @@ namespace Wassup.BattleCoreUnity.View
             bool attacksFoes = (mask & Factions.AnyEnemy) != 0;
             // 마크는 배치가 **유효할 때만** 보인다 — 무효일 땐 고스트의 빨강과 시간으로 갈린다(옛
             // `TilemapMapView.ApplyTargetMarkVisibility` `:811-816`). 가이드는 그 스위치를 안 탄다(옛 것도 그랬다).
-            bool showMarks = _dragValid && _tileSet != null;
+            bool showMarks = _dragValid && _style != null;
             bool guideHas = false;
             var guideBest = default(NearestTargeting.Candidate);
             float3 guidePos = default;
@@ -800,7 +791,7 @@ namespace Wassup.BattleCoreUnity.View
                 {
                     var sr = Rent(_marks, used++, BoardSortOrder.RangeTargetMarkOrder);
                     sr.sprite = MarkSprite();
-                    Tint(sr, _tileSet.rangeTargetMarkColor);   // 옛 `TilemapMapView.cs:766` — 코드 색 리터럴 없음(제약 6)
+                    Tint(sr, _style.rangeTargetMarkColor);   // 옛 `TilemapMapView.cs:766` — 코드 색 리터럴 없음(제약 6)
                     sr.transform.position = ViewOf(u.Position);
                     sr.transform.rotation = PlaneRotation();
                     sr.transform.localScale = Vector3.one * (ts * 0.7f);
@@ -853,9 +844,9 @@ namespace Wassup.BattleCoreUnity.View
                 }
             }
 
-            if (_tileSet == null || !EnsureDiscFill("RangeFill", ref _rangeFill, ref _rangeFillMesh)) return;
+            if (_style == null || !EnsureDiscFill("RangeFill", ref _rangeFill, ref _rangeFillMesh)) return;
             var c = _ringColor;
-            c.a = _tileSet.rangeFillAlphaUnderRing;
+            c.a = _style.rangeFillAlphaUnderRing;
             FillDisc(_rangeFill, _rangeFillMesh, foot, _ringPoints, c);
         }
 
@@ -870,11 +861,11 @@ namespace Wassup.BattleCoreUnity.View
         //     (옛 `TilemapMapView.cs:900` 의 `Max(halfWidth, 테 폭)`) — 참격 자국과 **같은 역산**(`CoreVfxSpawner.ShapeMarkOf`)
         //   · 방향 = 발밑 → 대상(옛 `:8179`). 같은 자리(방향 0)면 숨긴다(옛 `:884`)
         //   · Omni 는 없다(옛 `:8176` `!IsOmni`) — 원 링이 전부다
-        // 색 = 마크 색(`TileSetData.rangeTargetMarkColor`, 옛 `:919`) × 저작 알파 둘 · 정렬 = 링·타일 위, 마크 아래
+        // 색 = 마크 색(`BoardOverlayStyle.rangeTargetMarkColor`, 옛 `:919`) × 저작 알파 둘 · 정렬 = 링·타일 위, 마크 아래
         // (`PlacementShapeGuideOrder`, 옛 `:978`).
         private void PaintShapeGuide(in AttackDef attack, float3 foot, float3 targetPos, float radiusTiles)
         {
-            if (attack.ShapeKind == Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind || _tileSet == null) { HideShapeGuide(); return; }
+            if (attack.ShapeKind == Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind || _style == null) { HideShapeGuide(); return; }
 
             Vector3 originView = (Vector3)BoardSpace.ToView(foot);
             Vector3 dirView = (Vector3)BoardSpace.ToView(targetPos) - originView;
@@ -919,10 +910,10 @@ namespace Wassup.BattleCoreUnity.View
             _shapeFill.transform.SetPositionAndRotation(pos, rot);
             _shapeRim.transform.SetPositionAndRotation(pos, rot);
 
-            var c = _tileSet.rangeTargetMarkColor;
-            c.a = _tileSet.rangeShapeGuideFillAlpha;
+            var c = _style.rangeTargetMarkColor;
+            c.a = _style.rangeShapeGuideFillAlpha;
             Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeFill.sharedMaterial, c);
-            c.a = _tileSet.rangeShapeGuideRimAlpha;
+            c.a = _style.rangeShapeGuideRimAlpha;
             Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeRim.sharedMaterial, c);
             if (!_shapeFill.enabled) _shapeFill.enabled = true;
             if (!_shapeRim.enabled) _shapeRim.enabled = true;
@@ -983,7 +974,7 @@ namespace Wassup.BattleCoreUnity.View
         {
             if (_shapeFill != null) return true;
             if (_shapeMatMissing) return false;
-            var c = _tileSet.rangeTargetMarkColor;
+            var c = _style.rangeTargetMarkColor;
             var fillMat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(c);
             var rimMat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(c);
             if (fillMat == null || rimMat == null)

@@ -15,7 +15,7 @@ MonoBehaviour:
   id: effect_tile_glass_cannon
   displayName: "\uAE00\uB798\uC2A4\uCE90\uB17C (\uACF5\uACA9 +40% / \uBC1B\uB294\uD53C\uD574
     +40%)"
-  overlayTile: {fileID: 11400000, guid: ac30261308f7d4f4d8cc9d15649df7ba, type: 2}
+  overlaySprite: {fileID: 21300000, guid: 45ede9b29fae64d31adb4548008eaf07, type: 3}
   effects:
   - stat: 0
     op: 0

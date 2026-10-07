@@ -1,20 +1,14 @@
 using UnityEngine;
-using UnityEngine.Tilemaps;
 
 namespace Wassup.Data
 {
-    // tilemap-view-backend unit 1 — Tilemap **오버레이**의 타일·스타일 교체 단위(마커 · 배치 하이라이트 ·
-    // 사거리 링 · 착지 예고). 바닥은 디오라마 스테이지 프리팹이 그린다 — 옛 MapTileType → TileBase 바닥 매핑과
-    // 외곽 터레인 링은 소비처가 사라져 제거했다(demo-diet 2026-10-07).
-    [CreateAssetMenu(menuName = "Wassup/Tile Set Data", fileName = "TileSet")]
-    public class TileSetData : ScriptableObject
+    // 보드 오버레이(`CoreMapOverlay`)의 룩 저작 — 배치 가이드 · 사거리 링 · 공격 도형 · 착지 예고 · 효과 타일 칸의
+    // 색·알파·머티리얼과 못 놓는 칸의 스프라이트. 바닥은 디오라마 스테이지 프리팹이 그린다.
+    // 이력: 옛 「TileSet」 SO(Tilemap 전투의 타일 교체 단위). 바닥 타일 매핑·외곽 터레인 링(demo-diet)과
+    // `Tile` 에셋 껍데기(tilemap-untangle 단위 0, 2026-10-07)를 걷어내고 개명했다 — 오버레이는 Tilemap 을 쓰지 않는다.
+    [CreateAssetMenu(menuName = "Wassup/Board Overlay Style", fileName = "BoardOverlayStyle")]
+    public class BoardOverlayStyle : ScriptableObject
     {
-        [Header("Overlay markers")]
-        public TileBase goalTile;
-        public TileBase spawnTile;
-        public TileBase hoverTile;
-        public TileBase rejectTile;
-
         [Header("배치 액체 하이라이트 (placement-cell-snap unit 7 rev)")]
         [Tooltip("포커스 셀 하이라이트 쿼드 머티리얼(Wassup/PlacementLiquidTile). 모양 튜닝은 이 .mat 인스펙터에서.\n" +
                  "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.")]
@@ -24,7 +18,7 @@ namespace Wassup.Data
         [Tooltip("공격 사거리 윤곽 쿼드 머티리얼(Wassup/PlacementRangeRing). 선 두께·라이너는 이 .mat 인스펙터에서.\n" +
                  "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.\n" +
                  "⚠ 셰이더의 _HalfExtent·_Range 는 저작 값이 아니라 **판정 입력의 복사본**이다. 인스펙터에서 만지지 말 것 — " +
-                 "TilemapMapView 가 매 페인트마다 덮어쓴다.")]
+                 "CoreMapOverlay 가 매 페인트마다 덮어쓴다.")]
         public Material placementRangeRingMaterial;
 
         // heart-stress-axis unit 1 rev 2 — **마음이 붉게 물든다.** rev 1(머리 위 바)·
@@ -36,8 +30,6 @@ namespace Wassup.Data
         public Color heartStressPropTint = new Color(0.95f, 0.13f, 0.11f, 1f);
 
         [Header("Attack range highlight (placement-attack-range-preview)")]
-        // 중립(흰색 계열) solid 타일. 색은 rangeColor 가 tint 로 입힌다.
-        public TileBase rangeTile;
         public Color rangeColor = new Color(1f, 0.85f, 0.1f, 1f); // 노랑
         [Range(0f, 1f)] public float rangePulseMinAlpha = 0.35f;
         [Range(0f, 1f)] public float rangePulseMaxAlpha = 0.85f;
@@ -105,29 +97,13 @@ namespace Wassup.Data
         [Header("Aim-phase range style (unit 4 — 조준 페이즈 전용 2번째 슬롯)")]
         // 배치 단계(드래그 사거리 프리뷰)와 공격방향 지정 단계를 표시로 가른다. 조준 레인·
         // 폭탄 착지셀·조준 화살표만 이 슬롯을 쓰고, 드래그 프리뷰/스킬 조준/텔레그래프는 range* 유지.
-        // **미할당(null) = 스타일 분리 off** — 타일·색·알파 전부 range* 폴백(기존 동작 그대로).
-        // 형태 조정은 이 스프라이트 교체로만(페인트 코드는 스프라이트-agnostic).
-        public TileBase aimRangeTile;
         [Tooltip("조준 표시 tint. 스프라이트는 흰색+알파로만 그리고 색은 여기서 입힌다(틴트는 전역 곱).")]
         public Color aimRangeColor = new Color(1f, 0.55f, 0.12f, 1f);
         [Range(0f, 1f)]
         [Tooltip("조준 표시 기준 알파. 실제 알파 = 이 값 × 세기 배율(미선택 십자 0.7 / 선택 레인 1).")]
         public float aimRangeAlpha = 0.85f;
 
-        [Header("Landing telegraph (ultimate-leap)")]
-        // **전용 타일이다 — 다른 채널의 타일을 빌려 쓰지 않는다.** 세 후보가 전부 임자가 있다:
-        // rangeTile=격자 outline(배치 사거리) · aimRangeTile=tile_range_solid(조준 페이즈) ·
-        // placeableTile=슬랩(배치 가능 칸). 특히 슬랩은 자체 `m_Color` 가 회색(0.80)이라 tint 를
-        // 곱하면 색이 죽어 "어두운 dim" 으로만 보인다 — 빌려 쓰면 그 타일의 저작 의도에 종속된다.
-        // 이 타일은 흰색 + `TileFlags.None` 이라 아래 tint 가 원색 그대로 실린다.
-        [Tooltip("착지 예고 채움 타일. 흰색 solid 여야 tint 가 제 색으로 나온다. 미할당 시 placeable→range 폴백.")]
-        public TileBase telegraphTile;
-
         [Header("Placement highlight (placement-eligible-tile-highlight)")]
-        // 배치 가능 칸을 덮는 타일. 안쪽 은은한 fill + 가장자리 밝은 림이 한 스프라이트에 구워져
-        // "플랫폼(슬랩)" 느낌을 준다(3D 융기 없음). 색은 placeableColor 가 tint. 형태 조정(림/베벨)은
-        // 이 스프라이트 교체로만 — 페인트 코드는 스프라이트-agnostic. 미할당 시 뷰가 no-op.
-        public TileBase placeableTile;
         [Tooltip("배치 하이라이트 tint. 차갑고 낮은 채도(초록 금지 — hover 전용, 노랑 금지 — 사거리와 충돌). " +
                  "밝은 벌판이 안 되게 알파는 은은하게. 정확한 값은 시안 확정 후 덮어씀.")]
         public Color placeableColor = new Color(0.5f, 0.88f, 1f, 0.5f); // 시안 림(Play 튜닝값). 배치영역=ambient, 사거리=focal
@@ -137,11 +113,10 @@ namespace Wassup.Data
 
         // 배치 **불가** 칸(가능 칸의 여집합). 새 씬은 드래그 중에만 칠한다(5b 사용자 결정 2026-09-23 · `CoreMapOverlay`).
         //
-        // placeableTile 을 빌려 쓰지 않고 자기 필드를 갖는다: 슬랩은 자체 m_Color 가 회색(0.80)이라
-        // tint 를 곱하면 색이 죽고, 무엇보다 두 채널이 한 참조를 공유하면 한쪽 저작이 다른 쪽을 끌고 간다.
-        // 기본 배선은 telegraphTile 과 같은 흰색 solid(TileFlags.None)라 아래 tint 가 원색으로 실린다.
-        [Tooltip("배치 불가 칸을 덮는 타일. 흰색 solid 여야 tint 가 제 색으로 나온다. 미할당 시 뷰가 no-op.")]
-        public TileBase blockedTile;
+        // 자기 필드를 갖는다 — 두 채널이 한 참조를 공유하면 한쪽 저작이 다른 쪽을 끌고 간다.
+        // 기본 배선은 흰색 solid(tile_range_solid)라 아래 tint 가 원색으로 실린다.
+        [Tooltip("배치 불가 칸을 덮는 스프라이트. 흰색 solid 여야 tint 가 제 색으로 나온다. 미할당 시 뷰가 no-op.")]
+        public Sprite blockedSprite;
         [Tooltip("배치 불가 하이라이트 tint. placeableColor(시안)와 한눈에 갈리는 계열이어야 한다.")]
         public Color blockedColor = new Color(1f, 0.35f, 0.35f, 0.45f);
 
@@ -150,7 +125,7 @@ namespace Wassup.Data
         // 이 값 = 「유닛이 서 있다」(치우거나 기다리면 열리는 칸). 플레이어가 배우는 것이
         // 다르기 때문에 색이 달라야 한다 — 한 색이면 「여긴 영영 안 되는구나」로 읽힌다.
         //
-        // **타일은 blockedTile 을 같이 쓴다.** 사용자가 정한 것은 「타일 색을 구분한다」이고,
+        // **그림은 blockedSprite 를 같이 쓴다.** 사용자가 정한 것은 「칸 색을 구분한다」이고,
         // 둘은 같은 사실(막혔다)의 두 이유라 그림까지 가르면 한 화면에 모양이 셋이 된다.
         // 전용 타일 슬롯을 미리 파 두지도 않는다 — 소비처 없는 저작 칸은 「여기서 조절된다」고
         // 광고만 한다.

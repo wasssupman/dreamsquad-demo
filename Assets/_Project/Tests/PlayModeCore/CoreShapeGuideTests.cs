@@ -33,7 +33,7 @@ namespace Wassup.Tests.PlayMode.Core
 
             var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
             Assert.IsNotNull(overlay, "맵 오버레이가 씬에 없다");
-            Assert.IsNotNull(overlay.TileSet, "오버레이에 타일셋이 없다 — 가이드 색의 출처가 없다");
+            Assert.IsNotNull(overlay.Style, "오버레이에 타일셋이 없다 — 가이드 색의 출처가 없다");
 
             var def = driver.Definition;
             int shaped = -1, omni = -1;
@@ -127,7 +127,7 @@ namespace Wassup.Tests.PlayMode.Core
             driver.Pause(true);
             var overlay = Object.FindAnyObjectByType<CoreMapOverlay>();
             Assert.IsNotNull(overlay);
-            Assert.IsNotNull(overlay.TileSet, "오버레이에 타일셋이 없다 — 마크 색의 출처가 없다");
+            Assert.IsNotNull(overlay.Style, "오버레이에 타일셋이 없다 — 마크 색의 출처가 없다");
 
             var def = driver.Definition;
             int shaped = -1;
@@ -183,8 +183,8 @@ namespace Wassup.Tests.PlayMode.Core
                 Assert.IsTrue(overlay.TryGetMark(i, out var p, out var c));
                 if (PlanarDistance(p, flyerView) < 0.05f) flyerMarked = true;
                 if (PlanarDistance(p, walkerView) < 0.05f) walkerMarked = true;
-                var want = overlay.TileSet.rangeTargetMarkColor;
-                Assert.AreEqual(want.r, c.r, 1e-4f, "마크 색이 TileSetData.rangeTargetMarkColor 에서 나오지 않았다");
+                var want = overlay.Style.rangeTargetMarkColor;
+                Assert.AreEqual(want.r, c.r, 1e-4f, "마크 색이 BoardOverlayStyle.rangeTargetMarkColor 에서 나오지 않았다");
                 Assert.AreEqual(want.g, c.g, 1e-4f);
                 Assert.AreEqual(want.b, c.b, 1e-4f);
                 Assert.AreEqual(want.a, c.a, 1e-4f);
