@@ -57,39 +57,32 @@ namespace Wassup.EditorTools.BattleCore
         {
             var so = new SerializedObject(driver);
             T Obj<T>(string field) where T : Object => so.FindProperty(field)?.objectReferenceValue as T;
-            T[] Arr<T>(string field) where T : Object
-            {
-                var p = so.FindProperty(field);
-                var list = new List<T>();
-                for (int i = 0; p != null && i < p.arraySize; i++)
-                    if (p.GetArrayElementAtIndex(i).objectReferenceValue is T t) list.Add(t);
-                return list.ToArray();
-            }
 
             var mode = typeof(BattleDriver).GetField("_resolvedMode", BindingFlags.NonPublic | BindingFlags.Instance)
                            ?.GetValue(driver) as MatchModeData ?? Obj<MatchModeData>("_mode");
+            var content = driver.Content;   // battle-content-finish unit 0 — 판 콘텐츠는 SO 한 장
             var defenders = AssetDatabase.LoadAssetAtPath<DefenderCatalog>(DefenderCatalogPath);
             var cards = Cards();
-            if (mode == null || defenders == null || cards == null)
+            if (mode == null || content == null || defenders == null || cards == null)
             {
-                Debug.LogError("[CoreCardSelfCheck] 모드 · 방어유닛 카탈로그 · 카드 카탈로그 중 하나가 없다 — 카탈로그 표를 건너뛴다.");
+                Debug.LogError("[CoreCardSelfCheck] 모드 · BattleContent · 방어유닛 카탈로그 · 카드 카탈로그 중 하나가 없다 — 카탈로그 표를 건너뛴다.");
                 return null;
             }
             var mapField = typeof(BattleDriver).GetField("_map", BindingFlags.NonPublic | BindingFlags.Instance);
             var map = mapField != null ? (GeneratedMap)mapField.GetValue(driver) : default;
             var seed = so.FindProperty("_seed");
             return MatchDefinitionBuilder.Build(
-                mode, defenders.units, Obj<AttackDeck>("_deck"), Obj<WavePlanAsset>("_plan"), Obj<BonusWaveData>("_bonus"),
+                mode, defenders.units, Obj<AttackDeck>("_deck"), Obj<WavePlanAsset>("_plan"), content.bonus,
                 seed != null ? seed.intValue : 1,
                 costRateMultiplier: 1f, map: in map, tileSize: driver.TileSize,
                 structures: driver.StageStructures, viewAssets: null,
-                movement: Obj<MovementTuningConfig>("_movementTuning"),
-                stackModifiers: Arr<StackModifierSO>("_stackModifiers"),
-                imbueCaps: Obj<ImbueCapConfig>("_imbueCaps"),
+                movement: content.movementTuning,
+                stackModifiers: content.stackModifiers,
+                imbueCaps: content.imbueCaps,
                 board: new BoardEffectAuthoring
                 {
-                    Hazards = Arr<HazardSO>("_hazards"),
-                    ExtraBlockers = Arr<Wassup.Data.Authoring.BlockingHazardSO>("_extraBlockers"),
+                    Hazards = content.hazards,
+                    ExtraBlockers = content.extraBlockers,
                 },
                 cards: cards, dreamstones: null);
         }

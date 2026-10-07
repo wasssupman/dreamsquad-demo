@@ -1,10 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Wassup.BattleCoreUnity;
+using Wassup.Data;
 
 namespace Wassup.Tests.PlayMode.Core
 {
@@ -41,6 +43,32 @@ namespace Wassup.Tests.PlayMode.Core
             _hook = null;
             LogAssert.ignoreFailingMessages = false;
         }
+
+        // battle-content-finish unit 0 — 편성·덱은 SO(`DefaultLoadout`)다. 테스트가 그 에셋을 고치면 디스크의 저작이 바뀌므로
+        // **메모리 사본**을 드라이버에 꽂는다 — 판은 사본으로 짓고 에셋은 그대로다.
+        private static DefaultLoadout CloneLoadout(BattleDriver driver)
+        {
+            var field = typeof(BattleDriver).GetField("_loadout", BindingFlags.NonPublic | BindingFlags.Instance);
+            var source = (DefaultLoadout)field.GetValue(driver);
+            var clone = source != null ? UnityEngine.Object.Instantiate(source) : ScriptableObject.CreateInstance<DefaultLoadout>();
+            clone.name = "TestLoadout";
+            field.SetValue(driver, clone);
+            return clone;
+        }
+
+        /// <summary>기본 편성의 덱을 이 카드들로 바꾼다(에디터 직접 진입 판만 읽는다 — 바깥 입력 판은 입력의 덱).</summary>
+        public static void OverrideDeck(BattleDriver driver, DreamcatcherCard[] cards)
+        {
+            var loadout = CloneLoadout(driver);
+            var deck = ScriptableObject.CreateInstance<DreamcatcherDeck>();
+            deck.name = "TestDeck";
+            deck.cards = cards;
+            loadout.deck = deck;
+        }
+
+        /// <summary>기본 편성의 유닛을 이 목록으로 바꾼다.</summary>
+        public static void OverrideDefenders(BattleDriver driver, DefenderUnitData[] defenders)
+            => CloneLoadout(driver).defenders = defenders;
 
         public static IEnumerator LoadAndBoot(Action<BattleDriver> found)
         {

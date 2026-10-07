@@ -205,8 +205,7 @@ namespace Wassup.Tests.PlayMode.Core
             yield return CoreSceneFixture.LoadAndBoot(d => driver = d);
             Assert.IsNotNull(driver, "BattleCoreScene 에 BattleDriver 가 없다");
 
-            var catalog = (DefenderCatalog)typeof(BattleDriver)
-                .GetField("_defenderCatalog", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(driver);
+            var catalog = driver.Content != null ? driver.Content.defenderCatalog : null;
             Assert.IsNotNull(catalog, "드라이버에 유닛 카탈로그가 없다");
             DefenderUnitData pick = null;
             foreach (var u in catalog.units)

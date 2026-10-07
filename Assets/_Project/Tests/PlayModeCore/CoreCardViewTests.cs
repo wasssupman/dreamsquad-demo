@@ -21,7 +21,7 @@ namespace Wassup.Tests.PlayMode.Core
     // ⚠ 포인터 장치를 흉내 내지 않는다(`CoreDragPreviewTests` 와 같은 이유). 제스처가 부르는 **창구**를 직접 부른다 —
     // `SelectionInput.SelectAt` · `CoreCardDragSlot.Tap`/`BeginDragAt`/`DragTo`/`EndDragAt`.
     //
-    // 덱은 저작 덮어쓰기(`BattleDriver._cards`)로 건다 — 프로필 저장 덱은 머신 상태를 상속한다(골든 코퍼스와 같은 함정).
+    // 덱은 기본 편성(`DefaultLoadout`)의 메모리 사본으로 건다 — 프로필 저장 덱은 머신 상태를 상속한다(골든 코퍼스와 같은 함정).
     // 카드 화면 컴포넌트가 씬에 아직 없으면(씬 배선 전) **여기서 세운다** — 컴포넌트는 빈 칸을 같은 씬에서 찾는다.
     public sealed class CoreCardViewTests
     {
@@ -225,7 +225,7 @@ namespace Wassup.Tests.PlayMode.Core
                 cards[i] = UnityEditor.AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(cardPaths[i]);
                 Assert.IsNotNull(cards[i], "카드 에셋이 없다: " + cardPaths[i]);
             }
-            typeof(BattleDriver).GetField("_cards", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(c.Driver, cards);
+            CoreSceneFixture.OverrideDeck(c.Driver, cards);
             EnsureCardViews(UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.UI.DreamcatcherFocusConfig>(FocusConfig));
 #endif
             c.Hand = Object.FindAnyObjectByType<CoreHandView>();

@@ -16,7 +16,7 @@ namespace Wassup.EditorTools.BattleCore
     // 빌드 산출물이 이 전환 도중에 바뀐다. 그래서 로비에서 씬 전환으로 들어가는 길을 만들지
     // 않았다 — `SceneTransition.Go` 는 빌드 목록을 요구한다. **옛 씬의 흐름은 무변**이다.
     //
-    // ⚠ 모드를 고르면 그것은 **「로비 지정」 칸**에 들어간다(`ModeSelection.FromLobby`).
+    // ⚠ 모드를 고르면 그것은 **「바깥 지정」 칸**에 들어간다(`ModeSelection.FromExternal`).
     // 「테스트 모드 강제」 칸은 PlayMode 하네스의 것이다 — 둘을 한 칸으로 접지 않는 이유는
     // `ModeSelection` 의 주석에 있다.
     public static class CoreScenePlayMenu
@@ -48,7 +48,7 @@ namespace Wassup.EditorTools.BattleCore
             OpenAndPlay(mode);
         }
 
-        private static void OpenAndPlay(MatchModeData lobbyMode)
+        private static void OpenAndPlay(MatchModeData externalMode)
         {
             if (EditorApplication.isPlaying)
             {
@@ -60,7 +60,7 @@ namespace Wassup.EditorTools.BattleCore
 
             // ⚠ **Play 진입 «전»에** 놓는다. 드라이버가 `Start` 에서 소비하므로 그 뒤에
             // 놓으면 이번 판이 아니라 다음 판이 이 모드로 선다.
-            if (lobbyMode != null) MatchEntryContext.Set(ModeSelection.FromLobby(lobbyMode));
+            if (externalMode != null) MatchEntryContext.Set(ModeSelection.FromExternal(externalMode));
             else MatchEntryContext.Clear();
 
             EditorApplication.EnterPlaymode();

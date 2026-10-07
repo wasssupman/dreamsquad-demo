@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55bb39c500f840a49da5a91055b0430f, type: 3}
+  m_Name: RuntimeMaterialSet
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.RuntimeMaterialSet
+  solidOpaque: {fileID: 2100000, guid: c1d750bcb8c74978ad7973d5e31c7641, type: 2}
+  solidTransparent: {fileID: 2100000, guid: 4f413d8a91f04b8887d89bed8516409e, type: 2}
+  texturedOpaque: {fileID: 2100000, guid: 1e14c43f5ed64e1199f077ba5b84ed4c, type: 2}
+  boardOverlay: {fileID: 2100000, guid: cb52784f0bfe7461f9f15b3e2a8936e6, type: 2}
+  cardCrumpleUi: {fileID: 2100000, guid: 8c01e88b04684a558e45015e77005cf4, type: 2}
+  hazardParticle: {fileID: 2100000, guid: c6f00d49397f403bb4f106c87f1fc74e, type: 2}

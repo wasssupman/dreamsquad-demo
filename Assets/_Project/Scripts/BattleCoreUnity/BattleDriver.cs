@@ -27,72 +27,41 @@ namespace Wassup.BattleCoreUnity
     //
     // 이 컴포넌트는 **규칙을 하나도 소유하지 않는다.** 판정·상태·저장이 여기 들어오면
     // 그것이 새 브리지의 첫 줄이다(절대 제약 1).
+    // battle-content-finish unit 4 — 실행 순서를 앞당긴다: 뷰 컴포넌트가 `OnEnable` 에서 머티리얼을 만들기 전에
+    // `Awake` 가 `RuntimeMaterialFactory` 에 묶음을 꽂아야 한다.
+    [DefaultExecutionOrder(-100)]
     [DisallowMultipleComponent]
     public sealed class BattleDriver : MonoBehaviour
     {
-        [Header("판 저작 (판 밖 → 정의표)")]
+        // battle-content-finish unit 0 — 판 저작은 SO 두 장이다. 씬은 참조만 든다.
+        //   · `BattleContent` — 이 전투에 존재하는 것(카탈로그 · 장판 · 스택 · 튜닝 · 시즌 · 보너스 · 공용 액티브 풀)
+        //   · `DefaultLoadout` — 바깥 입력이 없을 때의 편성(유닛 · 돌 · 덱)
+        //   · `MatchModeData` — 모드(목표 · 시계 · 웨이브 원천 · 맵 풀 · 기믹 · 배치/덱 규칙)
+        // 셋 다 비면 판을 짓지 않고 **크게 말한다** — 조용한 기본값은 없다.
+        [Header("판 저작 (SO)")]
         [Tooltip("기본 매치 모드 SO — 모드 선택 3단의 **셋째 칸**. 아무도 안 고르면 이것으로 짓는다.")]
         [SerializeField] private MatchModeData _mode;
+        [Tooltip("이 전투에 존재하는 것 — 카탈로그 · 장판 · 길막 · 스택 · 부여 상한 · 이동 튜닝 · 시즌 · 보너스 · 공용 액티브 풀.")]
+        [SerializeField] private BattleContent _content;
+        [Tooltip("바깥(`MatchEntryInput`)이 편성을 안 주는 판의 유닛 · 돌 · 덱.")]
+        [SerializeField] private DefaultLoadout _loadout;
 
-        [Tooltip("에디터 직접 진입 편성(로비를 거치지 않은 판). 로비 판은 저장 편성이 이긴다(unit 8b · `MatchEntry`).")]
-        [SerializeField] private DefenderUnitData[] _defenders = Array.Empty<DefenderUnitData>();
+        [Header("웨이브 · 맵 폴백 (모드가 비웠을 때)")]
         [Tooltip("⑦ 드라이버 저작 덱 — 모드 덱·맵 풀 엔트리 덱이 없을 때만.")]
         [SerializeField] private AttackDeck _deck;
         [SerializeField] private WavePlanAsset _plan;
-        [SerializeField] private BonusWaveData _bonus;
-
-        [Tooltip("맵 풀이 비었을 때만 쓰는 스테이지 프리팹(에디터·테스트 고정구). 인스턴스가 곧 비주얼이고 격자·거점의 정본이다.")]
-        [SerializeField] private Wassup.Core.MapStage _stagePrefab;
-
-        [Header("판 진입 (unit 8b — 로비 입력 → 정의표)")]
         [Tooltip("기본 맵 풀(모드 `mapPool` 이 비었을 때). 맵·덱·플랜이 같은 인덱스로 잠긴다. 비우면 `_stagePrefab`.")]
         [SerializeField] private MapStagePool _mapPool;
+        [Tooltip("맵 풀이 비었을 때만 쓰는 스테이지 프리팹(에디터·테스트 고정구). 인스턴스가 곧 비주얼이고 격자·거점의 정본이다.")]
+        [SerializeField] private Wassup.Core.MapStage _stagePrefab;
         [Tooltip("디버그 고정 맵 시드(옛 브리지 `fixedMapSeed`). 0 = 끔 → 서버 토너먼트 시드 → 0번.")]
         [SerializeField] private int _fixedMapSeed;
-        [SerializeField] private DefenderCatalog _defenderCatalog;
-        [SerializeField] private DreamstoneCatalog _stoneCatalog;
 
+        [Header("씬")]
         [Tooltip("보드 평면 선언(격자). 비어 있으면 뷰가 sim→view 변환을 못 한다.")]
         [SerializeField] private View.CoreBoardPlane _boardPlane;
 
         [SerializeField, Min(0.01f)] private float _tileSize = 1f;
-
-        [Tooltip("시즌 등록부(옛 브리지 `seasonRegistry` · bridge-fields 21). 활성 시즌의 **맵 테마**가 효과 타일 종류·개수를 준다. "
-                 + "판을 짓기 전에 `SeasonRuntime` 에 묶는다 — 새 씬에 묶는 자가 없으면 효과 타일이 0 이 된다(unit 8a2).")]
-        [SerializeField] private Wassup.Data.Season.SeasonRegistry _seasonRegistry;
-
-        [Tooltip("적이 어떻게 서고 어떻게 퍼지나. 비우면 코어 기본값(= 옛 씬 값)이 쓰인다.")]
-        [SerializeField] private MovementTuningConfig _movementTuning;
-
-        [Tooltip("스택 저작(불·얼음·출혈·피로도). 비우면 스택은 쌓이기만 하고 임계가 안 터진다.")]
-        [SerializeField] private StackModifierSO[] _stackModifiers = Array.Empty<StackModifierSO>();
-
-        [Tooltip("탄 부여 상한(한 발이 얼마까지 나르나). 줄이 없는 키의 부여는 관문이 거절한다.")]
-        [SerializeField] private ImbueCapConfig _imbueCaps;
-
-        [Tooltip("이 판에 깔릴 수 있는 존 장판 SO. 배열 순서 = 정의표 줄 번호. **까는 자는 unit 7** 이라 "
-                 + "오늘 라이브에서는 디버그 메뉴만 깐다(unit 6c). 비우면 장판 0.")]
-        [SerializeField] private HazardSO[] _hazards = Array.Empty<HazardSO>();
-
-        [Tooltip("탄이 참조하지 않는 길막 SO(디버그·unit 7 생산자 전용). 탄이 참조하는 것은 탄 표에서 자동으로 모인다.")]
-        [SerializeField] private Wassup.Data.Authoring.BlockingHazardSO[] _extraBlockers
-            = Array.Empty<Wassup.Data.Authoring.BlockingHazardSO>();
-
-        [Tooltip("개발용 덱 덮어쓰기(구성 순서 그대로). **비우면** 프로필 확정 덱 + 판마다 굴린 액티브로 짓는다(unit 7c) — "
-                 + "채우면 이 목록이 곧 덱이다(테스트·개발 판).")]
-        [SerializeField] private DreamcatcherCard[] _cards = Array.Empty<DreamcatcherCard>();
-
-        [Header("드림캐쳐 덱 (unit 7c — 입력의 고른 덱 + 판마다 굴린 액티브)")]
-        [Tooltip("카드 카탈로그. 입력(`MatchEntryInput.DeckCardIds`)의 덱을 푼다 — 없거나 검증에 실패하면 부착 덱은 비어 있다(기본 덱 폴백 없음 — D3).")]
-        [SerializeField] private DreamcatcherCardCatalog _cardCatalog;
-        [Tooltip("판마다 굴리는 공용 액티브의 스킬 풀. 굴림 시드 = 판 시드(재현).")]
-        [SerializeField] private SkillData[] _activePool = Array.Empty<SkillData>();
-        [SerializeField, Min(0)] private int _activeCount = 2;
-        [Tooltip("스킬을 감싸는 액티브 카드. 굴린 스킬을 감싸는 카드가 없으면 그 장만 빠진다(D4).")]
-        [SerializeField] private DreamcatcherCard[] _activeCards = Array.Empty<DreamcatcherCard>();
-
-        [Tooltip("판 진입 드림스톤(스탯 돌 = 배치 유닛 상속 · 코스트 돌 = 재생 배율). 비우면 없음.")]
-        [SerializeField] private DreamstoneData[] _dreamstones = Array.Empty<DreamstoneData>();
 
         [Tooltip("판 시드 고정 노브(G3 — 옛 `debugFixedMatchSeed`). 0 = 판마다 새 난수. 재현의 두 축 중 하나(나머지는 modeId).")]
         [SerializeField] private int _seed;
@@ -169,10 +138,18 @@ namespace Wassup.BattleCoreUnity
         // 무엇을 그릴지 안다. 그래서 **인덱스**로 되찾는다 — 사건이 나르는 `DefIndex` 가
         // 이 목록의 줄 번호다. 목록을 만드는 쪽과 인덱스를 매기는 쪽이 같아야 하므로
         // 둘 다 `MatchDefinitionBuilder` 가 쓰는 것과 **같은 함수**에서 나온다.
-        // unit 8b — 진입 해석을 거친 판은 그 편성(로비 판 = 저장 편성), 정의표를 직접 건 판(테스트)은 저작 편성.
-        public IReadOnlyList<DefenderUnitData> DefenderAssets => _entry != null ? _activeDefenders : _defenders;
+        // unit 8b — 진입 해석을 거친 판은 그 편성(바깥 입력 판 = 받은 편성), 정의표를 직접 건 판(테스트)은 기본 편성.
+        public IReadOnlyList<DefenderUnitData> DefenderAssets
+            => _entry != null ? _activeDefenders
+             : _loadout != null ? _loadout.defenders : Array.Empty<DefenderUnitData>();
 
-        /// <summary>unit 8b — 이 판이 어느 문으로 들어왔나(로비·테스트·에디터). 판 전엔 null.</summary>
+        /// <summary>이 전투의 콘텐츠 묶음(SO). 디버그 메뉴 · 테스트가 카탈로그를 여기서 찾는다.</summary>
+        public BattleContent Content => _content;
+
+        /// <summary>바깥 입력이 없을 때의 편성(SO).</summary>
+        public DefaultLoadout Loadout => _loadout;
+
+        /// <summary>unit 8b — 이 판이 어느 문으로 들어왔나(바깥 입력·테스트·에디터). 판 전엔 null.</summary>
         public MatchEntryPlan Entry => _entry;
 
         /// <summary>
@@ -212,7 +189,7 @@ namespace Wassup.BattleCoreUnity
         /// 보너스 웨이브 저작(unit 8a). 포탈 뷰가 **뷰 타이밍**(`portalAppearDelaySec`·`portalLingerSec`)을
         /// 읽는 창이다 — 그 둘은 화면의 사정이라 정의표(`configHash`)에 싣지 않는다.
         /// </summary>
-        public BonusWaveData BonusAuthoring => _bonus;
+        public BonusWaveData BonusAuthoring => _content != null ? _content.bonus : null;
 
         /// <summary>탄·거점의 줄 번호 → 저작 에셋. **번호를 매긴 빌더가 직접 채운다**.</summary>
         public MatchViewAssets ViewAssets => _viewAssets;
@@ -280,6 +257,12 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
+        private void Awake()
+        {
+            // battle-content-finish unit 4 — 런타임 머티리얼 원본은 SO 참조로 온다(`Resources` 없음). 묶음이 비면 팩토리가 한 번 크게 말한다.
+            Wassup.Rendering.RuntimeMaterialFactory.Configure(_content != null ? _content.runtimeMaterials : null);
+        }
+
         private void Start()
         {
             // 테스트·다른 진입점이 `Begin(definition)` 으로 이미 판을 걸었으면 저작 진입은 건너뛴다 —
@@ -305,34 +288,37 @@ namespace Wassup.BattleCoreUnity
         /// 저작을 읽어 판을 짓고 건다. 스테이지가 없으면 **조용히 지나가지 않는다** —
         /// 맵 없는 판은 적이 갈 곳이 없어 콘솔 에러 0 으로 아무 일도 일어나지 않는다.
         ///
-        /// unit 5c — **모드 선택 3단**: 테스트 모드 강제 &gt; 로비/서버 지정 &gt; 기본 모드 SO.
+        /// unit 5c — **모드 선택 3단**: 테스트 모드 강제 &gt; 바깥(App/서버) 지정 &gt; 기본 모드 SO.
         /// 서열을 아는 함수는 `MatchDefinitionBuilder.ResolveMode` 하나이고 여기는 그것을
         /// 부르기만 한다 — 세 칸을 여기서 다시 비교하면 그것이 두 번째 자다.
         ///
-        /// demo-diet unit 0 — `input` 은 바깥이 넘긴 **값**(편성·돌·덱·플랜·맵 인덱스·서버 시드). null = 드라이버 저작.
+        /// demo-diet unit 0 — `input` 은 바깥이 넘긴 **값**(편성·돌·덱·플랜·맵 인덱스·서버 시드). null = 기본 편성(`DefaultLoadout`).
         /// </summary>
         public void Begin(ModeSelection selection, MatchEntryInput input)
         {
-            var mode = MatchDefinitionBuilder.ResolveMode(selection.TestMode, selection.Lobby, _mode);
+            var mode = MatchDefinitionBuilder.ResolveMode(selection.TestMode, selection.External, _mode);
             if (mode == null)
             {
                 Debug.LogError("[BattleDriver] 매치 모드 SO 가 비었다 — 판을 짓지 않는다.", this);
                 return;
             }
-            // unit 8a2 행 1 — 시즌 등록부를 묶는다(옛 `BattleBridge.Awake` `:685-690` 그대로 — 옛 씬만 묶어서, 로비 → 새 씬
-            // 경로에서는 `SeasonRuntime.Active` 가 null 이라 효과 타일이 **한 칸도** 안 뽑혔다). 규칙이 아니라 저작 선택이다.
-            Wassup.Data.Season.SeasonRuntime.Bind(_seasonRegistry);
-            var season = Wassup.Data.Season.SeasonRuntime.Active;
-            if (season == null || season.mapTheme == null)
-                Debug.LogError("[BattleDriver] SeasonRegistry / activeSeason / mapTheme 가 배선되지 않았다 — 효과 타일 없이 짓는다. "
-                               + "BattleCoreScene 드라이버에 SeasonRegistry.asset 을 연결하라.", this);
+            if (_content == null || _loadout == null)
+            {
+                Debug.LogError("[BattleDriver] BattleContent / DefaultLoadout SO 가 비었다 — 판을 짓지 않는다. "
+                               + "BattleCoreScene 드라이버에 Data/BattleContent.asset · Data/DefaultLoadout.asset 을 연결하라.", this);
+                return;
+            }
+            // 효과 타일은 활성 시즌의 맵 테마에서 온다. 없으면 효과 타일 0 — 규칙이 아니라 저작 선택이라 조용히 지어내지 않는다.
+            var theme = _content.ActiveMapTheme;
+            if (theme == null)
+                Debug.LogError("[BattleDriver] BattleContent.seasonRegistry / activeSeason / mapTheme 가 배선되지 않았다 — 효과 타일 없이 짓는다.", this);
             // unit 8b — **진입 해석**(G3·G5·G7·G13). 순서는 옛 것 그대로: 시드 → (기믹 = 코어가 시드로) → 맵.
             // 시드 0 은 「아무도 안 골랐다」다 — 고정 노브, 그것도 0 이면 새 난수(G3).
-            var entry = MatchEntry.Resolve(input, _defenderCatalog, _stoneCatalog, _seed, selection.Seed);
+            var entry = MatchEntry.Resolve(input, _content.defenderCatalog, _content.stoneCatalog, _seed, selection.Seed);
             _entry = entry;
             int seed = entry.Seed;
-            _activeDefenders = entry.Defenders ?? _defenders ?? Array.Empty<DefenderUnitData>();
-            var stones = entry.Stones ?? _dreamstones;
+            _activeDefenders = entry.Defenders ?? _loadout.defenders ?? Array.Empty<DefenderUnitData>();
+            var stones = entry.Stones ?? _loadout.dreamstones;
 
             // 맵 풀 4갈래(옛 `BuildMapForBattle` `:1263~1300`). 모드 `mapPool` 이 비면 기본 풀.
             // 강제 인덱스·서버 맵 시드는 입력이 값으로 준다(옛 `DevMapOverride`·`TournamentMatchReporter` static).
@@ -356,23 +342,24 @@ namespace Wassup.BattleCoreUnity
             if (!BuildStage(stagePrefab)) return;
             _resolvedMode = mode;
 
-            // unit 7c — 덱. 개발용 덮어쓰기가 비었으면 입력의 고른 덱 + 판 시드로 굴린 액티브(판 밖에서 한 번).
+            // unit 7c — 덱. 기본 편성의 덱이 비었으면 입력의 고른 덱 + 판 시드로 굴린 액티브(판 밖에서 한 번).
             // ⚠ 모드에 각성 저작이 없으면 카드 **값**을 모른다(값의 주인 = `AwakeningConfig`) — 그 모드는 카드 없는 판이다.
             // 짓다가 카드마다 에러를 내지 않고 한 번 말한다(테스트 모드 SO · 각성 없는 모드).
-            // ⚠ 각성 가드가 **먼저**다 — 개발용 덮어쓰기(`_cards`)도 이 가드를 지난다. 덮어쓰기 분기를 앞에 두면 각성 없는
+            // ⚠ 각성 가드가 **먼저**다 — 기본 편성의 덱도 이 가드를 지난다. 덱 분기를 앞에 두면 각성 없는
             // 모드(테스트 모드 SO)에서 카드마다 빌더 에러가 난다(dev 덱 `d06ae0bcd` 이 그 구멍을 열었다).
-            // ⚠ unit 8b — **바깥에서 편성을 받은 판은 개발용 덮어쓰기(`_cards`)가 입력의 덱에 양보한다.** 덮어쓰기는 에디터 메뉴 판 전용이다.
+            // ⚠ unit 8b — **바깥에서 편성을 받은 판은 기본 편성의 덱이 입력의 덱에 양보한다.** 기본 덱은 에디터 직접 진입 · 테스트 전용이다.
             IReadOnlyList<string> deckIds = input != null ? input.DeckCardIds : null;
+            var defaultDeck = _loadout.DeckCards;
             IReadOnlyList<DreamcatcherCard> cards;
             if (mode.awakeningConfig == null)
             {
                 Debug.LogWarning($"[BattleDriver] 모드 '{mode.name}' 에 각성 저작(AwakeningConfig)이 없다 — 드림캐쳐 덱 없이 짓는다"
-                                 + (_cards != null && _cards.Length > 0 ? "(개발용 덱 덮어쓰기도 버린다)." : "."), this);
+                                 + (defaultDeck.Length > 0 ? "(기본 편성의 덱도 버린다)." : "."), this);
                 cards = Array.Empty<DreamcatcherCard>();
             }
-            else if (!entry.FromLobby && _cards != null && _cards.Length > 0) cards = _cards;
-            else cards = Cards.CoreDeckComposition.Compose(deckIds, _cardCatalog, _activePool, _activeCount, _activeCards,
-                                                                      seed, msg => Debug.LogWarning(msg, this));
+            else if (!entry.FromOutside && defaultDeck.Length > 0) cards = defaultDeck;
+            else cards = Cards.CoreDeckComposition.Compose(deckIds, _content.cardCatalog, _content.activePool, _content.activeCount,
+                                                                      _content.activeCards, seed, msg => Debug.LogWarning(msg, this));
 
             // ⚠ **거점 목록을 반드시 넘긴다**(`55688ef5`). 격자 투영에는 셀과 진영밖에 없어
             // 스탯이 없다 — 안 넘기면 마음 타워·본능이 한 기도 안 서고 콘솔 에러 0 으로
@@ -388,33 +375,31 @@ namespace Wassup.BattleCoreUnity
             };
             _enemyAssets = MatchDefinitionBuilder.CollectEnemies(
                                MatchDefinitionBuilder.ResolveDeck(mode, poolDeck),
-                               MatchDefinitionBuilder.ResolveWavePlan(mode, _plan, in entryAuthoring), _bonus)
+                               MatchDefinitionBuilder.ResolveWavePlan(mode, _plan, in entryAuthoring), _content.bonus)
                            ?? Array.Empty<AttackUnitData>();
 
             var def = MatchDefinitionBuilder.Build(
-                mode, _activeDefenders, poolDeck, _plan, _bonus, seed,
+                mode, _activeDefenders, poolDeck, _plan, _content.bonus, seed,
                 // 코스트 돌 배율(G10)은 `Build` 안에서 `CardDefinitionBuilder.CostRateOf(dreamstones)` 가 곱한다(7b) —
                 // 여기 1 은 호출자 배율(항등)이다. 이 자리에 `CostRateOf` 를 넣으면 **두 번 곱한다.**
                 costRateMultiplier: 1f, map: in _map, tileSize: _tileSize,
                 structures: _stageStructures, viewAssets: _viewAssets,
-                movement: _movementTuning, stackModifiers: _stackModifiers,
-                imbueCaps: _imbueCaps,
-                // unit 6b — 효과 타일은 **시즌 맵 테마**에서 온다(옛 `SeasonRuntime.Active.mapTheme`).
-                // 테마가 없으면(시즌 미바인딩 진입) 효과 타일 0 — 조용히 기본값을 지어내지 않는다.
+                movement: _content.movementTuning, stackModifiers: _content.stackModifiers,
+                imbueCaps: _content.imbueCaps,
+                // unit 6b — 효과 타일은 **시즌 맵 테마**에서 온다. 테마가 없으면 효과 타일 0 — 조용히 기본값을 지어내지 않는다.
                 board: new BoardEffectAuthoring
                 {
-                    Hazards = _hazards,
-                    ExtraBlockers = _extraBlockers,
-                    Theme = Wassup.Data.Season.SeasonRuntime.Active != null
-                        ? Wassup.Data.Season.SeasonRuntime.Active.mapTheme : null,
+                    Hazards = _content.hazards,
+                    ExtraBlockers = _content.extraBlockers,
+                    Theme = theme,
                     SuppressEffectTiles = _stageInstance != null && _stageInstance.suppressEffectTiles,
                 },
                 cards: cards, dreamstones: stones, entry: entryAuthoring);
 
             // G22 — 덱 확정(카드)은 판을 걸기 **전**에 알린다. 카드는 고른 덱만 — 굴린 액티브 제외.
             var baseIds = new List<string>();
-            if (entry.FromLobby)
-                foreach (var c in Cards.CoreDeckComposition.ResolveAttachDeck(deckIds, _cardCatalog))
+            if (entry.FromOutside)
+                foreach (var c in Cards.CoreDeckComposition.ResolveAttachDeck(deckIds, _content.cardCatalog))
                     if (c != null) baseIds.Add(c.id);
             LockedDeckCardIds = baseIds;
             DeckLocked?.Invoke(this);

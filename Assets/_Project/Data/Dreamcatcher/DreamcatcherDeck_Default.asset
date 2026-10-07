@@ -13,13 +13,15 @@ MonoBehaviour:
   m_Name: DreamcatcherDeck_Default
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherDeck
   cards:
-  - {fileID: 11400000, guid: ed2cffff28d764997ae36e747277286a, type: 2}
-  - {fileID: 11400000, guid: a60e2cbefa8954855bf7c0129892a24b, type: 2}
-  - {fileID: 11400000, guid: 66d561516ceb849f297a69cecdfb07ce, type: 2}
-  - {fileID: 11400000, guid: 3a4c192997504aee93b0e46df794cb24, type: 2}
-  - {fileID: 11400000, guid: cd23bc03bb19462ea4b687dd39f68c33, type: 2}
-  - {fileID: 11400000, guid: f6e2e2fd23d872345a3bfa35c6cce381, type: 2}
-  - {fileID: 11400000, guid: 8e4a2c05d7b143f9862ba1e07c53d94f, type: 2}
-  - {fileID: 11400000, guid: 6b2d9f41a8e34c07b5d1e63f0a97284c, type: 2}
-  - {fileID: 11400000, guid: 3f8c1b7d0a2e49f6835cd41b96e07a2f, type: 2}
+  - {fileID: 11400000, guid: 0f4b1a971f97449e93a90cb7bdc41244, type: 2}
+  - {fileID: 11400000, guid: 2f54c79e8df8ab149b614d6010f56480, type: 2}
+  - {fileID: 11400000, guid: 3e80fa182e183429185aea4d3d9d3bad, type: 2}
   - {fileID: 11400000, guid: 3c8e5b21d7f9426a91c4e0d83b56f7a2, type: 2}
+  - {fileID: 11400000, guid: 75a63cf309de4c1c8b141180bcc2ec84, type: 2}
+  - {fileID: 11400000, guid: a519684f4f954cbf91ea3fbde9ff30cc, type: 2}
+  - {fileID: 11400000, guid: 80443dea41b4f4143bee2d4395d92d8b, type: 2}
+  - {fileID: 11400000, guid: 803f4524e3c6442593872dd1acf9219c, type: 2}
+  - {fileID: 11400000, guid: 505977850fe29485886d1d588b27ba69, type: 2}
+  - {fileID: 11400000, guid: bebbf7bccd1f94f2f857b780398898c8, type: 2}
+  - {fileID: 11400000, guid: c2156bc97318c334c90169a18c55dc80, type: 2}
+  - {fileID: 11400000, guid: aee631d1aa88aa847a311bbf02546792, type: 2}

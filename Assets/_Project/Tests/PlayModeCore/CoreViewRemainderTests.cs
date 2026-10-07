@@ -67,7 +67,7 @@ namespace Wassup.Tests.PlayMode.Core
             var placement = driver.Match.Placement;
             var armed = placement.ArmedEffectTiles;
             // 라이브 테마(시즌 등록부 → 맵 테마)는 3칸이다 — 0 이면 새 씬이 시즌을 안 묶은 것이다(옛 `BattleBridge.Awake:685`).
-            Assert.Greater(armed.Count, 0, "효과 타일이 한 칸도 안 뽑혔다 — 드라이버 _seasonRegistry 배선 확인");
+            Assert.Greater(armed.Count, 0, "효과 타일이 한 칸도 안 뽑혔다 — BattleContent.seasonRegistry 배선 확인");
             Assert.AreEqual(armed.Count, overlay.EffectTileCellCount, "뽑힌 칸 수 = 칠한 칸 수");
             for (int i = 0; i < armed.Count; i++)
             {
@@ -254,12 +254,9 @@ namespace Wassup.Tests.PlayMode.Core
             var summonerData = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.DefenderUnitData>(
                 "Assets/_Project/Data/Defenders/Defender_Summoner.asset");
             Assert.IsNotNull(summonerData, "소환사 에셋이 없다");
-            var field = typeof(BattleDriver).GetField("_defenders",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var list = new System.Collections.Generic.List<Wassup.Data.DefenderUnitData>(
-                (Wassup.Data.DefenderUnitData[])field.GetValue(driver));
+            var list = new System.Collections.Generic.List<Wassup.Data.DefenderUnitData>(driver.Loadout.defenders);
             if (!list.Contains(summonerData)) list.Add(summonerData);
-            field.SetValue(driver, list.ToArray());
+            CoreSceneFixture.OverrideDefenders(driver, list.ToArray());
 #endif
             driver.Begin();
             driver.Apply(Command.FinishPlacement());

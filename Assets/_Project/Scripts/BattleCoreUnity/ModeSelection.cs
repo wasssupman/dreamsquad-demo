@@ -4,12 +4,12 @@ namespace Wassup.BattleCoreUnity
 {
     // battle-core-rebuild unit 5c — **「이 판을 무엇으로 짓나」가 씬 경계를 넘는 자리.**
     //
-    // 모드 선택은 3단이다: **테스트 모드 강제 > 로비/서버 지정 > 기본 모드 SO**. 그 순서를
+    // 모드 선택은 3단이다: **테스트 모드 강제 > 바깥(App/서버) 지정 > 기본 모드 SO**. 그 순서를
     // 아는 함수는 `MatchDefinitionBuilder.ResolveMode` 하나이고(unit 4), 이 구조체는 그
     // 함수의 앞 두 칸을 나르는 값이다. 셋째 칸은 드라이버가 자기 저작으로 들고 있다.
     //
     // ⚠ **왜 칸이 둘인가.** 「강제」와 「지정」은 세기가 다르다 — 테스트 하네스가 고른 모드는
-    // 로비가 무엇을 골랐든 이겨야 하고(그게 «강제»의 뜻이다), 로비 지정은 저작 기본값만
+    // 바깥이 무엇을 골랐든 이겨야 하고(그게 «강제»의 뜻이다), 바깥 지정은 저작 기본값만
     // 이긴다. 한 칸으로 접으면 그 서열이 **부르는 쪽 순서**로 옮겨가고, 두 번째 호출처가
     // 생기는 날 둘이 갈린다.
     public readonly struct ModeSelection
@@ -17,8 +17,8 @@ namespace Wassup.BattleCoreUnity
         /// <summary>① 테스트 모드 강제. 무엇보다 이긴다 — PlayMode 하네스가 여기 쓴다.</summary>
         public readonly MatchModeData TestMode;
 
-        /// <summary>② 로비/서버 지정. 로비 UI 는 아직 없어 에디터 토글이 그 자리를 대신한다.</summary>
-        public readonly MatchModeData Lobby;
+        /// <summary>② 바깥(somnia App · 서버) 지정. 이 리포엔 그 바깥이 없어 에디터 메뉴가 그 자리를 대신한다.</summary>
+        public readonly MatchModeData External;
 
         /// <summary>
         /// 재현의 둘째 축(첫째는 modeId). **0 = 지정 없음** — 드라이버의 저작 시드를 쓴다.
@@ -27,10 +27,10 @@ namespace Wassup.BattleCoreUnity
         /// </summary>
         public readonly int Seed;
 
-        public ModeSelection(MatchModeData testMode, MatchModeData lobby, int seed)
+        public ModeSelection(MatchModeData testMode, MatchModeData external, int seed)
         {
             TestMode = testMode;
-            Lobby = lobby;
+            External = external;
             Seed = seed;
         }
 
@@ -40,7 +40,7 @@ namespace Wassup.BattleCoreUnity
         public static ModeSelection ForTest(MatchModeData mode, int seed = 0)
             => new ModeSelection(mode, null, seed);
 
-        public static ModeSelection FromLobby(MatchModeData mode, int seed = 0)
+        public static ModeSelection FromExternal(MatchModeData mode, int seed = 0)
             => new ModeSelection(null, mode, seed);
     }
 

@@ -8,7 +8,6 @@ using Wassup.BattleCore;
 using Wassup.BattleCore.Map;
 using Wassup.BattleCoreUnity;
 using Wassup.Data;
-using Wassup.Data.Season;
 using Faction = Wassup.Skills.Faction;
 
 namespace Wassup.Tests.EditMode
@@ -18,7 +17,7 @@ namespace Wassup.Tests.EditMode
     // 이 감사의 결함 다섯(배치 코스트 0 · 연발 피해 0 · 힐러 진영 · 마음사냥꾼 어그로 · 비행 적
     // 대상 층)은 전부 「고정구는 SO 를 안 읽는다」는 한 구멍으로 새어 나갔다 — 골든 코퍼스와 코어
     // 테스트는 손으로 짠 정의표를 쓰므로 **빌더를 한 번도 지나지 않는다.** 이 파일은 그 구멍을 막는
-    // lane 이다: `BattleCoreScene` 의 드라이버가 실제로 들고 있는 저작(모드 · 방어유닛 8 · 덱 ·
+    // lane 이다: `BattleCoreScene` 의 드라이버가 실제로 가리키는 저작(모드 · 덱 · SO 두 장의 방어유닛 ·
     // 보너스 · 스테이지 · 스택 · 부여 상한 · 이동 튜닝 · 활성 시즌)으로 빌더를 돌리고 **정의표의
     // 불변식**을 단언한다.
     //
@@ -61,24 +60,26 @@ namespace Wassup.Tests.EditMode
             int end = yaml.IndexOf("\n--- ", at, System.StringComparison.Ordinal);
             string block = end > 0 ? yaml.Substring(at, end - at) : yaml.Substring(at);
 
+            // battle-content-finish unit 0 — 판 저작은 씬이 가리키는 SO 두 장(`BattleContent` · `DefaultLoadout`)에 있다.
+            var content = One<BattleContent>(block, "_content");
+            var loadout = One<DefaultLoadout>(block, "_loadout");
+            Assert.IsNotNull(content, "씬 드라이버에 BattleContent 가 없다");
+            Assert.IsNotNull(loadout, "씬 드라이버에 DefaultLoadout 이 없다");
             var live = new Live
             {
                 Mode = One<MatchModeData>(block, "_mode"),
-                Defenders = Many<DefenderUnitData>(block, "_defenders"),
+                Defenders = loadout.defenders,
                 Deck = One<AttackDeck>(block, "_deck"),
-                Bonus = One<BonusWaveData>(block, "_bonus"),
+                Bonus = content.bonus,
                 Stage = One<Wassup.Core.MapStage>(block, "_stagePrefab"),
-                Movement = One<MovementTuningConfig>(block, "_movementTuning"),
-                Stacks = Many<StackModifierSO>(block, "_stackModifiers"),
-                Imbue = One<ImbueCapConfig>(block, "_imbueCaps"),
+                Movement = content.movementTuning,
+                Stacks = content.stackModifiers,
+                Imbue = content.imbueCaps,
+                // 효과 타일의 출처 = **활성 시즌의 맵 테마**(드라이버가 `BattleContent.ActiveMapTheme` 에서 읽는다).
+                Theme = content.ActiveMapTheme,
             };
             var seed = Regex.Match(block, @"\n  _seed: (-?\d+)");
             live.Seed = seed.Success ? int.Parse(seed.Groups[1].Value) : 1;
-
-            // 효과 타일의 출처 = **활성 시즌의 맵 테마**(드라이버가 `SeasonRuntime.Active` 에서 읽는다).
-            var registry = AssetDatabase.LoadAssetAtPath<SeasonRegistry>("Assets/_Project/Data/Season/SeasonRegistry.asset");
-            Assert.IsNotNull(registry, "SeasonRegistry 가 없다");
-            live.Theme = registry.activeSeason != null ? registry.activeSeason.mapTheme : null;
 
             Assert.IsNotNull(live.Mode, "씬 드라이버에 모드가 없다");
             Assert.IsNotNull(live.Deck, "씬 드라이버에 덱이 없다");
@@ -92,20 +93,6 @@ namespace Wassup.Tests.EditMode
             var m = Regex.Match(block, @"\n  " + field + @": \{fileID: -?\d+(?:, guid: ([0-9a-f]{32}))?");
             Assert.IsTrue(m.Success, $"드라이버 칸 {field} 를 못 찾았다(씬 형식이 바뀌었나)");
             return m.Groups[1].Success ? LoadByGuid<T>(m.Groups[1].Value) : null;
-        }
-
-        private static T[] Many<T>(string block, string field) where T : Object
-        {
-            var head = Regex.Match(block, @"\n  " + field + @":\s*\n((?:  - \{[^\n]*\}\n)*)");
-            Assert.IsTrue(head.Success, $"드라이버 칸 {field} 를 못 찾았다");
-            var list = new List<T>();
-            foreach (Match g in Regex.Matches(head.Groups[1].Value, @"guid: ([0-9a-f]{32})"))
-            {
-                var a = LoadByGuid<T>(g.Groups[1].Value);
-                Assert.IsNotNull(a, $"{field} 의 GUID {g.Groups[1].Value} 가 {typeof(T).Name} 이 아니다");
-                list.Add(a);
-            }
-            return list.ToArray();
         }
 
         private static T LoadByGuid<T>(string guid) where T : Object

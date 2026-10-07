@@ -14,7 +14,7 @@ namespace Wassup.Tests.PlayMode.Core
     // 코어의 `CardProbe.RunAll(driver.Definition)` 이고, 여기서는 **그 호출** 전후로 살아 있는 판의 틱 · 개체 수 ·
     // 사건 수 · 정의표 해시가 같은지 본다. 프로브가 정의표를 복사하지 않거나 살아 있는 판에 커맨드를 넣으면 빨갛다.
     //
-    // 덱은 저작 덮어쓰기(`_cards`)로 건다 — 프로필 저장 덱은 머신 상태를 상속한다(`CoreCardViewTests` 와 같은 이유).
+    // 덱은 기본 편성(`DefaultLoadout`)의 메모리 사본으로 건다 — 프로필 저장 덱은 머신 상태를 상속한다(`CoreCardViewTests` 와 같은 이유).
     public sealed class CoreCardSelfCheckTests
     {
         private static readonly string[] CardPaths =
@@ -38,7 +38,7 @@ namespace Wassup.Tests.PlayMode.Core
                 cards[i] = UnityEditor.AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(CardPaths[i]);
                 Assert.IsNotNull(cards[i], "카드 에셋이 없다: " + CardPaths[i]);
             }
-            typeof(BattleDriver).GetField("_cards", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(driver, cards);
+            CoreSceneFixture.OverrideDeck(driver, cards);
 #endif
             driver.Begin();
             driver.Apply(Command.FinishPlacement());

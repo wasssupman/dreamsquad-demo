@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c7ea41a213b4ea1952090eb53ec26d3, type: 3}
+  m_Name: BattleContent
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.BattleContent
+  defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
+  stoneCatalog: {fileID: 11400000, guid: c8bc438b0fcdd46d099efeb04b7e8bac, type: 2}
+  cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
+  hazards:
+  - {fileID: 11400000, guid: d46ec980d08e643da840b500d5d5e880, type: 2}
+  - {fileID: 11400000, guid: 2724d543b01d44a9fb1545fa15b7c7b7, type: 2}
+  - {fileID: 11400000, guid: d385cdd627de949599cfc0b0174650e8, type: 2}
+  extraBlockers:
+  - {fileID: 11400000, guid: db7dcf5e2c6674ddba4a3849df2057e5, type: 2}
+  stackModifiers:
+  - {fileID: 11400000, guid: 46689fa6e0794d61ae5e6b74604fe2d4, type: 2}
+  - {fileID: 11400000, guid: de365d3d90c04af19bb3fb09e3509249, type: 2}
+  - {fileID: 11400000, guid: 9ef2f1f251f1c48ca88ace43e01b0a12, type: 2}
+  - {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
+  imbueCaps: {fileID: 11400000, guid: 40685669b5c6499d8a32841d4fbd0220, type: 2}
+  movementTuning: {fileID: 11400000, guid: 07f01c7da34f433f8cda479fbb9f0e98, type: 2}
+  seasonRegistry: {fileID: 11400000, guid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8, type: 2}
+  bonus: {fileID: 11400000, guid: 2a8af2c0d1f44a8694c9d67690cd4ba2, type: 2}
+  runtimeMaterials: {fileID: 11400000, guid: a22ea21431224f718f44100b397e141d, type: 2}
+  activePool:
+  - {fileID: 11400000, guid: b2e8d5f3a96c5f708d4e9f1b3c7a8e21, type: 2}
+  - {fileID: 11400000, guid: c3f9e6a4b07d6a819e5f0c2d4e8b9f32, type: 2}
+  - {fileID: 11400000, guid: 35bce914a516247cc9adee30e2bc5b4d, type: 2}
+  - {fileID: 11400000, guid: 617c2b597eefc4309bb176c2df4826ed, type: 2}
+  - {fileID: 11400000, guid: f8d27dec75a4449c9984a1fd2b1f5e03, type: 2}
+  - {fileID: 11400000, guid: a1f7c4d2e85b4e6f9c3d7b8e2a1f5d60, type: 2}
+  activeCount: 2
+  activeCards:
+  - {fileID: 11400000, guid: c2156bc97318c334c90169a18c55dc80, type: 2}
+  - {fileID: 11400000, guid: 7abe7cdbbb2d0754db92e7e980b3a9a3, type: 2}
+  - {fileID: 11400000, guid: 534083247e5810b44a3308840442e689, type: 2}
+  - {fileID: 11400000, guid: f76bf930b1cf2004ab994885fe7336d8, type: 2}
+  - {fileID: 11400000, guid: aee631d1aa88aa847a311bbf02546792, type: 2}
+  - {fileID: 11400000, guid: 58eb9d4db7ed0364fbdcf8139fa49763, type: 2}

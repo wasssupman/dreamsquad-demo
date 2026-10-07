@@ -60,7 +60,7 @@ namespace Wassup.Tests.PlayMode.Core
             BattleDriver driver = null;
             yield return Boot(input, d => driver = d);
             Assert.AreEqual(MatchEntryKind.Squad, driver.Entry.Kind);
-            Assert.IsTrue(driver.Entry.FromLobby, "바깥에서 편성을 받은 판");
+            Assert.IsTrue(driver.Entry.FromOutside, "바깥에서 편성을 받은 판");
             CollectionAssert.AreEqual(new[] { ids[1], ids[2] }, DefenderIds(driver), "입력의 유닛(G7 — 랜덤 채움 없음)");
             Assert.AreEqual(MatchPhase.Placement, driver.Match.Clock.Phase, "뽑기 없이 배치 국면(계약 9)");
             Assert.IsFalse(MatchEntryContext.HasPending, "입력은 1회 소비다");
@@ -110,7 +110,7 @@ namespace Wassup.Tests.PlayMode.Core
             BattleDriver driver = null;
             yield return Boot(input, d => driver = d);
             var cards = driver.Definition.Cards;
-            Assert.AreEqual(10, cards.Count(c => c.Id == "ranger_atk"), "입력 덱 10장 — 씬의 개발용 덱(`_cards`)이 아니다");
+            Assert.AreEqual(10, cards.Count(c => c.Id == "ranger_atk"), "입력 덱 10장 — 기본 편성(`DefaultLoadout`)의 덱이 아니다");
             Assert.IsTrue(cards.All(c => c.Id == "ranger_atk" || c.Kind == CardKind.Active),
                 "부착 카드는 입력 덱뿐이고 나머지는 판마다 굴린 액티브다");
             CollectionAssert.AreEqual(Enumerable.Repeat("ranger_atk", 10).ToList(), driver.LockedDeckCardIds,

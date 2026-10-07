@@ -193,15 +193,15 @@ namespace Wassup.BattleCoreUnity
         }
 
         /// <summary>
-        /// 모드 선택 3단: **테스트 모드 강제 &gt; 로비/서버 지정 &gt; 기본 모드**.
-        /// 한 줄짜리 규칙이지만 호출처가 셋(스쿼드·테스트·토너먼트)이라 여기 한 곳에 둔다 —
+        /// 모드 선택 3단: **테스트 모드 강제 &gt; 바깥(App/서버) 지정 &gt; 기본 모드**.
+        /// 한 줄짜리 규칙이지만 호출처가 셋(바깥 입력·테스트·에디터 메뉴)이라 여기 한 곳에 둔다 —
         /// 세 곳에 두면 언젠가 하나가 다른 순서를 쓴다.
         /// </summary>
         public static MatchModeData ResolveMode(MatchModeData testOverride,
-                                                MatchModeData lobbyOrServer,
+                                                MatchModeData external,
                                                 MatchModeData fallback)
             => testOverride != null ? testOverride
-             : lobbyOrServer != null ? lobbyOrServer
+             : external != null ? external
              : fallback;
 
         /// <summary>

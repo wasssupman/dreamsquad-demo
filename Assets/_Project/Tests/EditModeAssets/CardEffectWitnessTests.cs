@@ -7,7 +7,6 @@ using Wassup.BattleCore;
 using Wassup.BattleCore.Map;
 using Wassup.BattleCoreUnity;
 using Wassup.Data;
-using Wassup.Data.Season;
 
 namespace Wassup.Tests.EditModeAssets
 {
@@ -15,7 +14,7 @@ namespace Wassup.Tests.EditModeAssets
     //
     // 카드 커버리지 감사(7b 말미)를 리드가 손으로 한 번 한 것을 매 커밋 자동으로, 그리고 **발동까지** 굳힌다.
     // 정의표는 라이브 경로로 굽는다 — `BattleCoreScene` 드라이버의 저작(모드 · 덱 · 보너스 · 스테이지 · 스택 · 부여 상한 ·
-    // 이동 튜닝 · 활성 시즌)에 **카탈로그 전부를 카드로**(`_cards` 자리), 방어유닛은 카탈로그 전부(숙주 후보). 고정구는 SO 를
+    // 이동 튜닝 · 활성 시즌)에 **카탈로그 전부를 카드로**(기본 편성 덱 자리), 방어유닛은 카탈로그 전부(숙주 후보). 고정구는 SO 를
     // 안 읽어서 빌더를 한 번도 안 지난다 — 그 구멍이 `LiveDefinitionSmokeTests` 가 막은 것과 같다.
     //
     // 판정은 `CardProbe`(코어 · 순수 C#)가 한다. 카드마다 기대값을 적지 않는다 — 실행자가 낸 의도가 기대이고
@@ -82,20 +81,22 @@ namespace Wassup.Tests.EditModeAssets
             int end = yaml.IndexOf("\n--- ", at, System.StringComparison.Ordinal);
             string block = end > 0 ? yaml.Substring(at, end - at) : yaml.Substring(at);
 
+            // battle-content-finish unit 0 — 판 저작은 씬이 가리키는 SO(`BattleContent`)에 있다.
+            var content = One<BattleContent>(block, "_content");
+            Assert.IsNotNull(content, "씬 드라이버에 BattleContent 가 없다");
             var live = new Live
             {
                 Mode = One<MatchModeData>(block, "_mode"),
                 Deck = One<AttackDeck>(block, "_deck"),
-                Bonus = One<BonusWaveData>(block, "_bonus"),
+                Bonus = content.bonus,
                 Stage = One<Wassup.Core.MapStage>(block, "_stagePrefab"),
-                Movement = One<MovementTuningConfig>(block, "_movementTuning"),
-                Stacks = Many<StackModifierSO>(block, "_stackModifiers"),
-                Imbue = One<ImbueCapConfig>(block, "_imbueCaps"),
+                Movement = content.movementTuning,
+                Stacks = content.stackModifiers,
+                Imbue = content.imbueCaps,
+                Theme = content.ActiveMapTheme,
             };
             var seed = Regex.Match(block, @"\n  _seed: (-?\d+)");
             live.Seed = seed.Success ? int.Parse(seed.Groups[1].Value) : 1;
-            var registry = AssetDatabase.LoadAssetAtPath<SeasonRegistry>("Assets/_Project/Data/Season/SeasonRegistry.asset");
-            live.Theme = registry != null && registry.activeSeason != null ? registry.activeSeason.mapTheme : null;
             Assert.IsNotNull(live.Mode, "씬 드라이버에 모드가 없다");
             Assert.IsNotNull(live.Mode.awakeningConfig, "모드에 각성 저작이 없다 — 카드 값의 주인이 없다");
             Assert.IsNotNull(live.Stage, "씬 드라이버에 스테이지가 없다");
@@ -107,19 +108,6 @@ namespace Wassup.Tests.EditModeAssets
             var m = Regex.Match(block, @"\n  " + field + @": \{fileID: -?\d+(?:, guid: ([0-9a-f]{32}))?");
             Assert.IsTrue(m.Success, $"드라이버 칸 {field} 를 못 찾았다(씬 형식이 바뀌었나)");
             return m.Groups[1].Success ? LoadByGuid<T>(m.Groups[1].Value) : null;
-        }
-
-        private static T[] Many<T>(string block, string field) where T : Object
-        {
-            var head = Regex.Match(block, @"\n  " + field + @":\s*\n((?:  - \{[^\n]*\}\n)*)");
-            Assert.IsTrue(head.Success, $"드라이버 칸 {field} 를 못 찾았다");
-            var list = new List<T>();
-            foreach (Match g in Regex.Matches(head.Groups[1].Value, @"guid: ([0-9a-f]{32})"))
-            {
-                var a = LoadByGuid<T>(g.Groups[1].Value);
-                if (a != null) list.Add(a);
-            }
-            return list.ToArray();
         }
 
         private static T LoadByGuid<T>(string guid) where T : Object

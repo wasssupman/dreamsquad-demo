@@ -48,8 +48,7 @@ namespace Wassup.Tests.PlayMode.Core
             var pool = Object.FindAnyObjectByType<CoreUnitViewPool>();
             Assert.IsNotNull(pool, "씬에 CoreUnitViewPool 이 없다");
 
-            var catalog = (DefenderCatalog)typeof(BattleDriver)
-                .GetField("_defenderCatalog", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(driver);
+            var catalog = driver.Content != null ? driver.Content.defenderCatalog : null;
             Assert.IsNotNull(catalog, "드라이버에 유닛 카탈로그가 없다");
             // 스켈레톤 필드는 spine-unity 타입이다 — 이 어셈블리는 spine 을 참조하지 않으므로 `Object` 로만 읽는다.
             var skeletonField = typeof(DefenderUnitData).GetField("skeletonDataAsset", BindingFlags.Public | BindingFlags.Instance);

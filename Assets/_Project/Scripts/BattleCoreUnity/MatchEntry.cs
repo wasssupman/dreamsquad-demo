@@ -10,7 +10,7 @@ namespace Wassup.BattleCoreUnity
     {
         /// <summary>입력 없는 진입(에디터 메뉴 · 테스트 하네스). 드라이버 저작 편성·덱이 쓰인다.</summary>
         EditorDirect = 0,
-        /// <summary>바깥(로비·App)이 편성을 **값으로** 넘긴 판(G5·G7). 개발용 덱 덮어쓰기는 이 입력에 양보한다.</summary>
+        /// <summary>바깥(somnia App)이 편성을 **값으로** 넘긴 판(G5·G7). 기본 편성의 덱은 이 입력에 양보한다.</summary>
         Squad = 1,
         // 2 는 비워 둔다 — 첫 판 안내 진입이었고 사용자 결정 ④(2026-09-25)로 제거됐다.
         /// <summary>테스트 모드 플랜(G13). 에디터 「Test this plan」· 테스트 하네스.</summary>
@@ -32,8 +32,8 @@ namespace Wassup.BattleCoreUnity
         public readonly List<string> UnitIds = new List<string>();
         public readonly List<string> StoneIds = new List<string>();
 
-        /// <summary>바깥에서 편성을 받은 판인가. 참이면 개발용 덱 덮어쓰기는 입력의 덱에 **양보**한다.</summary>
-        public bool FromLobby => Kind != MatchEntryKind.EditorDirect;
+        /// <summary>바깥에서 편성을 받은 판인가. 참이면 기본 편성(`DefaultLoadout`)의 덱은 입력의 덱에 **양보**한다.</summary>
+        public bool FromOutside => Kind != MatchEntryKind.EditorDirect;
     }
 
     // battle-core-rebuild unit 8b — **판에 들어가는 문의 해석.** 옛 `GameManager.Start`(G3·G5·G7·G9·G10·G13)와

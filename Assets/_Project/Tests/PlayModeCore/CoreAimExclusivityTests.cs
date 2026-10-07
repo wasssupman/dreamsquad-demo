@@ -146,7 +146,7 @@ namespace Wassup.Tests.PlayMode.Core
                 cards[i] = UnityEditor.AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(paths[i]);
                 Assert.IsNotNull(cards[i], "카드 에셋이 없다: " + paths[i]);
             }
-            typeof(BattleDriver).GetField("_cards", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(c.Driver, cards);
+            CoreSceneFixture.OverrideDeck(c.Driver, cards);
 #endif
             c.Hand = Object.FindAnyObjectByType<CoreHandView>();
             c.Selection = Object.FindAnyObjectByType<SelectionInput>();

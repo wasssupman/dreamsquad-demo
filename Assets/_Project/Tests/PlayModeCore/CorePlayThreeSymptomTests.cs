@@ -35,7 +35,7 @@ namespace Wassup.Tests.PlayMode.Core
                 cards[i] = UnityEditor.AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(cardPaths[i]);
                 Assert.IsNotNull(cards[i], "카드 에셋이 없다: " + cardPaths[i]);
             }
-            typeof(BattleDriver).GetField("_cards", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(driver, cards);
+            CoreSceneFixture.OverrideDeck(driver, cards);
 #endif
             driver.Begin();
             found(driver);
