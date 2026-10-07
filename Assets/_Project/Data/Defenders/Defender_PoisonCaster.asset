@@ -87,10 +87,6 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 0}
   attackVfxPrefab: {fileID: 0}
-  deployCutsceneFrames: []
-  deployCutsceneFps: 24
-  deployCutsceneScale: 1
-  deployCutsceneOffset: {x: 0, y: 0}
   knockbackDistance: 0
   knockbackDuration: 0
   sleepOnHitSec: 0

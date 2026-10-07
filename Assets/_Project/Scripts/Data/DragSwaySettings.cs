@@ -39,17 +39,7 @@ namespace Wassup.Data
         [Tooltip("키링 스타일 — 월드 슬롯(ringSprite/worldCord·RingMaterial) 사용. 비우면 절차적 폴백(원 루프 + cordColor 단색 줄).")]
         public KeyringStyle style;
 
-        [Header("④ 배치 컷신 — 드래그 시작 시 좌상단 유닛 컷신 on/off")]
-        [Tooltip("컷신 on/off — 드래그 배치 시작 시 좌상단 유닛 컷신 재생. 끄면 프레임 있어도 미재생.")]
-        public bool enableDeployCutscene = true;
-
-        [Header("⑤ 컷신 틸트 — 스와이프 속도 → 컷신 기울임 피드")]
-        [Tooltip("틸트 포화 속도 — 이 화면px/s 스와이프에서 틸트 |1| 포화. ↓=작은 스와이프도 크게 기욺.")]
-        public float deployCutsceneSwipeRefSpeed = 1400f;
-        [Tooltip("틸트 스무딩 — 스와이프 속도 exp-lerp 계수(0..1). ↑=빠릿(즉각), ↓=부드럽게 지연.")]
-        public float deployCutsceneSwipeSmoothing = 0.5f;
-
-        [Header("⑥ 셀 스냅 — 포커스 칸 히스테리시스·throttle·액체 하이라이트")]
+        [Header("④ 셀 스냅 — 포커스 칸 히스테리시스·throttle·액체 하이라이트")]
         [Tooltip("자석 세기 — 타일 경계 sticky 여유(타일 분수). 떨림 면역=2×margin, 대가로 전환이 margin 만큼 늦음.\n" +
                  "0=순수 반올림(면역 0). 0.2~0.3 권장. 0.5↑=이웃 칸에 깊이 들어가도 안 넘어감(끈적).\n" +
                  "상한 0.95 — 1.0 이상이면 이웃 셀을 건너뛴다(코드에서 clamp).")]
@@ -81,7 +71,7 @@ namespace Wassup.Data
         //  · tapArc* / tapThrow* — 이제 **재배치 비행**(DefenderDragPlacementController.ComputeThrowArc
         //    → DefenderRelocationController)이 유일 소비자다. 이름의 "tap" 은 유래일 뿐이라 사실과
         //    어긋나지만, 개명하면 저작값이 든 .asset 키가 갈리므로 유래를 여기 적어 두고 이름은 둔다.
-        [Header("⑦ 던지기 곡선(재배치 비행) + 트레이 arm 하이라이트")]
+        [Header("⑤ 던지기 곡선(재배치 비행) + 트레이 arm 하이라이트")]
         [Tooltip("arm 하이라이트 색 — 탭 선택된 트레이 슬롯. 확정 팝 valid 색과 톤 맞춤.")]
         public Color armHighlightColor = new Color(0.35f, 1f, 0.9f, 0.28f);
         [Tooltip("곡선 아치 높이(직선거리 배수) — 카메라-up 으로 제어점 띄움, 유닛이 솟았다 내려옴. 0=직선.")]
@@ -95,14 +85,14 @@ namespace Wassup.Data
         [Tooltip("던지기 도착 제어점 — x=목표까지 전진 비율, y=아치 높이 배수. 낮게 내려오는 착지 접선.")]
         public Vector2 tapThrowLandingControl = new Vector2(0.72f, 0.22f);
 
-        [Header("⑧ 방향 페이즈 — 방향 지정 중 전투 슬로우모")]
+        [Header("⑥ 방향 페이즈 — 방향 지정 중 전투 슬로우모")]
         // 방향 지정 컨트롤러는 런타임 AddComponent 라 자체 인스펙터가 없다. 튜닝값이
         // 이 하나뿐이라 전용 SO(구 DirectionAimSettings) 대신 이미 씬에 배선된 여기로 합쳤다.
         [Tooltip("전투 시간 배율 — 방향 지정 중. 드래그 슬로우모를 이어받음. 0 금지(전투가 멈추면 안 된다).")]
         [Range(0.01f, 1f)]
         public float directionAimSlowmoScale = 0.2f;
 
-        [Header("⑨ 보드 제스처 — armed 유닛 보드 프레스-드래그-릴리즈 배치")]
+        [Header("⑦ 보드 제스처 — armed 유닛 보드 프레스-드래그-릴리즈 배치")]
         // placement-armed-board-drag — arm 후 보드 press 를 tap/drag 로 가르는 이동 임계.
         // 시간이 아니라 이동량으로 판정(사용자 결정 2026-07-20). Unity EventSystem.pixelDragThreshold(기본 10)
         // 와 동류의 화면 px 값이나, 터치에서 조금 여유를 줘 의도치 않은 드래그 승격을 줄인다.
@@ -111,7 +101,7 @@ namespace Wassup.Data
         [Range(1f, 64f)]
         public float boardDragThreshold = 16f;
 
-        [Header("⑩ 드롭 하마 — 릴리스 반동→솟음→착지 (defender-drop-dismount)")]
+        [Header("⑧ 드롭 하마 — 릴리스 반동→솟음→착지 (defender-drop-dismount)")]
         [Tooltip("총 시간(초, unscaled) — 반동+솟음+착지 전체. 비행 = pending 의 첫 단계(InFlight)라 클램프 없음.")]
         [Range(0.1f, 1f)]
         public float dropTotalSeconds = 0.45f;
@@ -151,7 +141,7 @@ namespace Wassup.Data
         [Range(0.02f, 0.3f)]
         public float dropLandingSquashSeconds = 0.05f;
 
-        [Header("⑪ 배치 포인터 오프셋 — 손가락 가림 회피 (placement-thumb-occlusion)")]
+        [Header("⑨ 배치 포인터 오프셋 — 손가락 가림 회피 (placement-thumb-occlusion)")]
         // 배치 판정 포인터를 실제 포인터보다 화면상 위로 파생시켜 손가락이 포커스 칸 하이라이트를
         // 덮지 않게 한다. 원 포인터를 덮어쓰지 않는다(UI 레이캐스트·탭/드래그 임계는 계속 raw).
         // 화면 높이 비율인 이유: Screen.dpi 가 Android 에서 신뢰 불가라 물리 단위(dp)를 쓸 수 없다.
@@ -172,7 +162,7 @@ namespace Wassup.Data
         // px 환산은 값과 같은 곳에 둔다(소비처: 드래그 컨트롤러 · 재배치 seam · PlayMode 테스트).
         public float PlacementPointerOffsetPx => placementPointerOffsetHeightRatio * Screen.height;
 
-        [Header("⑫ 드래그 취소 — 트레이로 되돌리면 취소 (drag-cancel-affordance)")]
+        [Header("⑩ 드래그 취소 — 트레이로 되돌리면 취소 (drag-cancel-affordance)")]
         // 취소 판정 자체는 트레이 패널 rect 가 소유한다(별도 좌표 노브를 두지 않는다 — 계약 2).
         // 여기 있는 건 "취소될 것"을 놓기 전에 알리는 룩뿐이다.
         [Tooltip("취소 존 안에서 드래그 프리뷰 실루엣 알파. ↓=더 유령처럼(배치 안 된다는 신호가 강함). 1=변화 없음.")]
@@ -187,7 +177,7 @@ namespace Wassup.Data
         [Range(0f, 1f)]
         public float cancelHintDwellSeconds = 0.18f;
 
-        [Header("⑬ Footprint 고스트·자석 (defender-footprint)")]
+        [Header("⑪ Footprint 고스트·자석 (defender-footprint)")]
         [Tooltip("정상 Ghost — footprint 전 칸이 배치 가능할 때(하늘 계열).")]
         public Color ghostValidColor = new Color(0.32f, 0.78f, 1f, 0.55f);
         [Tooltip("Ghost 충돌 — footprint 안에서 문제가 된 칸(빨간 계열). 비공간 사유(코스트 등)면 전 칸이 이 색.")]
@@ -210,7 +200,7 @@ namespace Wassup.Data
         [Range(0f, 4f)]
         public float placementMagnetRadiusCells = 0f;
 
-        [Header("⑭ 배치 되돌리기 — 활성화 전 취소 유예 (defender-footprint unit 5·rev 2)")]
+        [Header("⑫ 배치 되돌리기 — 활성화 전 취소 유예 (defender-footprint unit 5·rev 2)")]
         // rev 2 (2026-08-30) — **기본 off.** 당시 유예 창은 `deploymentDuration`(0.45)이고 비행이 그걸 다 먹어
         // 착지 뒤 남는 시간이 0 이었다. defender-deploy-phase(2026-09-21) 부터 창 = 비행(`dropTotalSeconds`) + 배치 모션
         // 길이(`DefenderUnitData.DeployMotionSeconds`, 0~1.67s)라 착지 뒤에도 열려 있다 — 켤지는 UX 결정(밸런스는 이미
@@ -227,7 +217,7 @@ namespace Wassup.Data
         [Tooltip("버튼 글자색.")]
         public Color deployUndoTextColor = new Color(1f, 0.86f, 0.5f, 1f);
 
-        [Header("⑮ 드래그 실루엣 — 보드 위 유닛 그림 (defender-footprint unit 7·8)")]
+        [Header("⑬ 드래그 실루엣 — 보드 위 유닛 그림 (defender-footprint unit 7·8)")]
         [Tooltip("탭 arm 후 보드 드래그: false = 실루엣 없음(range+고스트만 — unit 7 이전 동작).")]
         public bool armedSilhouetteEnabled = true;
         [Tooltip("트레이 D&D: true = 손끝 키링 프리뷰 대신 보드 실루엣(unit 8, 두 제스처 문법 통일).\n" +
