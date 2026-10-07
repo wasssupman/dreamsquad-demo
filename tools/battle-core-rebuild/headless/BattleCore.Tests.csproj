@@ -39,8 +39,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Unity.Mathematics">
-      <HintPath>$(UnityScriptAssemblies)/Unity.Mathematics.dll</HintPath>
+    <Reference Include="UnityEngine.MathematicsModule">
+      <HintPath>$(UnityEngineDir)/UnityEngine.MathematicsModule.dll</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>

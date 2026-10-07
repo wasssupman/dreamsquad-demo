@@ -108,7 +108,7 @@ namespace Wassup.BattleCoreUnity.Hud
             t.color = color;
             t.alignment = align;
             t.raycastTarget = false;
-            t.enableWordWrapping = false;
+            t.textWrappingMode = TextWrappingModes.NoWrap;
             // 잘림보다 **줄어드는 쪽**이 낫다 — 기기마다 폭이 달라 긴 이름이 사라지면
             // 「그 유닛이 왜 안 보이지」가 된다.
             t.overflowMode = TextOverflowModes.Overflow;

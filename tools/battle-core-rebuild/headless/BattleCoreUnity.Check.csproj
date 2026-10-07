@@ -24,7 +24,6 @@
     <NoWarn>$(NoWarn);CS1701;CS1702</NoWarn>
     <RepoRoot>$(MSBuildThisFileDirectory)..\..\..\</RepoRoot>
     <UnityScriptAssemblies Condition="'$(UnityScriptAssemblies)' == ''">/Users/sy/dev/wassup-core/Library/ScriptAssemblies</UnityScriptAssemblies>
-    <UnityEngineDir Condition="'$(UnityEngineDir)' == ''">/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/Scripting/Managed/UnityEngine</UnityEngineDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -50,7 +49,6 @@
     <Reference Include="$(UnityScriptAssemblies)/Wassup.Runtime.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Wassup.Skills.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Wassup.UnitAi.dll" Private="false" />
-    <Reference Include="$(UnityScriptAssemblies)/Unity.Mathematics.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.Collections.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.Burst.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.TextMeshPro.dll" Private="false" />

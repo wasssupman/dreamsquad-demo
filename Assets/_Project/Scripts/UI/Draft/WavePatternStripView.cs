@@ -306,7 +306,7 @@ namespace Wassup.UI.Draft
             headerTmp.fontStyle = FontStyles.Bold;
             headerTmp.color = new Color(1f, 0.86f, 0.24f, 1f);
             headerTmp.alignment = TextAlignmentOptions.Center;
-            headerTmp.enableWordWrapping = false;
+            headerTmp.textWrappingMode = TextWrappingModes.NoWrap;
             headerTmp.raycastTarget = false;
 
             // ScrollRect root (position + alpha tweening target).
@@ -508,7 +508,7 @@ namespace Wassup.UI.Draft
             tmp.color = color;
             if (bold) tmp.fontStyle = FontStyles.Bold;
             tmp.alignment = align;
-            tmp.enableWordWrapping = false;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
             tmp.raycastTarget = false;
         }
 

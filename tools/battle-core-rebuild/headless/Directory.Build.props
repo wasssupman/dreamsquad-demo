@@ -15,6 +15,12 @@
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
     <BaseOutputPath>$(MSBuildProjectDirectory)/bin/$(MSBuildProjectName)/</BaseOutputPath>
+    <!--
+      unity-6-6-upgrade — 6.6 부터 Unity.Mathematics 는 엔진 모듈(UnityEngine.MathematicsModule.dll)이다.
+      코어 lane(BattleCore · Tests)은 이 모듈 하나만, Check lane 은 폴더 전체를 참조한다.
+      다른 머신·버전은 `-p:UnityEngineDir=<Editor/Data/Managed/UnityEngine>`(mac: Unity.app/Contents/Managed/UnityEngine).
+    -->
+    <UnityEngineDir Condition="'$(UnityEngineDir)' == ''">C:/Program Files/Unity/Hub/Editor/6000.6.3f1/Editor/Data/Managed/UnityEngine</UnityEngineDir>
   </PropertyGroup>
 
 </Project>

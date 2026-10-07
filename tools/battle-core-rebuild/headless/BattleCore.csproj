@@ -6,8 +6,11 @@
     같은 소스를 Unity 없이 컴파일한다. **정본 lane 은 Unity EditMode** 이고 이것은
     에디터가 없을 때(또는 도메인 리로드를 기다리기 싫을 때)의 반복 lane 이다.
 
-    이 lane 이 성립하는 것 자체가 계약 4 의 증거다 — 엔진 참조가 하나라도 있으면
-    여기서 먼저 빨개진다. `dotnet build` 가 「엔진 없음」의 컴파일 게이트다.
+    이 lane 이 성립하는 것 자체가 계약 4 의 증거다 — 엔진 모듈 중 **MathematicsModule 하나만**
+    참조한다(6.6 부터 Unity.Mathematics 가 엔진 모듈이라 asmdef 의 noEngineReferences 는 껐다 —
+    unity-6-6-upgrade). CoreModule 이 없으니 GameObject·Debug·Time 을 쓰면 여기서 먼저 빨개진다.
+    `dotnet build` 가 「엔진 없음」의 컴파일 게이트다. 모듈 DLL 은 에디터 설치 폴더에서 —
+    `-p:UnityEngineDir=<…/Editor/Data/Managed/UnityEngine>`(기본값은 Directory.Build.props).
 
     Unity.Mathematics.dll 은 **메인 워크트리의 Library/ScriptAssemblies** 에서 가져온다.
     이 워크트리에는 Library 가 없다(에디터가 연 적이 없다). 다른 자리를 쓰려면
@@ -37,15 +40,17 @@
   <ItemGroup>
     <Reference Include="Wassup.Skills"><HintPath>$(UnityScriptAssemblies)/Wassup.Skills.dll</HintPath><Private>true</Private></Reference>
     <Reference Include="Wassup.UnitAi"><HintPath>$(UnityScriptAssemblies)/Wassup.UnitAi.dll</HintPath><Private>true</Private></Reference>
-    <Reference Include="Unity.Mathematics">
-      <HintPath>$(UnityScriptAssemblies)/Unity.Mathematics.dll</HintPath>
+    <Reference Include="UnityEngine.MathematicsModule">
+      <HintPath>$(UnityEngineDir)/UnityEngine.MathematicsModule.dll</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>
 
   <Target Name="CheckUnityAssemblies" BeforeTargets="BeforeBuild">
-    <Error Condition="!Exists('$(UnityScriptAssemblies)/Unity.Mathematics.dll')"
-           Text="Unity.Mathematics.dll 이 '$(UnityScriptAssemblies)' 에 없다. 에디터가 한 번 컴파일한 워크트리의 Library/ScriptAssemblies 를 -p:UnityScriptAssemblies=... 로 가리켜라." />
+    <Error Condition="!Exists('$(UnityScriptAssemblies)/Wassup.Skills.dll')"
+           Text="Wassup.Skills.dll 이 '$(UnityScriptAssemblies)' 에 없다. 에디터가 한 번 컴파일한 워크트리의 Library/ScriptAssemblies 를 -p:UnityScriptAssemblies=... 로 가리켜라." />
+    <Error Condition="!Exists('$(UnityEngineDir)/UnityEngine.MathematicsModule.dll')"
+           Text="UnityEngine.MathematicsModule.dll 이 '$(UnityEngineDir)' 에 없다(6000.6 이상의 Editor/Data/Managed/UnityEngine). -p:UnityEngineDir=... 로 가리켜라." />
   </Target>
 
 </Project>

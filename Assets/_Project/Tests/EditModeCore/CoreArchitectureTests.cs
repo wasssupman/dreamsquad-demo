@@ -79,15 +79,28 @@ namespace Wassup.Tests.EditMode.Core
             }
         }
 
+        // unity-6-6-upgrade — 6.6 부터 `Unity.Mathematics` 가 엔진 모듈이라 세 어셈블리의
+        // `noEngineReferences` 를 껐다. 컴파일러가 더는 경계를 막지 않으므로 **이 스캔이 경계다**
+        // (헤드리스 lane 의 `BattleCore.csproj` 가 MathematicsModule 만 참조하는 것과 함께).
+        private static readonly string[] EngineFreeDirs =
+        {
+            "Assets/_Project/Scripts/BattleCore",
+            "Assets/_Project/Scripts/Skills",
+            "Assets/_Project/Scripts/UnitAi",
+        };
+
         [Test]
         public void 코어에는_엔진_참조가_없다()
         {
-            foreach (var path in Directory.GetFiles(CoreDir, "*.cs", SearchOption.AllDirectories))
+            foreach (var dir in EngineFreeDirs)
+            foreach (var path in Directory.GetFiles(Path.Combine(CoreGoldenStore.RepoRoot, dir), "*.cs", SearchOption.AllDirectories))
             {
                 string code = CodeOnly(path);
-                StringAssert.DoesNotContain("UnityEngine", code, Path.GetFileName(path));
-                StringAssert.DoesNotContain("Unity.Entities", code, Path.GetFileName(path));
-                StringAssert.DoesNotContain("Unity.Collections", code, Path.GetFileName(path));
+                string where = Path.GetFileName(dir) + "/" + Path.GetFileName(path);
+                StringAssert.DoesNotContain("UnityEngine", code, where);
+                StringAssert.DoesNotContain("UnityEditor", code, where);
+                StringAssert.DoesNotContain("Unity.Entities", code, where);
+                StringAssert.DoesNotContain("Unity.Collections", code, where);
             }
         }
 

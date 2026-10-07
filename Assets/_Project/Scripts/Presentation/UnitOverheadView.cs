@@ -406,7 +406,7 @@ namespace Wassup.Presentation
                 textRt.offsetMax = Vector2.zero;
                 var tmp = textRt.gameObject.AddComponent<TextMeshProUGUI>();
                 tmp.alignment = TextAlignmentOptions.Center;
-                tmp.enableWordWrapping = false;
+                tmp.textWrappingMode = TextWrappingModes.NoWrap;
                 tmp.raycastTarget = false;
 
                 _stacks.Add((rt, icon, badgeRt, plate, tmp));

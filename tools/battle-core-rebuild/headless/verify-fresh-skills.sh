@@ -8,13 +8,15 @@
 #
 # 사용: verify-fresh-skills.sh [ref=HEAD] [덮어쓸 워크트리 파일 ...]
 #   덮어쓸 파일을 주면 export 위에 워크트리 사본을 얹는다(커밋 전 검증용).
-#   환경: VERIFY_OUT(출력 폴더) · UNITY_LIB(참조 dll 폴더, 기본 = 이 워크트리 Library/ScriptAssemblies) · KEEP_VERIFY=1(끝나도 사본을 남긴다)
+#   환경: VERIFY_OUT(출력 폴더) · UNITY_LIB(참조 dll 폴더, 기본 = 이 워크트리 Library/ScriptAssemblies)
+#         · UNITY_ENGINE_DIR(엔진 모듈 폴더 — 6.6 부터 Unity.Mathematics 가 UnityEngine.MathematicsModule.dll 이다) · KEEP_VERIFY=1(끝나도 사본을 남긴다)
 # ⚠ 리포 전체를 풀지 않는다 — 벤더 에셋까지 풀면 실행마다 ~0.9GB 가 쌓여 디스크를 채웠다(2026-09-28 ENOSPC).
 #    헤드리스 csproj 가 읽는 경로만 푼다: Scripts · Editor · Tests · tools · 퇴역 장부(docs/spec/battle-core-rebuild).
 #    실행이 끝나면 출력 폴더를 지운다(KEEP_VERIFY=1 이면 남긴다).
 set -euo pipefail
 REPO=$(cd "$(dirname "$0")/../../.." && pwd)
 LIB=${UNITY_LIB:-$REPO/Library/ScriptAssemblies}
+ENGINE=${UNITY_ENGINE_DIR:-"/c/Program Files/Unity/Hub/Editor/6000.6.3f1/Editor/Data/Managed/UnityEngine"}
 REF=${1:-HEAD}; shift || true
 OUT=${VERIFY_OUT:-$(mktemp -d "${TMPDIR:-/tmp}/verify-XXXXXX")}
 EXPORT=$OUT/export
@@ -33,7 +35,7 @@ cat > "$OUT/skills/Wassup.Skills.csproj" <<EOF
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo><ProduceReferenceAssembly>false</ProduceReferenceAssembly>
   </PropertyGroup>
   <ItemGroup><Compile Include="$EXPORT/Assets/_Project/Scripts/Skills/**/*.cs" /></ItemGroup>
-  <ItemGroup><Reference Include="Unity.Mathematics"><HintPath>$LIB/Unity.Mathematics.dll</HintPath><Private>false</Private></Reference></ItemGroup>
+  <ItemGroup><Reference Include="UnityEngine.MathematicsModule"><HintPath>$ENGINE/UnityEngine.MathematicsModule.dll</HintPath><Private>false</Private></Reference></ItemGroup>
 </Project>
 EOF
 dotnet build "$OUT/skills/Wassup.Skills.csproj" -c Debug -o "$OUT/skills/bin" -nologo -v q 2>&1 | tail -3
@@ -43,12 +45,12 @@ cp "$LIB"/*.dll "$ASM"/
 cp "$OUT/skills/bin/Wassup.Skills.dll" "$ASM/Wassup.Skills.dll"
 
 H=$EXPORT/tools/battle-core-rebuild/headless
-P="-p:UnityScriptAssemblies=$ASM"
+P=(-p:UnityScriptAssemblies="$ASM" -p:UnityEngineDir="$ENGINE")
 echo "── BattleCore.Tests (Category!=Golden)"
-dotnet test "$H/BattleCore.Tests.csproj" --filter "Category!=Golden" $P -nologo 2>&1 | grep -E "error|Passed!|Failed!|통과|실패|합계|Total" | tail -20 || true
+dotnet test "$H/BattleCore.Tests.csproj" --filter "Category!=Golden" "${P[@]}" -nologo 2>&1 | grep -E "error|Passed!|Failed!|통과|실패|합계|Total" | tail -20 || true
 echo "── BattleCoreUnity.Check"
-dotnet build "$H/BattleCoreUnity.Check.csproj" $P -nologo 2>&1 | grep -E " error |오류 [0-9]+개|Build succeeded|빌드했습니다" | sort -u | tail -20 || true
+dotnet build "$H/BattleCoreUnity.Check.csproj" "${P[@]}" -nologo 2>&1 | grep -E " error |오류 [0-9]+개|Build succeeded|빌드했습니다" | sort -u | tail -20 || true
 echo "── Retire.Check (가지치기 후)"
 python3 "$EXPORT/tools/battle-core-rebuild/check_ledgers.py" retire-prune "$EXPORT" >/dev/null 2>&1 || echo "(retire-prune 실패/없음)"
-dotnet build "$H/Retire.Check.csproj" $P -p:AllowUnpruned=true -nologo 2>&1 | grep -E " error |오류 [0-9]+개|Build succeeded|빌드했습니다" | sort -u | tail -20 || true
+dotnet build "$H/Retire.Check.csproj" "${P[@]}" -p:AllowUnpruned=true -nologo 2>&1 | grep -E " error |오류 [0-9]+개|Build succeeded|빌드했습니다" | sort -u | tail -20 || true
 echo "out=$OUT"
