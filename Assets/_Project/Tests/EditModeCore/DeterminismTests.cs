@@ -212,10 +212,11 @@ namespace Wassup.Tests.EditMode.Core
         [Test]
         public void 옛_계열_트레이스는_코어_리더가_거절한다()
         {
-            // 포맷은 같아도 채널 어휘가 다르다. 구분자가 없으면 골든 하나가 조용히
-            // 엉뚱한 채널 이름으로 읽힌다.
-            var legacy = new Wassup.Core.Trace.LegacyTraceV0 { scenario = "old", configHash = "deadbeefdeadbeef" };
-            Assert.Throws<System.FormatException>(() => CoreTrace.Deserialize(legacy.Serialize()));
+            // 포맷은 같아도 채널 어휘가 다르다. 구분자(`channels=core`)가 없으면 골든 하나가 조용히
+            // 엉뚱한 채널 이름으로 읽힌다. 옛 계열(`LTV0`)의 머리만 흉내 낸다 — 그 직렬화기는 지웠다.
+            const string legacy = "LTV0\nscenario=old\nconfigHash=deadbeefdeadbeef\nmatchSeed=0\nstepDt=0.016666668\ntickCount=0\nevents=0\n"
+                                + "finalKills=0\nfinalScore=0\nfinalLeaks=0\nfinalStateHash=0000000000000000\n";
+            Assert.Throws<System.FormatException>(() => CoreTrace.Deserialize(legacy));
         }
 
         [Test]

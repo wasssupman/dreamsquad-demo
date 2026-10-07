@@ -584,7 +584,7 @@ namespace Wassup.BattleCore
             return h;
         }
 
-        private static int Quantize(float v) => Wassup.Core.Trace.TraceEvent.Quantize(v);
+        private static int Quantize(float v) => CoreTraceEvent.Quantize(v);
 
         private static ulong Fnv(ulong h, int value)
         {

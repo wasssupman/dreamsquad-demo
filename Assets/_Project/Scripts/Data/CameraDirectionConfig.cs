@@ -193,10 +193,9 @@ namespace Wassup.Data
         // gift-phase-removal unit 1 — ⚠ 이 배열은 **enum 값이 직렬화**된다(에셋에 정수로 박힌다).
         // GamePhase 에서 값을 빼거나 순서를 바꾸면 저장된 정수의 의미가 밀리므로,
         // 반드시 CameraDirectionConfig.asset 의 breathPhases 도 같은 커밋에서 마이그레이션한다.
-        [Tooltip("브리딩이 켜지는 페이즈 (기본 Draft/Placement/Battle — Result 는 자체 연출과 간섭 방지).")]
+        [Tooltip("브리딩이 켜지는 페이즈 (기본 Placement/Battle — Result 는 자체 연출과 간섭 방지).")]
         public Wassup.Core.GamePhase[] breathPhases =
         {
-            Wassup.Core.GamePhase.Draft,
             Wassup.Core.GamePhase.Placement,
             Wassup.Core.GamePhase.Battle,
         };

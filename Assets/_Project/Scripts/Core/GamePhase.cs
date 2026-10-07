@@ -18,5 +18,8 @@ namespace Wassup.Core
     // gift-phase-removal unit 1 — Gift 제거(값 2). 뒤 값이 한 칸씩 당겨졌고 위 에셋의
     // phase 4개 + breathPhases 3개를 같은 커밋에서 옮겼다. "직렬화 없음" 이라던 옛 주석은
     // 틀렸다 — 이 경고가 그 대체물이다.
-    public enum GamePhase { None, Draft, Placement, Battle, Result, Tally, Gimmick }
+    //
+    // battle-content-finish unit 1 — Draft(드래프트 픽 은퇴) · Tally(결과 집계 연출 은퇴) 제거. 발행처 0 이었다.
+    // 그 시점의 에셋 `breathPhases` 는 비어 있어 옮길 정수가 없었다(`CoreGamePhaseTests` 가 대조한다).
+    public enum GamePhase { None, Placement, Battle, Result, Gimmick }
 }

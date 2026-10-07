@@ -171,7 +171,7 @@ namespace Wassup.Data
         //
         // ★ **실행자가 sim 도 브리지도 아니다** — `DreamcatcherHandController`(Core, Mono)다.
         // 그래서 `DcTriggerSlot` 을 굽지 않는다. `PlacementAura`(브리지 Mono 상태에 등록)보다
-        // 한 칸 더 밖이며, 이 성질을 가진 payload 를 아래 `DcPayloadKinds.IsHandOp` 이 모은다.
+        // 한 칸 더 밖이다(옛 `DcPayloadKinds.IsHandOp` 술어는 소비자가 없어 지웠다 — 코어 `HandDeck` 이 종류를 직접 본다).
         //
         // 필드 재사용: 없다. **어느 칸도 안 읽는다.**
         // (구 주석은 magnitude = 앞으로 보낼 최대 장수라 적었으나 **소비자가 0** 이다 —
@@ -197,21 +197,6 @@ namespace Wassup.Data
         // 하는 일이라 조용히 소모된다(가드를 쪼개 문을 열면 저작 경로가 둘이 된다).
         // unit 2e — 반경 안 상대 전원에 지속 피해 + **자기 공격 대기**. 레거시 `DotNearby`.
         // 지속을 갖는 채널이라 그동안 유닛이 여기 묶이는 것이 사양이다.
-
-    // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op) 카테고리.
-    // 실행자가 시뮬레이션도 브리지도 아니고 `DreamcatcherHandController` 인 payload 들.
-    // 공통 성질: DcTriggerSlot 을 굽지 않는다 · host 능력에 의존하지 않는다 ·
-    // **Mono 가 host 귀속으로 볼 수 있는 사건**(DefenderRetired / DefenderDied / EnemyGone)
-    // 에만 배선할 수 있다.
-    //
-    // 이 술어를 정의표 번역(`CardDefinitionBuilder`) · 적용성(DcApplicability) · 컨트롤러가 공유하므로,
-    // 두 번째 손패 카드가 드는 비용은 **enum 값 1 + 컨트롤러 case 1** 이다(브리지 0 · 적용성 0).
-    // 카드마다 `HasXxx()` 불리언을 늘리는 방식(HasBountyMark 선례)을 여기서 쓰지 않는 이유다.
-    public static class DcPayloadKinds
-    {
-        public static bool IsHandOp(EffectKind kind)
-            => kind == EffectKind.RecallAttachedToFront;
-    }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
     // 계층은 Battle 타입 참조 금지라 Battle.Effects.CcKind 를 직접 못 쓴다 → 이 미러를

@@ -22,8 +22,6 @@ namespace Wassup.Presentation
         // unit-health-display unit 2 — 적 피격 마이크로바: 캐릭터·투사체(1000) 위, 데미지 숫자(32000) 아래.
         // bg = 이 값, fill = +1.
         public const int HitBarOrder = 16000;
-        // unit-health-display unit 3 — 방어유닛 타일 테두리 게이지: 바닥 데칼(그림자 −5 위, 캐릭터 양수 아래).
-        public const int TileGaugeOrder = -4;
         // placement-drag-preview-polish — 드래그 프리뷰 실루엣: 배치 중 배경 프랍/유닛/투사체 위로.
         // 프랍(prop.sortingOrder + Compute)·유닛(Compute+1)·투사체(+1000) 위, UI(Canvas) 아래.
         public const int DragPreviewOrder = 20000;

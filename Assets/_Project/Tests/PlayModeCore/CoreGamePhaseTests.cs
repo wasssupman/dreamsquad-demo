@@ -10,18 +10,18 @@ namespace Wassup.Tests.PlayMode.Core
     // 켜진다. 그 사고는 에셋을 열어 보기 전에는 안 보인다 — 컴파일도 테스트도 다 통과한다.
     //
     // 그래서 **append-only 임을 여기서 못 박는다.** 새 페이즈는 맨 뒤에 붙인다.
+    // battle-content-finish unit 1 — Draft · Tally 를 뺐다(발행처 0). 그때 에셋의 `breathPhases` 는 비어 있어
+    // 옮길 정수가 없었다 — 아래 둘째 테스트가 그 사실을 계속 대조한다.
     public sealed class CoreGamePhaseTests
     {
         [Test]
         public void GamePhase_IntegerValues_AreAppendOnly()
         {
             Assert.AreEqual(0, (int)GamePhase.None);
-            Assert.AreEqual(1, (int)GamePhase.Draft);
-            Assert.AreEqual(2, (int)GamePhase.Placement);
-            Assert.AreEqual(3, (int)GamePhase.Battle);
-            Assert.AreEqual(4, (int)GamePhase.Result);
-            Assert.AreEqual(5, (int)GamePhase.Tally);
-            Assert.AreEqual(6, (int)GamePhase.Gimmick);
+            Assert.AreEqual(1, (int)GamePhase.Placement);
+            Assert.AreEqual(2, (int)GamePhase.Battle);
+            Assert.AreEqual(3, (int)GamePhase.Result);
+            Assert.AreEqual(4, (int)GamePhase.Gimmick);
         }
 
 #if UNITY_EDITOR

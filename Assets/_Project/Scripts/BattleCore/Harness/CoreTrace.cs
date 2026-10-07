@@ -7,7 +7,7 @@ namespace Wassup.BattleCore
 {
     // battle-core-rebuild unit 1 — 새 코어의 관측 기록.
     //
-    // **포맷은 `LegacyTraceV0` 와 같다**(magic `LTV0`, 줄 단위 텍스트, `f` 는 1e-3 격자
+    // **포맷은 옛 `LTV0` 계열과 같다**(magic `LTV0`, 줄 단위 텍스트, `f` 는 1e-3 격자
     // 정수로 저장). 같은 포맷을 쓰는 이유는 사람이 같은 눈으로 두 계보의 골든을 diff 할
     // 수 있어야 하기 때문이다.
     //
@@ -120,7 +120,7 @@ namespace Wassup.BattleCore
 
         // 저장 해상도 = 비교 해상도. 옛 포맷과 **같은 함수**를 쓴다 — 여기서 갈리면
         // 「파일로는 같은데 메모리로는 다르다」가 생긴다.
-        public static int Quantize(float v) => Wassup.Core.Trace.TraceEvent.Quantize(v);
+        public static int Quantize(float v) => (int)System.Math.Round(v * 1000.0);   // 1e-3 격자 — 비교와 직렬화가 같은 해상도
     }
 
     public sealed class CoreTrace
@@ -322,7 +322,7 @@ namespace Wassup.BattleCore
                 });
             }
             if (!seriesSeen)
-                throw new FormatException("trace 에 'channels=core' 가 없다 — 옛 계열(LegacyTraceV0)이다");
+                throw new FormatException("trace 에 'channels=core' 가 없다 — 옛 계열(LTV0 — 채널 어휘가 다르다)이다");
             if (declared != t.events.Count)
                 throw new FormatException($"trace declares {declared} events but carries {t.events.Count}");
             return t;

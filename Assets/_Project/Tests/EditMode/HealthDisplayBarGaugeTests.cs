@@ -45,37 +45,7 @@ namespace Wassup.Tests.EditMode
             Assert.That(s.EvaluateGaugeColor(2f), Is.EqualTo(s.EvaluateGaugeColor(1f)));
         }
 
-        // ── 게이지 둘레 시계방향 세그먼트 (edge 0=top,1=right,2=bottom,3=left) ──
-        [Test]
-        public void EdgeFill_Full_AllEdgesComplete()
-        {
-            for (int e = 0; e < 4; e++)
-                Assert.That(TileHealthGaugeView.EdgeFill(1f, e), Is.EqualTo(1f).Within(1e-5f), "edge " + e);
-        }
-
-        [Test]
-        public void EdgeFill_Empty_AllEdgesZero()
-        {
-            for (int e = 0; e < 4; e++)
-                Assert.That(TileHealthGaugeView.EdgeFill(0f, e), Is.EqualTo(0f).Within(1e-5f), "edge " + e);
-        }
-
-        [Test]
-        public void EdgeFill_QuarterBoundaries()
-        {
-            // r=0.25: top(0) 가득, right(1) 시작(0)
-            Assert.That(TileHealthGaugeView.EdgeFill(0.25f, 0), Is.EqualTo(1f).Within(1e-5f));
-            Assert.That(TileHealthGaugeView.EdgeFill(0.25f, 1), Is.EqualTo(0f).Within(1e-5f));
-            // r=0.5: right(1) 가득, bottom(2) 시작
-            Assert.That(TileHealthGaugeView.EdgeFill(0.5f, 1), Is.EqualTo(1f).Within(1e-5f));
-            Assert.That(TileHealthGaugeView.EdgeFill(0.5f, 2), Is.EqualTo(0f).Within(1e-5f));
-            // r=0.75: bottom(2) 가득, left(3) 시작
-            Assert.That(TileHealthGaugeView.EdgeFill(0.75f, 2), Is.EqualTo(1f).Within(1e-5f));
-            Assert.That(TileHealthGaugeView.EdgeFill(0.75f, 3), Is.EqualTo(0f).Within(1e-5f));
-        }
-
-        [Test]
-        public void EdgeFill_PartialWithinFirstSegment()
-            => Assert.That(TileHealthGaugeView.EdgeFill(0.1f, 0), Is.EqualTo(0.4f).Within(1e-5f)); // 0.1/0.25
+        // battle-content-finish unit 1 — 타일 둘레 게이지(`TileHealthGaugeView.EdgeFill`)는 어느 표시 모드도 쓰지 않아
+        // 뷰와 함께 지웠다. 그 세그먼트 단언 4 도 같이 갔다.
     }
 }

@@ -106,15 +106,4 @@ namespace Wassup.BattleCore.Combat
             return false;
         }
     }
-
-    // 어그로 획득/해제 정책의 순수 판정. 상태를 마샬링해 부르기만 한다.
-    public static class AggroPolicy
-    {
-        /// <summary>수용량 게이트 + 선점: 아직 안 걸렸고 상한 여유가 있을 때만 획득.</summary>
-        public static bool CanAcquire(int held, int capacity, bool alreadyAggroed)
-            => !alreadyAggroed && held < capacity;
-
-        /// <summary>해제 = 링크 가디언이 살아 있지 않음.</summary>
-        public static bool ShouldRelease(bool guardianAlive) => !guardianAlive;
-    }
 }
