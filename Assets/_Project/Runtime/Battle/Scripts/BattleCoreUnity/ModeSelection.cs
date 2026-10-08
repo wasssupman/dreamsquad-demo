@@ -93,25 +93,8 @@ namespace Somnia.Battle.BattleCoreUnity
             return s;
         }
 
-#if UNITY_EDITOR
-        // 에디터 「Test this plan」 캐리(옛 `TestModeContext.ApplyEditorTestCarry`). `WavePlanTestLauncher` 가 SessionState 에
-        // 적은 플랜 GUID 를 씬 Awake/Start 보다 먼저(BeforeSceneLoad) 읽어 입력으로 무장한다. 빌드에선 strip.
-        // 이미 걸린 선택(에디터 메뉴의 모드)이 있으면 그 선택은 두고 입력만 더한다.
-        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void ApplyEditorPlanCarry()
-        {
-            const string key = "WavePlanTest.guid";
-            string guid = UnityEditor.SessionState.GetString(key, string.Empty);
-            if (string.IsNullOrEmpty(guid)) return;
-            UnityEditor.SessionState.EraseString(key); // 1회 소비
-
-            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-            var plan = UnityEditor.AssetDatabase.LoadAssetAtPath<WavePlanAsset>(path);
-            if (plan == null) return;
-            var selection = HasPending ? _pending : ModeSelection.None;
-            Set(selection, new MatchEntryInput { Kind = MatchEntryKind.TestMode, PlanOverride = plan });
-            UnityEngine.Debug.Log($"[MatchEntryContext] 에디터 테스트 캐리 적용 — plan='{plan.displayName}'.");
-        }
-#endif
+        // 에디터 「Test this plan」 캐리는 에디터 어셈블리의 `Somnia.Battle.Editor.WavePlanTestCarry` 가 한다
+        // (somnia-battle-rename 단위 2 — somnia governance 는 Runtime 코드의 에디터 전용 API 토큰을 `#if` 와 무관하게
+        // 거절한다). 그쪽이 Play 진입의 도메인 리로드에서 `Set(selection, TestMode 입력)` 을 부른다.
     }
 }

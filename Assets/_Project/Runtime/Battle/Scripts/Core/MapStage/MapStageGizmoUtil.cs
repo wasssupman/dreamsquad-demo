@@ -32,11 +32,17 @@ namespace Somnia.Battle.Core
             Gizmos.DrawCube(center, new Vector3(t * 0.95f, 0.02f, t * 0.95f));
         }
 
+        // 글자는 에디터 어셈블리가 꽂는다(`Somnia.Battle.Editor.MapStageGizmoLabels` → `Handles.Label`). Runtime 코드에
+        // 에디터 전용 API 토큰을 두지 않기 위해서다 — somnia governance 는 `#if UNITY_EDITOR` 를 보지 않는다
+        // (somnia-battle-rename 단위 2). 비어 있으면(에디터 어셈블리 없음) 글자만 생략한다.
+        internal static System.Action<Vector3, string> LabelDrawer;
+
         internal static void Label(MapStage stage, Vector2Int cell, string text)
         {
+            if (LabelDrawer == null) return;
             Vector3 world = stage.transform.TransformPoint(
                 MapStageMath.CellCenterLocal(cell, stage.gridOriginLocal, stage.previewTileSize));
-            UnityEditor.Handles.Label(world + Vector3.up * 0.1f, text);
+            LabelDrawer(world + Vector3.up * 0.1f, text);
         }
     }
 }

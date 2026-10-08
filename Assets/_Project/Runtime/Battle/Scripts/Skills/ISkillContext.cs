@@ -5,8 +5,8 @@ namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 3 — 도메인과 아키텍처 사이의 **프로토콜**.
     //
-    // 이 인터페이스가 계약 1 의 실체다. concrete 는 `Entity` 도 `EntityManager` 도
-    // `SystemAPI` 도 모르고, 필요한 것을 **여기에 물어보고** 하고 싶은 것을 **여기에
+    // 이 인터페이스가 계약 1 의 실체다. concrete 는 옛 ECS 의 `Entity` 도 개체 관리자도
+    // 시스템 API 도 모르고, 필요한 것을 **여기에 물어보고** 하고 싶은 것을 **여기에
     // 방출한다**. 어댑터가 그 반대편에서 ECS 든 sim lib 이든 테스트 페이크든 된다.
     //
     // ⚠ 동사는 **도출된 것**이다(unit 0). arm 전수를 읽어 「이 arm 이 실행되려면 무엇을

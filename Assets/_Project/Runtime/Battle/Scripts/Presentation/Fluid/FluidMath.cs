@@ -8,7 +8,7 @@ namespace Somnia.Battle.Presentation
     public static class FluidMath
     {
         // 목표 해상도 + 종횡비(width/height) → 실제 (width, height).
-        // 원본 WebGL-Fluid-Simulation getResolution 이식: 짧은 변=target, 긴 변=round(target×정규화aspect).
+        // 원본(PavelDoGreat 브라우저 유체 시뮬) getResolution 이식: 짧은 변=target, 긴 변=round(target×정규화aspect).
         // aspect≥1(가로가 긴 화면)이면 width 가 크고, aspect<1(세로가 긴 화면)이면 height 가 크다.
         // sim/dye 텍스처가 화면비를 따라야 유체가 원/사각으로 왜곡되지 않는다.
         public static Vector2Int CalcResolution(int target, float aspect)

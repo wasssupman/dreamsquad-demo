@@ -15,20 +15,21 @@ PlayMode.Core 의 테스트 캐리 경로(`MatchEntryKind.TestMode` · `PlanOver
 
 9줄 · 8 파일, 전부 주석: `CoreUnitViewPool.cs:19`(`EntityManager.Exists`) · `DefenderAbilityData.cs:7`(`Unity.Entities/ECS`) · `DcMechanic.cs:9`(`Unity.Entities or`) · `FactionRelation.cs:13`(`EntityManager`) · `ISkillContext.cs:8-9`(`EntityManager` · `SystemAPI`) · `SkillAim.cs:15`(`SystemBase`) · `SkillEntityId.cs:6`(`IComponentData` · `Unity.Entities`) · `JarFigurePhysics.cs:6`(`EntityManager`). 문구를 「옛 ECS」로 바꾼다(의미 보존 · 토큰 제거). `CoreArchitectureTests.cs:102` 의 `"Unity.Entities"` 리터럴은 정규식(`Unity\.Entities\.` — 점 필수)에 안 걸린다.
 
-## 2-3. `check_no_old_platform_terms` — 텍스트 파일의 `WebGL` · `Telegram` · `Mini App` · `Mobile Web` · `PC Web`
+## 2-3. `check_no_old_platform_terms` — 텍스트 파일의 비대상 플랫폼 용어 5종(브라우저 빌드 타깃 이름 · 메신저 미니앱 2 · 웹 2 — 목록은 somnia 스크립트)
 
-- `Editor/Battle/PropDataEditor.cs:201` `ConfigurePlatformTexture(textureImporter, "WebGL")` — **삭제**(모바일 전용 리포 · 이 플랫폼 설정은 이미 죽은 분기).
-- 주석 3: `FluidSimConfig.cs:5` · `FluidMath.cs:11` · `FluidMathTests.cs:8` — 「PavelDoGreat 의 브라우저 유체 시뮬」로.
-- `Assets/Plugins/Spine/CHANGELOG.md` — 삭제(벤더 변경 이력, 코드 무관).
+- `Editor/Battle/PropDataEditor.cs:201` 브라우저 타깃의 `ConfigurePlatformTexture(…)` 1줄 — **삭제**(모바일 전용 리포 · 이미 죽은 분기).
+- 주석 3: `FluidSimConfig.cs:5` · `FluidMath.cs:11` · `FluidMathTests.cs:8` — 원본 저장소 이름(브라우저 타깃 단어 포함)을 「PavelDoGreat 의 브라우저 유체 시뮬」로.
+- `Assets/Plugins/Spine/CHANGELOG.md` — 삭제(벤더 변경 이력, 코드 무관 — 그 단어가 24줄).
+- 이 spec 문서 자체도 그 단어를 적지 않는다(검사가 `docs/` 를 본다).
 
-## 2-4. 확인 (정규식을 Python 으로 Demo 에)
+## 2-4. 확인 (정규식을 Python 으로 Demo 에 — `scratchpad/govcheck.py`)
 
 ```
-Runtime .cs:  \busing\s+UnityEditor\b|\bUnityEditor\.           → 0
+Runtime .cs:  \busing\s+UnityEditor\b|\bUnityEditor\.           → 0 (주석의 토큰도 걸린다 — 「에디터 전용 API」로 쓴다)
 Assets .cs:   (ECS 14 패턴)                                       → 0
-텍스트 파일:   WebGL|Telegram|Mini App|Mobile Web|PC Web (docs/archive 제외) → 0 (닫힌 spec 문서에 있으면 그 문서는 ⑤에서 docs/archive 로)
+텍스트 파일:   비대상 플랫폼 용어 5 (docs/archive 제외)              → 0
 Assets .cs:   \bResources\.Load(?:All)?\s*\(                      → 0 (이미)
-폴더명 resources(TMP 제외)                                        → Spine 에디터 마커 1 (⑤ 스크립트 예외)
+폴더명 resources(TMP 제외)                                        → Spine 에디터 마커 1 (⑤ 스크립트 예외 — 여기서는 유일한 잔존)
 ```
 
 ## 구현 결과

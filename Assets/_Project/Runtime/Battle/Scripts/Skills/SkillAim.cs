@@ -12,7 +12,7 @@ namespace Somnia.Battle.Skills
     //
     // 후보 컨테이너가 `NativeArray` → `float2[]` 로 바뀐 것도 같은 이유다 —
     // 이 어셈블리는 `Unity.Mathematics` 하나만 참조한다. 호출처 둘 다 관리 코드라
-    // (디스패처는 managed `SystemBase`, 브리지는 MonoBehaviour) Burst 손실은 없다.
+    // (옛 디스패처는 managed ECS 시스템, 브리지는 MonoBehaviour) Burst 손실은 없다.
     //
     // 규칙 자체는 사용자 결정(2026-08-15, `defender-on-place-skills` unit 4):
     // **조준이 있으면 그 방향, 없으면 가장 가까운 후보.** 조준이 최근접보다 세다 —

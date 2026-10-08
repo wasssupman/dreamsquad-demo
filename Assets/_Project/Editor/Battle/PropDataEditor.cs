@@ -198,7 +198,6 @@ namespace Somnia.Battle.Editor
             ConfigurePlatformTexture(textureImporter, "Standalone");
             ConfigurePlatformTexture(textureImporter, "Android");
             ConfigurePlatformTexture(textureImporter, "iPhone");
-            ConfigurePlatformTexture(textureImporter, "WebGL");
 
             textureImporter.SaveAndReimport();
         }

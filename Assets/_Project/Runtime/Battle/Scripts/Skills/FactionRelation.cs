@@ -10,7 +10,7 @@ namespace Somnia.Battle.Skills
     // 「누구든 이 스킬을 쓸 수 있다」의 전제가 이 파일이다: 모듈이 caster 를 보고
     // 진영을 정해 주면 concrete 는 진영을 가질 이유가 없어진다.
     //
-    // 순수하게 두는 이유(CLAUDE.md 제약 10): 이 계산은 `EntityManager` 도 `Time` 도
+    // 순수하게 두는 이유(CLAUDE.md 제약 10): 이 계산은 옛 ECS 의 개체 관리자도 `Time` 도
     // 필요로 하지 않는다. 값 입력 → 값 출력이고, EditMode 로 월드 없이 고정된다.
     // 엔티티에서 진영을 **읽는** 쪽(아키텍처 종속)은 `FactionQuery` 가 따로 맡는다.
     public static class FactionRelation

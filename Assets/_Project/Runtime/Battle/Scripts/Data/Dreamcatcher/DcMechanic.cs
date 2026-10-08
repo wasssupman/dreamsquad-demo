@@ -6,7 +6,7 @@ namespace Somnia.Battle.Data
 {
     // dreamcatcher-unit-trigger Unit 0 — architecture-agnostic triggered-mechanic
     // definition. This layer is pure data + asset references: it must not reference
-    // Unity.Entities or Somnia.Battle.Battle types. Interpretation (bake into unmanaged
+    // legacy ECS or Somnia.Battle.Battle types. Interpretation (bake into unmanaged
     // slots + execution) lives entirely in the Unity-layer translator (`CardDefinitionBuilder`) and the battle core, so an architecture
     // swap only rewrites the translator, never these definitions.
     // Append new enum cases at the end (existing card assets serialize these as

@@ -5,7 +5,7 @@ using Somnia.Battle.Presentation;
 namespace Somnia.Battle.Tests.EditMode
 {
     // fluid-paint-mixing unit 0 — 유체 솔버의 아키텍처-blind 순수 계산.
-    // CalcResolution 은 원본 WebGL getResolution 이식: 짧은 변=target, 긴 변=round(target×정규화aspect),
+    // CalcResolution 은 원본(브라우저 유체 시뮬) getResolution 이식: 짧은 변=target, 긴 변=round(target×정규화aspect),
     // 화면비에 따라 가로/세로가 정해진다. 잘못되면 유체가 늘어나거나 RT 가 잘못 할당된다(sim-critical).
     public class FluidMathTests
     {

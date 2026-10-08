@@ -19,7 +19,7 @@ somnia-client 이식 순서 ①경계 → ②demo-diet → ③6.6 → **④ 개�
 | `Resources` 폴더명 금지(TMP 예외) · `Resources.Load` 금지 | 같은 검사 + ADR-0007 | 이미 0(`battle-content-finish`). Spine 에디터 마커 폴더는 ⑤의 스크립트 예외 |
 | `Runtime/**/*.cs` 에 `UnityEditor` 토큰 금지 — **`#if UNITY_EDITOR` 를 보지 않는다** | `check_runtime_no_unityeditor` | 2 파일(단위 2, D4) |
 | `.cs` 전수에 ECS 토큰 금지 — **주석도 본다** | `check_no_entities` | 주석 9줄(단위 2) |
-| 텍스트 파일에 `WebGL` 등 비대상 플랫폼 용어 금지 | `check_no_old_platform_terms` | 주석 3 + 코드 1줄 + Spine CHANGELOG(단위 2) |
+| 텍스트 파일에 비대상 플랫폼 용어(브라우저 빌드 타깃 이름 등 5종) 금지 | `check_no_old_platform_terms` | 주석 3 + 코드 1줄 + Spine CHANGELOG(단위 2) |
 | 레이어 의존 규칙 | `Somnia.Features.*` · `Core` · `App` · `Infrastructure` · `Api.Contracts` **이름에만** | `Somnia.Battle.*` 는 규칙 밖 → asmdef 그래프 그대로. `Features` 로 넣지 않는 이유는 아래 |
 | 폴더: `Runtime/<모듈>/{asmdef, Scripts/, Fonts/…}` · `Editor/` · `Tests/EditMode/<영역>/` · `Scenes/` 평면 | somnia 실제 트리(`Runtime/Core`, `Runtime/UI/Fonts`, `Tests/EditMode/Map`) | 단위 1 |
 | Assembly-CSharp(-Editor) 를 쓰지 않는다(`Somnia.Editor` 1개) | somnia 트리 | 루스 에디터 .cs 31 → 새 `Somnia.Battle.Editor`(D2) |
