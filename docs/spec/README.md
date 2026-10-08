@@ -127,7 +127,8 @@ code + git history        구현 상세
 
 ## 진행 중 spec
 
-- 없음. 직전 완료 = `battle-content-finish/`(2026-10-07 — 판 저작 → SO 두 장 · 죽은 타입/코드 · 닿지 않는 에셋 장부 491 · 일회성 에디터 도구/시트 push/패키지 6 · `Resources` → `RuntimeMaterialSet` SO · 문서 8, 단위 0~5) · 그 전 `tilemap-untangle/`(2026-10-07 — Tile 에셋 껍데기 → Sprite · `GridLayout` 권위 → 보드 평면 Transform + tileSize · Tilemap 패키지/모듈 제거, 단위 0~2) · `demo-diet/`(2026-10-07 — 단위 0~4, 커밋 12) · `unity-6-6-upgrade/`(2026-10-07). 다음 후보: somnia-client 이식(`Somnia.Battle.*` 개명 — 세션 메모리 `somnia-migration-goal`). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
+- **`somnia-battle-rename/`** — somnia 이식 ④: `Wassup` → `Somnia.Battle.*` 개명 + somnia 레이아웃 재배치(반입 전, Demo 안에서). 2026-10-08 제안, 결정 D1~D5 대기. 단위 0~4.
+- 직전 완료 = `battle-content-finish/`(2026-10-07 — 판 저작 → SO 두 장 · 죽은 타입/코드 · 닿지 않는 에셋 장부 491 · 일회성 에디터 도구/시트 push/패키지 6 · `Resources` → `RuntimeMaterialSet` SO · 문서 8, 단위 0~5) · 그 전 `tilemap-untangle/`(2026-10-07 — Tile 에셋 껍데기 → Sprite · `GridLayout` 권위 → 보드 평면 Transform + tileSize · Tilemap 패키지/모듈 제거, 단위 0~2) · `demo-diet/`(2026-10-07 — 단위 0~4, 커밋 12) · `unity-6-6-upgrade/`(2026-10-07). 다음 후보: somnia-client 이식(`Somnia.Battle.*` 개명 — 세션 메모리 `somnia-migration-goal`). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
 
 ## Follow-up Backlog
 
