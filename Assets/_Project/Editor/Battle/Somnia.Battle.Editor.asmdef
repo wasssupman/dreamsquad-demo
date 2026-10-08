@@ -1,0 +1,26 @@
+{
+    "name": "Somnia.Battle.Editor",
+    "rootNamespace": "Somnia.Battle.Editor",
+    "references": [
+        "Somnia.Battle.Runtime",
+        "Somnia.Battle.BattleCore",
+        "Somnia.Battle.Skills",
+        "Somnia.Battle.UnitAi",
+        "spine-unity",
+        "spine-csharp",
+        "Unity.InputSystem",
+        "Unity.2D.Sprite.Editor",
+        "LayerLab.ArtMaker"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

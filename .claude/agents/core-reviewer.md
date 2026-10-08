@@ -1,7 +1,7 @@
 ---
 name: core-reviewer
 description: >
-  Review the new pure-C# 「전투 코어」 (Assets/_Project/Scripts/BattleCore/, asmdef Somnia.Battle.BattleCore)
+  Review the new pure-C# 「전투 코어」 (Assets/_Project/Runtime/Battle/Scripts/BattleCore/, asmdef Somnia.Battle.BattleCore)
   and its Unity layer (BattleDriver · view pools · input → commands) for the wassup project.
   Checks CLAUDE.md 「제약」, the invariants in
   docs/reference/battle-core-architecture.md §8, and the battle-core-rebuild spec contracts. Use when files under Scripts/BattleCore/ or the new

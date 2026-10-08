@@ -49,21 +49,21 @@ description: Use when (a) adding a new enemy AttackUnitData or changing an exist
 
 ```bash
 # 라이브 덱 목록과 각 풀 크기
-for f in Assets/_Project/Data/Decks/Deck_*.asset; do
+for f in Assets/_Project/Runtime/Battle/Data/Decks/Deck_*.asset; do
   echo "$(basename "$f" .asset): $(sed -n '/attackUnitPool:/,/minWaveCount/p' "$f" | grep -c guid)종"
 done
 
 # 어느 덱이 맵 풀에 배선돼 있나 (본편 entries / dev 슬롯) — deck guid → 덱 이름
-grep -oE "deck: \{fileID: [0-9]+, guid: [0-9a-f]{32}" Assets/_Project/Data/Maps/MapStagePool.asset \
-  | grep -oE "[0-9a-f]{32}" | while read g; do grep -l "guid: $g" Assets/_Project/Data/Decks/*.meta; done
+grep -oE "deck: \{fileID: [0-9]+, guid: [0-9a-f]{32}" Assets/_Project/Runtime/Battle/Data/Maps/MapStagePool.asset \
+  | grep -oE "[0-9a-f]{32}" | while read g; do grep -l "guid: $g" Assets/_Project/Runtime/Battle/Data/Decks/*.meta; done
 
 # 컨셉과 그 슬롯 필터
-for f in Assets/_Project/Data/WaveConcepts/Concept_*.asset; do
+for f in Assets/_Project/Runtime/Battle/Data/WaveConcepts/Concept_*.asset; do
   echo "== $(basename "$f" .asset)"; grep -E "displayName|laneGroup|classFilter|altitude|countMul|minWaveNumber" "$f"
 done
 
 # 특정 적이 어느 덱에 들어 있나
-grep -l "<enemy-guid>" Assets/_Project/Data/Decks/*.asset
+grep -l "<enemy-guid>" Assets/_Project/Runtime/Battle/Data/Decks/*.asset
 ```
 
 ## When to Use
@@ -77,7 +77,7 @@ grep -l "<enemy-guid>" Assets/_Project/Data/Decks/*.asset
 
 **(b) 웨이브 생성 로직 자체를 밸런스로 손볼 때** — 이 스킬의 규칙이 죽는다:
 
-- 코어 `Assets/_Project/Scripts/BattleCore/Wave/WaveGenerator.cs` 의 순수 함수 (`ResolveWaveEligibleIndex`·`ClampGroupCounts`·`PickConcept`·`AssignLanes`·`ExponentialWaveTotal` 등)
+- 코어 `Assets/_Project/Runtime/Battle/Scripts/BattleCore/Wave/WaveGenerator.cs` 의 순수 함수 (`ResolveWaveEligibleIndex`·`ClampGroupCounts`·`PickConcept`·`AssignLanes`·`ExponentialWaveTotal` 등)
 - `AttackDeck` 필드 추가/삭제/의미 변경
 - `WaveConceptData` 또는 `Concept_*.asset` 의 슬롯·필터·가중치
 - `WavePlanAsset` → `MatchDefinitionBuilder.ToPlanDef` → `WaveGenerator.FromAuthored` 의 변환 규약
@@ -90,7 +90,7 @@ grep -l "<enemy-guid>" Assets/_Project/Data/Decks/*.asset
 
 | # | 정거장 | 확인 |
 |---|---|---|
-| 1 | `Assets/_Project/Data/EnemyCatalog.asset` | 등재 |
+| 1 | `Assets/_Project/Runtime/Battle/Data/EnemyCatalog.asset` | 등재 |
 | 2 | 라이브 덱 `attackUnitPool` | **목록은 「값 재도출」로 뽑아라.** 맵 풀(`MapStagePool.asset`)에 배선된 덱 전부. 한 덱만 빠지면 그 맵에서만 안 나온다 |
 | 3 | **삽입 위치** | 맨 뒤 금지 — 아래 «전방 순환» 참조 |
 | 4 | `waveSeed` 갱신 + `waveGeneratorVersion` bump | 풀이 바뀌면 편성 전체가 재추첨된다. 새 baseline 을 diff 에 드러내라 |
@@ -156,7 +156,7 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 
 ⚠ **키가 빠진 그룹에 기대지 말 것.** 필드 초기화값(-1)이 적용되는지 타입 기본값(0)이
 적용되는지에 기대면, 후자일 때 **모든 저작 플랜이 레인 0 으로 고정**되는 조용한 회귀가
-난다. 그래서 도입 시점에 `Assets/_Project/Scripts/Data/WavePlans/*.asset` 8장(옛 경로 — 지금은 테스트 픽스처 `Tests/Fixtures/WavePlan_BossTest` 하나만 남았다)의 그룹
+난다. 그래서 도입 시점에 `Assets/_Project/Runtime/Battle/Scripts/Data/WavePlans/*.asset` 8장(옛 경로 — 지금은 테스트 픽스처 `Tests/Fixtures/WavePlan_BossTest` 하나만 남았다)의 그룹
 56개 전부에 `laneIndex` 를 명시해 두었다 — 새 그룹을 손으로 쓸 때도 명시하라.
 
 레인 고정이 **어디서 눈에 보이는지**도 알아둘 것: `waypointPathIndex: -1` 인 적(대부분)은
@@ -182,8 +182,8 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 ## 검증 (건너뛰지 않는다)
 
 - **EditMode 전량.** 특히:
-  - 코어 생성기 `Assets/_Project/Tests/EditModeCore/WaveGeneratorTests.cs` — 결정론·게이트/상한 rng 무소비·슬롯 분배·입구 배정·저작 플랜 타임라인
-  - 저작 에셋 × 코어 생성기 `Assets/_Project/Tests/EditModeAssets/RetiredWaveAuthoringPortTests.cs` — 컨셉 로스터 계약 · 슬롯 후보 · 엘리트 붕괴 · 덱별 킬 예산(시드 고정·결정론·보스 간격·실스폰 예산·스폰 창) · 공성 시드 스캐너 `시드_스캐너_공성_후보`(수동). 컨셉 경로·변주·보스·예보 규칙은 `Tests/EditModeCore/RetiredWaveRulePortTests.cs`·`RetiredWaveForecastPortTests.cs`. (옛 생성기용 `WaveConceptAuthoringTests`·`WaveKillBudgetPinTests`·`WaveEligibilityGateTests`·`WaveConceptGenerationTests` 는 battle-core-rebuild unit 9 에서 옛 생성기와 함께 은퇴 — 짝 지도 `docs/spec/battle-core-rebuild/ledgers/retire-test-pairs.md`.)
+  - 코어 생성기 `Assets/_Project/Tests/EditMode/BattleCore/WaveGeneratorTests.cs` — 결정론·게이트/상한 rng 무소비·슬롯 분배·입구 배정·저작 플랜 타임라인
+  - 저작 에셋 × 코어 생성기 `Assets/_Project/Tests/EditMode/BattleAssets/RetiredWaveAuthoringPortTests.cs` — 컨셉 로스터 계약 · 슬롯 후보 · 엘리트 붕괴 · 덱별 킬 예산(시드 고정·결정론·보스 간격·실스폰 예산·스폰 창) · 공성 시드 스캐너 `시드_스캐너_공성_후보`(수동). 컨셉 경로·변주·보스·예보 규칙은 `Tests/EditModeCore/RetiredWaveRulePortTests.cs`·`RetiredWaveForecastPortTests.cs`. (옛 생성기용 `WaveConceptAuthoringTests`·`WaveKillBudgetPinTests`·`WaveEligibilityGateTests`·`WaveConceptGenerationTests` 는 battle-core-rebuild unit 9 에서 옛 생성기와 함께 은퇴 — 짝 지도 `docs/spec/battle-core-rebuild/ledgers/retire-test-pairs.md`.)
 - **결정론** — 같은 덱 3회 생성 signature 일치
 - **엘리트를 넣었다면** — 그 적이 뽑힌 웨이브의 총 수량이 1보다 큰지(붕괴 가드)
 

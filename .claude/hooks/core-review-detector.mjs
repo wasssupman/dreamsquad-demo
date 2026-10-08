@@ -31,10 +31,10 @@ const REVIEW_RE = /(리뷰|검토|투트랙|\breview\b|\bcode[\s-]?review\b|\btw
 
 // ── 전투 코어(battle-core-rebuild) file patterns ──────────────────────────
 const CORE_PATH_FRAGMENTS = [
-  'Assets/_Project/Scripts/BattleCore/',
-  'Assets/_Project/Scripts/BattleCoreUnity/',
+  'Assets/_Project/Runtime/Battle/Scripts/BattleCore/',
+  'Assets/_Project/Runtime/Battle/Scripts/BattleCoreUnity/',
   'Assets/_Project/Editor/BattleCore/',
-  'Assets/_Project/Tests/EditModeCore/',
+  'Assets/_Project/Tests/EditMode/BattleCore/',
   'Assets/_Project/Scenes/BattleCoreScene.unity',
 ];
 

@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    battle-core-rebuild unit 3 후속 — Unity 층 컴파일 검사 lane.
+
+    `BattleCore.csproj` 는 코어만 컴파일하므로 `Scripts/BattleCoreUnity/**`(정의표 빌더·드라이버)의
+    오류를 못 잡는다(unit 3 에서 struct 캐스트 오류가 그렇게 새어 나갔다). 이 프로젝트는 그 층을
+    에디터의 UnityEngine 모듈 dll + 메인 워크트리 `Library/ScriptAssemblies` 의 옛 어셈블리에 대고
+    **컴파일만** 한다(실행·테스트 없음). 코어는 ProjectReference 로 받는다. 정본은 여전히 Unity 에디터.
+
+    ⚠ 옛 `Somnia.Battle.Runtime.dll` 에는 코어로 옮긴 `MatchSeed` 사본이 아직 들어 있을 수 있고(`LegacyTraceV0` 는 2026-10-07 삭제), 새 타입(`RuntimeMaterialSet`)은 에디터가 한 번 컴파일해야 보인다
+    (에디터가 그 이동 뒤 재컴파일한 적이 없다). Unity 층 소스가 그 둘을 직접 쓰면 CS0433 모호성이
+    난다 — 그 경우만 이 lane 이 거짓 빨강이다(에디터 재컴파일 뒤 소멸).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>Somnia.Battle.BattleCoreUnity.Check</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <NoWarn>$(NoWarn);CS1701;CS1702</NoWarn>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\..\</RepoRoot>
+    <UnityScriptAssemblies Condition="'$(UnityScriptAssemblies)' == ''">$(RepoRoot)Library/ScriptAssemblies</UnityScriptAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\BattleCoreUnity\**\*.cs" />
+    <!-- unit 4 — 새 모드 SO. `Somnia.Battle.Runtime.dll` 은 에디터가 이 타입을 컴파일하기 전 것이라 여기 명시로 넣는다(에디터 재컴파일 뒤에는 중복이 아니라 «먼저 찾는 쪽»이 된다). -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\Data\MatchModeData.cs" />
+    <!-- unit 5a — 뷰 설정 SO 7종. 같은 이유(에디터가 아직 컴파일한 적 없는 새 타입)로 명시한다. -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\Data\BattleView\**\*.cs" />
+    <!-- 5a 후속 — 이동 저작 SO. 같은 이유. -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\Data\MovementTuningConfig.cs" />
+    <!-- 6a2 — 탄 부여 상한 SO. 같은 이유(에디터가 아직 컴파일한 적 없는 새 타입). -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\Data\ImbueCapConfig.cs" />
+    <!-- 7c — 카드면 구김 머티리얼 창구(`CreateCardCrumpleUi`)를 새로 연 공용 팩토리. 같은 이유(에디터가 아직 컴파일한 적 없는 새 메서드). -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\Rendering\RuntimeMaterialFactory.cs" />
+    <!-- battle-content-finish — 판 저작 SO 두 장 + 런타임 머티리얼 묶음. 같은 이유(에디터가 아직 컴파일한 적 없는 새 타입은 명시). -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\Data\BattleContent.cs" />
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\Data\DefaultLoadout.cs" />
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\Data\RuntimeMaterialSet.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="BattleCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="$(UnityEngineDir)/*.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Somnia.Battle.Runtime.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Somnia.Battle.Skills.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Somnia.Battle.UnitAi.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.Collections.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.Burst.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.TextMeshPro.dll" Private="false" />
+    <!-- unit 5a — 오버헤드 바가 uGUI(Canvas·CanvasScaler)를 쓴다. 패키지 어셈블리라 UnityEngine 모듈 폴더에 없다. -->
+    <Reference Include="$(UnityScriptAssemblies)/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.InputSystem.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/spine-unity.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/spine-csharp.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/PrimeTween.Runtime.dll" Private="false" />
+    <!-- unit 8a — `CorePhaseFeed` 가 `BattleCoreUnity/` 로 들어오며 스테이지 포스트 `Volume`(URP core)을 찾는다. 5b 에는 그 파일이 이 lane 밖(`Presentation/`)이었다. -->
+    <Reference Include="$(UnityScriptAssemblies)/Unity.RenderPipelines.Core.Runtime.dll" Private="false" />
+  </ItemGroup>
+
+</Project>

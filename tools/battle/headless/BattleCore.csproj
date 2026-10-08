@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    battle-core-rebuild unit 1 — 헤드리스 컴파일 lane.
+
+    같은 소스를 Unity 없이 컴파일한다. **정본 lane 은 Unity EditMode** 이고 이것은
+    에디터가 없을 때(또는 도메인 리로드를 기다리기 싫을 때)의 반복 lane 이다.
+
+    이 lane 이 성립하는 것 자체가 계약 4 의 증거다 — 엔진 모듈 중 **MathematicsModule 하나만**
+    참조한다(6.6 부터 Unity.Mathematics 가 엔진 모듈이라 asmdef 의 noEngineReferences 는 껐다 —
+    unity-6-6-upgrade). CoreModule 이 없으니 GameObject·Debug·Time 을 쓰면 여기서 먼저 빨개진다.
+    `dotnet build` 가 「엔진 없음」의 컴파일 게이트다. 모듈 DLL 은 에디터 설치 폴더에서 —
+    `-p:UnityEngineDir=<…/Editor/Data/Managed/UnityEngine>`(기본값은 Directory.Build.props).
+
+    Unity.Mathematics.dll 과 Somnia.Battle.Skills/UnitAi.dll 은 **이 리포의 Library/ScriptAssemblies**
+    (에디터가 한 번 컴파일한 것)에서 가져온다 — 기본값 `$(RepoRoot)Library/ScriptAssemblies`
+    (somnia-battle-rename 단위 1 에서 맥 워크트리 절대경로를 뗐다). 다른 자리를 쓰려면
+    `-p:UnityScriptAssemblies=<경로>`.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>Somnia.Battle.BattleCore</AssemblyName>
+    <RootNamespace>Somnia.Battle.BattleCore</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\..\</RepoRoot>
+    <UnityScriptAssemblies Condition="'$(UnityScriptAssemblies)' == ''">$(RepoRoot)Library/ScriptAssemblies</UnityScriptAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 코어 소스만 컴파일한다. Skills·UnitAi 는 에디터가 만든 dll 을 참조한다 — Unity asmdef 경계와 같은 집합이고, 소스를 다시 컴파일하면 Runtime.dll 이 아는 타입과 정체성이 갈린다(Unity 층 검사 lane 이 그것에 걸렸다). -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Runtime\Battle\Scripts\BattleCore\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Somnia.Battle.Skills"><HintPath>$(UnityScriptAssemblies)/Somnia.Battle.Skills.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="Somnia.Battle.UnitAi"><HintPath>$(UnityScriptAssemblies)/Somnia.Battle.UnitAi.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="UnityEngine.MathematicsModule">
+      <HintPath>$(UnityEngineDir)/UnityEngine.MathematicsModule.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CheckUnityAssemblies" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(UnityScriptAssemblies)/Somnia.Battle.Skills.dll')"
+           Text="Somnia.Battle.Skills.dll 이 '$(UnityScriptAssemblies)' 에 없다. 에디터가 한 번 컴파일한 워크트리의 Library/ScriptAssemblies 를 -p:UnityScriptAssemblies=... 로 가리켜라." />
+    <Error Condition="!Exists('$(UnityEngineDir)/UnityEngine.MathematicsModule.dll')"
+           Text="UnityEngine.MathematicsModule.dll 이 '$(UnityEngineDir)' 에 없다(6000.6 이상의 Editor/Data/Managed/UnityEngine). -p:UnityEngineDir=... 로 가리켜라." />
+  </Target>
+
+</Project>

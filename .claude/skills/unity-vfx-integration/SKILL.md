@@ -4,9 +4,9 @@ description: Use when wiring `_SKELETON` VFX prefabs into battle view pools/pres
 ---
 # Unity VFX Integration
 ## Overview
-This skill consumes authored `_SKELETON.prefab` assets and connects them to the battle view layer (`Assets/_Project/Scripts/BattleCoreUnity/View/`). It does not design the visual itself; it wires ownership, timing, prefab slots, and fallbacks.
+This skill consumes authored `_SKELETON.prefab` assets and connects them to the battle view layer (`Assets/_Project/Runtime/Battle/Scripts/BattleCoreUnity/View/`). It does not design the visual itself; it wires ownership, timing, prefab slots, and fallbacks.
 
-전투는 순수 C# 코어(`Assets/_Project/Scripts/BattleCore/`, `noEngineReferences`)가 판정하고, 코어가 낸 **값 스냅샷 사건**(`CoreEvent`)을 Unity 층이 받아 그린다. 사건을 뷰로 옮겨 적는 중개자(브리지·매니저)는 없다 — **뷰 풀마다 자기 사건을 직접 구독한다**(battle-core-rebuild README 계약 12).
+전투는 순수 C# 코어(`Assets/_Project/Runtime/Battle/Scripts/BattleCore/`, `noEngineReferences`)가 판정하고, 코어가 낸 **값 스냅샷 사건**(`CoreEvent`)을 Unity 층이 받아 그린다. 사건을 뷰로 옮겨 적는 중개자(브리지·매니저)는 없다 — **뷰 풀마다 자기 사건을 직접 구독한다**(battle-core-rebuild README 계약 12).
 
 ## The Iron Law
 "뷰는 판정하지 않는다. 사건이 나른 값으로만 그리고, 코어에 상태를 되묻지 않는다."

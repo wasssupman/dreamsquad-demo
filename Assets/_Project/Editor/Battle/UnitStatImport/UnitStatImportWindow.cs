@@ -1,0 +1,410 @@
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
+
+namespace Somnia.Battle.Editor.UnitStatImport
+{
+    // unit-stat-spreadsheet-schema Unit 1 — fetches the spreadsheet-authored stat
+    // payload from the REST API and applies it to existing Defender/Enemy SO assets.
+    // Update-only by id match; never creates new .asset files.
+    // Unit 4 — real API contract: GET {baseUrl}/{sheetName}, one call per tab,
+    // per-sheet envelope {success, data:[row], errorDetail}. The parse/fetch/apply
+    // core lives in the runtime assembly (SheetEnvelopeParser / SheetFetcher /
+    // UnitStatApplier), shared with the in-build refresher.
+    public class UnitStatImportWindow : EditorWindow
+    {
+        private const string BaseUrlPrefsKey = "Somnia.Battle.UnitStatImport.BaseUrl";
+        private const string DefenderSheetPrefsKey = "Somnia.Battle.UnitStatImport.DefenderSheet";
+        private const string EnemySheetPrefsKey = "Somnia.Battle.UnitStatImport.EnemySheet";
+        private const string DefaultBaseUrl = "https://dev-api-somnia.cashroyale.games/demo/google/sheet";
+        private const string DefenderFolder = "Assets/_Project/Runtime/Battle/Data/Defenders";
+        private const string EnemyFolder = "Assets/_Project/Runtime/Battle/Data/Enemies";
+
+        // dreamcatcher-sheet-sync unit 3 — DC tab names are contract-fixed
+        // (0_json_schema_contract.md); prefs only exist for ad-hoc experiments.
+        // skill-data-table unit 5 — 탭 계약 = `DcSheetTabs`(DcMechanics 은퇴 · Skills/SkillOwners 신설 · 7탭). 옛 6탭 목록이 남은
+        // 에디터 prefs 가 버튼을 잠그지 않게 키를 바꿨다(.v2). unit 8 단계 B — DcCardEffects · DcAttackMods 은퇴(5탭) · 같은 이유로 .v3.
+        // unit 9 — `DcCards` → `Cards` 개명(개수는 같아 옛 목록이 **조용히** 옛 이름을 fetch 한다) · .v4 로 새 기본값에 떨어뜨린다.
+        private const string DcSheetsPrefsKey = "Somnia.Battle.UnitStatImport.DcSheets.v4";
+        private static readonly string DefaultDcSheets = string.Join(",", DcSheetTabs.Default());
+        private const string DcFolder = "Assets/_Project/Runtime/Battle/Data/Dreamcatcher";
+        private const string SkillFolder = "Assets/_Project/Runtime/Battle/Data/Skills";
+        // skill-data-table unit 5 — 효과 · 탄 · 패턴 · 장판 · 방어유닛 · 적은 폴더가 흩어져 있어 `Data` 전체를 형으로 훑는다.
+        internal const string DataRoot = "Assets/_Project/Runtime/Battle/Data";
+
+        // sheet-export-push unit 4 — Apps Script /exec URL. 쓰기 권한 secret 이라
+        // 프로젝트에 커밋하지 않고 에디터 로컬(EditorPrefs)에만 둔다.
+
+        // sheet-export-push unit 7 — CostConfig 탭. 시트 → SO 임포트와 SO → JSON export 만 있다(push 는 battle-content-finish 에서 뗐다).
+        private const string CostTabPrefsKey = "Somnia.Battle.UnitStatImport.CostSheet";
+        private const string DefaultCostTab = "CostConfig";
+        private const string ConfigFolder = "Assets/_Project/Runtime/Battle/Data/Config";
+
+        private string _baseUrl = "";
+        private string _defenderSheet = "";
+        private string _enemySheet = "";
+        private string _dcSheets = "";
+        private string _costTab = "";
+        private string _statusLog = "";
+        private bool _requestInFlight;
+
+        [MenuItem("Window/Somnia/Battle/Unit Stat Import")]
+        public static void Open() => GetWindow<UnitStatImportWindow>("Unit Stat Import");
+
+        private void OnEnable()
+        {
+            _baseUrl = EditorPrefs.GetString(BaseUrlPrefsKey, DefaultBaseUrl);
+            _defenderSheet = EditorPrefs.GetString(DefenderSheetPrefsKey, "Defenders");
+            _enemySheet = EditorPrefs.GetString(EnemySheetPrefsKey, "Enemies");
+            _dcSheets = EditorPrefs.GetString(DcSheetsPrefsKey, DefaultDcSheets);
+            _costTab = EditorPrefs.GetString(CostTabPrefsKey, DefaultCostTab);
+            // hotfix ③ — serialized true survives a domain reload while the
+            // completed callback does not; reset so the Import button never sticks.
+            _requestInFlight = false;
+        }
+
+        private void OnGUI()
+        {
+            EditorGUILayout.LabelField("Unit Stat Import", EditorStyles.boldLabel);
+
+            EditorGUI.BeginChangeCheck();
+            _baseUrl = EditorGUILayout.TextField("API Base URL", _baseUrl);
+            _defenderSheet = EditorGUILayout.TextField("Defender Sheet", _defenderSheet);
+            _enemySheet = EditorGUILayout.TextField("Enemy Sheet", _enemySheet);
+            if (EditorGUI.EndChangeCheck())
+            {
+                EditorPrefs.SetString(BaseUrlPrefsKey, _baseUrl);
+                EditorPrefs.SetString(DefenderSheetPrefsKey, _defenderSheet);
+                EditorPrefs.SetString(EnemySheetPrefsKey, _enemySheet);
+            }
+
+            bool inputsMissing = string.IsNullOrWhiteSpace(_baseUrl)
+                || string.IsNullOrWhiteSpace(_defenderSheet)
+                || string.IsNullOrWhiteSpace(_enemySheet);
+            using (new EditorGUI.DisabledScope(_requestInFlight || inputsMissing))
+            {
+                if (GUILayout.Button(_requestInFlight ? "Importing..." : "Import"))
+                {
+                    StartImport();
+                }
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Export", EditorStyles.boldLabel);
+            // unit 5 — SO → one row-array JSON file per sheet tab, named after the
+            // sheet name fields above so file ↔ tab mapping is unambiguous.
+            using (new EditorGUI.DisabledScope(_requestInFlight
+                || string.IsNullOrWhiteSpace(_defenderSheet) || string.IsNullOrWhiteSpace(_enemySheet)))
+            {
+                if (GUILayout.Button("Export SO → JSON Files"))
+                {
+                    string folder = EditorUtility.SaveFolderPanel("Export Unit Stat JSON", "", "");
+                    if (!string.IsNullOrEmpty(folder))
+                    {
+                        _statusLog = UnitStatExporter.ExportToFolder(
+                            folder, _defenderSheet, _enemySheet, DefenderFolder, EnemyFolder);
+                    }
+                }
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Dreamcatcher", EditorStyles.boldLabel);
+            // unit 3 — contract tabs edited as one comma list (rarely touched).
+            EditorGUI.BeginChangeCheck();
+            _dcSheets = EditorGUILayout.TextField($"DC Sheets ({DcSheetTabs.Count})", _dcSheets);
+            if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(DcSheetsPrefsKey, _dcSheets);
+
+            string[] dcTabs = SplitDcSheets(_dcSheets);
+            using (new EditorGUI.DisabledScope(_requestInFlight
+                || string.IsNullOrWhiteSpace(_baseUrl) || dcTabs == null))
+            {
+                if (GUILayout.Button(_requestInFlight ? "Importing..." : "Import Dreamcatcher"))
+                {
+                    _requestInFlight = true;
+                    _statusLog = "Requesting...";
+                    RunDcImport(_baseUrl, dcTabs, result =>
+                    {
+                        _statusLog = result;
+                        _requestInFlight = false;
+                        Repaint();
+                    });
+                }
+            }
+            // skill-data-table unit 5 — Skills/SkillOwners 의 diff 만 본다(에셋에 안 쓴다). Import 도 쓰기 전에 같은 diff 를 로그에 먼저 쓴다.
+            using (new EditorGUI.DisabledScope(_requestInFlight
+                || string.IsNullOrWhiteSpace(_baseUrl) || dcTabs == null))
+            {
+                if (GUILayout.Button(_requestInFlight ? "..." : "Preview Skills/SkillOwners diff (쓰지 않음)"))
+                {
+                    _requestInFlight = true;
+                    _statusLog = "Requesting...";
+                    RunSkillPreview(_baseUrl, dcTabs, result =>
+                    {
+                        _statusLog = result;
+                        _requestInFlight = false;
+                        Repaint();
+                    });
+                }
+            }
+            // review L1 — export is local SO → disk; it needs tab names, not the API URL.
+            using (new EditorGUI.DisabledScope(_requestInFlight || dcTabs == null))
+            {
+                if (GUILayout.Button("Export Dreamcatcher SO → JSON Files"))
+                {
+                    string folder = EditorUtility.SaveFolderPanel("Export Dreamcatcher JSON", "", "");
+                    if (!string.IsNullOrEmpty(folder))
+                        _statusLog = DcSheetExporter.ExportToFolder(folder, dcTabs, DcFolder, SkillFolder);
+                }
+                // unit 8 — 시트 반영용 단일 파일(탭명 키 병합) + 챗봇 프롬프트 동시 출력.
+                if (GUILayout.Button("Export Dreamcatcher → 시트 페이로드 (1파일 + 프롬프트)"))
+                {
+                    string path = EditorUtility.SaveFilePanel(
+                        "Export Dreamcatcher 시트 페이로드", "", "dreamcatcher_sheet_payload", "json");
+                    if (!string.IsNullOrEmpty(path))
+                        _statusLog = DcSheetExporter.ExportCombinedFile(path, dcTabs, DcFolder, SkillFolder);
+                }
+            }
+
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Cost", EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
+            _costTab = EditorGUILayout.TextField("Cost Sheet", _costTab);
+            if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(CostTabPrefsKey, _costTab);
+
+            using (new EditorGUI.DisabledScope(_requestInFlight
+                || string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_costTab)))
+            {
+                if (GUILayout.Button(_requestInFlight ? "Importing..." : "Import CostConfig"))
+                {
+                    _requestInFlight = true;
+                    _statusLog = "Requesting...";
+                    RunCostImport(_baseUrl, _costTab, result =>
+                    {
+                        _statusLog = result;
+                        _requestInFlight = false;
+                        Repaint();
+                    });
+                }
+            }
+            // unit 7 — export 는 로컬 SO → disk(API URL 불요). 시트 반영은 사용자가 시트에서 직접 한다(push 도구는 뗐다).
+            using (new EditorGUI.DisabledScope(_requestInFlight || string.IsNullOrWhiteSpace(_costTab)))
+            {
+                if (GUILayout.Button("Export CostConfig SO → JSON"))
+                {
+                    string folder = EditorUtility.SaveFolderPanel("Export CostConfig JSON", "", "");
+                    if (!string.IsNullOrEmpty(folder))
+                        _statusLog = CostConfigSheetExporter.ExportToFolder(folder, _costTab, ConfigFolder);
+                }
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Result", EditorStyles.boldLabel);
+            EditorGUILayout.TextArea(_statusLog, GUILayout.MinHeight(120));
+        }
+
+        internal static string[] SplitDcSheets(string commaList)
+        {
+            var parts = (commaList ?? "").Split(',');
+            if (parts.Length != DcSheetTabs.Count) return null;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                parts[i] = parts[i].Trim();
+                if (parts[i].Length == 0) return null;
+            }
+            return parts;
+        }
+
+        // unit 3 — fetch the DC tabs → parse → DcSheetApplier (+ SkillSheet), shared by the window
+        // button and headless verification (one-shot MenuItem pattern).
+        internal static void RunDcImport(string baseUrl, string[] tabNames, System.Action<string> onDone)
+        {
+            var urls = new string[tabNames.Length];
+            for (int i = 0; i < tabNames.Length; i++)
+                urls[i] = SheetEnvelopeParser.BuildSheetUrl(baseUrl, tabNames[i]);
+            // review H2 — onDone must fire even when apply throws, or the window's
+            // _requestInFlight sticks until a domain reload (same guarantee the
+            // unit path gets from its try/finally).
+            SheetFetcher.FetchAll(urls, results =>
+            {
+                string result;
+                try { result = ApplyDcFetched(results, tabNames); }
+                catch (System.Exception e) { result = $"Import failed: {e}"; }
+                onDone(result);
+            });
+        }
+
+        internal static string ApplyDcFetched(SheetFetcher.Result[] r, string[] tabs)
+        {
+            var log = new StringBuilder();
+            var payload = new DcSheetPayload
+            {
+                cards = SheetEnvelopeParser.ParseSheetLogged<DcCardDto>(r[DcSheetTabs.CardsAt].body, r[DcSheetTabs.CardsAt].transportError, tabs[DcSheetTabs.CardsAt], log),
+                skills = SheetEnvelopeParser.ParseSheetLogged<DcSkillDto>(r[DcSheetTabs.ActiveSkillsAt].body, r[DcSheetTabs.ActiveSkillsAt].transportError, tabs[DcSheetTabs.ActiveSkillsAt], log),
+                configs = SheetEnvelopeParser.ParseSheetLogged<DcConfigDto>(r[DcSheetTabs.ConfigAt].body, r[DcSheetTabs.ConfigAt].transportError, tabs[DcSheetTabs.ConfigAt], log),
+            };
+            var skillPayload = ParseSkillTabs(r, tabs, log);
+            if (payload.cards == null && payload.skills == null && payload.configs == null
+                && skillPayload.skills == null && skillPayload.owners == null)
+                return log.ToString();
+
+            // review (architect #3) — surface each tab's SoT mode so "can I delete
+            // this row?" never depends on remembering the spec.
+            log.AppendLine($"[mode] {tabs[DcSheetTabs.SkillOwnersAt]}: sheet-SoT (rows rebuild arrays; deleting a row deletes the entry) · {tabs[DcSheetTabs.SkillsAt]}: per-id values (blank = keep; unknown ids are reported, never created).");
+
+            var cardsById = UnitStatApplier.BuildIndex(
+                UnitAssetScan.Enumerate<DreamcatcherCard>(DcFolder), so => so.id, log, nameof(DreamcatcherCard));
+            var skillsById = UnitStatApplier.BuildIndex(
+                UnitAssetScan.Enumerate<SkillData>(SkillFolder), so => so.id, log, nameof(SkillData));
+            var configsById = new System.Collections.Generic.Dictionary<string, ScriptableObject>();
+            foreach (var kv in UnitStatApplier.BuildIndex(
+                         UnitAssetScan.Enumerate<AwakeningConfig>(DcFolder), so => so.id, log, nameof(AwakeningConfig)))
+                configsById[kv.Key] = kv.Value;
+            foreach (var kv in UnitStatApplier.BuildIndex(
+                         UnitAssetScan.Enumerate<DeckRuleConfig>(DcFolder), so => so.id, log, nameof(DeckRuleConfig)))
+            {
+                if (!configsById.TryAdd(kv.Key, kv.Value))
+                    log.AppendLine($"[dc-config] id '{kv.Key}' exists on two config types — DeckRuleConfig skipped.");
+            }
+
+            string result = DcSheetApplier.Apply(payload, cardsById, skillsById, configsById, SaveAsset, log);
+            var skillLog = new StringBuilder();
+            string skills = SkillSheet.Import(skillPayload, BuildSkillIndex(skillLog), apply: true, SaveAsset, skillLog);
+            // 쓰기 전 diff 가 로그 창만이 아니라 콘솔에도 남게(창을 닫아도 무엇이 바뀌었는지 찾을 수 있다).
+            Debug.Log("[SkillSheet import]\n" + skills);
+            return result + skills;
+        }
+
+        private static void SaveAsset(ScriptableObject so)
+        {
+            EditorUtility.SetDirty(so);
+            AssetDatabase.SaveAssetIfDirty(so);
+        }
+
+        private static SkillSheetPayload ParseSkillTabs(SheetFetcher.Result[] r, string[] tabs, StringBuilder log)
+            => new SkillSheetPayload
+            {
+                skills = SheetEnvelopeParser.ParseSheetLogged<SkillRowDto>(r[DcSheetTabs.SkillsAt].body, r[DcSheetTabs.SkillsAt].transportError, tabs[DcSheetTabs.SkillsAt], log),
+                owners = SheetEnvelopeParser.ParseSheetLogged<SkillOwnerRowDto>(r[DcSheetTabs.SkillOwnersAt].body, r[DcSheetTabs.SkillOwnersAt].transportError, tabs[DcSheetTabs.SkillOwnersAt], log),
+            };
+
+        // skill-data-table unit 5 — 에디터 인덱스 = `Data` 전체 형 스캔(없는 id 는 만들지 않는다 — 보고만).
+        internal static SkillSheetIndex BuildSkillIndex(StringBuilder log)
+            => SkillSheetIndex.Build(
+                UnitAssetScan.Enumerate<EffectData>(DataRoot),
+                UnitAssetScan.Enumerate<ProjectileData>(DataRoot),
+                UnitAssetScan.Enumerate<ProjectilePatternData>(DataRoot),
+                UnitAssetScan.Enumerate<HazardSO>(DataRoot),
+                UnitAssetScan.Enumerate<DreamcatcherCard>(DataRoot),
+                UnitAssetScan.Enumerate<DefenderUnitData>(DataRoot),
+                UnitAssetScan.Enumerate<AttackUnitData>(DataRoot),
+                log);
+
+        // skill-data-table unit 5 — 미리보기: 탭을 받아 Skills/SkillOwners 만 계획 + diff(에셋 무변 · DC 탭은 적용하지 않는다).
+        internal static void RunSkillPreview(string baseUrl, string[] tabNames, System.Action<string> onDone)
+        {
+            var urls = new string[tabNames.Length];
+            for (int i = 0; i < tabNames.Length; i++)
+                urls[i] = SheetEnvelopeParser.BuildSheetUrl(baseUrl, tabNames[i]);
+            SheetFetcher.FetchAll(urls, results =>
+            {
+                string result;
+                try
+                {
+                    var log = new StringBuilder();
+                    var payload = ParseSkillTabs(results, tabNames, log);
+                    result = SkillSheet.Import(payload, BuildSkillIndex(log), apply: false, null, log);
+                }
+                catch (System.Exception e) { result = $"Preview failed: {e}"; }
+                onDone(result);
+            });
+        }
+
+        private void StartImport()
+        {
+            _requestInFlight = true;
+            _statusLog = "Requesting...";
+
+            SheetFetcher.FetchBoth(
+                SheetEnvelopeParser.BuildSheetUrl(_baseUrl, _defenderSheet),
+                SheetEnvelopeParser.BuildSheetUrl(_baseUrl, _enemySheet),
+                (defenderFetch, enemyFetch) =>
+                {
+                    try
+                    {
+                        _statusLog = ApplyFetched(defenderFetch, enemyFetch);
+                    }
+                    finally
+                    {
+                        _requestInFlight = false;
+                        Repaint();
+                    }
+                });
+        }
+
+        private string ApplyFetched(SheetFetcher.Result defenderFetch, SheetFetcher.Result enemyFetch)
+        {
+            var log = new StringBuilder();
+            var defenders = SheetEnvelopeParser.ParseSheetLogged<DefenderStatDto>(
+                defenderFetch.body, defenderFetch.transportError, _defenderSheet, log);
+            var enemies = SheetEnvelopeParser.ParseSheetLogged<EnemyStatDto>(
+                enemyFetch.body, enemyFetch.transportError, _enemySheet, log);
+
+            var payload = UnitStatApplier.BuildPayload(defenders, enemies);
+            if (payload == null) return log.ToString();
+            return ApplyPayload(payload, log);
+        }
+
+        // Editor apply = shared core + AssetDatabase scan + per-asset disk save.
+        internal static string ApplyPayload(UnitStatImportPayload payload, StringBuilder log = null)
+        {
+            log ??= new StringBuilder();
+            var defendersById = UnitStatApplier.BuildIndex(
+                UnitAssetScan.Enumerate<DefenderUnitData>(DefenderFolder), so => so.id, log, nameof(DefenderUnitData));
+            var enemiesById = UnitStatApplier.BuildIndex(
+                UnitAssetScan.Enumerate<AttackUnitData>(EnemyFolder), so => so.id, log, nameof(AttackUnitData));
+
+            return UnitStatApplier.Apply(payload, defendersById, enemiesById, so =>
+            {
+                EditorUtility.SetDirty(so);
+                AssetDatabase.SaveAssetIfDirty(so);
+            }, log);
+        }
+
+        // sheet-export-push unit 7 — 1탭 fetch → parse → CostConfigSheetApplier → 디스크 저장.
+        // onDone 은 apply 예외에도 발화(RunDcImport 동일 보장) → 버튼 고착 방지.
+        internal static void RunCostImport(string baseUrl, string tab, System.Action<string> onDone)
+        {
+            var url = SheetEnvelopeParser.BuildSheetUrl(baseUrl, tab);
+            SheetFetcher.Fetch(url, result =>
+            {
+                string res;
+                try { res = ApplyCostFetched(result, tab); }
+                catch (System.Exception e) { res = $"Import failed: {e}"; }
+                onDone(res);
+            });
+        }
+
+        // 런타임 refresher 와 같은 applier 를 쓰되, id→SO 는 AssetDatabase 스캔 인덱스이고
+        // 적용분은 디스크에 저장한다(에디터 import 의 공통 형태).
+        internal static string ApplyCostFetched(SheetFetcher.Result r, string tab)
+        {
+            var log = new StringBuilder();
+            var rows = SheetEnvelopeParser.ParseSheetLogged<CostConfigDto>(r.body, r.transportError, tab, log);
+            if (rows == null) return log.ToString();
+
+            var byId = UnitStatApplier.BuildIndex(
+                UnitAssetScan.Enumerate<CostConfig>(ConfigFolder), so => so.id, log, nameof(CostConfig));
+
+            return CostConfigSheetApplier.Apply(rows, byId, so =>
+            {
+                EditorUtility.SetDirty(so);
+                AssetDatabase.SaveAssetIfDirty(so);
+            }, log);
+        }
+
+    }
+}
