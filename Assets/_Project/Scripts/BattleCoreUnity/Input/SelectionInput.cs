@@ -74,18 +74,35 @@ namespace Wassup.BattleCoreUnity.Input
             Vector2 screen = pointer.position.ReadValue();
 
             if (pointer.press.wasPressedThisFrame)
-            {
-                _pressScreen = screen;
-                _pressing = !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject());
-            }
-            else if (pointer.press.wasReleasedThisFrame && _pressing)
-            {
-                _pressing = false;
-                if (Vector2.Distance(screen, _pressScreen) <= _moveCancelPx) Tap(screen);
-            }
+                PressAt(screen, EventSystem.current != null && EventSystem.current.IsPointerOverGameObject());
+            else if (pointer.press.wasReleasedThisFrame)
+                ReleaseAt(screen);
 
             Feed();
             PaintRing();
+        }
+
+        // ── 포인터 제스처(Update 가 부르는 둘 — 테스트도 같은 함수를 부른다) ──────────
+
+        /// <summary>
+        /// 손을 댔다. UI 위면 선택의 press 가 아니다. **집어 든 채(armed) · 드래그 중의 press 도 선택의 것이 아니다** —
+        /// 그 press 는 배치 제스처의 것이고, 배치 입력(-50)이 release 에서 유닛을 놓은 **같은 프레임**에 이 입력(-40)이 같은
+        /// release 를 탭으로 받으면 방금 놓인 유닛(점유표에 이미 있다)을 집어 상세가 열렸다(「유닛이 배치되면서 바로
+        /// 선택되어 상세로 전환」 — 2026-10-08). 선택은 **놓인 뒤의 새 탭**부터다.
+        /// </summary>
+        public void PressAt(Vector2 screen, bool overUi)
+        {
+            _pressScreen = screen;
+            bool placementGesture = _placement != null && (_placement.IsArmed || _placement.IsDragging);
+            _pressing = !overUi && !placementGesture;
+        }
+
+        /// <summary>손을 뗐다. 이 입력의 press 였고 이동이 없었으면 탭이다.</summary>
+        public void ReleaseAt(Vector2 screen)
+        {
+            if (!_pressing) return;
+            _pressing = false;
+            if (Vector2.Distance(screen, _pressScreen) <= _moveCancelPx) Tap(screen);
         }
 
         // ── 탭 ───────────────────────────────────────────────────────────────

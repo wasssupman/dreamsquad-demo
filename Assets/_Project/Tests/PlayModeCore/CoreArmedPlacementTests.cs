@@ -90,6 +90,55 @@ namespace Wassup.Tests.PlayMode.Core
                 "콘솔 에러: " + string.Join(" | ", CoreSceneFixture.Errors));
         }
 
+        // 2026-10-08 사용자 보고: 「유닛이 배치되면서 바로 유닛 선택되어 상세 페이즈로 전환되는 버그」.
+        // 집어 든 채 판을 탭하면 배치 입력(-50)이 release 에서 놓고, 같은 프레임에 선택 입력(-40)이 같은 release 를 탭으로
+        // 받아 방금 놓인 유닛(점유표에 이미 있다)을 집었다. 제스처가 부르는 함수를 그 순서대로 부른다.
+        [UnityTest]
+        public IEnumerator 판_탭으로_놓은_유닛이_그_자리에서_바로_선택되지_않는다()
+        {
+            CoreSceneFixture.BeginErrorWatch();
+            BattleDriver driver = null;
+            yield return CoreSceneFixture.LoadAndBoot(d => driver = d);
+            Assert.IsNotNull(driver, "BattleCoreScene 에 BattleDriver 가 없다");
+
+            var input = Object.FindAnyObjectByType<DragPlacementInput>();
+            var selection = Object.FindAnyObjectByType<SelectionInput>();
+            var panel = Object.FindAnyObjectByType<CoreSelectionPanel>();
+            var cam = Camera.main;
+            Assert.IsNotNull(input, "배치 입력이 씬에 없다");
+            Assert.IsNotNull(selection, "선택 입력이 씬에 없다");
+            Assert.IsNotNull(panel, "선택 패널이 씬에 없다");
+            Assert.IsNotNull(cam);
+
+            driver.Apply(Command.FinishPlacement());
+            yield return null;
+            Assert.IsTrue(TryFindPlaceable(driver, out int defIndex, out int2 anchor),
+                "로스터의 어떤 유닛도 이 판 어디에도 놓을 수 없다");
+
+            // ① 트레이 탭 = 집어 든다. ② 판에 손을 댄다(집어 든 채 — UI 위가 아니다).
+            input.ToggleArm(defIndex, new Vector2(Screen.width * 0.5f, Screen.height * 0.1f));
+            Vector2 boardScreen = ScreenOfCell(driver, cam, FingerCellFor(driver, defIndex, anchor));
+            selection.PressAt(boardScreen, overUi: false);
+
+            // ③ 같은 프레임의 release — 실행 순서대로 배치 입력이 먼저 놓고, 선택 입력이 같은 release 를 받는다.
+            Assert.IsTrue(input.ReleaseArmedAt(boardScreen, sticky: false), "판 탭으로 배치되지 않았다");
+            selection.ReleaseAt(boardScreen);
+            yield return null;
+
+            Assert.IsFalse(selection.Selected.IsEntity, "유닛이 배치되면서 바로 선택됐다 — 배치 탭의 release 는 선택의 것이 아니다");
+            Assert.IsFalse(panel.IsVisible, "유닛이 배치되면서 바로 상세 페이즈로 전환됐다");
+
+            // ④ 놓인 뒤의 **새 탭**은 그 유닛을 연다 — 가드가 선택을 막아 버리지는 않는다.
+            selection.PressAt(boardScreen, overUi: false);
+            selection.ReleaseAt(boardScreen);
+            yield return null;
+            Assert.IsTrue(selection.Selected.IsEntity, "놓인 유닛을 다시 탭했는데 선택되지 않는다");
+
+            CoreSceneFixture.EndErrorWatch();
+            Assert.AreEqual(0, CoreSceneFixture.Errors.Count,
+                "콘솔 에러: " + string.Join(" | ", CoreSceneFixture.Errors));
+        }
+
         [UnityTest]
         public IEnumerator 같은_칸_재탭은_해제하고_다른_칸_탭은_갈아탄다()
         {
