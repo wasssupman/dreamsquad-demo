@@ -220,4 +220,5 @@ code + git history        구현 상세
 
 - **`Defender_ShieldShuttle` 의 무기 궤적 리그가 없는 본을 따른다** [S] · 궤적 프리팹(`WeaponTrail_Slash` 변형)의 `BoneFollower.boneName = Gear` 인데 이 유닛만 스켈레톤이 CH4(Gear 본 없음)다. Play 중 `Bone not found: Gear` 가 매 프레임 찍힌다(한 판 907회). 리그 본을 CH4 의 손 본으로 바꾸거나 트레일을 뗀다 — 저작 결정이라 사용자 몫.
 - **Hovl `HS_SwordMeshTrail.RefreshPresetPointAEffects` 가 씬 열기 때 1회 예외** [S] · `PrefabUtility.InstantiatePrefab` 의 parent 가 프리팹 에셋 안이라 거절. 벤더 스크립트의 에디터 타임 재생성 로직. 무해하지만 콘솔에 남는다.
+- **손패 닫기 트윈의 PrimeTween 경고** [S] · Play 중 「Tween's 'endValue' equals to the current animated value … UIAlphaGraphic / HandPanel / 0.21s」가 판당 2회. `SelectionInput.CloseSelection` 이 집어 든 채/드래그 중 매 프레임 불려 이미 닫힌 손패에 알파 0 → 0 트윈을 건다(`CoreHandView.CloseFromSelection`). 무해(경고)지만 닫혀 있으면 트윈을 안 걸게 하거나 `warnEndValueEqualsCurrent` 를 끈다. (battle-content-finish 뒤 2026-10-08 Play 에서 관찰 — 선행 여부 미확인)
 - **벤더 팩이 원래 들고 오지 않은 참조 129건**(GA 머티리얼 36 등 12 guid) · HEAD 트리에도 없던 셰이더·텍스처. 그 머티리얼이 실제 보이는지 Play 육안으로.
