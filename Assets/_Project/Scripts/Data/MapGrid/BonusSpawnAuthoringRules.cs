@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Wassup.Data.MapGrid
+namespace Somnia.Battle.Data.MapGrid
 {
     // bonus-wave-pull unit 1 — 보너스 포탈 칸 저작 규칙의 **단일 소유자**.
     // `MapDocument.OnValidate` 와 `MapPainterWindow` 가 둘 다 이 함수를 부른다. 규칙을

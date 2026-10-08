@@ -5,7 +5,7 @@
 //   `NearestTargeting` 만 반경 필터를 안에 들고 있던 예외도 그대로 옮겼다(그 0 의 뜻이 호출처마다
 //   갈리면 조용히 엉뚱한 대상이 뽑힌다는 이유가 여전히 유효하다).
 
-namespace Wassup.BattleCore.Combat
+namespace Somnia.Battle.BattleCore.Combat
 {
     // 「골에 가장 가까운 적을 먼저 친다」.
     //

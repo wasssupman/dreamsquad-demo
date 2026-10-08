@@ -1,10 +1,10 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 5c — **새 씬으로 들어가는 dev 토글.**
     //
@@ -23,20 +23,20 @@ namespace Wassup.EditorTools.BattleCore
     {
         private const string ScenePath = "Assets/_Project/Scenes/BattleCoreScene.unity";
 
-        [MenuItem("Wassup/BattleCore/씬 열기 (BattleCoreScene)", priority = 0)]
+        [MenuItem("Somnia/Battle/BattleCore/씬 열기 (BattleCoreScene)", priority = 0)]
         public static void OpenScene()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
         }
 
-        [MenuItem("Wassup/BattleCore/씬 열고 플레이 (기본 모드)", priority = 1)]
+        [MenuItem("Somnia/Battle/BattleCore/씬 열고 플레이 (기본 모드)", priority = 1)]
         public static void PlayDefault() => OpenAndPlay(null);
 
         // 선택 중인 모드 SO 로 들어간다 — 프로젝트 창에서 `MatchMode_*.asset` 을 고르고 누른다.
         // 오늘 모드 SO 는 하나뿐이라 이 경로는 아직 「기본 모드」와 같은 판을 연다. 그래도 두는
         // 이유: 로비가 설 때 그 UI 가 채울 칸이 **이미 값으로 존재한다**는 것을 여기서 증명한다.
-        [MenuItem("Wassup/BattleCore/씬 열고 플레이 (선택한 모드 SO)", priority = 2)]
+        [MenuItem("Somnia/Battle/BattleCore/씬 열고 플레이 (선택한 모드 SO)", priority = 2)]
         public static void PlaySelectedMode()
         {
             var mode = Selection.activeObject as MatchModeData;

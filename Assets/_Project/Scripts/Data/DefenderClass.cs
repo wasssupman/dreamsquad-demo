@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // ingame-dreamcatcher Unit 0 — unit role/class for buff targeting axes
     // (dreamcatcher ClassRanger/ClassGuardian; future squad traits). Cost-based

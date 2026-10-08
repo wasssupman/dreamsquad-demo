@@ -1,21 +1,21 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // 보드 오버레이(`CoreMapOverlay`)의 룩 저작 — 배치 가이드 · 사거리 링 · 공격 도형 · 착지 예고 · 효과 타일 칸의
     // 색·알파·머티리얼과 못 놓는 칸의 스프라이트. 바닥은 디오라마 스테이지 프리팹이 그린다.
     // 이력: 옛 「TileSet」 SO(Tilemap 전투의 타일 교체 단위). 바닥 타일 매핑·외곽 터레인 링(demo-diet)과
     // `Tile` 에셋 껍데기(tilemap-untangle 단위 0, 2026-10-07)를 걷어내고 개명했다 — 오버레이는 Tilemap 을 쓰지 않는다.
-    [CreateAssetMenu(menuName = "Wassup/Board Overlay Style", fileName = "BoardOverlayStyle")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Board Overlay Style", fileName = "BoardOverlayStyle")]
     public class BoardOverlayStyle : ScriptableObject
     {
         [Header("배치 액체 하이라이트 (placement-cell-snap unit 7 rev)")]
-        [Tooltip("포커스 셀 하이라이트 쿼드 머티리얼(Wassup/PlacementLiquidTile). 모양 튜닝은 이 .mat 인스펙터에서.\n" +
+        [Tooltip("포커스 셀 하이라이트 쿼드 머티리얼(Somnia/Battle/PlacementLiquidTile). 모양 튜닝은 이 .mat 인스펙터에서.\n" +
                  "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.")]
         public Material placementLiquidMaterial;
 
         [Header("사거리 링 (distance-based-range unit 5)")]
-        [Tooltip("공격 사거리 윤곽 쿼드 머티리얼(Wassup/PlacementRangeRing). 선 두께·라이너는 이 .mat 인스펙터에서.\n" +
+        [Tooltip("공격 사거리 윤곽 쿼드 머티리얼(Somnia/Battle/PlacementRangeRing). 선 두께·라이너는 이 .mat 인스펙터에서.\n" +
                  "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.\n" +
                  "⚠ 셰이더의 _HalfExtent·_Range 는 저작 값이 아니라 **판정 입력의 복사본**이다. 인스펙터에서 만지지 말 것 — " +
                  "CoreMapOverlay 가 매 페인트마다 덮어쓴다.")]

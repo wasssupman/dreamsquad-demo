@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Move;
-using Wassup.BattleCore.Wave;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Move;
+using Somnia.Battle.BattleCore.Wave;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 9 구현 2 — 옛 예고·펼침·명목 간격 테스트(`SpawnAlertForecastTests` ·
     // `WaveSpawnForecastTests` · `WaveNominalIntervalTests`)의 **규칙**을 코어로 옮긴다.

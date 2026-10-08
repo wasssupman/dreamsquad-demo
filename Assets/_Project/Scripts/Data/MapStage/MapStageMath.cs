@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // map-diorama-stage unit 0 — 스테이지 로컬 → 논리 셀 양자화의 단일 산식.
     // 기즈모(에디터)와 DioramaMapBuilder(unit 1)가 같은 함수를 쓴다 — 산식 이중화 금지.

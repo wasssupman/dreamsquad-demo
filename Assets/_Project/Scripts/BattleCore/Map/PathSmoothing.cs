@@ -4,7 +4,7 @@
 // 여기서 재설계하지 않는다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 경로 평활화(string pulling).
     //

@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.Data;
-using Wassup.UI.Layout;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI.Layout;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // unit-dreamcatcher-inspect unit 2 → selection-hand-attach unit 11 재설계.
     //
@@ -31,7 +31,7 @@ namespace Wassup.UI
         [SerializeField] private TMP_FontAsset labelFont;
         // dreamcatcher-attach-requirement unit 5 — "{유닛명} 전용" 접두 해석기.
         // null 이면 포매터가 id 문자열로 폴백한다.
-        [SerializeField] private Wassup.Data.DefenderCatalog defenderCatalog;
+        [SerializeField] private Somnia.Battle.Data.DefenderCatalog defenderCatalog;
 
         [Header("Dock")]
         [Tooltip("safe area 좌측에서 패널까지(캔버스 단위). MenuButton 과 같은 좌측 정렬")]

@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Goals
+namespace Somnia.Battle.BattleCore.Goals
 {
     // battle-core-rebuild unit 4 — **모드 로직의 자리.**
     //

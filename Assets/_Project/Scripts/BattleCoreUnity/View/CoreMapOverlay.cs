@@ -1,17 +1,17 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Trigger;
-using SimEntityId = Wassup.BattleCore.SimEntityId;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Trigger;
+using SimEntityId = Somnia.Battle.BattleCore.SimEntityId;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5b — **판 위에 그리는 것.** 옛 `TilemapMapView`(1,608줄)에서
     // 오버레이 몫만 가져왔다(바닥 페인팅은 스테이지 프리팹이, 평면 선언은 `CoreBoardPlane` 이
@@ -446,14 +446,14 @@ namespace Wassup.BattleCoreUnity.View
             mesh.vertices = verts;
             mesh.triangles = tris;
             mesh.RecalculateBounds();
-            Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(fill.sharedMaterial, color);
+            Somnia.Battle.Rendering.RuntimeMaterialFactory.ApplyColor(fill.sharedMaterial, color);
             fill.enabled = true;
         }
 
         private bool EnsureDiscFill(string n, ref MeshRenderer fill, ref Mesh mesh)
         {
             if (fill != null) return true;
-            var mat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(Color.white);
+            var mat = Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateTransparent(Color.white);
             if (mat == null) return false;
             var go = new GameObject($"{name}_{n}");
             go.transform.SetParent(transform, false);
@@ -550,7 +550,7 @@ namespace Wassup.BattleCoreUnity.View
             _areaFillMesh.triangles = tris;
             _areaFillMesh.RecalculateBounds();
             var fill = _areaStyle.color; fill.a = _areaStyle.fillAlpha;
-            Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_areaFill.sharedMaterial, fill);
+            Somnia.Battle.Rendering.RuntimeMaterialFactory.ApplyColor(_areaFill.sharedMaterial, fill);
             _areaFill.enabled = true;
         }
 
@@ -564,7 +564,7 @@ namespace Wassup.BattleCoreUnity.View
         {
             if (_areaRing == null) _areaRing = CreateLine("CardAreaRing", _ringWidth, BoardSortOrder.RangeRingOrder, _ringColor);
             if (_areaFill != null) return true;
-            var mat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(_ringColor);
+            var mat = Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateTransparent(_ringColor);
             if (mat == null) return false;   // 링만 그린다(머티리얼 미배선 — 도형 가이드와 같은 규약)
             var go = new GameObject($"{name}_CardAreaFill");
             go.transform.SetParent(transform, false);
@@ -865,7 +865,7 @@ namespace Wassup.BattleCoreUnity.View
         // (`PlacementShapeGuideOrder`, 옛 `:978`).
         private void PaintShapeGuide(in AttackDef attack, float3 foot, float3 targetPos, float radiusTiles)
         {
-            if (attack.ShapeKind == Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind || _style == null) { HideShapeGuide(); return; }
+            if (attack.ShapeKind == Somnia.Battle.BattleCore.Combat.AttackShapeBaked.OmniKind || _style == null) { HideShapeGuide(); return; }
 
             Vector3 originView = (Vector3)BoardSpace.ToView(foot);
             Vector3 dirView = (Vector3)BoardSpace.ToView(targetPos) - originView;
@@ -875,13 +875,13 @@ namespace Wassup.BattleCoreUnity.View
             // 잰다 — 그래야 바깥 호가 링 원과 정확히 겹친다(옛 unit 6 「바깥 호 = 링」).
             float ts = _driver.TileSize;
             float viewTile = ((Vector3)BoardSpace.ToView(foot + new float3(ts, 0f, 0f)) - originView).magnitude;
-            var baked = new Wassup.BattleCore.Combat.AttackShapeBaked
+            var baked = new Somnia.Battle.BattleCore.Combat.AttackShapeBaked
             {
                 kind = (byte)attack.ShapeKind, sinHalf = attack.ShapeSinHalf,
                 cosHalf = attack.ShapeCosHalf, halfWidth = attack.ShapeHalfWidth,
             };
             var spec = CoreVfxSpawner.ShapeMarkOf(in baked, radiusTiles, viewTile);
-            bool band = spec.kind == Wassup.Data.AttackShapeBaked.BandKind;
+            bool band = spec.kind == Somnia.Battle.Data.AttackShapeBaked.BandKind;
             if (!band && (spec.angleDeg <= 0f || spec.angleDeg >= 360f)) { HideShapeGuide(); return; }   // 옛 `:882`
 
             if (!EnsureShapeGuide()) return;
@@ -912,9 +912,9 @@ namespace Wassup.BattleCoreUnity.View
 
             var c = _style.rangeTargetMarkColor;
             c.a = _style.rangeShapeGuideFillAlpha;
-            Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeFill.sharedMaterial, c);
+            Somnia.Battle.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeFill.sharedMaterial, c);
             c.a = _style.rangeShapeGuideRimAlpha;
-            Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeRim.sharedMaterial, c);
+            Somnia.Battle.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeRim.sharedMaterial, c);
             if (!_shapeFill.enabled) _shapeFill.enabled = true;
             if (!_shapeRim.enabled) _shapeRim.enabled = true;
         }
@@ -975,8 +975,8 @@ namespace Wassup.BattleCoreUnity.View
             if (_shapeFill != null) return true;
             if (_shapeMatMissing) return false;
             var c = _style.rangeTargetMarkColor;
-            var fillMat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(c);
-            var rimMat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(c);
+            var fillMat = Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateTransparent(c);
+            var rimMat = Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateTransparent(c);
             if (fillMat == null || rimMat == null)
             {
                 _shapeMatMissing = true;

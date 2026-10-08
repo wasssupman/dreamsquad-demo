@@ -2,15 +2,15 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.Presentation;
-using Wassup.UI;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
+using Somnia.Battle.UI;
 
-namespace Wassup.BattleCoreUnity.Input
+namespace Somnia.Battle.BattleCoreUnity.Input
 {
     // battle-core-rebuild unit 5b — **드래그 배치.** 옛 `DefenderDragPlacementController`(2,144줄)
     // 에서 가져온 것은 **드래그·스냅·프리뷰뿐**이다.

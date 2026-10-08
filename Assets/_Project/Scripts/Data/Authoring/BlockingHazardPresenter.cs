@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data.Authoring
+namespace Somnia.Battle.Data.Authoring
 {
     // battle-core-rebuild unit 8c — 길막 프리팹 2(`BlockingHazard_BombBarrel`·`_Placeholder`)에 붙어 있고 새 씬도 그
     // 프리팹을 `Instantiate` 해서 이 파일이 옛 폴더와 함께 지워지면 Missing Script 가 된다. 그래서 집을 옮기고
@@ -264,6 +264,6 @@ namespace Wassup.Data.Authoring
         // battle-content-finish unit 4 — 원본은 `RuntimeMaterialSet.hazardParticle`(SO 참조). `Shader.Find` 사슬은 빌드 스트리핑에
         // 걸린다(백로그 BCR/8c). 없으면 null — 플레이스홀더가 마젠타로 보이는 것이 신호다.
         private static Material CreateParticleMaterial(Color color)
-            => Wassup.Rendering.RuntimeMaterialFactory.CreateHazardParticle(color);
+            => Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateHazardParticle(color);
     }
 }

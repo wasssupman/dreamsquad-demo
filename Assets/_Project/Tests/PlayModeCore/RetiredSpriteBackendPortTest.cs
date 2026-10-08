@@ -4,15 +4,15 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Cards;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Core;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Cards;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Core;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 9 — 옛 `PlayMode/SpriteUnitBackendPlayTest` 의 규칙을 새 유닛 뷰 풀(`CoreUnitViewPool` →
     // `CoreSpriteUnitView`)로 옮긴 것. 검증 질문 그대로: 스프라이트 세트 저작 유닛이 Spine 유닛과 **같은 판**에서

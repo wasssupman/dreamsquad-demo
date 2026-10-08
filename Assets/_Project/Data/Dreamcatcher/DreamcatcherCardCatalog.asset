@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 371d32b90203d4c3cab07404bf6fbbea, type: 3}
   m_Name: DreamcatcherCardCatalog
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCardCatalog
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.DreamcatcherCardCatalog
   cards:
   - {fileID: 11400000, guid: 341bd7dab3dc547f88596404132317a3, type: 2}
   - {fileID: 11400000, guid: 345db5c102e3144ab996c7128d631624, type: 2}

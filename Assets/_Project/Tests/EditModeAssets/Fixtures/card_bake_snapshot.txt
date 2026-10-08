@@ -1,4 +1,4 @@
-# battle-core-rebuild 7e — 카드 굽기 스냅샷. 손으로 고치지 말 것: Wassup/BattleCore/Debug/카드 스냅샷 갱신
+# battle-core-rebuild 7e — 카드 굽기 스냅샷. 손으로 고치지 말 것: Somnia/Battle/BattleCore/Debug/카드 스냅샷 갱신
 [card 0 cost1_as]
 id=cost1_as
 kind=0

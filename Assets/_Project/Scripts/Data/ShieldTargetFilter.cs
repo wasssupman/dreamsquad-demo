@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // shield-guardian-defender unit 1 — 실드 캐스트 대상 필터 (SO 데이터).
     // Self = 자신만(C/범위 무시) · All = 가까운 순 C개 · MinHealth = 유효HP 비율

@@ -2,10 +2,10 @@ using System.IO;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // map-diorama-stage unit 6 — 공용 마커 프랍의 정본(Data/Maps/MarkerPropStyle.asset)이 채워져 있고 전투 씬이 설치자를
     // 배선했는지. (battle-core-rebuild 8c — 대상 씬을 옛 `BattleScene` 에서 새 `BattleCoreScene` 으로 옮겼다. 옛 씬은 unit 9 에서
@@ -42,7 +42,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(string.IsNullOrEmpty(guid));
             string scene = File.ReadAllText(ScenePath);
 
-            string mb = YamlBlockContaining(scene, "Wassup.Presentation.MarkerPropInstaller");
+            string mb = YamlBlockContaining(scene, "Somnia.Battle.Presentation.MarkerPropInstaller");
             Assert.IsNotNull(mb, "BattleCoreScene 에 MarkerPropInstaller 가 없다");
             Assert.IsTrue(mb.Contains("m_Enabled: 1"), "MarkerPropInstaller 가 꺼져 있다");
             Assert.IsTrue(mb.Contains($"style: {{fileID: 11400000, guid: {guid}, type: 2}}"), "MarkerPropInstaller.style 이 MarkerPropStyle.asset 을 가리키지 않는다");

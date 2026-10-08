@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3b30c45c967584f8a89f212b2956ff1e, type: 3}
   m_Name: BoardOverlayStyle
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.BoardOverlayStyle
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.BoardOverlayStyle
   placementLiquidMaterial: {fileID: 2100000, guid: 4e0cc541ac45f48ddbd551ff034d3c11, type: 2}
   placementRangeRingMaterial: {fileID: 2100000, guid: 2c4aed3400d8e46ada3894282c909ee1, type: 2}
   heartStressPropTint: {r: 0.95, g: 0.13, b: 0.11, a: 1}

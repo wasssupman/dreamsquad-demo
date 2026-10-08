@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Core.TimeControl;
+using Somnia.Battle.Core.TimeControl;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // instinct-turret-readout unit 1 — 본능(3×3 공격 거점) 프랍의 포신 조준.
     //

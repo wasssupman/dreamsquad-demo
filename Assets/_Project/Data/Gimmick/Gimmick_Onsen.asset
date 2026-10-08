@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 83be0d9e593ff1a4cb23996d0d5b1702, type: 3}
   m_Name: Gimmick_Onsen
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.OnsenGimmickData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.OnsenGimmickData
   gimmickId: G4_Onsen
   displayName: "\uB728\uB048\uD558\uB2C8 \uC88B\uB124\uC694\uC624\uC624.. \uB728\uAC81\uB124?"
   description: "\uC628\uCC9C\uBB3C\uC5D0 \uBAB8\uC744 \uB2F4\uADFC \uBAA8\uB4E0 \uC720\uB2DB\uC774

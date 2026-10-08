@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 5a — 뷰 방출 순서는 **`ViewOrder` 가 말한다.**
     //
@@ -74,7 +74,7 @@ namespace Wassup.Tests.PlayMode.Core
         // 한다(흐름장 슬롯이 셀 수에서 나온다) — 그래서 4×3 빈 판을 준다.
         private static MatchDefinition MinimalDefinition()
         {
-            var map = new Wassup.BattleCore.Map.MapSnapshot
+            var map = new Somnia.Battle.BattleCore.Map.MapSnapshot
             {
                 Width = 4,
                 Height = 3,

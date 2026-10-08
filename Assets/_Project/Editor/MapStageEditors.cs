@@ -1,9 +1,9 @@
 using UnityEditor;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.EditorTools
+namespace Somnia.Battle.EditorTools
 {
     // map-diorama-stage unit 0 — 스테이지 저작 인스펙터: 바운즈 제안 버튼 + 셀 스냅.
     // 제안은 초안일 뿐 선언이 정본이다(D6) — 버튼은 필드를 채워줄 뿐 어떤 것도 강제하지 않는다.
@@ -121,7 +121,7 @@ namespace Wassup.EditorTools
                 var guids = AssetDatabase.FindAssets("t:MapStagePool");
                 if (guids.Length == 0) { Debug.LogWarning("[MapStage] MapStagePool 에셋이 없다."); return; }
                 if (guids.Length > 1) Debug.LogWarning($"[MapStage] MapStagePool 이 {guids.Length}개 — 첫 번째에만 등록한다.");
-                var pool = AssetDatabase.LoadAssetAtPath<Wassup.Data.MapStagePool>(
+                var pool = AssetDatabase.LoadAssetAtPath<Somnia.Battle.Data.MapStagePool>(
                     AssetDatabase.GUIDToAssetPath(guids[0]));
                 if (pool.EditorRegisterDevStage(prefab))
                 {

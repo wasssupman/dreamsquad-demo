@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 3 — 옛 순수 테스트의 후계.
     //

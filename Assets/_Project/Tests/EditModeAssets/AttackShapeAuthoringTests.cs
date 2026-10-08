@@ -1,9 +1,9 @@
 using System.Text;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // directional-attack-shape — 저작 허용 목록 그물. unit 1 시절엔 「전부 Omni」(라이브 무변의 증언)였고,
     // unit 4 rev 3 가 다중 타격 파이터에 저작을 넣으며 「의도된 저작만」으로 목적이 옮겨왔다.

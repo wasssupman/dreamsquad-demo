@@ -1,8 +1,8 @@
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 6b2 — **판 위에 떨어진 사직서 한 장.**
     //

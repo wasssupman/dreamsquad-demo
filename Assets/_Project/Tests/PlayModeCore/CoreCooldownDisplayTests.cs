@@ -4,11 +4,11 @@ using TMPro;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Hud;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 5b 수정 — **사망·퇴근 뒤 재배치 대기가 보이는가.**
     //

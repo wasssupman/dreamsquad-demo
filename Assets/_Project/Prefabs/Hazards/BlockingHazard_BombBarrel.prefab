@@ -44,7 +44,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ba6ae9d37cd504d2f88c29b807d07a82, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Battle.Effects.BlockingHazardPresenter
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Battle.Effects.BlockingHazardPresenter
   spawnVfxPrefab: {fileID: 0}
 --- !u!1001 &7818589771233833472
 PrefabInstance:

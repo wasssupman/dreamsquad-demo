@@ -1,13 +1,13 @@
 using System;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     /// <summary>
     /// Shared presentation contract for the defender action tray and its later
     /// hand/energy-rail variants. Safe-area ownership stays with UiCanvasSetup.
     /// </summary>
-    [CreateAssetMenu(menuName = "Wassup/UI/Battle HUD Tray Config", fileName = "BattleHudTrayConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/UI/Battle HUD Tray Config", fileName = "BattleHudTrayConfig")]
     public sealed class BattleHudTrayConfig : ScriptableObject
     {
         [Header("Frame")]
@@ -64,7 +64,7 @@ namespace Wassup.Data
         [Tooltip("가득 찼을 때 액체색 — wellLiquidColor 와 명도차를 유지한다(색 단독 판별 금지)")]
         public Color wellLiquidFullColor = new Color(1f, 0.85f, 0.25f, 1f);
         public Color wellSurfaceColor = new Color(1f, 0.95f, 0.7f, 0.85f);
-        // tray-cost-well 5 — 액체 셰이더 머티리얼(Wassup/UI/CostWell). 표면 파형·
+        // tray-cost-well 5 — 액체 셰이더 머티리얼(Somnia/Battle/UI/CostWell). 표면 파형·
         // 깊이 음영·유리 반사를 프래그먼트가 만든다. 미할당이면 절차 스프라이트
         // 폴백(출렁임 없는 단색 채움).
         // 씬이 아니라 여기 두는 이유: 씬 저장은 미저장 WIP 까지 함께 베이크한다.
@@ -135,7 +135,7 @@ namespace Wassup.Data
         // 여기에도 복제하면 진실원이 둘이 된다 — 이 셰이더는 소비처가 하나뿐이라(쿨타임 액체가
         // 코스트 물통과 색·방향을 달리해야 했던 것과 다르다) 역할 구분용 오버라이드가 필요 없다.
         // 코드가 미는 유니폼은 _Aspect 와 _Bleed 둘 — 둘 다 룩이 아니라 기하다.
-        [Tooltip("테두리 순환 머티리얼(Wassup/UI/SlotRimFlow). 미할당이면 테두리가 없고 탈색만 남는데, unit 4 로 탈색이 0.85 까지 밝아져 그것만으로는 소진이 거의 안 보인다 — 사실상 필수")]
+        [Tooltip("테두리 순환 머티리얼(Somnia/Battle/UI/SlotRimFlow). 미할당이면 테두리가 없고 탈색만 남는데, unit 4 로 탈색이 0.85 까지 밝아져 그것만으로는 소진이 거의 안 보인다 — 사실상 필수")]
         public Material rimFlowMaterial;
         // 예외 하나 — 아래는 룩이 아니라 **기하**라 여기 있다. 테두리 quad 의 크기는 UGUI
         // RectTransform 이 정하는 것이라 머티리얼이 가질 수 없다(셰이더는 자기 quad 가 얼마나

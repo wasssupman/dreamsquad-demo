@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // ingame-dreamcatcher Unit 1 — what a card buffs. Maps to StatModifier in
     // Unit 2: AttackDamage→DamageMul, AttackSpeed→AttackSpeedMul,

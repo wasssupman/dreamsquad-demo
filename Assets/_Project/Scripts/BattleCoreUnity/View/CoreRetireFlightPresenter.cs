@@ -1,14 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Core;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
-using Wassup.Data.BattleView;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 8a — **"퇴근 중"** 연출. 옛 `UI/DefenderRetireFlight.cs`(305줄, defender-clock-out
     // unit 3 rev 5)의 복사·적응본이다. 장부 bridge-fields 33 `retireFlight`(「5c」 배정 — 5c 가 잇지 않았다)의 새 주인.
@@ -346,7 +346,7 @@ namespace Wassup.BattleCoreUnity.View
         // 스타일이 없을 때만 쓰는 폴백(라이브 SO 는 스타일이 있다). `Shader.Find` 금지 → 팩토리.
         private Material CordMaterial(Color color)
         {
-            if (_cordMaterial == null) _cordMaterial = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(color);
+            if (_cordMaterial == null) _cordMaterial = Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateTransparent(color);
             return _cordMaterial;
         }
 

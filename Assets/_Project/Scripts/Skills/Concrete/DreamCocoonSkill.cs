@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 4b — **호접몽.** 부착 즉시 잠들고, 깨지 않고 완주하면
     // 영구 버프를 얻는다. 맞으면 파탄이고 보상은 없다.

@@ -3,14 +3,14 @@ using System.Text;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Cards;
-using Wassup.Data;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Cards;
+using Somnia.Battle.Data;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // dreamcatcher-attach-range-preview unit 1 — 실제 카드 전부에 대한 **단일 도형 불변식**(README 계약 6).
     //

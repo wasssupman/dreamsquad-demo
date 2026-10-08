@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.BattleView;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5a — 거점 프랍. 옛 `BattleBridge.SpawnStructureViews` 의 후계다.
     //
@@ -45,11 +45,11 @@ namespace Wassup.BattleCoreUnity.View
                 // 방어 마음은 골(`Goals`)이 정본이라 거점 프랍을 세우지 않는다 — 세우면 골이
                 // 두 벌이 된다. 코어의 `FieldPrepPhase` 가 같은 필터를 쓴다.
                 var faction = StructurePlacements.DeriveFaction(s.side, s.data.kind);
-                if (faction == Wassup.Skills.Faction.DefenderCore) continue;
+                if (faction == Somnia.Battle.Skills.Faction.DefenderCore) continue;
 
                 var simCenter = CellCenter(s.cell, tileToWorld);
                 var prop = Instantiate(s.data.viewPrefab,
-                    (Vector3)Wassup.Core.BoardSpace.ToView(simCenter), Quaternion.identity, transform);
+                    (Vector3)Somnia.Battle.Core.BoardSpace.ToView(simCenter), Quaternion.identity, transform);
                 prop.transform.localScale *= s.data.viewScale;
                 prop.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
                 _props.Add(prop);

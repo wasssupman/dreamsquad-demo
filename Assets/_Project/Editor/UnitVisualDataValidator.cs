@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using Spine;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 using Animation = Spine.Animation;
 
-namespace Wassup.Editor
+namespace Somnia.Battle.Editor
 {
     // unit-parts-appearance 2 — 파츠 조합 유효성 검사.
     // 아트팀이 콘솔을 안 봐도 되게 인스펙터 HelpBox 로 노출한다. 검증 코어는 순수 static

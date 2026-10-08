@@ -2,10 +2,10 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using Wassup.Editor.UnitStatImport;
-using Wassup.Data.StatImport;
+using Somnia.Battle.Editor.UnitStatImport;
+using Somnia.Battle.Data.StatImport;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // dreamcatcher-attach-requirement unit 2 — export blank 규칙의 실검증.
     // DTO 왕복(DcSheetImportTests)과 달리 여기선 **실제 exporter 를 돌려** 산출 JSON 을
@@ -63,12 +63,12 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         [Test]
         public void CardRows_ActiveOnlyColumns_OnlyOnActiveCards()
         {
-            var unit = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.DreamcatcherCard>();
-            unit.id = "u"; unit.type = Wassup.Data.CardType.Unit;
-            var squad = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.DreamcatcherCard>();
-            squad.id = "s"; squad.type = Wassup.Data.CardType.Squad;
-            var active = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.DreamcatcherCard>();
-            active.id = "a"; active.type = Wassup.Data.CardType.Active; active.cooldownSec = 0f; active.needsTwoTiles = false;
+            var unit = UnityEngine.ScriptableObject.CreateInstance<Somnia.Battle.Data.DreamcatcherCard>();
+            unit.id = "u"; unit.type = Somnia.Battle.Data.CardType.Unit;
+            var squad = UnityEngine.ScriptableObject.CreateInstance<Somnia.Battle.Data.DreamcatcherCard>();
+            squad.id = "s"; squad.type = Somnia.Battle.Data.CardType.Squad;
+            var active = UnityEngine.ScriptableObject.CreateInstance<Somnia.Battle.Data.DreamcatcherCard>();
+            active.id = "a"; active.type = Somnia.Battle.Data.CardType.Active; active.cooldownSec = 0f; active.needsTwoTiles = false;
             try
             {
                 var rows = JArray.Parse(DcSheetExporter.ToJson(DcSheetExporter.CardRows(new[] { unit, squad, active })));

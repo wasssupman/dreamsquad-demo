@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-attach-requirement — 부착 제한(정적 술어) 핀. host 종속 판정(옛 `WouldApply`)은 코어 `Applicability` 의
     // 몫이라 그 케이스들은 코어 테스트(`EditModeCore/ApplicabilityTests`)가 잰다 — skill-data-table 4-정리(B21)에서 옛 사본과 함께 옮겼다.

@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 839add7e37d514ff887f817d40972523, type: 3}
   m_Name: DreamstoneCatalog
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.Dreamstone.DreamstoneCatalog
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.Dreamstone.DreamstoneCatalog
   stones:
   - {fileID: 11400000, guid: c10e7bc83cc04b65814bd73272c477f5, type: 2}
   - {fileID: 11400000, guid: a3e48bfb5cb94ae8a8bdffb17d4a0e7b, type: 2}

@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Effects;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6a — 지속 피해 슬롯.
     [TestFixture]

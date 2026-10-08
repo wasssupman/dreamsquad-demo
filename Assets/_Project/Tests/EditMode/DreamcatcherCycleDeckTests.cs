@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-awakening-hand unit 3 — CR-style cycle queue invariants:
     // seeded-shuffle determinism, front-N hand, use→back recycle (Squad/Active),

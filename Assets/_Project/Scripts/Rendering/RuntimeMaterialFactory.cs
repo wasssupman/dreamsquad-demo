@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Rendering
+namespace Somnia.Battle.Rendering
 {
     // battle-content-finish unit 4 — 런타임 머티리얼은 **SO 참조(`RuntimeMaterialSet`)의 복제**다. 옛 `Resources.Load` 경로와
     // `Shader.Find` 폴백 사슬은 없다 — 전자는 somnia 가 `Resources` 폴더명을 거절하고, 후자는 모바일 셰이더 스트리핑에서

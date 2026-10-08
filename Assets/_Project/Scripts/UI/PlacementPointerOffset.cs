@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // placement-thumb-occlusion unit 1 — 배치 판정 포인터 오프셋의 순수 정책 함수.
     // 아키텍처 타입 미참조(Vector2/Mathf 만) → EditMode 테스트 대상.

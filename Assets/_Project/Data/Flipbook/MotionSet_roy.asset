@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c694421dc6c684e73b2db67421d54d82, type: 3}
   m_Name: MotionSet_roy
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.UnitSpriteMotionSet
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.UnitSpriteMotionSet
   idle: {fileID: 11400000, guid: c9a1bf4af5e7d4cb6a5949751a4138eb, type: 2}
   walk: {fileID: 0}
   attack: {fileID: 11400000, guid: 5d207f3db31f541f68c61f5adf3ca00b, type: 2}

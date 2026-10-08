@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 57583d0eae98a4723adcd8b7082d6d7d, type: 3}
   m_Name: Projectile_MachineGunner_OnPlaceShot
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.ProjectileData
   id: machine_gunner_onplace_shot
   speed: 22
   hitThreshold: 0.6

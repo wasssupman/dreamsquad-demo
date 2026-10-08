@@ -1,7 +1,7 @@
-using Wassup.Skills;
-using Wassup.BattleCore.Effects;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Effects;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7d — **시즌 기믹이 판에 얹는 규칙.** 6b2 가 셈판(픽업·사직서·열기·피로의 한 걸음)을
     // 세우고 「무엇이 언제 그것을 놓는가」를 남겼다. 그 답이 여기 넷이고, 넷 다 `Binding` 하나다(어휘 6개념):

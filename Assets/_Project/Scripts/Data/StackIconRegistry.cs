@@ -1,12 +1,12 @@
 using System;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // unit-overhead-ui 확장(unit 6) — OverheadStackKind → 아이콘 sprite 매핑 SO.
     // 매핑 없는 kind 는 null 반환 → 뷰가 표시 생략(코드↔아트 디커플링: 아이콘(Codex, unit 9)
     // 도착 전에도 무크래시). 내용 채움은 unit 10 배선.
-    [CreateAssetMenu(fileName = "StackIconRegistry", menuName = "Wassup/Stack Icon Registry", order = 25)]
+    [CreateAssetMenu(fileName = "StackIconRegistry", menuName = "Somnia/Battle/Stack Icon Registry", order = 25)]
     public class StackIconRegistry : ScriptableObject
     {
         [Serializable]

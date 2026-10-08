@@ -1,8 +1,8 @@
 using System;
-using Wassup.Data;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // dreamcatcher-attach-requirement — 부착 제한(`attachType` · `attachValue`)의 정적 술어 셋. host 종속 판정(옛 `WouldApply` ·
     // `DcApplicability`)은 코어 `Applicability` 로 옮겨 갔고 옛 사본은 skill-data-table 4-정리(B21)에서 지웠다.

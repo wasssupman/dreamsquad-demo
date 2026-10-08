@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 2 리뷰 F4 — 개체 **부분**의 풀.
     //

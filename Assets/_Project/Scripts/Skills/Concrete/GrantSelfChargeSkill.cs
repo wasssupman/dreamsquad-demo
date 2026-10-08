@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 3d‴ — **다음 공격을 예약한다**(가시 갑옷).
     //

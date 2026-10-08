@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data.Authoring;
+using Somnia.Battle.Data.Authoring;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // effect-tiles unit 4 — 타일 1종이 부여하는 효과 1건. 같은 (stat,op) 중복 entry 는
     // merge-key(stackId 공유) 동일로 마지막만 남으므로 금지 (저작 규칙).
@@ -18,7 +18,7 @@ namespace Wassup.Data
     // 배치된 방어 유닛에게 기존 modifier 파이프라인(StatModifierApplyEvents)으로 효과를 부여한다.
     // 비주얼(overlaySprite)과 효과 파라미터를 한 에셋에 묶는다 (BlockingHazardSO 패턴).
     // unit 4 — 단일 stat 3필드 → effects[] 다중 stat 배열 (글래스캐논류 복합 타일).
-    [CreateAssetMenu(menuName = "Wassup/Effect Tile Data", fileName = "EffectTile")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Effect Tile Data", fileName = "EffectTile")]
     public class EffectTileData : ScriptableObject
     {
         [Tooltip("로그/저장용 안정 식별자.")]

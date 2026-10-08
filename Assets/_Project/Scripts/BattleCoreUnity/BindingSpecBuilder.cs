@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Trigger;
-using Wassup.Data;
-using Wassup.Data.Authoring;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     /// <summary>
     /// 새 저작 형식의 소유자 한 명(skill-data-table unit 4). **소유자 종류에서 파생하는 사실만** 싣는다(계약 3 — 능력 선언 칸 없음).

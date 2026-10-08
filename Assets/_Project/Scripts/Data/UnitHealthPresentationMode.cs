@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // unit-overhead-ui — 레거시와 신규 체력/부착 UI는 상호 배타적이다.
     public enum UnitHealthPresentationMode : byte

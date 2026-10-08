@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.Core.TimeControl;
+using Somnia.Battle.Core.TimeControl;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // time-manager Unit 0 — arbitration + 멱등 lease 회귀 방지.
     // TimeManager 는 싱글턴(공유 상태)이라 각 테스트 전후로 ResetAll 로 격리한다.

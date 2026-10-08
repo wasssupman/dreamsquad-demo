@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 6b — **판 위에 깔리는 존 장판의 저작.**
     //
@@ -13,7 +13,7 @@ namespace Wassup.BattleCore
     // 그대로」라는 조용한 실패가 된다.
 
     /// <summary>
-    /// 존이 덮는 모양. 옛 `Wassup.Battle.Effects.HazardShape` 의 **미러**이고 이름·번호가
+    /// 존이 덮는 모양. 옛 `Somnia.Battle.Battle.Effects.HazardShape` 의 **미러**이고 이름·번호가
     /// 같아야 한다 — 어셈블리가 갈려 컴파일러가 못 잡는 자리라 `BuilderEnumPinTests` 가 그물이다.
     /// </summary>
     public enum HazardShapeKind : byte
@@ -24,7 +24,7 @@ namespace Wassup.BattleCore
     }
 
     /// <summary>
-    /// 존이 거는 효과의 **저작 토큰**. 옛 `Wassup.Battle.Effects.CcKind` 의 미러이고
+    /// 존이 거는 효과의 **저작 토큰**. 옛 `Somnia.Battle.Battle.Effects.CcKind` 의 미러이고
     /// 이름·번호가 같아야 한다(같은 그물).
     ///
     /// ⚠ **토큰이지 런타임 슬롯이 아니다.** `Slow` 는 이동속도 모디파이어로, `DoT` 는

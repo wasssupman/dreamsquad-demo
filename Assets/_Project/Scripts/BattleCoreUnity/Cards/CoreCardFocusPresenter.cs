@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.UI;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.UI;
 
-namespace Wassup.BattleCoreUnity.Cards
+namespace Somnia.Battle.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 7c — 옛 `DreamcatcherFocusPresenter`(655줄)의 이식. 달라진 것은 **키와 창구**뿐이다:
     // `Entity` → `SimEntityId`, 브리지 화면 조회 → `CoreCardTargets`, 부착 수 → 코어 `HandDeck`(읽기 모델),
@@ -569,7 +569,7 @@ namespace Wassup.BattleCoreUnity.Cards
             _pulseImg.color = WithAlpha(_cfg.confirmPulseColor, _cfg.confirmPulseColor.a * (1f - u));
         }
 
-        private bool TryDefenderData(SimEntityId id, out Wassup.Data.DefenderUnitData data)
+        private bool TryDefenderData(SimEntityId id, out Somnia.Battle.Data.DefenderUnitData data)
         {
             data = null;
             var d = _bridge != null ? _bridge.Driver : null;

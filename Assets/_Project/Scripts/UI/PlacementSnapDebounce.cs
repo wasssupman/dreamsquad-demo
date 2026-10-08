@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // placement-cell-snap unit 3 — 타일 이동 판정을 **주기적(throttle)** 으로 커밋한다.
     // 공간 히스테리시스(PlacementCellSnap.Resolve) 위에서 동작.

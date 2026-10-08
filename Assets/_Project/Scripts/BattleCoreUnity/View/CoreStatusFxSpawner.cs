@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
-using Wassup.Data;
-using Wassup.Data.BattleView;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 6c — **몸에 붙는 상태 표식**. 옛 `StatusFxSpawner`(118줄) +
     // 브리지 `ReconcileStatusFx`(151줄)의 후계다.
@@ -161,12 +161,12 @@ namespace Wassup.BattleCoreUnity.View
                 // 「적을 겨누는 카드가 붙었나」(`CardAttached` · `TargetsEnemies`)를 봐서, 같은 표식 효과를 카드가 아닌 소유자가 들면
                 // 별이 안 떴다. 정체 판정은 코어의 한 곳(`CardBindings.IsMarked` — 효과로 본다)이다.
                 case CoreEventKind.BindingAttached:
-                    if ((Wassup.BattleCore.Trigger.EffectKind)(int)e.Amount == Wassup.BattleCore.Trigger.EffectKind.BountyMark)
+                    if ((Somnia.Battle.BattleCore.Trigger.EffectKind)(int)e.Amount == Somnia.Battle.BattleCore.Trigger.EffectKind.BountyMark)
                         _wanted.Add(new Key(e.A.Value, StatusFxKind.Marked));
                     break;
                 case CoreEventKind.BindingDetached:
                     // 한 줄이 떨어져도 표식 효과를 든 다른 줄이 남아 있으면 별은 그대로다(떼기는 목록에서 뺀 뒤 사건을 낸다).
-                    if (IsMarkRow(e.DefIndex) && !Wassup.BattleCore.Trigger.CardBindings.IsMarked(_driver.Find(e.A)))
+                    if (IsMarkRow(e.DefIndex) && !Somnia.Battle.BattleCore.Trigger.CardBindings.IsMarked(_driver.Find(e.A)))
                         Unwant(new Key(e.A.Value, StatusFxKind.Marked));
                     break;
 
@@ -185,7 +185,7 @@ namespace Wassup.BattleCoreUnity.View
         {
             var def = _driver != null ? _driver.Definition : null;
             return def != null && row >= 0 && row < def.Bindings.Length
-                && def.EffectOf(in def.Bindings[row]).Kind == Wassup.BattleCore.Trigger.EffectKind.BountyMark;
+                && def.EffectOf(in def.Bindings[row]).Kind == Somnia.Battle.BattleCore.Trigger.EffectKind.BountyMark;
         }
 
         private static bool TryCcKind(CcSlotKind kind, out StatusFxKind fx)

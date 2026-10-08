@@ -3,9 +3,9 @@
 // 「이동이 같은 자를 쓴다」만 증언한다.
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Combat;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     public class AttackReachTests
     {

@@ -5,18 +5,18 @@ using TMPro;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.BattleCoreUnity.Input;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Core;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
-using Wassup.Presentation;
-using Wassup.UI;
-using Wassup.UI.Layout;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCoreUnity.Input;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Core;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
+using Somnia.Battle.UI;
+using Somnia.Battle.UI.Layout;
 
-namespace Wassup.BattleCoreUnity.Cards
+namespace Somnia.Battle.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 7c — **드림캐쳐 손패.** 옛 `DreamcatcherHandView`(1,782줄)의 이식이다. 룩·손맛은 옛 것 그대로
     // (StS/HS 아치 부채 + 스프링 target 모델 — focus/idle/드래그/딜 공유 · 덱-드로우 딜 · 침강 · 눌러서 들기 · 상단 중앙 브리핑 ·

@@ -1,10 +1,10 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild unit 5b — **점수·시계·웨이브·마음.** 옛 `ScoreHudView`(1,137줄)의 후계다.
     //
@@ -36,10 +36,10 @@ namespace Wassup.BattleCoreUnity.Hud
 
         [Header("월드 마음 틴트 (unit 8a2 행 9)")]
         [Tooltip("스테이지 골 마커의 스트레스 틴트·심박 깊이(옛 브리지 `heartBeatDepth` 의 새 주인). 비면 마커를 안 물들인다.")]
-        [SerializeField] private Wassup.Data.BattleView.HeartHudConfig _heartHud;
+        [SerializeField] private Somnia.Battle.Data.BattleView.HeartHudConfig _heartHud;
 
-        private readonly System.Collections.Generic.List<Wassup.Core.GoalMarker> _markers
-            = new System.Collections.Generic.List<Wassup.Core.GoalMarker>(2);
+        private readonly System.Collections.Generic.List<Somnia.Battle.Core.GoalMarker> _markers
+            = new System.Collections.Generic.List<Somnia.Battle.Core.GoalMarker>(2);
         private BattleMatch _markersFor;
 
         /// <summary>테스트 창구 — 이번 프레임에 스트레스 틴트를 민 골 마커 수와 그 값(스트레스 01 · 박동 배율).</summary>
@@ -154,7 +154,7 @@ namespace Wassup.BattleCoreUnity.Hud
             if (!ReferenceEquals(_markersFor, _driver.Match))
             {
                 _markersFor = _driver.Match;
-                Wassup.BattleCoreUnity.View.CoreGoalMarkers.Collect(_driver, _markers);
+                Somnia.Battle.BattleCoreUnity.View.CoreGoalMarkers.Collect(_driver, _markers);
             }
             float beatScale = HeartStressPulse.BeatScale(beat, _heartHud.BeatDepth);
             for (int i = 0; i < _markers.Count; i++)

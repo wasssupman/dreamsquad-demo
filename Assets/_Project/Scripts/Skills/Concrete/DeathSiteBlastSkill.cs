@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 3d — **죽은 자리**에서 터진다(시체폭발).
     //

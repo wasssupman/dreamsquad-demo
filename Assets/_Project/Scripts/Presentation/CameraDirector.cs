@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // camera-direction unit 0 — 카메라 base 포즈의 유일한 런타임 쓰기 주체.
     //
@@ -23,7 +23,7 @@ namespace Wassup.Presentation
     public class CameraDirector : MonoBehaviour
     {
         [Header("이 카메라의 씬 포즈(Transform·FOV)는 런타임에 쓰이지 않는다 — 에디터 미리보기 전용.\n포즈는 config 의 상태 레시피에서 매 프레임 계산된다.")]
-        [SerializeField] private Wassup.Data.CameraDirectionConfig config;
+        [SerializeField] private Somnia.Battle.Data.CameraDirectionConfig config;
         // unit 18 — 포스트 볼륨은 **스테이지가 소유한다**(map-diorama-stage 가 씬의 전역 Post 를
         // 스테이지 프리팹 안으로 옮겼다). 런타임 인스턴스라 씬에서 배선할 수 없어서 SerializeField
         // 가 아니라 브리지가 밀어준다 — `SetBoardBounds` 와 같은 단방향 계약이다.
@@ -110,12 +110,12 @@ namespace Wassup.Presentation
         // 켜진 페이즈에서만, 비행 중 가중치 0 크로스페이드 후 서서히 복귀.
         private float[] _breathPhases = System.Array.Empty<float>();
         private float _breathWeight;
-        private Wassup.Core.GamePhase _currentPhase = Wassup.Core.GamePhase.None;
+        private Somnia.Battle.Core.GamePhase _currentPhase = Somnia.Battle.Core.GamePhase.None;
 
         // unit 11 — 상태 전환. 포즈를 얼려서 섞지 않는다: 매 프레임 양쪽 상태의 레시피를 각각
         // 풀고 그 «결과» 를 섞는다. 그래야 전환 도중에 판 크기나 화면비가 바뀌어도 따라온다.
-        private Wassup.Data.CameraState _state;
-        private Wassup.Data.CameraState _fromState;
+        private Somnia.Battle.Data.CameraState _state;
+        private Somnia.Battle.Data.CameraState _fromState;
         private bool _stateInit;
         private float _transitionElapsed;
         private float _transitionDuration; // 0 = 전환 없음
@@ -138,7 +138,7 @@ namespace Wassup.Presentation
 
         // unit 11 — 페이즈는 «기록» 만 한다. 어느 카메라 상태인지는 LateUpdate 가 매 프레임
         // 해석한다 — 이벤트 시점에 결정하면 «직전에 뭐였는지» 에 결과가 의존해 재현이 어렵다.
-        private void OnPhaseChanged(Wassup.Core.GamePhase phase)
+        private void OnPhaseChanged(Somnia.Battle.Core.GamePhase phase)
         {
             _currentPhase = phase;
         }
@@ -147,16 +147,16 @@ namespace Wassup.Presentation
         // (Director 가 남의 상태를 당겨오지 않는다). 페이즈의 유일한 입력이다 — `CorePhaseFeed` 가 민다.
         // 밀지 않으면 `_currentPhase` 가 `None` 에 굳어 **배치 레시피가 영영 안 걸린다.**
         // 옛 씬의 `GameManager.PhaseChanged` 구독은 unit 9 에서 옛 씬과 함께 지웠다(이력).
-        public void SetPhase(Wassup.Core.GamePhase phase) => OnPhaseChanged(phase);
+        public void SetPhase(Somnia.Battle.Core.GamePhase phase) => OnPhaseChanged(phase);
 
         // unit 11 — 페이즈 7종을 카메라 상태 2종으로 접는다.
         // 기믹 리빌은 배치 직전 준비 구간이라 배치와 같은 그림으로 본다.
         // 집계·결과·드래프트·None 은 전투로 흡수된다 — 집계는 판을 계속 보여주는 구간이고
         // 결과는 전면 UI 라 별도 상태가 필요 없다. 구 «미등록 페이즈 = hold» 는 은퇴했다.
-        private static Wassup.Data.CameraState ResolveState(Wassup.Core.GamePhase phase)
-            => (phase == Wassup.Core.GamePhase.Placement || phase == Wassup.Core.GamePhase.Gimmick)
-                ? Wassup.Data.CameraState.Placement
-                : Wassup.Data.CameraState.Battle;
+        private static Somnia.Battle.Data.CameraState ResolveState(Somnia.Battle.Core.GamePhase phase)
+            => (phase == Somnia.Battle.Core.GamePhase.Placement || phase == Somnia.Battle.Core.GamePhase.Gimmick)
+                ? Somnia.Battle.Data.CameraState.Placement
+                : Somnia.Battle.Data.CameraState.Battle;
 
         // unit 11 — 이번 프레임의 base 포즈를 확정한다. 이 함수가 카메라 «어디를 어떻게 보나» 의
         // 유일한 결정자다. false = 결정할 수 없음 → 호출부가 카메라를 건드리지 않는다.
@@ -266,18 +266,18 @@ namespace Wassup.Presentation
         private bool _warnedPlacementFraming;
         private bool _warnedBattleFraming;
 
-        private void WarnMissingFramingOnce(Wassup.Data.CameraState state)
+        private void WarnMissingFramingOnce(Somnia.Battle.Data.CameraState state)
         {
-            bool warned = state == Wassup.Data.CameraState.Placement
+            bool warned = state == Somnia.Battle.Data.CameraState.Placement
                 ? _warnedPlacementFraming : _warnedBattleFraming;
             if (warned) return;
-            if (state == Wassup.Data.CameraState.Placement) _warnedPlacementFraming = true;
+            if (state == Somnia.Battle.Data.CameraState.Placement) _warnedPlacementFraming = true;
             else _warnedBattleFraming = true;
             Debug.LogWarning($"[CameraDirector] {state} 상태 레시피가 config 에 없다 — 그 상태로는 "
                 + "카메라가 움직이지 않는다(현재 포즈 유지). CameraDirectionConfig.stateFramings 확인.", this);
         }
 
-        private Wassup.Data.CameraStateFraming FindFraming(Wassup.Data.CameraState state)
+        private Somnia.Battle.Data.CameraStateFraming FindFraming(Somnia.Battle.Data.CameraState state)
         {
             var list = config.stateFramings;
             if (list == null) return null;
@@ -607,7 +607,7 @@ namespace Wassup.Presentation
                     _focusNdcVel = Vector2.zero;
                     _focusSpringInit = true;
                 }
-                Wassup.Presentation.MotionMath.SpringStep(ref _focusNdc, ref _focusNdcVel, _focusNdcTarget,
+                Somnia.Battle.Presentation.MotionMath.SpringStep(ref _focusNdc, ref _focusNdcVel, _focusNdcTarget,
                     config.focusSpring, config.focusDamping, 0f,
                     Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
 
@@ -615,7 +615,7 @@ namespace Wassup.Presentation
                 // 않는 이유: 스프링·staleness·페이드가 이미 여기 있고 튜닝도 끝나 있다.
                 // 전투는 기존 해석(전진 dolly + 부분 lookat + 스와이프 리드) 그대로 — 전투 중에도
                 // 손패에서 카드를 끌어 배치하고, 그때 상태 대상은 보드 중앙 고정이다.
-                if (_state == Wassup.Data.CameraState.Placement)
+                if (_state == Somnia.Battle.Data.CameraState.Placement)
                 {
                     float boardDepth = Vector3.Dot(_boardBounds.center - _statePos,
                                                    _stateRot * Vector3.forward);
@@ -701,7 +701,7 @@ namespace Wassup.Presentation
             // 진입/복귀가 같은 스프링이라 여는 맛과 닫는 맛이 대칭이다.
             if (headroomActive)
             {
-                Wassup.Presentation.MotionMath.SpringStep(ref _headroomWeight, ref _headroomVel,
+                Somnia.Battle.Presentation.MotionMath.SpringStep(ref _headroomWeight, ref _headroomVel,
                     headroomTarget, config.handHeadroomSpring, config.handHeadroomDamping, 0f,
                     Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
                 // localPos 는 상태 회전 기준(+Z = 카메라 전방)이라 음수 z = 후퇴 = 줌아웃.
@@ -721,7 +721,7 @@ namespace Wassup.Presentation
             // 이동모드 오버뷰 채널 — 헤드룸 미러. dolly(음수=후퇴=줌아웃) + 선택적 pitch 를 가중치로 곱한다.
             if (overviewActive)
             {
-                Wassup.Presentation.MotionMath.SpringStep(ref _overviewWeight, ref _overviewVel,
+                Somnia.Battle.Presentation.MotionMath.SpringStep(ref _overviewWeight, ref _overviewVel,
                     overviewTarget, config.moveOverviewSpring, config.moveOverviewDamping, 0f,
                     Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
                 delta = CameraComposeMath.Add(delta, new CameraPoseDelta
@@ -815,7 +815,7 @@ namespace Wassup.Presentation
             ComposeAndWrite(delta);
         }
 
-        private bool IsBreathPhase(Wassup.Core.GamePhase phase)
+        private bool IsBreathPhase(Somnia.Battle.Core.GamePhase phase)
         {
             var phases = config.breathPhases;
             if (phases == null) return false;

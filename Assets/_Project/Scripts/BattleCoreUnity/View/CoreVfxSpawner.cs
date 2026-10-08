@@ -2,13 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.Data;
-using Wassup.Presentation;
-using Wassup.Rendering;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
+using Somnia.Battle.Rendering;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 6c — **일반 VFX**. 옛 `Presentation.VfxSpawner`(476줄) + 브리지의
     // 호출부들(공격 시각 드레인 · 회복/실드/감지 드레인 · `PlayDeploymentPresentation` ·
@@ -64,7 +64,7 @@ namespace Wassup.BattleCoreUnity.View
         [Tooltip("흡수 이펙트 스케일(타일 1 유닛 기준 축소)")]
         [SerializeField] private float _cardAbsorbScale = 0.6f;
         [Tooltip("드림캐쳐 발동 임팩트 코얼레스 간격의 주인(5a 가 소비처 0 으로 세워 둔 자산).")]
-        [SerializeField] private Wassup.Data.BattleView.DcVisualConfig _dcVisual;
+        [SerializeField] private Somnia.Battle.Data.BattleView.DcVisualConfig _dcVisual;
 
         [Header("브레스 · 착탄 예고 (unit 7d — 옛 VfxSpawner 브레스 슬롯 · 브리지 PinSkillTelegraph)")]
         [SerializeField] private GameObject _areaBreathPrefab;
@@ -164,7 +164,7 @@ namespace Wassup.BattleCoreUnity.View
         // ── 공격 ─────────────────────────────────────────────────────────────
         private void OnAttackResolved(CoreEvent e)
         {
-            bool defender = ((int)e.Faction & Wassup.Skills.Factions.AnyDefender) != 0;
+            bool defender = ((int)e.Faction & Somnia.Battle.Skills.Factions.AnyDefender) != 0;
             if (!defender)
             {
                 // 적의 «유닛별 공격 광역»(회오리). 「회오리를 갖는가」는 **프리팹 유무**가 정한다.
@@ -192,11 +192,11 @@ namespace Wassup.BattleCoreUnity.View
                 if (atAttacker && math.lengthsq(e.AttackDir) > 0f)
                 {
                     var axis = new float3(e.AttackDir.x, 0f, e.AttackDir.y);
-                    facing = (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteFired.Pos + axis)
-                             - (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteFired.Pos);
+                    facing = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(e.SiteFired.Pos + axis)
+                             - (Vector3)Somnia.Battle.Core.BoardSpace.ToView(e.SiteFired.Pos);
                 }
                 else if (!atAttacker && _units != null && _units.TryResolveViewPosition(e.A, true, out var originView))
-                    facing = (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteTarget.Pos) - originView;
+                    facing = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(e.SiteTarget.Pos) - originView;
             }
 
             // 참격 자국 = **판정 도형에서 실시간 생성한 메시**. 도형·사거리·몸이 전부 사건의 스냅샷이다 —
@@ -217,13 +217,13 @@ namespace Wassup.BattleCoreUnity.View
         }
 
         // 코어 bake → 뷰 메시 키. 옛 `ShapeMarkSpec.FromBaked` 와 **같은 역산**이다(옛 타입은
-        // `Wassup.Data.AttackShapeBaked` 라 코어 타입을 못 받는다 — 필드가 같아 옮겨 담는다).
+        // `Somnia.Battle.Data.AttackShapeBaked` 라 코어 타입을 못 받는다 — 필드가 같아 옮겨 담는다).
         // 배치 도형 가이드(`CoreMapOverlay`)도 이 함수를 지난다 — 옛 가이드와 참격이 `ShapeMarkSpec.AngleDegOf`
         // 하나를 읽던 「같은 역산 = 같은 윤곽」(directional-attack-shape 리뷰 L-5)을 새 층에서도 구조로 둔다.
-        internal static ShapeMarkSpec ShapeMarkOf(in Wassup.BattleCore.Combat.AttackShapeBaked s,
+        internal static ShapeMarkSpec ShapeMarkOf(in Somnia.Battle.BattleCore.Combat.AttackShapeBaked s,
                                                  float lengthTiles, float cellSize)
         {
-            var legacy = new Wassup.Data.AttackShapeBaked
+            var legacy = new Somnia.Battle.Data.AttackShapeBaked
             {
                 kind = s.kind, sinHalf = s.sinHalf, cosHalf = s.cosHalf, halfWidth = s.halfWidth,
             };
@@ -272,7 +272,7 @@ namespace Wassup.BattleCoreUnity.View
             if (data == null || data.castPrefab == null) return;
 
             if (!_units.TryResolveViewPosition(e.B, useAnchor: true, out var anchor)) return;
-            var dir = (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteTarget.Pos) - anchor;
+            var dir = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(e.SiteTarget.Pos) - anchor;
             dir.z = 0f;   // 화면 평면(XY 보드)에 평탄화 — 옛 규칙
             _projectiles.PlayCast(data.castPrefab, anchor, dir, data.castVfxLifetime);
             SpawnedCount++;
@@ -294,7 +294,7 @@ namespace Wassup.BattleCoreUnity.View
             // 반경 = 범위 항 + 원점 항(제약 13). 뷰는 **짝을 합칠 뿐** 다시 재지 않는다.
             float radiusWorld = CoreDrawRadius.AreaTiles(e.AreaTiles, e.SiteFired.OriginBody)
                                 * (_driver != null ? _driver.TileSize : 1f);
-            var view = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(e.SiteFired.Pos.x, 0f, e.SiteFired.Pos.z));
+            var view = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(new float3(e.SiteFired.Pos.x, 0f, e.SiteFired.Pos.z));
             var go = Instantiate(_meteorBurstPrefab, view + Vector3.up * 0.05f, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * Mathf.Max(0.1f, radiusWorld);
             Destroy(go, 1.2f);
@@ -334,7 +334,7 @@ namespace Wassup.BattleCoreUnity.View
             if (_areaBreathPrefab == null) { MissingSlot(nameof(_areaBreathPrefab)); return; }
             if (_units == null || !_units.TryResolveViewPosition(e.A, useAnchor: true, out var origin)) return;
             float rangeWorld = e.AttackRange * (_driver != null ? _driver.TileSize : 1f);
-            Vector3 ahead = (Vector3)Wassup.Core.BoardSpace.ToViewVector(new Vector3(e.AttackDir.x, 0f, e.AttackDir.y));
+            Vector3 ahead = (Vector3)Somnia.Battle.Core.BoardSpace.ToViewVector(new Vector3(e.AttackDir.x, 0f, e.AttackDir.y));
             if (ahead.sqrMagnitude < 1e-6f) ahead = Vector3.right;
             ahead.Normalize();
             float angle = Mathf.Atan2(ahead.y, ahead.x) * Mathf.Rad2Deg;
@@ -384,7 +384,7 @@ namespace Wassup.BattleCoreUnity.View
         public int CollapsedMarkerCount { get; private set; }
 
         // 골 마커 ↔ 칸 사상은 `CoreGoalMarkers` 하나(심박 틴트 `CoreScoreHud` 와 공유).
-        private readonly List<Wassup.Core.GoalMarker> _markers = new List<Wassup.Core.GoalMarker>(2);
+        private readonly List<Somnia.Battle.Core.GoalMarker> _markers = new List<Somnia.Battle.Core.GoalMarker>(2);
 
         private void MarkGoalMarkersCollapsed(Unity.Mathematics.int2[] goals)
         {
@@ -432,8 +432,8 @@ namespace Wassup.BattleCoreUnity.View
         // 옛 결정). 유닛 저작 스킬(배치 스킬 등)은 카드가 아니다 — 그 줄이 카드 보유 줄인가로 가른다(U16 · `MatchDefinition.IsCardRow`).
         private void OnTriggerFired(CoreEvent e)
         {
-            if ((Wassup.BattleCore.Trigger.EffectKind)(int)e.Amount == Wassup.BattleCore.Trigger.EffectKind.AreaBreath
-                && e.AttackShape.kind == Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind)
+            if ((Somnia.Battle.BattleCore.Trigger.EffectKind)(int)e.Amount == Somnia.Battle.BattleCore.Trigger.EffectKind.AreaBreath
+                && e.AttackShape.kind == Somnia.Battle.BattleCore.Combat.AttackShapeBaked.SectorKind)
                 SpawnAreaBreath(e);
             var def = _driver != null ? _driver.Definition : null;
             if (def == null || !def.IsCardRow(e.DefIndex)) return;
@@ -453,7 +453,7 @@ namespace Wassup.BattleCoreUnity.View
         // 스킬이 요청한 연출 중 **적중 펄스**(옛 `ProjectileHitEvents` 로 host 위치 1회 — 탄 저작 `hitPrefab`). 빔은 빔 프리젠터의 것이다.
         private void OnSkillVisual(CoreEvent e)
         {
-            if ((Wassup.Skills.SkillVisualKind)e.Arg != Wassup.Skills.SkillVisualKind.HitPulse) return;
+            if ((Somnia.Battle.Skills.SkillVisualKind)e.Arg != Somnia.Battle.Skills.SkillVisualKind.HitPulse) return;
             var data = _driver != null ? _driver.ViewAssets.Projectile(e.DefIndex) : null;
             if (data == null || data.hitPrefab == null || _projectiles == null) return;
             // 탄 착탄과 **같은 호출**(수명 · 높이 · 스케일 = 탄 저작)이다 — 착탄 VFX 경로를 빌려 쓰던 옛 라우팅 그대로.
@@ -499,7 +499,7 @@ namespace Wassup.BattleCoreUnity.View
             if (u == null) return;
             var data = DefenderData(u.DefIndex);
             // 연출은 유닛이 **실제로 서는 자리**(발밑)에서 난다 — 다칸 유닛도 앵커 칸이 아니라 발밑.
-            var view = (Vector3)Wassup.Core.BoardSpace.ToView(u.Position);
+            var view = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(u.Position);
             float motion = data != null ? Mathf.Max(0f, data.DeployMotionSeconds) : 0f;
 
             if (data != null && data.placementVfxPrefab != null)
@@ -579,7 +579,7 @@ namespace Wassup.BattleCoreUnity.View
                              float lifetime, bool oneShot)
         {
             if (prefab == null) { MissingSlot(slot); return; }
-            var view = (Vector3)Wassup.Core.BoardSpace.ToView(simPos);
+            var view = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(simPos);
             var go = Instantiate(prefab, view + Vector3.up * lift, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * scale;
             float life = oneShot ? ConfigureOneShot(go) : lifetime;
@@ -643,7 +643,7 @@ namespace Wassup.BattleCoreUnity.View
     public static class CoreDrawRadius
     {
         public static float OriginTermTiles(float originBody)
-            => originBody > 0f ? originBody : Wassup.Skills.SkillMath.CellShapePaddingTiles;
+            => originBody > 0f ? originBody : Somnia.Battle.Skills.SkillMath.CellShapePaddingTiles;
 
         public static float AreaTiles(float rangeTiles, float originBody)
             => rangeTiles + OriginTermTiles(originBody);
@@ -653,6 +653,6 @@ namespace Wassup.BattleCoreUnity.View
         /// 표준을 가정하는 것을 감수한다. 오버레이가 판정 본체(`SkillMath`)를 직접 부르지 않도록 여기서 한 번 이름을 붙인다
         /// (`CoreViewYardstickTests` — 오버레이의 자는 `AttackReach.InReach` 하나).
         /// </summary>
-        public const float StandardTargetBodyTiles = Wassup.Skills.SkillMath.StandardBodyRadiusTiles;
+        public const float StandardTargetBodyTiles = Somnia.Battle.Skills.SkillMath.StandardBodyRadiusTiles;
     }
 }

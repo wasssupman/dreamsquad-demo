@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 3b′ — 이번 공격의 대상에게 탄 하나를 더 보낸다(비수·부메랑).
     //

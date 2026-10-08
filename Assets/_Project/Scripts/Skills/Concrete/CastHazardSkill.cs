@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 5a — **적의 발밑에 깐다.** 얼음·불·독 장판과 길막 벽이
     // 이 하나를 공유한다. 넷이 다른 것은 **저작한 해저드 에셋 하나**뿐이다 —

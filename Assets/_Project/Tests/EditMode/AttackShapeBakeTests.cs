@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Data.Authoring;
-using Wassup.Data;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // directional-attack-shape unit 1 — 저작 → bake 의 절대값과 **폴백 방향**을 못박는다.
     //

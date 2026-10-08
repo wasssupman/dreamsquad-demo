@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     /// <summary>
     /// skill-data-table unit 4 — **효과 한 줄 = 에셋 하나**(`tables.md` §2 · README 계약 1). 카드 · 방어유닛 · 적의 소유 줄(`BindingSpec`)이
@@ -9,7 +9,7 @@ namespace Wassup.Data
     ///
     /// `id` 는 서버 어휘다(계약 6) — 소문자 스네이크 · 표 안 유일 · 첫 공개 뒤 개명 금지(지울 때는 `deprecated`).
     /// </summary>
-    [CreateAssetMenu(fileName = "Effect_", menuName = "Wassup/Effect", order = 21)]
+    [CreateAssetMenu(fileName = "Effect_", menuName = "Somnia/Battle/Effect", order = 21)]
     public class EffectData : ScriptableObject
     {
         [Tooltip("효과 id(서버 어휘) — ^[a-z][a-z0-9_]*$ · 표 안 유일 · 첫 공개 뒤 개명 금지.")]

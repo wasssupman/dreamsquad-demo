@@ -3,7 +3,7 @@
 // 소금 XOR · `|1u` 0-시드 가드 · row-major 수집 · partial Fisher-Yates 는 그대로다 — M16.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 「효과 타일을 어느 칸에 놓나」의 순수 규칙.
     //

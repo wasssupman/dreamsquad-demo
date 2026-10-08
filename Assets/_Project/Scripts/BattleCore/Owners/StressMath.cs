@@ -1,8 +1,8 @@
 // salvaged from Assets/_Project/Scripts/Core/StressMath.cs (battle-core-rebuild unit 4)
-// 이식 시 바뀐 것: 네임스페이스만(`Wassup.Core` → `Wassup.BattleCore`). 산식은 한 글자도 안 바꿨다.
+// 이식 시 바뀐 것: 네임스페이스만(`Somnia.Battle.Core` → `Somnia.Battle.BattleCore`). 산식은 한 글자도 안 바꿨다.
 // 네임스페이스를 옮긴 이유는 동결된 옛 전투가 아직 자기 사본을 쓰기 때문이다 — 같은 이름이
 // 두 어셈블리에 있으면 Unity 층 검사 lane 에서 모호성(CS0433)이 난다.
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     /// <summary>
     /// 마음 체력을 «차오르는 스트레스»로 읽는 **유일한** 산식.

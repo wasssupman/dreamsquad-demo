@@ -1,8 +1,8 @@
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 2a — 도메인이 쓰는 유일한 엔티티 핸들.
     //
-    // `Wassup.Battle.Units.SimEntityId` 를 그대로 쓸 수 없는 이유는 **그것이
+    // `Somnia.Battle.Battle.Units.SimEntityId` 를 그대로 쓸 수 없는 이유는 **그것이
     // `IComponentData`** 라서다. 이 어셈블리는 `Unity.Entities` 를 참조하지 않으므로
     // (그것이 계약 1 의 컴파일 게이트다) 그 타입을 이름조차 부를 수 없다.
     //

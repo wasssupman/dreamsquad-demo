@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Wave;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Wave;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 9 구현 2 — 옛 웨이브 컨셉 테스트 4벌(`WaveConceptGenerationTests` ·
     // `WaveConceptMathTests` · `WaveConceptVariantTests` · `WaveConceptBossTests`)이 증언하던 **규칙**을
@@ -19,7 +19,7 @@ namespace Wassup.Tests.EditMode.Core
     // ⚠ 수치는 게임 값이 아니라 픽스처다(옛 테스트의 덱 knob 을 그대로 옮겼다 — 시트가 덮는 값이 아니다).
     public class RetiredWaveRulePortTests
     {
-        // `Wassup.Data.EnemyClass` 의 값과 같다(코어는 그 열거형을 모른다 — 빌더가 `(int)` 로 싣는다).
+        // `Somnia.Battle.Data.EnemyClass` 의 값과 같다(코어는 그 열거형을 모른다 — 빌더가 `(int)` 로 싣는다).
         private const int ClsNone = 0, Tanker = 1, Runner = 2, Bruiser = 3, Shooter = 4;
         private const int Seed = 20260813;
 

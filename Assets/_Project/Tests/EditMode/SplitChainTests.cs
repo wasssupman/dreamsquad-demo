@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // elite-enemy-tier unit 6 rev — 분열 사슬 검증의 순수 단위 테스트.
     //

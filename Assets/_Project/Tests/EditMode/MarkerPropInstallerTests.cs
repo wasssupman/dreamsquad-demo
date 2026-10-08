@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // map-diorama-stage unit 6 — 공용 마커 프랍 규칙: visualRoot 가 빈 마커에만, 호스트 밑 identity, visualRoot 등록, 멱등.
     // 프리팹이 직접 채운 visualRoot(맵 전용 연출)는 건드리지 않는다.

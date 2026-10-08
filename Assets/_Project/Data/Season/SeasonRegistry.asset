@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d813ced02ea324004b44e9e9edd2ed95, type: 3}
   m_Name: SeasonRegistry
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.Season.SeasonRegistry
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.Season.SeasonRegistry
   allSeasons:
   - {fileID: 11400000, guid: c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7, type: 2}
   - {fileID: 11400000, guid: c4d15a44c083b46019bd401e8dc9a926, type: 2}

@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 7a — **지정한 칸에 즉발 스탯**(둔화 장판).
     //

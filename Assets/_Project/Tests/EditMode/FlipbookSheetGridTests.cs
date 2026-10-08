@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
 // sprite-flipbook-player unit 5 — NxM 격자 슬라이스 회귀 테스트.
 // spec 이 지목한 실패 모드 2개를 못박는다:

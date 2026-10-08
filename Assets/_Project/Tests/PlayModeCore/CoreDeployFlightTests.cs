@@ -4,11 +4,11 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.View;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.View;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 5b 수정 — **배치 비행이 있는가.**
     //
@@ -64,7 +64,7 @@ namespace Wassup.Tests.PlayMode.Core
                 Assert.IsTrue(flight.IsFlying(id));
 
                 // 제 칸에 섰을 때의 자리. 「날았다」는 이 점과 **다르다**는 뜻이다.
-                Vector3 rest = (Vector3)Wassup.Core.BoardSpace.ToView(driver.Find(id).Position);
+                Vector3 rest = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(driver.Find(id).Position);
 
                 // 반동(웅크림) 구간이 지나야 뜨기 시작한다 — 몇 프레임 준다.
                 float lifted = 0f;

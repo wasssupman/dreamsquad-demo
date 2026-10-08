@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.Data.StatImport;
+using Somnia.Battle.Data.StatImport;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // 증상 회귀 방지 (2026-08-18, 실기기): 판을 끝내고 로비로 나오자
     // InvalidCastException 이 콘솔에 떴다.

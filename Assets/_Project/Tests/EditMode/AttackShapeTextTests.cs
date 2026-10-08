@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // directional-attack-shape rev 3 — 카드 문안. 도형은 부가 타격만 거르므로 「최대 N체 동시 타격」을 키운 형태이고,
     // N = 1 이면 도형 문안이 없다(효과 0). ⚠ 「전방」을 쓰지 않는다 — 방향은 «때리는 놈 쪽».

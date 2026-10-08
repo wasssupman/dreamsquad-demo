@@ -1,17 +1,16 @@
 {
-    "name": "Wassup.Tests.PlayMode.Core",
-    "rootNamespace": "Wassup.Tests.PlayMode.Core",
+    "name": "Somnia.Battle.Tests.EditMode.Core",
+    "rootNamespace": "Somnia.Battle.Tests.EditMode.Core",
     "references": [
-        "Wassup.BattleCore",
-        "Wassup.Runtime",
-        "Wassup.Skills",
-        "Wassup.UnitAi",
-        "UnityEngine.UI",
-        "Unity.TextMeshPro",
+        "Somnia.Battle.BattleCore",
+        "Somnia.Battle.Skills",
+        "Somnia.Battle.UnitAi",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,

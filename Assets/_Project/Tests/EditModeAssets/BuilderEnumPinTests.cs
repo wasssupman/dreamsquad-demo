@@ -1,10 +1,10 @@
 using System;
 using NUnit.Framework;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 6a 리뷰 HIGH-1 — **저작 어휘 → 코어 어휘의 핀.**
     //
@@ -49,32 +49,32 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 산출물_종류()
         {
-            PinNamesAndValues<Wassup.Data.AttackOutputKind, Wassup.BattleCore.AttackOutputKind>();
-            PinMapping<Wassup.Data.AttackOutputKind, Wassup.BattleCore.AttackOutputKind>(
+            PinNamesAndValues<Somnia.Battle.Data.AttackOutputKind, Somnia.Battle.BattleCore.AttackOutputKind>();
+            PinMapping<Somnia.Battle.Data.AttackOutputKind, Somnia.Battle.BattleCore.AttackOutputKind>(
                 CombatDefinitionBuilder.ToCoreOutputKind);
         }
 
         [Test]
         public void 스탯_종류()
         {
-            PinNamesAndValues<Wassup.Data.Authoring.StatKind, Wassup.BattleCore.Effects.StatKind>();
-            PinMapping<Wassup.Data.Authoring.StatKind, Wassup.BattleCore.Effects.StatKind>(
+            PinNamesAndValues<Somnia.Battle.Data.Authoring.StatKind, Somnia.Battle.BattleCore.Effects.StatKind>();
+            PinMapping<Somnia.Battle.Data.Authoring.StatKind, Somnia.Battle.BattleCore.Effects.StatKind>(
                 CombatDefinitionBuilder.ToCoreStat);
         }
 
         [Test]
         public void 결합_연산자()
         {
-            PinNamesAndValues<Wassup.Data.Authoring.CombineOp, Wassup.BattleCore.Effects.CombineOp>();
-            PinMapping<Wassup.Data.Authoring.CombineOp, Wassup.BattleCore.Effects.CombineOp>(
+            PinNamesAndValues<Somnia.Battle.Data.Authoring.CombineOp, Somnia.Battle.BattleCore.Effects.CombineOp>();
+            PinMapping<Somnia.Battle.Data.Authoring.CombineOp, Somnia.Battle.BattleCore.Effects.CombineOp>(
                 CombatDefinitionBuilder.ToCoreOp);
         }
 
         [Test]
         public void 스택_종류()
         {
-            PinNamesAndValues<Wassup.Data.Authoring.StackKind, Wassup.BattleCore.Effects.StackKind>();
-            PinMapping<Wassup.Data.Authoring.StackKind, Wassup.BattleCore.Effects.StackKind>(
+            PinNamesAndValues<Somnia.Battle.Data.Authoring.StackKind, Somnia.Battle.BattleCore.Effects.StackKind>();
+            PinMapping<Somnia.Battle.Data.Authoring.StackKind, Somnia.Battle.BattleCore.Effects.StackKind>(
                 CombatDefinitionBuilder.ToCoreStackKind);
         }
 
@@ -102,8 +102,8 @@ namespace Wassup.Tests.EditMode
             // 일곱 번째 쌍. 매핑의 상세 단언은 `PatternSelectionRulePinTests` 가 진다 —
             // 여기서는 **같은 그물에 걸린다**는 사실만 남긴다.
             PinNamesAndValues<PatternSelectionRule,
-                              Wassup.BattleCore.Combat.Emission.PatternSelectionRule>();
-            PinMapping<PatternSelectionRule, Wassup.BattleCore.Combat.Emission.PatternSelectionRule>(
+                              Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule>();
+            PinMapping<PatternSelectionRule, Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule>(
                 CombatDefinitionBuilder.ToCoreSelection);
         }
 
@@ -112,8 +112,8 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 칸_종류()
         {
-            PinNamesAndValues<MapTileType, Wassup.BattleCore.Map.MapTile>();
-            PinMapping<MapTileType, Wassup.BattleCore.Map.MapTile>(MatchDefinitionBuilder.ToCoreTile);
+            PinNamesAndValues<MapTileType, Somnia.Battle.BattleCore.Map.MapTile>();
+            PinMapping<MapTileType, Somnia.Battle.BattleCore.Map.MapTile>(MatchDefinitionBuilder.ToCoreTile);
         }
 
         [Test]
@@ -126,8 +126,8 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 교전_이동()
         {
-            PinNamesAndValues<Wassup.Data.EngageMovement, Wassup.BattleCore.EngageMovement>();
-            PinMapping<Wassup.Data.EngageMovement, Wassup.BattleCore.EngageMovement>(
+            PinNamesAndValues<Somnia.Battle.Data.EngageMovement, Somnia.Battle.BattleCore.EngageMovement>();
+            PinMapping<Somnia.Battle.Data.EngageMovement, Somnia.Battle.BattleCore.EngageMovement>(
                 MatchDefinitionBuilder.ToCoreEngage);
         }
 
@@ -136,11 +136,11 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 층_비트()
         {
-            Assert.AreEqual((int)PlacementLayer.None, Wassup.BattleCore.Map.LayerBits.None);
-            Assert.AreEqual((int)PlacementLayer.Ground, Wassup.BattleCore.Map.LayerBits.Ground);
-            Assert.AreEqual((int)PlacementLayer.Path, Wassup.BattleCore.Map.LayerBits.Path);
-            Assert.AreEqual((int)PlacementLayer.Air, Wassup.BattleCore.Map.LayerBits.Air);
-            Assert.AreEqual((int)PlacementLayer.All, Wassup.BattleCore.Map.LayerBits.All);
+            Assert.AreEqual((int)PlacementLayer.None, Somnia.Battle.BattleCore.Map.LayerBits.None);
+            Assert.AreEqual((int)PlacementLayer.Ground, Somnia.Battle.BattleCore.Map.LayerBits.Ground);
+            Assert.AreEqual((int)PlacementLayer.Path, Somnia.Battle.BattleCore.Map.LayerBits.Path);
+            Assert.AreEqual((int)PlacementLayer.Air, Somnia.Battle.BattleCore.Map.LayerBits.Air);
+            Assert.AreEqual((int)PlacementLayer.All, Somnia.Battle.BattleCore.Map.LayerBits.All);
             // 이름 집합도 본다 — 저작 쪽에 층이 늘면 코어 상수도 늘어야 한다.
             CollectionAssert.AreEquivalent(new[] { "None", "Ground", "Path", "Air", "All" },
                                            Enum.GetNames(typeof(PlacementLayer)),
@@ -150,15 +150,15 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 도형_종류()
         {
-            Assert.AreEqual(Wassup.Data.AttackShapeBaked.OmniKind, Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind);
-            Assert.AreEqual(Wassup.Data.AttackShapeBaked.SectorKind, Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind);
-            Assert.AreEqual(Wassup.Data.AttackShapeBaked.BandKind, Wassup.BattleCore.Combat.AttackShapeBaked.BandKind);
-            Assert.AreEqual(Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind,
-                            CombatDefinitionBuilder.ToCoreShapeKind(Wassup.Data.AttackShapeBaked.SectorKind));
-            Assert.AreEqual(Wassup.BattleCore.Combat.AttackShapeBaked.BandKind,
-                            CombatDefinitionBuilder.ToCoreShapeKind(Wassup.Data.AttackShapeBaked.BandKind));
-            Assert.AreEqual(Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind,
-                            CombatDefinitionBuilder.ToCoreShapeKind(Wassup.Data.AttackShapeBaked.OmniKind));
+            Assert.AreEqual(Somnia.Battle.Data.AttackShapeBaked.OmniKind, Somnia.Battle.BattleCore.Combat.AttackShapeBaked.OmniKind);
+            Assert.AreEqual(Somnia.Battle.Data.AttackShapeBaked.SectorKind, Somnia.Battle.BattleCore.Combat.AttackShapeBaked.SectorKind);
+            Assert.AreEqual(Somnia.Battle.Data.AttackShapeBaked.BandKind, Somnia.Battle.BattleCore.Combat.AttackShapeBaked.BandKind);
+            Assert.AreEqual(Somnia.Battle.BattleCore.Combat.AttackShapeBaked.SectorKind,
+                            CombatDefinitionBuilder.ToCoreShapeKind(Somnia.Battle.Data.AttackShapeBaked.SectorKind));
+            Assert.AreEqual(Somnia.Battle.BattleCore.Combat.AttackShapeBaked.BandKind,
+                            CombatDefinitionBuilder.ToCoreShapeKind(Somnia.Battle.Data.AttackShapeBaked.BandKind));
+            Assert.AreEqual(Somnia.Battle.BattleCore.Combat.AttackShapeBaked.OmniKind,
+                            CombatDefinitionBuilder.ToCoreShapeKind(Somnia.Battle.Data.AttackShapeBaked.OmniKind));
         }
 
         [Test]
@@ -169,7 +169,7 @@ namespace Wassup.Tests.EditMode
             var so = UnityEngine.ScriptableObject.CreateInstance<StackModifierSO>();
             try
             {
-                foreach (Wassup.Data.Authoring.StackKind k in Enum.GetValues(typeof(Wassup.Data.Authoring.StackKind)))
+                foreach (Somnia.Battle.Data.Authoring.StackKind k in Enum.GetValues(typeof(Somnia.Battle.Data.Authoring.StackKind)))
                 {
                     so.kind = k;
                     var rows = MatchDefinitionBuilder.ToStackRuleDefs(new[] { so });

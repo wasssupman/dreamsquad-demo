@@ -1,4 +1,4 @@
-Shader "Wassup/PlacementRangeRing"
+Shader "Somnia/Battle/PlacementRangeRing"
 {
     // distance-based-range unit 5 — 공격 사거리의 **윤곽**.
     //

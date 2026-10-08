@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore.Combat.Emission;
+using Somnia.Battle.BattleCore.Combat.Emission;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 3 — 발사 명세(패턴)의 순수 규칙.
     public class PatternEmissionTests

@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 골든 파일의 자리와 읽기/쓰기.
     //

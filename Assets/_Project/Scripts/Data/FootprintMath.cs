@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // defender-footprint unit 0 — 유닛 W×H 점유의 단일 산식.
     //

@@ -1,11 +1,11 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // unit-health-display — 체력 표기 시각 파라미터의 단일 소스 (하드코딩 금지 규칙).
     // unit 1 은 적 저체력 틴트만 사용. unit 2(마이크로바)/unit 3(타일 게이지) 필드는
     // 해당 unit 에서 이 SO 에 누적한다.
-    [CreateAssetMenu(fileName = "HealthDisplayStyle", menuName = "Wassup/HealthDisplayStyle", order = 20)]
+    [CreateAssetMenu(fileName = "HealthDisplayStyle", menuName = "Somnia/Battle/HealthDisplayStyle", order = 20)]
     public class HealthDisplayStyle : ScriptableObject
     {
         [Header("Enemy Low-Health Tint")]

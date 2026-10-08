@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     public readonly struct GeneratedWavePlan
     {

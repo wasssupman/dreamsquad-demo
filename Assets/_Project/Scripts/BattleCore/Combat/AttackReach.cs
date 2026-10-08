@@ -1,10 +1,10 @@
 // salvaged from Assets/_Project/Scripts/Battle/Combat/AttackReach.cs (battle-core-rebuild unit 2)
-// 이식 시 바뀐 것: `AttackShapeBaked` 를 코어 사본으로 가리킨다. 술어 본체는 `Wassup.Skills.SkillMath`
+// 이식 시 바뀐 것: `AttackShapeBaked` 를 코어 사본으로 가리킨다. 술어 본체는 `Somnia.Battle.Skills.SkillMath`
 //   **그대로**다(코어가 이미 참조하는 엔진 무관 어셈블리 — 계약 4). 소비처 목록 주석은 옛 시스템
 //   이름 대신 새 코어의 자리로 다시 적었다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Combat
+namespace Somnia.Battle.BattleCore.Combat
 {
     // 사거리 판정의 **단일 술어**.
     //
@@ -19,7 +19,7 @@ namespace Wassup.BattleCore.Combat
     // 지금은 `SkillMath.ReachFromUnit` 하나다. `bothContinuous` 인자가 사라진 이유는
     // **그 인자의 존재 자체가 ①이었기** 때문이다.
     //
-    // ⚠ **본체가 여기 없다.** `Wassup.Skills`(엔진 무참조)에 있고 이 파일은 `float3` ↔ 타일 단위
+    // ⚠ **본체가 여기 없다.** `Somnia.Battle.Skills`(엔진 무참조)에 있고 이 파일은 `float3` ↔ 타일 단위
     // 변환만 한다. 코어가 그 어셈블리를 참조하므로 술어는 **이미 저쪽에** 있다.
     //
     // ── 이 unit 에서의 소비처 ──
@@ -46,7 +46,7 @@ namespace Wassup.BattleCore.Combat
                                    float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
         {
             float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;
-            return Wassup.Skills.SkillMath.ReachFromUnit(
+            return Somnia.Battle.Skills.SkillMath.ReachFromUnit(
                 (tgtPos.x - atkPos.x) * inv, (tgtPos.z - atkPos.z) * inv,
                 tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
         }
@@ -58,12 +58,12 @@ namespace Wassup.BattleCore.Combat
         // 가르친다. 위 `InReach` 와 **같은 본체**를 지난다.
         public static bool InCellReach(int2 atkCell, int2 tgtCell, float tileRange,
                                        float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
-            => Wassup.Skills.SkillMath.ReachFromUnit(
+            => Somnia.Battle.Skills.SkillMath.ReachFromUnit(
                    tgtCell.x - atkCell.x, tgtCell.y - atkCell.y,
                    tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
 
         // «같은 자리» 임계(월드 거리²). 0.01 월드 유닛 = 타일 1개 기준 1% — 셀 판정을 흔들지 않으면서 방향 계산이
-        // 의미를 잃는 구간만 잡는다. (옛 `Wassup.Skills.SkillCone` 에 있던 값 — 소비처가 여기 하나라 옮겼다.)
+        // 의미를 잃는 구간만 잡는다. (옛 `Somnia.Battle.Skills.SkillCone` 에 있던 값 — 소비처가 여기 하나라 옮겼다.)
         private const float SameSpotEpsSq = 1e-4f;
 
         // **부가 타격 전용 진입점.** 원 항(위와 같은 본체) AND 도형 항.
@@ -81,7 +81,7 @@ namespace Wassup.BattleCore.Combat
         {
             float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;
             float dx = (tgtPos.x - atkPos.x) * inv, dz = (tgtPos.z - atkPos.z) * inv;
-            if (!Wassup.Skills.SkillMath.ReachFromUnit(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles))
+            if (!Somnia.Battle.Skills.SkillMath.ReachFromUnit(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles))
                 return false;
             if (shape.kind == AttackShapeBaked.OmniKind) return true;
             float len2 = math.lengthsq(dirToPrimary);
@@ -90,8 +90,8 @@ namespace Wassup.BattleCore.Combat
             float along = u.x * dx + u.y * dz;        // 주 대상 방향 성분
             float across = u.x * dz - u.y * dx;       // 그 수직 성분(부호는 게이트가 접는다)
             if (shape.kind == AttackShapeBaked.SectorKind)
-                return Wassup.Skills.SkillMath.SectorGate(along, across, shape.sinHalf, shape.cosHalf, targetBodyRadiusTiles);
-            return Wassup.Skills.SkillMath.BandGate(along, across, shape.halfWidth,
+                return Somnia.Battle.Skills.SkillMath.SectorGate(along, across, shape.sinHalf, shape.cosHalf, targetBodyRadiusTiles);
+            return Somnia.Battle.Skills.SkillMath.BandGate(along, across, shape.halfWidth,
                                                     tileRange + selfBodyRadiusTiles, targetBodyRadiusTiles);
         }
 

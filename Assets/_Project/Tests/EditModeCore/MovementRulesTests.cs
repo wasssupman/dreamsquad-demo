@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Move;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Move;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 2 — 판을 실제로 돌려 규칙을 묻는다.
     public class MovementRulesTests

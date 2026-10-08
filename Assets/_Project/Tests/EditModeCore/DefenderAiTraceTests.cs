@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.UnitAi;
-using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.UnitAi;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCombatFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 8a2 행 7 — **방어유닛 AI 전이 트레이스**(옛 `BattleBridge.TraceDefenderAiTransition`,
     // `BattleBridge.cs:4127-4136` · 옛 채널 22). 옛 규칙 두 줄:

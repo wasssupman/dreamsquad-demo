@@ -1,13 +1,13 @@
 using UnityEngine;
 
-namespace Wassup.Data.BattleView
+namespace Somnia.Battle.Data.BattleView
 {
     // battle-core-rebuild unit 5a — 바닥에 떨어지는 것들의 뷰. 옛 브리지의 `pickup*` 5 ·
     // `resignationView*` 2 의 새 주인.
     //
     // 소비자(픽업·사직서 풀)는 **조각 C(unit 6)** 에서 선다 — 그 사건이 코어에 아직 없다.
     // 값만 먼저 이사시키는 이유는 91행 귀속을 이 unit 에서 닫기 때문이다(완료 기준 4).
-    [CreateAssetMenu(menuName = "Wassup/BattleView/Pickup View Config", fileName = "PickupViewConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/BattleView/Pickup View Config", fileName = "PickupViewConfig")]
     public sealed class PickupViewConfig : ScriptableObject
     {
         [Header("픽업")]

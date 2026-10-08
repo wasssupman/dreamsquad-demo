@@ -1,9 +1,9 @@
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 6c — 옛 `Presentation.StatusFxView` 의 **키 타입만 바꾼 복사본**이다
     // (`Entity` → `SimEntityId`). 옛 것은 unit 9 에서 옛 전투와 함께 지웠다(5a 의 `UnitView` 복사와 같은 처분 — 이력).

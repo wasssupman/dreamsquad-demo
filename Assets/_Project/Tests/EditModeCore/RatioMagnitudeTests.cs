@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using static Wassup.Tests.EditMode.Core.CoreTriggerFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using static Somnia.Battle.Tests.EditMode.Core.CoreTriggerFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // skill-data-table unit 3(U7 · U11) — **비율형 수치.** 효과 수치 = 고정 또는 「소유자 스탯 × 비율」.
     //   · 기준 「공격력」 = 평타 한 발의 피해 출력 합 × 공격자 쪽 배율만(대 CC · 수면 · 최전방 · 강타 제외 · 카운터 무전진)
@@ -230,7 +230,7 @@ namespace Wassup.Tests.EditMode.Core
                 new PatternDef
                 {
                     Id = "fixture_burst", BarrelProjectileDefIndex = 0,
-                    Selection = (int)Wassup.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin,
+                    Selection = (int)Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin,
                     Shots = new[]
                     {
                         new PatternShotDef { DirectionT = 0.5f },

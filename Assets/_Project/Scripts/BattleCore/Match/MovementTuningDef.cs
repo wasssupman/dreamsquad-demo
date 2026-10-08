@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild 5a 후속 — **적이 어떻게 서고 어떻게 퍼지나**의 저작값.
     //

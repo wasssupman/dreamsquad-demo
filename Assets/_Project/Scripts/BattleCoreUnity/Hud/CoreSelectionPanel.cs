@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild 5b 수정 — **선택 패널.** 옛 `DcInspectPanelView`(802줄) +
     // `DcInspectController`(637줄)에서 이번에 필요한 몫만 옮겼다.
@@ -168,7 +168,7 @@ namespace Wassup.BattleCoreUnity.Hud
                 int cost = def != null && cardIndex >= 0 && cardIndex < def.Cards.Length ? def.Cards[cardIndex].Cost : 0;
                 row.Kind.text = (isSquad ? "스쿼드" : "유닛") + "  ·  " + cost;
                 row.Desc.text = card != null
-                    ? Wassup.UI.DreamcatcherCardText.EffectOnly(card,
+                    ? Somnia.Battle.UI.DreamcatcherCardText.EffectOnly(card,
                         _defenderCatalog != null ? _defenderCatalog.DisplayNameOf : (System.Func<string, string>)null)
                     : "";
                 row.Desc.maxVisibleLines = _descMaxLines > 0 ? _descMaxLines : 99999;
@@ -425,12 +425,12 @@ namespace Wassup.BattleCoreUnity.Hud
             var outputs = def.Attack.Outputs;
             if (outputs != null)
                 for (int i = 0; i < outputs.Length; i++)
-                    if (outputs[i].Kind == Wassup.BattleCore.AttackOutputKind.Damage) { damage = outputs[i].Magnitude; break; }
+                    if (outputs[i].Kind == Somnia.Battle.BattleCore.AttackOutputKind.Damage) { damage = outputs[i].Magnitude; break; }
 
             // 큰 숫자 = 빠름이 직관적이라 쿨다운 초가 아니라 초당 발사 횟수로 낸다(옛 규약).
             float rate = def.AttackCooldown > 0f ? 1f / def.AttackCooldown : 0f;
 
-            var eff = unit != null ? unit.Modifiers.Effective : Wassup.BattleCore.Effects.EffectiveStats.Identity;
+            var eff = unit != null ? unit.Modifiers.Effective : Somnia.Battle.BattleCore.Effects.EffectiveStats.Identity;
             float speed = eff.AttackSpeedMul > 0f ? eff.AttackSpeedMul : 1f;   // 코어 `IntervalMul` 과 같은 접기
 
             return new UnitStatReadout

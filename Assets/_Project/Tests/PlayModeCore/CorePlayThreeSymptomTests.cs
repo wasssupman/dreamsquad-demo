@@ -7,14 +7,14 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.BattleCoreUnity.Input;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCoreUnity.Input;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // 사용자 플레이 3차의 문장 — 「운석 비주얼이 보이지 않음」 · 「퇴근 작동 하지 않음」.
     // 단언은 **화면이 보여 주는 것**이다(버그 절차 2): 운석이 하늘에서 떨어지는 게 보이나 · 버튼을 누른 손가락이 버튼에 닿나.
@@ -101,7 +101,7 @@ namespace Wassup.Tests.PlayMode.Core
                     dropHeight = driver.ViewAssets.Projectile(p.DefIndex).dropHeight;
                     if (!view.activeInHierarchy) { wasHidden = true; continue; }
                     if (!wasHidden) continue;
-                    Vector3 ground = Wassup.Core.BoardSpace.ToView(p.Position);
+                    Vector3 ground = Somnia.Battle.Core.BoardSpace.ToView(p.Position);
                     float lift = (view.transform.position - ground).magnitude;
                     if (revealLift < 0f) revealLift = lift;
                     var vp = cam.WorldToViewportPoint(view.transform.position);

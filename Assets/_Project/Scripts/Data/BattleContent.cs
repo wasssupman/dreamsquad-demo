@@ -1,9 +1,9 @@
 using System;
 using UnityEngine;
-using Wassup.Data.Authoring;
-using Wassup.Data.Season;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Data.Season;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // battle-content-finish unit 0 — **판의 콘텐츠 묶음.** 모드와 무관하게 「이 전투에 존재하는 것」의 목록이다 —
     // 카탈로그 · 장판 · 길막 · 스택 · 부여 상한 · 이동 튜닝 · 시즌 · 보너스 웨이브 · 공용 액티브 풀.
@@ -13,7 +13,7 @@ namespace Wassup.Data
     // 두지 않는 이유: 편성 하나 바꾸려고 씬을 열어야 하고, 씬 diff 에 저작과 배선이 섞인다.
     //
     // 읽는 자는 `BattleDriver` 뿐이고, 드라이버는 이것을 `MatchDefinitionBuilder` 의 입력으로 옮기기만 한다.
-    [CreateAssetMenu(menuName = "Wassup/Battle Content", fileName = "BattleContent")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Battle Content", fileName = "BattleContent")]
     public sealed class BattleContent : ScriptableObject
     {
         [Header("카탈로그")]

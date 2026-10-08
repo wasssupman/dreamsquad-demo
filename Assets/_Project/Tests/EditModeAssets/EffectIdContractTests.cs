@@ -4,12 +4,12 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // skill-data-table 감사 — README 계약 10 「id 는 표 안에서 유일」 · `tables.md` §10 「새 effect_id = 소문자 스네이크 `^[a-z][a-z0-9_]*$`」.
     // ① 라이브 효과 에셋 전부가 규칙을 지킨다(서버 어휘 — 계약 6) ② 굽기는 같은 id 가 다른 해석 값으로 두 번 오면 크게 짖는다(값이 같으면 한 줄로 합친다).

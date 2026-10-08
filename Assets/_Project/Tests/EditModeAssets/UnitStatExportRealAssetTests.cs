@@ -1,10 +1,10 @@
 using Newtonsoft.Json;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data.StatImport;
-using Wassup.Editor.UnitStatImport;
+using Somnia.Battle.Data.StatImport;
+using Somnia.Battle.Editor.UnitStatImport;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // test-suite-fast-lane unit 0 — UnitStatImportTests 에서 추출한 실에셋 통합 검증.
     // 임포터 기구 테스트(인라인 JSON 픽스처)는 코어 lane 에 남는다.

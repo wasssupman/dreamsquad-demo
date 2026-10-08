@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-deck-builder Unit 1 — DeckRules validity (exactly 10, squad<=2).
     // dreamcatcher-card-taxonomy — cap moved from CardCategory.Unique to CardType.Squad.

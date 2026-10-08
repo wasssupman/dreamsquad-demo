@@ -1,7 +1,7 @@
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 6b — **판 위에 깔린 존 장판 하나.**
     //
@@ -69,7 +69,7 @@ namespace Wassup.BattleCore
     }
 }
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // 존 장판을 까는 **단 하나의 조립 자리.** 생산자(디버그 커맨드 · unit 7 의 카드·스킬)가
     // 전부 여기를 지난다 — 반경·수명을 정의표 줄에서 굽는 일을 두 곳에서 하면 한쪽이 언젠가
@@ -82,7 +82,7 @@ namespace Wassup.BattleCore
         /// </summary>
         public static Hazard Spawn(BattleWorld world, Map.MapRuntime map, MatchDefinition def,
                                    int defIndex, Unity.Mathematics.int2 cell, SimEntityId source,
-                                   Wassup.Skills.Faction faction, byte targetLayers, int tick, float dotDamage)
+                                   Somnia.Battle.Skills.Faction faction, byte targetLayers, int tick, float dotDamage)
         {
             if (def == null || defIndex < 0 || defIndex >= def.Hazards.Length) return null;
             ref var hd = ref def.Hazards[defIndex];

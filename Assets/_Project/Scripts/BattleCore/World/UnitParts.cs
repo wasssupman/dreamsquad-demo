@@ -1,7 +1,7 @@
 using Unity.Mathematics;
-using Wassup.BattleCore.Move;
+using Somnia.Battle.BattleCore.Move;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 2 — 개체의 **이동·감지·어그로·순찰·점유** 부분.
     //

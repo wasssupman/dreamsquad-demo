@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 86c49a8213e5b4a7c84cf1482b39aec3, type: 3}
   m_Name: Flipbook_hidy_idle1
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SpriteFlipbookData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.SpriteFlipbookData
   frames:
   - {fileID: -8728113056941476610, guid: 6db5883742b974779b87e9ee666818ea, type: 3}
   - {fileID: 58729285788739553, guid: 6db5883742b974779b87e9ee666818ea, type: 3}

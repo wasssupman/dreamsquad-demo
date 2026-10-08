@@ -1,8 +1,8 @@
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 2 — 맵·이동 테스트의 공용 고정구.
     //

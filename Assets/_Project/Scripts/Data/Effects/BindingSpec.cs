@@ -1,6 +1,6 @@
 using System;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     /// <summary>
     /// skill-data-table unit 4 — **소유 줄**(`tables.md` §4 `Skills` 한 줄): 언제(트리거 · 주체 · 게이트) → 효과 에셋. 카드 · 방어유닛 · 적이

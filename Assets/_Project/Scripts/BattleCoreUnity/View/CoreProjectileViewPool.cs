@@ -1,13 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.Presentation;
-using Wassup.Data;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.Presentation;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // 코어 탄 상태를 Presentation 값으로 번역한 프레임 스냅샷.
     // CoreProjectileViewPool 은 코어 상태를 직접 쓰지 않는다.
@@ -170,7 +170,7 @@ namespace Wassup.BattleCoreUnity.View
         // 흡수 구간 2칸은 옛 브리지 상수 그대로다(뷰의 모양이지 규칙이 아니다).
         private const float SocketBlendTiles = 2f;
 
-        private void FillImpactSocket(Wassup.BattleCore.Combat.Projectile.Projectile p,
+        private void FillImpactSocket(Somnia.Battle.BattleCore.Combat.Projectile.Projectile p,
                                       ref CoreProjectileViewFrame frame)
         {
             if (p.Target.IsNone) return;
@@ -188,15 +188,15 @@ namespace Wassup.BattleCoreUnity.View
         }
 
         // ⚠ 가리키는 표는 **종류**가 정한다(적 = 적 표, 방어유닛 = 유닛 표 — `CoreEvent.DefIndex` 규약).
-        private float SocketHeightOf(Wassup.BattleCore.Unit u)
+        private float SocketHeightOf(Somnia.Battle.BattleCore.Unit u)
         {
             if (u.DefIndex < 0) return 0f;
-            if (u.Kind == Wassup.BattleCore.UnitKind.Enemy)
+            if (u.Kind == Somnia.Battle.BattleCore.UnitKind.Enemy)
             {
                 var enemies = _driver.EnemyAssets;
                 return u.DefIndex < enemies.Count && enemies[u.DefIndex] != null ? enemies[u.DefIndex].impactSocketHeight : 0f;
             }
-            if (u.Kind == Wassup.BattleCore.UnitKind.Defender)
+            if (u.Kind == Somnia.Battle.BattleCore.UnitKind.Defender)
             {
                 var units = _driver.DefenderAssets;
                 return u.DefIndex < units.Count && units[u.DefIndex] != null ? units[u.DefIndex].impactSocketHeight : 0f;
@@ -337,7 +337,7 @@ namespace Wassup.BattleCoreUnity.View
             // ga-reskin unit 1: 첫 SyncTransform 전에 스폰 위치를 즉시 세팅하고 trail/particle 을
             // 리셋한다. 안 그러면 풀 재사용 시 이전 사망 위치 → 새 스폰 위치로 world-space 파티클/
             // TrailRenderer 가 streak(줄) 을 그린다.
-            float3 spawnGroundView = Wassup.Core.BoardSpace.ToView(initialPosition);
+            float3 spawnGroundView = Somnia.Battle.Core.BoardSpace.ToView(initialPosition);
             // 낙하 오프셋은 SyncTransforms 와 같은 카메라 평면 up 축에 선반영 —
             // lastPosition 에도 포함해야 첫 프레임 velocity 가 ≈0 이 되어(지면→하늘
             // 오차분이 안 섞여) 잘못된 위쪽 페이싱 플래시가 없다.
@@ -385,7 +385,7 @@ namespace Wassup.BattleCoreUnity.View
             }
 
             // sim→view 1회. 위치·속도·LookRotation 전부 view 공간끼리 (lastPosition 도 view).
-            float3 groundPos = Wassup.Core.BoardSpace.ToView(frame.simPosition);
+            float3 groundPos = Somnia.Battle.Core.BoardSpace.ToView(frame.simPosition);
             float presentationHeight = 0f;
 
             // Ballistic arc height is a presentation concern: BoardSpace.ToView drops
@@ -588,7 +588,7 @@ namespace Wassup.BattleCoreUnity.View
                     view.transform.rotation = Quaternion.LookRotation(planar, upRef);
                 // 완전히 수직인 방향(투영이 0)이면 회전을 건드리지 않는다 — 프리팹 기본 자세 유지.
             }
-            float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
+            float3 hitView = Somnia.Battle.Core.BoardSpace.ToView(position); // sim→view
             // heightOffset: projectile body와 같은 카메라 평면 up으로 띄워 착탄 순간
             // 월드 +Y 왜곡/위치 점프가 생기지 않게 한다.
             view.transform.position = ProjectHeight(hitView, heightOffset);

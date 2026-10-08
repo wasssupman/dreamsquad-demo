@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9dc25e4d317fe4089a9d9e48d1b371d2, type: 3}
   m_Name: GimmickRevealConfig
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.GimmickRevealConfig
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.GimmickRevealConfig
   beatStampSec: 0.6
   beatNameSec: 0.8
   beatOutSec: 0.6

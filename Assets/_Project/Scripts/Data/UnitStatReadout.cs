@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // selection-hand-attach unit 10 — 선택 유닛의 표시용 스탯 묶음.
     //

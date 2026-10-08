@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 2e — 반경 안 상대 전원을 잡아 세운다(말파이트의 착지 충격).
     //

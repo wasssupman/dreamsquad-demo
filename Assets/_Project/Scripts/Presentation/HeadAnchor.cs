@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // 유닛 머리 위 뱃지/팝업(아이콘 스트립·상태연출·히트바·데미지 숫자)의 공용 리프트.
     //

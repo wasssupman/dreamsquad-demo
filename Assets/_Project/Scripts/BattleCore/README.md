@@ -1,9 +1,9 @@
-# `Wassup.BattleCore` — 전투 코어
+# `Somnia.Battle.BattleCore` — 전투 코어
 
 엔진을 모르는 순수 C# 전투 코어. `noEngineReferences: true` 라서 `UnityEngine` ·
-`Unity.Entities` · `Unity.Collections` 는 **컴파일러가 막는다**(`Wassup.Skills` ·
-`Wassup.UnitAi` 와 같은 결). 참조는 `Unity.Mathematics` · `Wassup.Skills` ·
-`Wassup.UnitAi` 셋뿐이다.
+`Unity.Entities` · `Unity.Collections` 는 **컴파일러가 막는다**(`Somnia.Battle.Skills` ·
+`Somnia.Battle.UnitAi` 와 같은 결). 참조는 `Unity.Mathematics` · `Somnia.Battle.Skills` ·
+`Somnia.Battle.UnitAi` 셋뿐이다.
 
 정본 계약은 `docs/spec/battle-core-rebuild/README.md`(Feature-wide 계약 13) 와
 `CLAUDE.md` 의 「새 전투 코어 — 절대 제약」 6항이다. 이 README 는 폴더 지도만 든다.

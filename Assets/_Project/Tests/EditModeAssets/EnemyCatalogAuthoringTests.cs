@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // test-suite-fast-lane unit 0 — EnemyTierBakeTests 에서 추출한 실에셋 검증.
     // bake 로직 테스트(합성 픽스처)는 코어 lane 에 남고, 여기는 카탈로그·보스 에셋의

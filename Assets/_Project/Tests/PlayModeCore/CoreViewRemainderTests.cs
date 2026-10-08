@@ -3,13 +3,13 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 8a2 — **뷰 이전 잔여 8행**이 새 씬에서 실체를 갖는가(`--owners` 가 「미실현」으로 세던 것).
     //
@@ -98,7 +98,7 @@ namespace Wassup.Tests.PlayMode.Core
             driver.Match.Intents.Apply(new SimIntent
             {
                 Kind = SimIntentKind.BeginUltimateLeap,
-                Target = Wassup.BattleCore.Trigger.CoreSkillContext.ToSkill(enemy.Id),
+                Target = Somnia.Battle.BattleCore.Trigger.CoreSkillContext.ToSkill(enemy.Id),
                 Cell = cell, Position = map.CenterOf(cell),
                 Duration = 0.5f, Amount = 0f, TileRange = slamTiles, DataIndex = -1,
             });
@@ -107,7 +107,7 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsTrue(overlay.TryGetLandingTelegraph(out var leaper, out var center, out float radius),
                 "이탈 사건 → 착지 예고 링");
             Assert.AreEqual(enemy.Id, leaper, "예고의 주인 = 도약자");
-            Assert.AreEqual(slamTiles + Wassup.Skills.SkillMath.CellShapePaddingTiles, radius, 1e-5f,
+            Assert.AreEqual(slamTiles + Somnia.Battle.Skills.SkillMath.CellShapePaddingTiles, radius, 1e-5f,
                 "반경 = 슬램 칸 수 + 칸 반폭(자리형 — 보스 몸 안 읽음, 옛 CenteredRingRadius)");
             Assert.AreEqual(map.CenterOf(cell).x, center.x, 1e-4f, "중심 = 착지 칸 중심");
             Assert.AreEqual(map.CenterOf(cell).z, center.z, 1e-4f, "중심 = 착지 칸 중심");
@@ -158,9 +158,9 @@ namespace Wassup.Tests.PlayMode.Core
             for (int x = 0; x < size.x; x++)
             {
                 var c = new int2(x, y);
-                bool inReach = !c.Equals(anchor) && Wassup.BattleCore.Combat.AttackReach.InReach(
+                bool inReach = !c.Equals(anchor) && Somnia.Battle.BattleCore.Combat.AttackReach.InReach(
                     foot, new float3(x * ts, 0f, y * ts), unit.AttackRange, ts,
-                    unit.BodyRadiusTiles, Wassup.Skills.SkillMath.StandardBodyRadiusTiles);
+                    unit.BodyRadiusTiles, Somnia.Battle.Skills.SkillMath.StandardBodyRadiusTiles);
                 if (inReach) expected++;
                 Assert.AreEqual(inReach, overlay.IsPlacementRangeCell(c), $"칸 {c} 의 사거리 판단이 판정 자와 다르다");
             }
@@ -183,7 +183,7 @@ namespace Wassup.Tests.PlayMode.Core
             CoreSceneFixture.BeginErrorWatch();
             BattleDriver driver = null;
             yield return Boot(d => driver = d);
-            var input = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Input.DragPlacementInput>();
+            var input = Object.FindAnyObjectByType<Somnia.Battle.BattleCoreUnity.Input.DragPlacementInput>();
             var pool = Object.FindAnyObjectByType<CoreUnitViewPool>();
             Assert.IsNotNull(input, "씬에 DragPlacementInput 이 없다");
             Assert.IsNotNull(pool, "씬에 CoreUnitViewPool 이 없다");
@@ -233,11 +233,11 @@ namespace Wassup.Tests.PlayMode.Core
             AssertNoErrors();
         }
 
-        private static Wassup.Data.BattleView.CharacterViewConfig AssetFromPool(CoreUnitViewPool pool)
+        private static Somnia.Battle.Data.BattleView.CharacterViewConfig AssetFromPool(CoreUnitViewPool pool)
         {
             var f = typeof(CoreUnitViewPool).GetField("_characterView",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var cfg = f.GetValue(pool) as Wassup.Data.BattleView.CharacterViewConfig;
+            var cfg = f.GetValue(pool) as Somnia.Battle.Data.BattleView.CharacterViewConfig;
             Assert.IsNotNull(cfg, "풀에 CharacterViewConfig 가 배선되지 않았다");
             return cfg;
         }
@@ -251,10 +251,10 @@ namespace Wassup.Tests.PlayMode.Core
             yield return CoreSceneFixture.LoadAndBoot(d => driver = d);
             Assert.IsNotNull(driver);
 #if UNITY_EDITOR
-            var summonerData = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.DefenderUnitData>(
+            var summonerData = UnityEditor.AssetDatabase.LoadAssetAtPath<Somnia.Battle.Data.DefenderUnitData>(
                 "Assets/_Project/Data/Defenders/Defender_Summoner.asset");
             Assert.IsNotNull(summonerData, "소환사 에셋이 없다");
-            var list = new System.Collections.Generic.List<Wassup.Data.DefenderUnitData>(driver.Loadout.defenders);
+            var list = new System.Collections.Generic.List<Somnia.Battle.Data.DefenderUnitData>(driver.Loadout.defenders);
             if (!list.Contains(summonerData)) list.Add(summonerData);
             CoreSceneFixture.OverrideDefenders(driver, list.ToArray());
 #endif
@@ -285,19 +285,19 @@ namespace Wassup.Tests.PlayMode.Core
             }
             Assert.IsNotNull(summoner, "소환사를 적 옆에 세우지 못했다");
 
-            for (int t = 0; t < 120 && summoner.Ai.Defender != Wassup.UnitAi.DefenderAiState.Sustaining; t++)
+            for (int t = 0; t < 120 && summoner.Ai.Defender != Somnia.Battle.UnitAi.DefenderAiState.Sustaining; t++)
                 driver.Match.Tick();
-            Assert.AreEqual(Wassup.UnitAi.DefenderAiState.Sustaining, summoner.Ai.Defender, "순찰병이 서면 유지중");
+            Assert.AreEqual(Somnia.Battle.UnitAi.DefenderAiState.Sustaining, summoner.Ai.Defender, "순찰병이 서면 유지중");
             yield return null;
             yield return null;
 
             Assert.IsTrue(pool.TryGetPushedAiState(summoner.Id, out var pushed), "소환사 뷰에 AI 상태를 민 적이 없다");
-            Assert.AreEqual(Wassup.UnitAi.DefenderAiState.Sustaining, pushed, "뷰에 민 상태 = 유지중");
+            Assert.AreEqual(Somnia.Battle.UnitAi.DefenderAiState.Sustaining, pushed, "뷰에 민 상태 = 유지중");
             // 증상 쪽(「유지 루프가 돈다」): 원샷(소환 모션)이 끝나면 트랙 0 이 저작 루프(`activeAnimation`)로 들어간다.
             Assert.IsTrue(pool.TryGet(summoner.Id, out var view), "소환사 뷰가 없다");
             string loop = null;
             for (int i = 0; i < summonerData.abilities.Count && loop == null; i++)
-                if (summonerData.abilities[i] is Wassup.Data.SummonPatrolAbility sp) loop = sp.activeAnimation;
+                if (summonerData.abilities[i] is Somnia.Battle.Data.SummonPatrolAbility sp) loop = sp.activeAnimation;
             float until = Time.realtimeSinceStartup + 5f;
             while (Time.realtimeSinceStartup < until && view.CurrentAnimationName != loop) yield return null;
             Assert.AreEqual(loop, view.CurrentAnimationName, "유지 루프가 돌아야 한다(옛 SyncSummonerAnimationState)");
@@ -316,13 +316,13 @@ namespace Wassup.Tests.PlayMode.Core
 
             // 방패(살아 있는 방어 본능)를 먼저 걷는다 — 방패 중엔 마음 피해가 버려진다(HeartMeter 백스톱).
             for (int i = world.Units.Count - 1; i >= 0; i--)
-                if (world.Units[i].Faction == Wassup.Skills.Faction.DefenderInstinct)
+                if (world.Units[i].Faction == Somnia.Battle.Skills.Faction.DefenderInstinct)
                     driver.Apply(Command.DebugDestroy(world.Units[i].Id));
             yield return Ticks(driver, 1);
 
             Unit tower = null;
             for (int i = 0; i < world.Units.Count; i++)
-                if (world.Units[i].Faction == Wassup.Skills.Faction.DefenderCore) tower = world.Units[i];
+                if (world.Units[i].Faction == Somnia.Battle.Skills.Faction.DefenderCore) tower = world.Units[i];
             Assert.IsNotNull(tower, "마음 타워가 없다(덱이 마음을 저작하지 않았다)");
             int spawnedBefore = vfx.SpawnedCount;
 
@@ -334,13 +334,13 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.AreEqual(MatchEndReason.StressFull, driver.Match.Clock.EndReason, "첫 붕괴 = 판의 끝");
             int goals = driver.Definition.Map.Goals.Length;
             Assert.AreEqual(spawnedBefore + goals, vfx.SpawnedCount, "마음 칸마다 붕괴 원샷 하나(옛 PlayCoreBurst)");
-            if (driver.StageRoot != null && driver.StageRoot.GetComponentInChildren<Wassup.Core.GoalMarker>() != null)
+            if (driver.StageRoot != null && driver.StageRoot.GetComponentInChildren<Somnia.Battle.Core.GoalMarker>() != null)
                 Assert.AreEqual(goals, vfx.CollapsedMarkerCount, "골 마커가 무너짐 표시로(옛 MarkCollapsed)");
 
             // 슬로모 = 도메인 리스(틱 발행률 축) — 박자 동안 전투 시간 배율이 저작값(옛 coreBurstTimeScale 0.3)이다.
-            var heartHud = UnityEditorLoad<Wassup.Data.BattleView.HeartHudConfig>(
+            var heartHud = UnityEditorLoad<Somnia.Battle.Data.BattleView.HeartHudConfig>(
                 "Assets/_Project/Data/BattleView/HeartHudConfig.asset");
-            float scale = Wassup.Core.TimeControl.TimeManager.Instance.ScaleOf(Wassup.Core.TimeControl.TimeDomain.Battle);
+            float scale = Somnia.Battle.Core.TimeControl.TimeManager.Instance.ScaleOf(Somnia.Battle.Core.TimeControl.TimeDomain.Battle);
             if (heartHud != null)
                 Assert.AreEqual(heartHud.CoreBurstTimeScale, scale, 1e-4f, "붕괴 박자 동안 판 시간 = 저작 배율");
             AssertNoErrors();
@@ -353,20 +353,20 @@ namespace Wassup.Tests.PlayMode.Core
             CoreSceneFixture.BeginErrorWatch();
             BattleDriver driver = null;
             yield return Boot(d => driver = d);
-            var hud = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Hud.CoreScoreHud>();
+            var hud = Object.FindAnyObjectByType<Somnia.Battle.BattleCoreUnity.Hud.CoreScoreHud>();
             Assert.IsNotNull(hud, "씬에 CoreScoreHud 가 없다");
-            var markers = new System.Collections.Generic.List<Wassup.Core.GoalMarker>();
+            var markers = new System.Collections.Generic.List<Somnia.Battle.Core.GoalMarker>();
             CoreGoalMarkers.Collect(driver, markers);
             Assert.Greater(markers.Count, 0, "스테이지에 골 칸 위 GoalMarker 가 없다");
             var world = driver.Match.World;
 
             for (int i = world.Units.Count - 1; i >= 0; i--)
-                if (world.Units[i].Faction == Wassup.Skills.Faction.DefenderInstinct)
+                if (world.Units[i].Faction == Somnia.Battle.Skills.Faction.DefenderInstinct)
                     driver.Apply(Command.DebugDestroy(world.Units[i].Id));
             yield return Ticks(driver, 1);
             Unit tower = null;
             for (int i = 0; i < world.Units.Count; i++)
-                if (world.Units[i].Faction == Wassup.Skills.Faction.DefenderCore) tower = world.Units[i];
+                if (world.Units[i].Faction == Somnia.Battle.Skills.Faction.DefenderCore) tower = world.Units[i];
             Assert.IsNotNull(tower, "마음 타워가 없다");
 
             var heart = driver.Match.Heart;
@@ -375,8 +375,8 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsFalse(heart.Collapsed);
 
             Assert.AreEqual(markers.Count, hud.TintedMarkerCount, "골 마커 전부에 스트레스 틴트를 민다(옛 SetStressTint)");
-            Assert.AreEqual(heart.Stress / Wassup.BattleCore.StressMath.Max, hud.LastMarkerStress01, 1e-4f, "마커의 스트레스 = 마음의 스트레스");
-            var cfg = UnityEditorLoad<Wassup.Data.BattleView.HeartHudConfig>("Assets/_Project/Data/BattleView/HeartHudConfig.asset");
+            Assert.AreEqual(heart.Stress / Somnia.Battle.BattleCore.StressMath.Max, hud.LastMarkerStress01, 1e-4f, "마커의 스트레스 = 마음의 스트레스");
+            var cfg = UnityEditorLoad<Somnia.Battle.Data.BattleView.HeartHudConfig>("Assets/_Project/Data/BattleView/HeartHudConfig.asset");
             Assert.GreaterOrEqual(hud.LastMarkerBeatScale, 1f - cfg.BeatDepth - 1e-4f, "박동 배율은 저작 깊이 안");
             Assert.LessOrEqual(hud.LastMarkerBeatScale, 1f + 1e-4f);
             AssertNoErrors();

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Wassup.BattleCore.Wave
+namespace Somnia.Battle.BattleCore.Wave
 {
     // battle-core-rebuild unit 4 — 웨이브 저작의 **plain 투영**.
     //

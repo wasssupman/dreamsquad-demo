@@ -1,9 +1,9 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild unit 5b — **배치 창.** 옛 `PlacementPhaseView`(571줄)의 후계다.
     //

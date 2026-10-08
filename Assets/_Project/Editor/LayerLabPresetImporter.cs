@@ -4,9 +4,9 @@ using LayerLab.ArtMaker;
 using Spine;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Editor
+namespace Somnia.Battle.Editor
 {
     // unit-parts-appearance 3 — Layer Lab 조립 결과(export 프리팹/프리셋) → 유닛 데이터 임포트.
     //

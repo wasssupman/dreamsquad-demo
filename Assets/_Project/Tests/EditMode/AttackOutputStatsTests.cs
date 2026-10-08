@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // unit-stat-projection Unit 1 — pins the exactly-1 projection invariant.
     public class AttackOutputStatsTests

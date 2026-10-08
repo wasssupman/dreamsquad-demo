@@ -4,13 +4,13 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
-using Faction = Wassup.Skills.Faction;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
+using Faction = Somnia.Battle.Skills.Faction;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild 2026-09-24 드리프트 감사 후속 — **라이브 저작으로 구운 정의표의 형태.**
     //
@@ -37,7 +37,7 @@ namespace Wassup.Tests.EditMode
             public DefenderUnitData[] Defenders;
             public AttackDeck Deck;
             public BonusWaveData Bonus;
-            public Wassup.Core.MapStage Stage;
+            public Somnia.Battle.Core.MapStage Stage;
             public MovementTuningConfig Movement;
             public StackModifierSO[] Stacks;
             public ImbueCapConfig Imbue;
@@ -74,7 +74,7 @@ namespace Wassup.Tests.EditMode
                 Defenders = loadout.defenders,
                 Deck = One<AttackDeck>(block, "_deck"),
                 Bonus = content.bonus,
-                Stage = One<Wassup.Core.MapStage>(block, "_stagePrefab"),
+                Stage = One<Somnia.Battle.Core.MapStage>(block, "_stagePrefab"),
                 Movement = content.movementTuning,
                 Stacks = content.stackModifiers,
                 Imbue = content.imbueCaps,
@@ -122,7 +122,7 @@ namespace Wassup.Tests.EditMode
             {
                 stage.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
                 stage.transform.localScale = Vector3.one;
-                var scan = Wassup.Core.MapStageScanner.Scan(stage, 1f);
+                var scan = Somnia.Battle.Core.MapStageScanner.Scan(stage, 1f);
                 map = DioramaMapBuilder.Assemble(scan, Unity.Collections.Allocator.Persistent);
                 var structures = new List<StructureEntry>(scan.structures);
                 structures.Sort(DioramaMapBuilder.CompareStructureRowMajor);
@@ -223,7 +223,7 @@ namespace Wassup.Tests.EditMode
                 def = MatchDefinitionBuilder.Build(_live.Defenders, new[] { seeker }, 1, ModeDef.Default());
                 at = 0;
             }
-            int mask = Wassup.BattleCore.Combat.TargetDefaults.ResolveEnemy(def.Enemies[at].TargetFactions);
+            int mask = Somnia.Battle.BattleCore.Combat.TargetDefaults.ResolveEnemy(def.Enemies[at].TargetFactions);
             Assert.AreEqual(0, mask & (int)Faction.DefenderUnit, "마음사냥꾼의 대상에 방어유닛 비트가 있다");
         }
 
@@ -250,7 +250,7 @@ namespace Wassup.Tests.EditMode
                     $"패턴 {pd.Id}: 탄이 탄 표 밖이다");
                 Assert.IsTrue(byId.TryGetValue(pd.Id, out var src), $"패턴 {pd.Id} 의 저작을 못 찾았다");
                 Assert.AreEqual(src.selection.ToString(),
-                    ((Wassup.BattleCore.Combat.Emission.PatternSelectionRule)pd.Selection).ToString(),
+                    ((Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule)pd.Selection).ToString(),
                     $"패턴 {pd.Id}: 정의표의 선정 규칙이 저작과 다르다");
             }
         }
@@ -271,7 +271,7 @@ namespace Wassup.Tests.EditMode
                     $"{cat.Units[u].Id}: 다연발 능력의 패턴이 정의표에 안 붙었다");
                 float expected = 0f;
                 foreach (var o in cat.Units[u].Attack.Outputs)
-                    if (o.Kind == Wassup.BattleCore.AttackOutputKind.Damage) expected += o.Magnitude;
+                    if (o.Kind == Somnia.Battle.BattleCore.AttackOutputKind.Damage) expected += o.Magnitude;
                 Assert.Greater(expected, 0f, $"{cat.Units[u].Id}: 연발 유닛의 공격 피해 저작이 0 이다");
 
                 var def = BuildLive(_live, _catalog);

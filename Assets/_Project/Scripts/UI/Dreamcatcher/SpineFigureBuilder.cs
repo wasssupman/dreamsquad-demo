@@ -1,10 +1,10 @@
 using Spine.Unity;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // dreamcatcher-orb-dock unit 2b — SkeletonGraphic 미니어처를 지정 애니(기본 Idle) 마지막
     // 프레임에 동결하는 공용 셋업. 항아리 피규어(JarFigurePile)와 흡수 비행 고스트

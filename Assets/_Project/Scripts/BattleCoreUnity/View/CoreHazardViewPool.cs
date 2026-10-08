@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Data.Authoring;
-using Wassup.BattleCore;
-using Wassup.Data;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 6c — **바닥에 놓이는 것**: 존 장판 + 길막 설치물. 옛 브리지의
     // `SpawnHazardWithVisual`·`SpawnBlockingHazardWithVisual`·`DrainHazardDestroyedEvents` +
@@ -105,13 +105,13 @@ namespace Wassup.BattleCoreUnity.View
             var center = e.SiteFired.Pos;
             // 옛 브리지는 sim 높이 0.05 를 줬지만 `BoardSpace.ToView` 가 sim-Y 를 버리므로 무동작이었다 —
             // 그 값을 view 높이로 «살려» 옮기지 않는다(그림이 달라진다).
-            var view = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(center.x, 0f, center.z));
+            var view = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(new float3(center.x, 0f, center.z));
             var go = Instantiate(so.visualPrefab, view, Quaternion.identity, transform);
             // ⚠ 옛 장판 프리팹은 **자기 시계**(`HazardVisualLifetime`, 실시간 `Time.deltaTime`)를 달고 있다 —
             // 그대로 두면 판이 멈춰도(카드 슬로모·일시정지) 그림이 저작 수명 뒤에 **스스로 파괴**되고,
             // 이 풀의 사전에는 죽은 참조가 남는다(6c Play 스모크에서 실측: 뷰 수 2, 선 오브젝트 0).
             // 그림의 수명 = 코어 개체의 수명이다 — 그 시계를 떼고 소멸 사건만 지운다.
-            var ownClock = go.GetComponent<Wassup.Presentation.HazardVisualLifetime>();
+            var ownClock = go.GetComponent<Somnia.Battle.Presentation.HazardVisualLifetime>();
             if (ownClock != null) DestroyImmediate(ownClock);
             // `Arg` = 반경(칸). 음수 = 존 효과 없음(F18) — 그림은 칸 하나로 선다(옛: 한 변 1).
             float diameterTiles = 2f * CoreDrawRadius.AreaTiles(Mathf.Max(0, e.Arg), e.SiteFired.OriginBody);
@@ -143,7 +143,7 @@ namespace Wassup.BattleCoreUnity.View
                 return;
             }
 
-            var view = (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteFired.Pos);
+            var view = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(e.SiteFired.Pos);
             var go = Instantiate(so.visualPrefab, view, Quaternion.identity, transform);
             go.name = $"CoreBlocker_{so.name}_{e.A.Value}";
             // ⚠ 스폰 VFX 는 **SO 의 것**이다 — 옛 초판은 이것을 프리젠터에 안 넘겨 죽은 저작이 됐다.
@@ -156,7 +156,7 @@ namespace Wassup.BattleCoreUnity.View
         {
             if (!_blockers.TryGetValue(id, out var b)) return;
             _blockers.Remove(id);
-            var at = b.Visual != null ? b.Visual.transform.position : (Vector3)Wassup.Core.BoardSpace.ToView(simPos);
+            var at = b.Visual != null ? b.Visual.transform.position : (Vector3)Somnia.Battle.Core.BoardSpace.ToView(simPos);
             if (destroyed && b.Authoring != null && b.Authoring.destructionVfxPrefab != null)
             {
                 // ⚠ 파괴 VFX 는 **부모 없이** 뜬다(설치물이 곧 사라진다). 스스로 치우지 않으면 판에 영구히

@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // unit-overhead-ui 확장(unit 6) — 오버헤드 스택 아이콘 종류(presentation 계층 심볼).
     // Presentation 은 Battle.StackKind 를 참조하지 않으므로(overhead-ui 계약), `CoreUnitOverheadUiLayer`

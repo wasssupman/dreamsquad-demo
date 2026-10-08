@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // sheet-export-push unit 7 — CostConfig 탭 apply 코어. DcSheetApplier 의 flat 탭
     // (cards/skills/configs)과 같은 id-match 부분갱신 규칙이다: 빈 셀(null)은 기존 값

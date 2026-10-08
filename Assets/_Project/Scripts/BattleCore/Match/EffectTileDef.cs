@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 6b — **판 위의 칸 하나가 그 위에 선 유닛에게 주는 것.**
     //

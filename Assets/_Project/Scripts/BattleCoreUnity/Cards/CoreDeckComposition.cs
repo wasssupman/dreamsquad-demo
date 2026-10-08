@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.Cards
+namespace Somnia.Battle.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 7c — **이 판의 드림캐쳐 덱을 판 밖에서 고른다**(← 옛 `DreamcatcherHandController.BuildDeck`
     // 의 조립 몫 D2·D3·D4 + `SkillLoadoutController.Roll` S1~S5 — `rule-holders.md` 가 둘 다 `MatchDefinitionBuilder` 쪽으로

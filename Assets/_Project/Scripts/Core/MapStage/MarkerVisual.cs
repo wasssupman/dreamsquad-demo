@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 4 — 골/스폰 마커 뷰 훅 공용 헬퍼.
     // TilemapMapView 구조물 프랍 경로(TryGet*VisualAnchor/ApplyPropTint)의 의미 승계:

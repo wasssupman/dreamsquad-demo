@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 8a2 행 5 — **적 저체력 틴트**의 산식(옛 `BattleBridge.EvaluateEnemyHealthTint` `:4084-4099` +
     // 호출부 `:3863`). 규칙이 아니라 그림이다 — 값은 SO(`HealthDisplayStyle.EvaluateTint` 의 그라디언트), 산식만 여기.

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data.BattleView
+namespace Somnia.Battle.Data.BattleView
 {
     // battle-core-rebuild unit 5a — 마음(HUD) 연출 노브. 옛 브리지의 `heart*` 6 ·
     // `coreBurst*` 2 · `goalOverheadHeight` 의 새 주인.
@@ -8,7 +8,7 @@ namespace Wassup.Data.BattleView
     // ⚠ **규칙은 하나도 없다.** 스트레스·붕괴·유출은 코어 `HeartMeter` 의 것이고, 여기 값은
     // 「그 숫자를 화면이 어떻게 뛰게 하나」뿐이다. 박동 속도가 판정을 바꾸는 날이 오면 그
     // 값은 이 자산이 아니라 정의표로 간다.
-    [CreateAssetMenu(menuName = "Wassup/BattleView/Heart HUD Config", fileName = "HeartHudConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/BattleView/Heart HUD Config", fileName = "HeartHudConfig")]
     public sealed class HeartHudConfig : ScriptableObject
     {
         [Header("박동")]

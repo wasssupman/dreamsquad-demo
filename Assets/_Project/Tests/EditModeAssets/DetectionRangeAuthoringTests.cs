@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data.Authoring;
-using Wassup.Data;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // enemy-detection-range unit 1 — **마이그레이션 누락을 잡는 유일한 그물.**
     //
@@ -108,7 +108,7 @@ namespace Wassup.Tests.EditMode
             foreach (var so in AllEnemies())
             {
                 int mask = EnemyTargetDefaults.Resolve((int)so.targetFactions);
-                if ((mask & Wassup.Skills.Factions.AnyUnit) != 0) continue;
+                if ((mask & Somnia.Battle.Skills.Factions.AnyUnit) != 0) continue;
                 Assert.AreEqual(0f, so.detectionRange, 1e-4f,
                     $"'{so.id}' 는 유닛을 안 노리는데 감지가 켜져 있다 — 계약 4 로 후보가 0 이라 " +
                     "사냥 필드 재빌드만 켜지는 순수 낭비다");

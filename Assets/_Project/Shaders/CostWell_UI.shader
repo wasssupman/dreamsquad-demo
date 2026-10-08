@@ -5,7 +5,7 @@
 // 수면 위치를 모른다 → 출렁이는 표면을 만들 수 없고, 스프라이트가 rect 에 맞춰
 // 늘어나 "늘린 이미지" 인상이 남는다. 여기서는 Type.Simple(풀 rect)로 두고
 // _Fill uniform 을 프래그먼트에서 파형과 합쳐 잘라낸다.
-Shader "Wassup/UI/CostWell"
+Shader "Somnia/Battle/UI/CostWell"
 {
     Properties
     {

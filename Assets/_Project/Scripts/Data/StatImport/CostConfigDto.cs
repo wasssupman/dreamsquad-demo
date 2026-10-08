@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // sheet-export-push unit 7 — CostConfig 탭 행. DcConfigDto 형제: nullable 필드 =
     // 부분 갱신(빈 셀은 null 로 역직렬화되어 SO 값을 건드리지 않음), 필드명은 CostConfig

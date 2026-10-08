@@ -1,10 +1,10 @@
 using System;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-attach-range-preview unit 0a — 스킬 광역의 마지막 사각 잔존을 원으로.
     //

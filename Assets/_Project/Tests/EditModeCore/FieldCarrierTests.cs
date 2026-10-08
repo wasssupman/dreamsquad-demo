@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6b — **장 캐리어**(포탈 · 당김 · 아군 버프). 수명과 아군 버프 재발행.
     [TestFixture]

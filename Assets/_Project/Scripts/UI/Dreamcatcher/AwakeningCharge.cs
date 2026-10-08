@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // dreamcatcher-orb-dock unit 8 — 각성치를 «드림캐쳐 몇 회분» 으로 읽는 순수 계산.
     //

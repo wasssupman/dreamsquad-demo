@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Somnia.Battle.Editor.UnitStatImport
 {
     // dreamcatcher-attach-requirement unit 3 — 부착 제한 설정의 조기 검출.
     //
@@ -64,7 +64,7 @@ namespace Wassup.Editor.UnitStatImport
             return warnings;
         }
 
-        [MenuItem("Wassup/Tools/Validate Dreamcatcher Attach Requirements")]
+        [MenuItem("Somnia/Battle/Tools/Validate Dreamcatcher Attach Requirements")]
         public static void ValidateAll()
         {
             var knownIds = CollectKnownUnitIds();

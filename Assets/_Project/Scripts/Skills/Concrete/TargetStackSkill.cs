@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 3b — 이번 공격의 대상 하나에게 스택을 얹는다(잿불물기·서리물기).
     //

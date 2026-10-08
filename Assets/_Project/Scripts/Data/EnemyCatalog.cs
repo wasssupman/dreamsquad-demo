@@ -1,11 +1,11 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // runtime-stat-refresh Unit 1 — id -> AttackUnitData resolution for the
     // runtime stat refresher. Mirrors DefenderCatalog: authoritative list of
     // enemy units referenced by id.
-    [CreateAssetMenu(fileName = "EnemyCatalog", menuName = "Wassup/EnemyCatalog", order = 13)]
+    [CreateAssetMenu(fileName = "EnemyCatalog", menuName = "Somnia/Battle/EnemyCatalog", order = 13)]
     public class EnemyCatalog : ScriptableObject
     {
         public AttackUnitData[] units;

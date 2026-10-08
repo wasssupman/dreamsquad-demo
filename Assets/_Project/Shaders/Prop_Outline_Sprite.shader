@@ -1,9 +1,9 @@
-// Wassup/Prop Outline (Sprite)
+// Somnia/Battle/Prop Outline (Sprite)
 // 모든 배경 프랍(SpriteRenderer 빌보드)용 단일 URP 포워드 셰이더.
 // 텍스처는 SpriteRenderer 가 _MainTex 로 공급. 각 프랍의 현 룩을 유지(Lit/Unlit 토글)하면서
 // 실루엣 바깥에 알파 팽창 외곽선을 합성한다. 베이스는 알파 블렌딩이라 소프트 엣지 보존.
 // docs/spec/prop-outline-shader/0_outline_shader.md
-Shader "Wassup/Prop Outline (Sprite)"
+Shader "Somnia/Battle/Prop Outline (Sprite)"
 {
     Properties
     {

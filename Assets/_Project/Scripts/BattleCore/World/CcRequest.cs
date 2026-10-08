@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 3 — 「이 대상에게 이 군중 제어를 걸어라」.
     //

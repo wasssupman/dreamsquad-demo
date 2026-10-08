@@ -3,7 +3,7 @@
 //   층 인지 마스크 조립 · 경계 clamp · 변위 상한 · 칸 트림 — 전부 plain 값만 받는다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     public static class MovementCellTrim
     {

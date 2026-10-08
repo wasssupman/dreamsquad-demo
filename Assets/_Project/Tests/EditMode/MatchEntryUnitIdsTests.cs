@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // demo-diet unit 0 — 옛 `SquadDrawTests` 의 후계. 편성 id 정리는 `MatchEntry.ResolveUnitIds` 로 옮겨 왔다:
     // 빈 칸 제거 · 중복 제거 · 순서 유지 · 7칸 상한 · 난수 없음(저장 편성은 판마다 같아야 한다 — 사용자 결정).

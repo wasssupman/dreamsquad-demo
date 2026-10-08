@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Wave;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Wave;
 using Random = Unity.Mathematics.Random;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 4 — 웨이브 생성기 이식.
     //

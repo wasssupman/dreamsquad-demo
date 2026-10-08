@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // skill-layer-migration unit 0 — 채찍질. 자장가와 **대칭**인 스킬이다:
     // 같은 반경 선별인데 대상이 반대편이 아니라 같은 편이다.

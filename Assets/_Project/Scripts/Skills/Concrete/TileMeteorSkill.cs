@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 7d — **메테오.** 지정한 칸에 예고 후 떨어진다.
     //

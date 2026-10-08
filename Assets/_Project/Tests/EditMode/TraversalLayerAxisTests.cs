@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // traversal-layers unit 2 — 유닛 통행 층 축.
     //

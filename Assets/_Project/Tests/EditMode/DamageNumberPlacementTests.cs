@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.BattleCoreUnity.View;
+using Somnia.Battle.BattleCoreUnity.View;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // damage-number-visual-upgrade unit 0 — 겹침 방지 슬롯 탐색 순수 함수 회귀.
     // 결정론(RNG/시간 미사용) + 위쪽 편향 + 가장 가까운 빈 셀 계약을 고정한다.

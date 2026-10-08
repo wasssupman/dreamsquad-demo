@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // fluid-paint-mixing unit 0 — 유체 솔버의 아키텍처-blind 순수 계산.
     // CalcResolution 은 원본 WebGL getResolution 이식: 짧은 변=target, 긴 변=round(target×정규화aspect),

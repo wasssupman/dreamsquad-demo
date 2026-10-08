@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 4 — **마음.**
     //

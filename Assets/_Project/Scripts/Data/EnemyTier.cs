@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // elite-enemy-tier unit 0 — 적의 **등급** 축. 값이 곧 직렬화 계약이다(int) — append-only.
     //

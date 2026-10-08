@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 엔진 없이 판을 돌리는 러너.
     //

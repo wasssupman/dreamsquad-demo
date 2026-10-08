@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     // battle-core-rebuild unit 1 → 5a — **시간과 문(門)만** 갖는 Unity 층(UML §6).
     //
@@ -53,7 +53,7 @@ namespace Wassup.BattleCoreUnity
         [Tooltip("기본 맵 풀(모드 `mapPool` 이 비었을 때). 맵·덱·플랜이 같은 인덱스로 잠긴다. 비우면 `_stagePrefab`.")]
         [SerializeField] private MapStagePool _mapPool;
         [Tooltip("맵 풀이 비었을 때만 쓰는 스테이지 프리팹(에디터·테스트 고정구). 인스턴스가 곧 비주얼이고 격자·거점의 정본이다.")]
-        [SerializeField] private Wassup.Core.MapStage _stagePrefab;
+        [SerializeField] private Somnia.Battle.Core.MapStage _stagePrefab;
         [Tooltip("디버그 고정 맵 시드(옛 브리지 `fixedMapSeed`). 0 = 끔 → 서버 토너먼트 시드 → 0번.")]
         [SerializeField] private int _fixedMapSeed;
 
@@ -79,7 +79,7 @@ namespace Wassup.BattleCoreUnity
         private float _accumulator;
         private bool _paused;
 
-        private Wassup.Core.MapStage _stageInstance;
+        private Somnia.Battle.Core.MapStage _stageInstance;
         private GeneratedMap _map;
         private readonly List<StructureEntry> _stageStructures = new List<StructureEntry>();
         private AttackUnitData[] _enemyAssets = Array.Empty<AttackUnitData>();
@@ -131,7 +131,7 @@ namespace Wassup.BattleCoreUnity
         public Transform BoardPlane => _boardPlane != null ? _boardPlane.Plane : null;
 
         /// <summary>이 판에 선 스테이지 인스턴스. 스테이지가 소유한 것(포스트 볼륨)을 찾는 입구.</summary>
-        public Wassup.Core.MapStage StageRoot => _stageInstance;
+        public Somnia.Battle.Core.MapStage StageRoot => _stageInstance;
 
         // ── 저작 자산 되찾기 ─────────────────────────────────────────────────
         // 정의표는 plain 이라 스켈레톤·시트·프리팹을 모른다(계약 6). 그런데 뷰는 그것이 있어야
@@ -174,7 +174,7 @@ namespace Wassup.BattleCoreUnity
         public event Action<BattleDriver> DeckLocked;
 
         /// <summary>판이 끝났다 — 성적은 사건이 온 그 자리에서 받아 값으로 넘긴다. 옛 `CoreMatchOutcomePresenter.Submit` 의 자리.</summary>
-        public event Action<BattleDriver, Wassup.BattleCore.Goals.MatchOutcome> MatchFinished;
+        public event Action<BattleDriver, Somnia.Battle.BattleCore.Goals.MatchOutcome> MatchFinished;
 
         /// <summary>제출 전에 떠났다(0점 마감은 구독자 몫). 옛 `AbandonAndLeave` 의 자리.</summary>
         public event Action<BattleDriver> MatchAbandoned;
@@ -206,9 +206,9 @@ namespace Wassup.BattleCoreUnity
         /// <summary>판 위의 개체 전부. **읽기 전용**이다 — 뷰가 고치면 그것이 규칙이 된다.</summary>
         public IReadOnlyList<Unit> Units => _match != null ? _match.World.Units : Array.Empty<Unit>();
 
-        public IReadOnlyList<Wassup.BattleCore.Combat.Projectile.Projectile> Projectiles
+        public IReadOnlyList<Somnia.Battle.BattleCore.Combat.Projectile.Projectile> Projectiles
             => _match != null ? _match.World.Projectiles
-                              : Array.Empty<Wassup.BattleCore.Combat.Projectile.Projectile>();
+                              : Array.Empty<Somnia.Battle.BattleCore.Combat.Projectile.Projectile>();
 
         /// <summary>
         /// 그 개체가 아직 판 위에 있나. **뷰의 자가 치유용**이지 정상 경로가 아니다 —
@@ -262,7 +262,7 @@ namespace Wassup.BattleCoreUnity
             // battle-content-finish unit 4 — 런타임 머티리얼 원본은 SO 참조로 온다(`Resources` 없음). 콘텐츠가 없는 드라이버(테스트가
             // `AddComponent` 로 세운 것)는 이미 꽂힌 묶음을 지우지 않는다 — 콘텐츠 없음은 `Begin` 이 크게 말한다.
             if (_content != null)
-                Wassup.Rendering.RuntimeMaterialFactory.Configure(_content.runtimeMaterials);
+                Somnia.Battle.Rendering.RuntimeMaterialFactory.Configure(_content.runtimeMaterials);
         }
 
         private void Start()
@@ -516,7 +516,7 @@ namespace Wassup.BattleCoreUnity
         //
         // 옛 브리지의 맵 빌드에서 **규칙에 필요한 것만** 옮겼다. 안 옮긴 것은 5a 의
         // 「이식 제외」 표에 있다(맵 풀 선택·타일맵 페인팅·테마·카메라 bounds push).
-        private bool BuildStage(Wassup.Core.MapStage stagePrefab)
+        private bool BuildStage(Somnia.Battle.Core.MapStage stagePrefab)
         {
             TeardownStage();
 
@@ -536,14 +536,14 @@ namespace Wassup.BattleCoreUnity
 
             try
             {
-                var scan = Wassup.Core.MapStageScanner.Scan(_stageInstance, _tileSize);
+                var scan = Somnia.Battle.Core.MapStageScanner.Scan(_stageInstance, _tileSize);
                 _map = DioramaMapBuilder.Assemble(scan, Unity.Collections.Allocator.Persistent);
                 _stageStructures.Clear();
                 _stageStructures.AddRange(scan.structures);
                 // 빌더와 같은 (y, x) 사전순 — 거점 인덱스가 저작 파일 순서에 흔들리지 않게.
                 _stageStructures.Sort(DioramaMapBuilder.CompareStructureRowMajor);
             }
-            catch (Wassup.Data.MapGrid.MapGenerationFailedException ex)
+            catch (Somnia.Battle.Data.MapGrid.MapGenerationFailedException ex)
             {
                 Debug.LogError($"[BattleDriver] 스테이지 조립 실패 — {ex.Message}", this);
                 TeardownStage();

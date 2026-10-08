@@ -4,11 +4,11 @@ using System.Text;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // unified-effect-layer unit 5 — **유닛 능력 · 악몽을 구운 규칙 줄이 굳힌 파일과 같다**(카드는 `CardBakeSnapshotTests` 가 잰다).
     //

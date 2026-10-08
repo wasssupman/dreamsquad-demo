@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // skill-layer-migration unit 1 — 발사 명세 스킬의 도메인 계약.
     //

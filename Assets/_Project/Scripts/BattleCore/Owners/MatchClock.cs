@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1·4 — **종료 통로와 국면의 소유자.**
     //

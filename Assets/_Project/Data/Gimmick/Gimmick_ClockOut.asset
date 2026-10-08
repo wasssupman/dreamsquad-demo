@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3cea00f6c7009a04d929174d8f68a976, type: 3}
   m_Name: Gimmick_ClockOut
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ClockOutGimmickData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.ClockOutGimmickData
   gimmickId: G3_ClockOut
   displayName: "\uC9D1\uC5D0 \uAC00\uB3C4 \uB418\uB098\uC694?"
   description: "\uBC30\uCE58\uB41C \uC720\uB2DB\uC774 \uC4F0\uB7EC\uC9C0\uBA74 \uADF8

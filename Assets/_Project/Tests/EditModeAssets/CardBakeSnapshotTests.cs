@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // battle-core-rebuild unit 7e ② — **카드를 구운 결과가 굳힌 파일과 같다.**
     //
@@ -17,12 +17,12 @@ namespace Wassup.Tests.EditModeAssets
     // 굽기는 카드만 싣는다(`CardDefinitionBuilder.Fill` — `CardBakeTests` 와 같은 경로). 판 저작(방어유닛 · 덱)을 같이 구우면
     // 카드와 무관한 탄이 늘 때 줄 번호가 밀려 스냅샷이 흔들린다.
     //
-    // ⚠ **테스트는 파일을 쓰지 않는다.** 의도한 변경이면 `Wassup/BattleCore/Debug/카드 스냅샷 갱신` 메뉴로 갱신하고
+    // ⚠ **테스트는 파일을 쓰지 않는다.** 의도한 변경이면 `Somnia/Battle/BattleCore/Debug/카드 스냅샷 갱신` 메뉴로 갱신하고
     // 파일 diff 를 같은 커밋에 싣는다(메뉴 = `Editor/BattleCore/CoreCardSnapshotMenu.cs` — 굽기 규칙이 이 파일과 같다).
     public class CardBakeSnapshotTests
     {
         public const string SnapshotPath = "Assets/_Project/Tests/EditModeAssets/Fixtures/card_bake_snapshot.txt";
-        public const string Header = "# battle-core-rebuild 7e — 카드 굽기 스냅샷. 손으로 고치지 말 것: Wassup/BattleCore/Debug/카드 스냅샷 갱신\n";
+        public const string Header = "# battle-core-rebuild 7e — 카드 굽기 스냅샷. 손으로 고치지 말 것: Somnia/Battle/BattleCore/Debug/카드 스냅샷 갱신\n";
 
         private static AwakeningConfig Awakening()
         {

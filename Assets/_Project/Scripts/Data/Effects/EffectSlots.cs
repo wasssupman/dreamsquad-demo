@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using Wassup.BattleCore.Trigger;
-using Wassup.Data.Authoring;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Data.Authoring;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     /// <summary>효과 값의 뜻 이름 칸 하나(`EffectValues` 의 스칼라 칸 · 「칸 없음」 포함).</summary>
     public enum EffectSlot : byte

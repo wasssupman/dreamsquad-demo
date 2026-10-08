@@ -2,13 +2,13 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.UI;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI;
 
-namespace Wassup.BattleCoreUnity.Cards
+namespace Somnia.Battle.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 7c — **손패 카드 한 장의 제스처.** 옛 `DreamcatcherCardDragSlot`(852줄)의 이식이다(슬롯이 곧 드래그
     // 원천 — `DefenderDragSlot` 패턴). 카드는 어느 조준에서도 **손패에 남고 화살표가 겨눈다**(active-dreamcatcher-tile-aim 1).
@@ -496,7 +496,7 @@ namespace Wassup.BattleCoreUnity.Cards
                 _view.Overlay?.ShowAimCells(_portalCells);
                 return;
             }
-            float radius = new RangeSpec(RangeShape.Circle, tileRange, Wassup.Skills.RangeMetric.CellArea).RadiusWithOrigin(0f);
+            float radius = new RangeSpec(RangeShape.Circle, tileRange, Somnia.Battle.Skills.RangeMetric.CellArea).RadiusWithOrigin(0f);
             _view.Overlay?.ShowAimRing(_view.Driver.Match.Map.CenterOf(cell), radius);
         }
 

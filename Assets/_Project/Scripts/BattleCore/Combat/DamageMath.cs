@@ -7,7 +7,7 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Combat
+namespace Somnia.Battle.BattleCore.Combat
 {
     // 「이 처치는 누구의 것인가」.
     //
@@ -102,7 +102,7 @@ namespace Wassup.BattleCore.Combat
         /// </summary>
         public static bool IsInRadius(int2 candidateCell, int2 centerCell, int tileRange,
                                       float targetBodyRadiusTiles = 0f)
-            => Wassup.Skills.SkillMath.ReachFromCell(
+            => Somnia.Battle.Skills.SkillMath.ReachFromCell(
                    candidateCell.x - centerCell.x, candidateCell.y - centerCell.y,
                    tileRange, targetBodyRadiusTiles);
     }

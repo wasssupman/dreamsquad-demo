@@ -1,11 +1,11 @@
 using NUnit.Framework;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 1 — 골든 2종.
     //
-    // ⚠ **정본 베이커는 Unity 메뉴**(`Wassup/BattleCore/Golden/Bake Missing`)다.
+    // ⚠ **정본 베이커는 Unity 메뉴**(`Somnia/Battle/BattleCore/Golden/Bake Missing`)다.
     // 이 테스트가 파일이 없을 때 구워 주는 것은 헤드리스 lane 이 첫 실행에서 스스로
     // 설 수 있게 하기 위한 **부트스트랩**일 뿐이다. 이미 있는 골든은 절대 덮지 않는다 —
     // 덮으면 그 시나리오가 지키던 회귀 감시가 그 자리에서 무효가 된다.
@@ -23,7 +23,7 @@ namespace Wassup.Tests.EditMode.Core
         // 평가한다(`a*a-1` 이 .NET 9 에선 2⁻¹¹, Mono 에선 2⁻¹¹+2⁻²⁴ · 곱 연쇄도 1 ulp 갈린다).
         // 그래서 같은 코드가 헤드리스 dotnet 에서는 ~300틱 뒤 1 ulp 부터 갈리고, 긴 판
         // (`kill_race_3min`) 은 9,887틱에서 이벤트 순서까지 갈린다. 결정론 계약은 **같은
-        // 런타임 안**의 것이고(계약 5), 골든은 Unity 에서 굽는다(`Wassup/BattleCore/Golden`).
+        // 런타임 안**의 것이고(계약 5), 골든은 Unity 에서 굽는다(`Somnia/Battle/BattleCore/Golden`).
         // 헤드리스 lane 은 이 카테고리를 뺀다(`BattleCore.Tests.csproj` 의 VSTestTestCaseFilter).
         [Category("Golden")]
         [TestCase("empty_board")]

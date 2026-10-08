@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6b — **존 장판.** 판 위에 깔려 밟은 대상에게 효과를 뿜는 개체.
     //

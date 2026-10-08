@@ -2,10 +2,10 @@
 // 이식 시 바뀐 것: `NativeArray`/`NativeList`/`Allocator.Temp` → 재사용 스크래치(`PatrolScratch`).
 // 규칙(구역 마스크 자가 0 초기화 · N-소스 BFS · cardinal 하강 · 접근 보정)은 그대로다.
 using Unity.Mathematics;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // 거점 순찰 아군의 이동 방향.
     //

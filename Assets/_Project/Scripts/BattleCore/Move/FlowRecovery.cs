@@ -1,9 +1,9 @@
 // salvaged from Assets/_Project/Scripts/Battle/Movement/FlowRecovery.cs (battle-core-rebuild unit 2)
 // 이식 시 바뀐 것: `NativeArray<int>` → `int[]`.
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // 방향이 없는 칸(흐름 0)에 밀려났을 때의 복구 방향.
     //

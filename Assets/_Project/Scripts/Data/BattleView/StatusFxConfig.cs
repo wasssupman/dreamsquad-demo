@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data.BattleView
+namespace Somnia.Battle.Data.BattleView
 {
     // battle-core-rebuild unit 6c — **몸에 붙는 상태의 그림**. 새 Unity 층의 상태 표식·오라·
     // 오버헤드 스택 아이콘이 읽는 한 자리다.
@@ -14,7 +14,7 @@ namespace Wassup.Data.BattleView
     //
     // 한 몸에 표식이 여럿일 때 **무엇이 이겨 보이나**는 여기 없다. 옛 코드의 암묵 순서를 베끼지
     // 않고 사용자 플레이에서 확인한 뒤 데이터로 굳힌다(6c 이식 제외 · 사용자 결정 기록).
-    [CreateAssetMenu(menuName = "Wassup/BattleView/Status FX Config", fileName = "StatusFxConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/BattleView/Status FX Config", fileName = "StatusFxConfig")]
     public sealed class StatusFxConfig : ScriptableObject
     {
         [Tooltip("상태 종류 → 표식 프리팹·오프셋·빌보드. 비어 있으면 표식이 안 뜬다(경고 1회).")]

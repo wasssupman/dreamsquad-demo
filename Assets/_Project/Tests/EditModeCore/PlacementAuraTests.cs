@@ -1,13 +1,13 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
-using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCardFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7b — 배치 오라는 **바인딩 둘**이다(정정 3 · H6). 회수가 비대칭이라 한 줄로 못 접는다.
     [TestFixture]

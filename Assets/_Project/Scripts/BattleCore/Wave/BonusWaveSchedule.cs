@@ -1,6 +1,6 @@
 // salvaged from Assets/_Project/Scripts/Data/BonusWaveSchedule.cs (battle-core-rebuild unit 4)
 // 이식 시 바뀐 것: 네임스페이스와 필드 표기(파스칼)뿐. 산식은 동일하다.
-namespace Wassup.BattleCore.Wave
+namespace Somnia.Battle.BattleCore.Wave
 {
     // 보너스 웨이브의 배분·타임라인. **순수 함수**다.
     //

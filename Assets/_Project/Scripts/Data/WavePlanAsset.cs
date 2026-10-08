@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // wave-authoring-test-mode unit 0 (rev unit 6) — 에디터에서 직접 작성하는 웨이브 플랜.
     // 각 웨이브 = durationSec(N) 구간이고, 스폰은 웨이브 상대 시각(0~N)으로 그룹마다 배치한다.
     // 웨이브들은 순차로 이어붙는다(웨이브 i 절대 시작 = 앞 웨이브 durationSec 합).
-    [CreateAssetMenu(fileName = "WavePlan", menuName = "Wassup/WavePlan", order = 12)]
+    [CreateAssetMenu(fileName = "WavePlan", menuName = "Somnia/Battle/WavePlan", order = 12)]
     public class WavePlanAsset : ScriptableObject
     {
         public string displayName = "Test Plan";

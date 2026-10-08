@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 7d — **회오리·포탈 장의 그림.** 6c 가 「까는 자가 없다」로 미룬 풀이다(6c 「아직 안 보이는
     // 것」). 까는 자는 액티브 카드(7b — `PullFieldSkill`·`PortalSkill` → `IntentApplier.SpawnField`)이고, 이 풀은
@@ -80,7 +80,7 @@ namespace Wassup.BattleCoreUnity.View
             if (_tornadoPrefab == null) { Missing(nameof(_tornadoPrefab)); return null; }
             float tile = _driver != null ? _driver.TileSize : 1f;
             float radiusWorld = CoreDrawRadius.AreaTiles(e.AreaTiles, e.SiteFired.OriginBody) * tile;
-            var center = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(e.SiteFired.Pos.x, 0f, e.SiteFired.Pos.z));
+            var center = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(new float3(e.SiteFired.Pos.x, 0f, e.SiteFired.Pos.z));
             var pos = new Vector3(center.x, center.y + 0.05f, center.z);
             var go = Instantiate(_tornadoPrefab, pos, Quaternion.identity, transform);
             if (FindPixPlaysVfx(go).Length > 0)
@@ -93,8 +93,8 @@ namespace Wassup.BattleCoreUnity.View
         private GameObject SpawnPortal(CoreEvent e)
         {
             if (_portalPrefab == null) { Missing(nameof(_portalPrefab)); return null; }
-            var entry = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(e.SiteFired.Pos.x, 0f, e.SiteFired.Pos.z));
-            var exit = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(e.SiteTarget.Pos.x, 0f, e.SiteTarget.Pos.z));
+            var entry = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(new float3(e.SiteFired.Pos.x, 0f, e.SiteFired.Pos.z));
+            var exit = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(new float3(e.SiteTarget.Pos.x, 0f, e.SiteTarget.Pos.z));
             var root = Instantiate(_portalPrefab, Vector3.zero, Quaternion.identity, transform);
             var entryT = root.transform.Find("Entry");
             var exitT = root.transform.Find("Exit");

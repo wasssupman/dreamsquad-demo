@@ -1,9 +1,9 @@
 using System;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // battle-core-rebuild unit 6a2 — **한 발이 나를 수 있는 세기의 상한**(사용자 결정 ②).
     //
@@ -17,7 +17,7 @@ namespace Wassup.Data
     //
     // ⚠ **뷰 설정이 아니다.** 화면이 아니라 판이 읽는 값이라 `Data/BattleView/` 가 아니라
     // `Data/Config/` 에 있고, 소비처는 `MatchDefinitionBuilder` 다(`configHash` 에 든다).
-    [CreateAssetMenu(menuName = "Wassup/Imbue Cap Config", fileName = "ImbueCapConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Imbue Cap Config", fileName = "ImbueCapConfig")]
     public sealed class ImbueCapConfig : ScriptableObject
     {
         [Serializable]

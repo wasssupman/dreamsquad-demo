@@ -3,7 +3,7 @@
 // 누적 순회가 `SimEntityId` 오름차순으로 닫혔다(M27 · 계약 5). 그 문장을 아래로 옮겨 적었다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // 에이전트 간 겹침 해소.
     //

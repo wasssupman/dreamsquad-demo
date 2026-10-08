@@ -3,7 +3,7 @@ using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Wassup.SheetSync
+namespace Somnia.Battle.SheetSync
 {
     // 이식 가능한 sheet-sync 코어. 게임의 Core/Api/ApiEnvelope 와 동일 wire shape
     // ({success, data, errorDetail}) 를 읽지만 그 타입에 의존하지 않는다 — ApiEnvelope 는

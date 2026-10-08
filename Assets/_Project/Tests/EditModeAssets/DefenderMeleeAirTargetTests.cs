@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // 근접 유닛 공중 타격(2026-09-03 사용자 보고) — 시점 특정: 8/17 `47d24c15` 가 전 방어유닛
     // 24종을 Path → Path|Air 로 일괄 개방하며 **근접까지 포함**시켰고(당시 결정 기록 있음),
@@ -23,7 +23,7 @@ namespace Wassup.Tests.EditModeAssets
             foreach (var guid in AssetDatabase.FindAssets("t:DefenderUnitData", new[] { Root }))
             {
                 var u = AssetDatabase.LoadAssetAtPath<DefenderUnitData>(AssetDatabase.GUIDToAssetPath(guid));
-                if (u == null || !Wassup.Tests.EditMode.CatalogPlacementLayerTests.IsMelee(u)) continue;   // 사거리 ≤1 또는 파이터(2026-09-12)
+                if (u == null || !Somnia.Battle.Tests.EditMode.CatalogPlacementLayerTests.IsMelee(u)) continue;   // 사거리 ≤1 또는 파이터(2026-09-12)
                 melee++;
                 if ((u.EffectiveAttackTargetLayers & PlacementLayer.Air) != 0)
                     offenders.Append(u.id).Append(' ');

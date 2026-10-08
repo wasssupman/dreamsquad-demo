@@ -1,11 +1,11 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // fluid-paint-mixing unit 0 — 축소 유체 솔버 튜닝 파라미터 (PavelDoGreat/WebGL-Fluid-Simulation 이식, MIT).
     // 하드코딩 금지(제약 6): 해상도·pressure 반복·dissipation·curl·splat·색 팔레트·앰비언트 cadence 전부 여기서.
     // FluidPaintSim(Presentation, unit 2)이 읽어 Graphics.Blit 패스 체인을 구성한다. 순수 데이터 — 로직 없음.
-    [CreateAssetMenu(fileName = "FluidSimConfig", menuName = "Wassup/FluidSimConfig", order = 30)]
+    [CreateAssetMenu(fileName = "FluidSimConfig", menuName = "Somnia/Battle/FluidSimConfig", order = 30)]
     public class FluidSimConfig : ScriptableObject
     {
         [Header("Resolution (짧은 변 기준; 실제 w/h 는 화면비로 산출)")]

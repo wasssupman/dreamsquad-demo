@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 4 — 마음과 점수.
     [TestFixture]

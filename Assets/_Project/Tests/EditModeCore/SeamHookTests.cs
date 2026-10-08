@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6b2 — seam 번호와 `[Periodic]` 호출부.
     [TestFixture]

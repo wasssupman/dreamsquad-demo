@@ -1,4 +1,4 @@
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // summon-patrol-defender unit 10 — idle 변형 선택. 아키텍처 중립이라 순수 함수로 둔다
     // (제약 10 판정 기준: 분기가 있고 회귀 테스트 가치가 있다).

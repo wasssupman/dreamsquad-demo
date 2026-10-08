@@ -1,8 +1,8 @@
 // salvaged from Assets/_Project/Scripts/Battle/Effects/HeatMath.cs (battle-core-rebuild unit 6b2)
-// 이식 시 바뀐 것: 네임스페이스만(`Wassup.Battle.Effects` → `Wassup.BattleCore.Effects`). 산식은 **그대로**다.
+// 이식 시 바뀐 것: 네임스페이스만(`Somnia.Battle.Battle.Effects` → `Somnia.Battle.BattleCore.Effects`). 산식은 **그대로**다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // 온천 "열기" 회복 ↔ 손실 반전 산식(F10).
     // 아키텍처 무관 순수 함수: plain 값 in → 부호 있는 체력 델타 out. 호출 측은 **부호만 보고**

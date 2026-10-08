@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // heart-stress-axis unit 1 rev 2 — 스트레스 = 심박수.
     //

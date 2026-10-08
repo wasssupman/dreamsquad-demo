@@ -4,7 +4,7 @@ using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // outgame-login-gate Unit 0 → demo-diet unit 0 (Data/StatImport 로 이동 — 남은 소비처는 시트 임포터뿐) — the game server's common response format
     // {success, data, errorDetail}, one definition for every consumer

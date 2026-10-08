@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6b2 — **사직서 누적과 임계.** 유닛이 줍지 않는다 — 판 위 장수가 전부다.
     [TestFixture]

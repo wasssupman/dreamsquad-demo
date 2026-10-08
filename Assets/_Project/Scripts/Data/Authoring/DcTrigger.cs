@@ -1,5 +1,5 @@
-using Wassup.BattleCore.Trigger;
-namespace Wassup.Data.Authoring
+using Somnia.Battle.BattleCore.Trigger;
+namespace Somnia.Battle.Data.Authoring
 {
     // dreamcatcher-unit-trigger Unit 2 — pure counting contract for triggered
     // card slots. Kept as a static pure function so the N-th-resolve semantics

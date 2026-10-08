@@ -1,9 +1,9 @@
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7d — **코어가 직접 실행하는 효과** 하나.
     //
     // 규칙(`Binding`)의 레일 — 감지 · 카운터 · 줄 세우기 · 수명 · 떨어짐 — 은 스킬과 똑같이 탄다. 다른 것은
-    // 실행자뿐이다: `Wassup.Skills` 의 의도 어휘(`SimIntent`)에 없는 일(열기 한 걸음 · 피로 요청 · 픽업 놓기 ·
+    // 실행자뿐이다: `Somnia.Battle.Skills` 의 의도 어휘(`SimIntent`)에 없는 일(열기 한 걸음 · 피로 요청 · 픽업 놓기 ·
     // 사직서 떨어뜨리기)은 `ISkill` 로 못 싣고, 그 어셈블리는 **무변이 계약**이다(7a — git diff 0).
     //
     // 닫힌 축이다(제약 8 — 시즌 기믹 4종, `GimmickKind`). 구현체는 전부 `GimmickBindings` 안에 있고, 새 구현체를

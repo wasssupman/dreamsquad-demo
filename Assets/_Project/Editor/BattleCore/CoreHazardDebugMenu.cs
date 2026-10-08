@@ -4,11 +4,11 @@ using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCoreUnity;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 6c — **「여기에 물건을 놓는다」** 도구. 옛 `HazardDebugMenu`(존) +
     // `BlockingHazardDebugMenu`(길막)(도구 처분표 6·7행)를 하나로 통합 재작성했다.
@@ -27,7 +27,7 @@ namespace Wassup.EditorTools.BattleCore
     // 같은 형태). 판정은 **코어의 그 함수를 부른다** — 도구가 자를 새로 만들면 도구가 거짓말한다(제약 13).
     public static class CoreHazardDebugMenu
     {
-        private const string Root = "Wassup/BattleCore/Debug/";
+        private const string Root = "Somnia/Battle/BattleCore/Debug/";
 
         [MenuItem(Root + "존 장판 깔기 (0번 줄)")] private static void Zone0() => SpawnZone(0);
         [MenuItem(Root + "존 장판 깔기 (1번 줄)")] private static void Zone1() => SpawnZone(1);
@@ -162,7 +162,7 @@ namespace Wassup.EditorTools.BattleCore
 
             // ⑶ 반경 — 제약 13 의 **그 진입점**(자리형: 칸 반폭 + 대상 몸).
             bool reach = h.RadiusTiles >= 0
-                && Wassup.Skills.SkillMath.ReachFromCell(dx, dz, h.RadiusTiles, u.HitRadius);
+                && Somnia.Battle.Skills.SkillMath.ReachFromCell(dx, dz, h.RadiusTiles, u.HitRadius);
             string radius = h.RadiusTiles < 0 ? "존 없음(F18)" : $"{dist:0.00}/{(reach ? "O" : "X")}";
 
             // ⑷ 병합 키 — 존이 건 것이 들어간 **슬롯**을 보여 준다. 감속은 존 칸(`SlotKind.Zone`) 하나를
@@ -171,11 +171,11 @@ namespace Wassup.EditorTools.BattleCore
             var merge = new StringBuilder();
             var slots = u.Modifiers.Slots;
             for (int i = 0; i < slots.Count; i++)
-                if (slots[i].Key.Tag.Kind == Wassup.BattleCore.Effects.SlotKind.Zone)
+                if (slots[i].Key.Tag.Kind == Somnia.Battle.BattleCore.Effects.SlotKind.Zone)
                     merge.Append($"[존칸 {slots[i].Key.Stat}×{slots[i].Magnitude:0.##} 출처{slots[i].Key.Source} {slots[i].Remaining:0.0}s]");
             var dots = u.Dot.Slots;
             for (int i = 0; i < dots.Count; i++)
-                if (dots[i].Origin == Wassup.BattleCore.Effects.DotOrigin.Zone)
+                if (dots[i].Origin == Somnia.Battle.BattleCore.Effects.DotOrigin.Zone)
                     merge.Append($"[지속피해 {dots[i].Element} {dots[i].Scalar:0.##}]");
             if (merge.Length == 0) merge.Append("-");
 
@@ -188,13 +188,13 @@ namespace Wassup.EditorTools.BattleCore
         {
             var map = driver.Match.Map;
             var cam = Camera.main;
-            if (cam != null && Mouse.current != null && Wassup.Core.BoardSpace.IsConfigured)
+            if (cam != null && Mouse.current != null && Somnia.Battle.Core.BoardSpace.IsConfigured)
             {
                 var ray = cam.ScreenPointToRay(Mouse.current.position.ReadValue());
-                var plane = Wassup.Core.BoardSpace.RaycastPlane();
+                var plane = Somnia.Battle.Core.BoardSpace.RaycastPlane();
                 if (plane.Raycast(ray, out float d))
                 {
-                    var sim = Wassup.Core.BoardSpace.ToSim(ray.GetPoint(d));
+                    var sim = Somnia.Battle.Core.BoardSpace.ToSim(ray.GetPoint(d));
                     var c = map.CellOf(sim);
                     if (map.InBounds(c)) return c;
                 }

@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Move;
-using Wassup.UnitAi;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Move;
+using Somnia.Battle.UnitAi;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 9 구현 2 — 옛 ECS 감지·이동 테스트가 증언하던 **규칙**을 코어로 옮긴다.
     //
@@ -83,7 +83,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var map = CoreMapFixtures.Open(12, 5, new int2(11, 2));
             var def = Def(map, -1f);
-            def.Enemies[0].TargetFactions = (int)Wassup.Skills.Faction.DefenderCore;   // 유닛을 안 노린다
+            def.Enemies[0].TargetFactions = (int)Somnia.Battle.Skills.Faction.DefenderCore;   // 유닛을 안 노린다
             var m = Begin(def);
             Defender(m, new int2(6, 2));
             var e = Enemy(m, new int2(2, 2));

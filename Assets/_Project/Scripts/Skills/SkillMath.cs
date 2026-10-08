@@ -1,4 +1,4 @@
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 5 — 도메인이 쓰는 순수 계산.
     //

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 4 — **모드가 정하는 판의 틀.**
     //

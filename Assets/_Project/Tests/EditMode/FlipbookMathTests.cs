@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
 // sprite-flipbook-player unit 0 — 프레임 선택 순수 함수 회귀 테스트.
 // 경계(루프 되감기 / 원샷 hold / 프레임 경계 / 0 fps / 빈 배열 / 비정상 elapsed)를 고정한다.

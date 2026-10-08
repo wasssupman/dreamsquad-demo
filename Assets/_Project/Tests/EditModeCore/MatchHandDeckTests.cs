@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 4 — 드림캐쳐의 **자원**(효과는 unit 7).
     [TestFixture]
@@ -15,13 +15,13 @@ namespace Wassup.Tests.EditMode.Core
         private static CardDef[] Cards(MatchDefinition def)
         {
             var cards = new CardDef[12];
-            var attachRule = CoreCardFixtures.CardRule(Wassup.BattleCore.Trigger.TriggerKind.OnKill,
-                                                       Wassup.BattleCore.Trigger.EffectKind.SelfStatBuff);
-            attachRule.Effect.StatKind = (int)Wassup.Skills.SkillStatKind.DamageMul;
+            var attachRule = CoreCardFixtures.CardRule(Somnia.Battle.BattleCore.Trigger.TriggerKind.OnKill,
+                                                       Somnia.Battle.BattleCore.Trigger.EffectKind.SelfStatBuff);
+            attachRule.Effect.StatKind = (int)Somnia.Battle.Skills.SkillStatKind.DamageMul;
             attachRule.Effect.Magnitude = 1f;
             int attachRow = CoreTriggerFixtures.Add(def, attachRule)[0];
-            var activeRule = CoreCardFixtures.CardProbe(Wassup.BattleCore.Trigger.TriggerKind.None,
-                                                        new Wassup.Skills.Concrete.TileStatBurstSkill());
+            var activeRule = CoreCardFixtures.CardProbe(Somnia.Battle.BattleCore.Trigger.TriggerKind.None,
+                                                        new Somnia.Battle.Skills.Concrete.TileStatBurstSkill());
             activeRule.Effect.Magnitude = 1f;
             int activeRow = CoreTriggerFixtures.Add(def, activeRule)[0];
             for (int i = 0; i < 10; i++)
@@ -258,7 +258,7 @@ namespace Wassup.Tests.EditMode.Core
 
             // 적 하나를 잡는다 — 각성 보상 2.
             foreach (var u in match.World.Units)
-                if (u.Faction == Wassup.Skills.Faction.EnemyUnit && !u.Dead)
+                if (u.Faction == Somnia.Battle.Skills.Faction.EnemyUnit && !u.Dead)
                 {
                     u.Inbox.Damage.Add(new DamageEntry { Amount = 99999f, Source = SimEntityId.Match });
                     break;

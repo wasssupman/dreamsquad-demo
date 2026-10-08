@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // directional-attack-shape unit 0 — 공격 판정 도형의 **bake 된** 형태. `AttackState`(Combat) 가 싣고
     // `AttackReach` 가 읽는다. ⚠ 여기(Data)에 사는 이유: ECS 타입을 하나도 안 쓰는 plain struct 이고,

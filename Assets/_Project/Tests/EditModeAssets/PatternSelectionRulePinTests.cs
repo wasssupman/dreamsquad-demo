@@ -1,11 +1,11 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
-using CoreRule = Wassup.BattleCore.Combat.Emission.PatternSelectionRule;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
+using CoreRule = Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 3 결함 — **발사 명세 선정 규칙의 번호가 저작과 어긋났다.**
     //

@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7d — **분열.** 계기 = 피해로 죽음(`OnSlain` — 킬러는 안 본다, 옛 피해 사망 분기 그대로) ·
     // 자리 = 부모 **칸 중심** · 배치각 = 인덱스 결정론 · 자식은 전멸 판정 **앞**에 태어난다(X2 ①).

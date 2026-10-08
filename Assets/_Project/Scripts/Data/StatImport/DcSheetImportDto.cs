@@ -1,7 +1,7 @@
 using Newtonsoft.Json;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // dreamcatcher-sheet-sync unit 2 — JSON contract per
     // docs/spec/dreamcatcher-sheet-sync/0_json_schema_contract.md.

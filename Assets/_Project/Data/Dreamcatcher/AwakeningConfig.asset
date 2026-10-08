@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d79f6095b0cc4794aa96f2c649743a6c, type: 3}
   m_Name: AwakeningConfig
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AwakeningConfig
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.AwakeningConfig
   id: awakening_default
   gaugeMax: 100
   gaugeStart: 20

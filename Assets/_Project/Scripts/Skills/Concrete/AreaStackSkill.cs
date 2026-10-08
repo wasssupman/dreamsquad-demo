@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 2d — 반경 안 상대 전원에게 스택을 도포한다(난도질꾼).
     //

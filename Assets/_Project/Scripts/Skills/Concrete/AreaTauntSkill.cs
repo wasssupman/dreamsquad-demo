@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 1 — 범위 도발. host 반경 안 상대 진영 전원을
     // duration 초 동안 자기에게 붙인다.

@@ -1,7 +1,7 @@
 using System;
-using Wassup.Data.Authoring;
+using Somnia.Battle.Data.Authoring;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     [Serializable]
     public enum AttackOutputKind { Damage, Heal, ApplyStat, ApplyStack }

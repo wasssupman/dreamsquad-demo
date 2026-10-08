@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 2 — 감지·어그로·사냥판의 규칙.
     public class DetectionRulesTests

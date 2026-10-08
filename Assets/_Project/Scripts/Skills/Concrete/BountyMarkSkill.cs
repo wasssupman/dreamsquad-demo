@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 4c — **살찌운 제물.** 악몽 하나에 표식을 찍는다:
     // 잡으면 각성을 더 주고, 대신 그때까지 덜 아프다.

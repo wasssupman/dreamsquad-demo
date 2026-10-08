@@ -1,8 +1,8 @@
 using UnityEditor;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Editor
+namespace Somnia.Battle.Editor
 {
     // sprite-character-preview unit 1 — 맵에 올려놓고 상태를 바꿔가며 눈으로 확인하는 어포던스.
     // 이게 없으면 상태를 전환할 방법이 없어서 프리팹이 사실상 Idle 확인용에 그친다.

@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data.BattleView;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5a — 뷰가 읽는 저작값 묶음.
     //

@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCardFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7b — 인수인계는 바인딩 effect 가 아니라 **퇴근 회수 규칙의 일부**다(표현 불가 2).
     [TestFixture]

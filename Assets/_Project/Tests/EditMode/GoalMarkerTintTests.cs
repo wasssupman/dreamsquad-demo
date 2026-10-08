@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Core;
+using Somnia.Battle.Core;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // map-diorama-stage unit 6 — 골 마커 비주얼이 포탈 프랍(파티클, 머티리얼 _Color = HDR 밝기)이 되면서
     // 스트레스 틴트가 저작 색을 **덮지 않고 곱해야** 한다. 스트레스 0 = 저작 그대로, 1 = 저작 × stressTint.

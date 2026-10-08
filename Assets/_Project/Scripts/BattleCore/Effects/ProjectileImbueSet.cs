@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // battle-core-rebuild unit 6a2 — **그 시전자가 쏘는 모든 탄이 나를 싣는다.**
     //

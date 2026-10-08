@@ -1,8 +1,8 @@
 using NUnit.Framework;
-using Wassup.Data.Authoring;
-using Wassup.UnitAi;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.UnitAi;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // enemy-ai-fsm Unit 1 → defender-autobattle-ai unit 5 — EnemyAi.Evaluate(로직 레이어) 순수 전이 함수.
     // aggro 우선: 가디언 사거리 내 Standoff, 밖 Chasing. 비-aggro: fire 타겟 존재 시 Engaging, 없으면 Marching.

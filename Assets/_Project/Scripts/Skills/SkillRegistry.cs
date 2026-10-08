@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 3 — skillId → concrete.
     //

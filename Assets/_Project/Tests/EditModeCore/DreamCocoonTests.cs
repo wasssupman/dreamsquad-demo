@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7d 구현 13 — **호접몽**: 끝까지 자면 영구 버프, 중간에 맞으면 파탄. 개시는 잠 + 감시 **원자**(S19 ·
     // `IntentApplier.BeginDreamCocoon`). 파탄은 새 중단 사유가 아니라 **피격 기상이 고치를 같이 걷는** 것이다 — 두 문이 갈리면

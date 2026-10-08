@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Core.TimeControl;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 6c — **고속 틱 공격을 지속 빔으로** 번역하는 프리젠터. 옛
     // `Presentation.BeamPresenter`(238줄)의 후계다(키 `Entity` → `SimEntityId`, 해석기 → 유닛 뷰 풀).
@@ -81,7 +81,7 @@ namespace Wassup.BattleCoreUnity.View
 
                 case CoreEventKind.AttackResolved:
                 {
-                    if (((int)e.Faction & Wassup.Skills.Factions.AnyDefender) == 0) return;
+                    if (((int)e.Faction & Somnia.Battle.Skills.Factions.AnyDefender) == 0) return;
                     var data = DefenderData(e.DefIndex);
                     if (data == null || data.beamVfxPrefab == null || e.Amount <= 0f || e.B.IsNone) return;
                     Open(e.A.Value, data.beamVfxPrefab, e.A, e.B, e.Amount * _ttlMargin);
@@ -93,7 +93,7 @@ namespace Wassup.BattleCoreUnity.View
                 // 실은 스킬 연출 번호(`DefIndex`)로 되찾는다(`MatchViewAssets.SkillVfx`), 수명 = 그 조사의 지속(초 — 배틀 시간).
                 case CoreEventKind.SkillVisual:
                 {
-                    if ((Wassup.Skills.SkillVisualKind)e.Arg != Wassup.Skills.SkillVisualKind.Beam || e.B.IsNone || e.Amount <= 0f) return;
+                    if ((Somnia.Battle.Skills.SkillVisualKind)e.Arg != Somnia.Battle.Skills.SkillVisualKind.Beam || e.B.IsNone || e.Amount <= 0f) return;
                     var prefab = _driver != null ? _driver.ViewAssets.SkillVfx(e.DefIndex) : null;
                     if (prefab == null) return;
                     Open(e.B.Value, prefab, e.A, e.B, e.Amount);
@@ -111,7 +111,7 @@ namespace Wassup.BattleCoreUnity.View
             }
         }
 
-        private Wassup.Data.DefenderUnitData DefenderData(int defIndex)
+        private Somnia.Battle.Data.DefenderUnitData DefenderData(int defIndex)
         {
             if (_driver == null || defIndex < 0) return null;
             var list = _driver.DefenderAssets;

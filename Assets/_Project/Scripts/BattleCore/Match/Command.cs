@@ -1,7 +1,7 @@
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 플레이어가 판에 거는 것. 계약 7 의 커맨드 쪽이다.
     //

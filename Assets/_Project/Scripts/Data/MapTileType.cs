@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // Phase 10: mutually exclusive 4종. 한 타일 = 한 역할.
     public enum MapTileType : byte

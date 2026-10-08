@@ -1,10 +1,10 @@
 {
-    "name": "Wassup.Runtime",
-    "rootNamespace": "Wassup",
+    "name": "Somnia.Battle.Runtime",
+    "rootNamespace": "Somnia.Battle",
     "references": [
-        "Wassup.Skills",
-        "Wassup.UnitAi",
-        "Wassup.BattleCore",
+        "Somnia.Battle.Skills",
+        "Somnia.Battle.UnitAi",
+        "Somnia.Battle.BattleCore",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.Collections",

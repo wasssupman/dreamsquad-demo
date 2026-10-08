@@ -1,13 +1,13 @@
 using Unity.Mathematics;
 
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-migration unit 1 — 「어디를 쏘나」를 정하는 순수 규칙.
     //
     // ⚠ **새로 쓴 것이 아니라 옮긴 것이다.** 원본은
     // `Battle/Combat/Projectile/Emission/OnPlaceFireAim.cs` 였고, 규칙·상수·비교
     // 부등호까지 그대로다(`SkillAimTests` 가 그 무회귀를 잡고 있다 — 파일도 같이 개명됐다).
-    // 옮긴 이유는 하나뿐이다: **concrete 가 이 규칙을 호출해야 하는데 `Wassup.Skills`
+    // 옮긴 이유는 하나뿐이다: **concrete 가 이 규칙을 호출해야 하는데 `Somnia.Battle.Skills`
     // 는 Battle 을 참조하지 않는다**(계약 1). 도메인이 쓰는 규칙은 도메인에 산다.
     //
     // 후보 컨테이너가 `NativeArray` → `float2[]` 로 바뀐 것도 같은 이유다 —

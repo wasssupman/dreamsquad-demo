@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: da44bb02b4117934b9e27d8d391d1062, type: 3}
   m_Name: MapStagePool
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MapStagePool
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.MapStagePool
   entries:
   - stage: {fileID: 3160083322633649763, guid: 36b2ec7400e81be42ba793aeb2cb80b2, type: 3}
     deck: {fileID: 11400000, guid: 1abe2cece6714a389e662ab64976a8b2, type: 2}

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     public enum SkillEffectType
     {
@@ -12,7 +12,7 @@ namespace Wassup.Data
         Portal,
     }
 
-    [CreateAssetMenu(fileName = "Skill", menuName = "Wassup/Skill", order = 12)]
+    [CreateAssetMenu(fileName = "Skill", menuName = "Somnia/Battle/Skill", order = 12)]
     public class SkillData : ScriptableObject
     {
         public string id;

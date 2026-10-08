@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 3 — 전투 규칙 테스트의 공용 고정구.
     //

@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
-using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCardFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // skill-data-table unit 2 — **소유자 쪽 결손.** 스킬은 소유자를 묻지 않고, 소유자마다 달라야 하는 값은 그 값의 담당자가 든다.
     //   · 주체 없는 시전(판 시전 · 판 주기 · 표식)의 진영 = 규칙 인스턴스의 시전 진영(`Binding.CastFaction` — 붙인 쪽이 채운다)

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // sprite-flipbook-player unit 1 — 플립북 1개의 고유 속성(프레임·fps·루프).
     // 여러 소비자가 같은 애니메이션을 공유하므로 컴포넌트 직렬화가 아니라 에셋이다.
@@ -10,7 +10,7 @@ namespace Wassup.Data
     //
     // 프레임은 컷 모드(개별 스프라이트 수동 할당)든 통 모드(시트 슬라이스 → 에디터 유틸이 주입)든
     // 결국 임포트된 에셋 참조다. 런타임에 Sprite 를 생성하지 않는다(수명 관리·leak 이 아예 없다).
-    [CreateAssetMenu(menuName = "Wassup/Sprite Flipbook", fileName = "SpriteFlipbook")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Sprite Flipbook", fileName = "SpriteFlipbook")]
     public class SpriteFlipbookData : ScriptableObject
     {
         [Tooltip("재생 순서대로의 프레임. 통 시트는 인스펙터의 '시트에서 채우기' 로 주입한다.")]

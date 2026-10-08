@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // fluid-paint-mixing unit 2 — 축소 유체 솔버 구동 MonoBehaviour (순수 View 계층, ECS 무관).
     // 매 프레임 FluidSolver.mat 의 패스들을 Graphics.Blit 로 핑퐁하며 step(dt) 를 돌린다.

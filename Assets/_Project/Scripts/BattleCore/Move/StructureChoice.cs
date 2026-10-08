@@ -2,7 +2,7 @@
 // 이식 시 바뀐 것: `NativeArray<T>` → `T[] + count`.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // 「어느 거점으로 갈까」의 규칙. 위치 하나와 후보 칸 목록만 해석한다.
     public static class StructureChoice

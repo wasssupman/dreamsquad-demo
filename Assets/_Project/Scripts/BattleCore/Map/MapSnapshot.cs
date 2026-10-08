@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // battle-core-rebuild unit 2 — 한 판의 «칸 격자 + 자리들». plain 스냅샷이다.
     //
@@ -186,7 +186,7 @@ namespace Wassup.BattleCore.Map
         public static int2 GoalDestination => new int2(-1, -1);
     }
 
-    // 칸 종류. 옛 `Wassup.Data.MapTileType` 과 **값이 같다**(Walk 0 · Place 1 · Env 2 · Deco 3) —
+    // 칸 종류. 옛 `Somnia.Battle.Data.MapTileType` 과 **값이 같다**(Walk 0 · Place 1 · Env 2 · Deco 3) —
     // 빌더가 캐스트 하나로 접을 수 있게 맞춘 것이고, 그 대응은 `MatchDefinitionBuilder` 가 진다.
     public enum MapTile : byte
     {
@@ -196,7 +196,7 @@ namespace Wassup.BattleCore.Map
         Deco = 3,
     }
 
-    // 층 비트. 옛 `Wassup.Data.PlacementLayer` 와 값이 같다.
+    // 층 비트. 옛 `Somnia.Battle.Data.PlacementLayer` 와 값이 같다.
     //
     // 이름은 **공간** 기준이다(어떤 종류의 칸인가). 직업 기준이 아니다 — 코어는
     // 유닛 클래스를 한 번도 보지 않고 비트만 본다.
@@ -255,7 +255,7 @@ namespace Wassup.BattleCore.Map
     {
         public int2 Cell;
 
-        /// <summary>`Wassup.Battle.Units.Faction` 의 int 값. 거점 아닌 비트는 빌더에서 나올 수 없다.</summary>
+        /// <summary>`Somnia.Battle.Battle.Units.Faction` 의 int 값. 거점 아닌 비트는 빌더에서 나올 수 없다.</summary>
         public int Faction;
 
         /// <summary>점유 한 변(마음 1 · 본능 3). 상수를 박으면 1×1 마음이 3×3 이라고 거짓말한다.</summary>

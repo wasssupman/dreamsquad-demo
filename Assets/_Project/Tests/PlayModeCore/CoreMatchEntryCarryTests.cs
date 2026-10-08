@@ -4,11 +4,11 @@ using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // demo-diet unit 0 — **바깥이 넘긴 입력 값으로 판이 지어지나.** 옛 `CoreMatchEntryTests`(로비 씬을 띄워 프로필을
     // 조작하던 8b 의 재작성)의 후계다. 로비는 이 리포에 없고, 전투의 입구는 `MatchEntryInput` 하나다 — 그래서 로비 대신
@@ -198,7 +198,7 @@ namespace Wassup.Tests.PlayMode.Core
             yield return Boot(null, d => driver = d);
             int abandoned = 0;
             driver.MatchAbandoned += d => abandoned++;
-            var menu = Object.FindAnyObjectByType<Wassup.BattleCoreUnity.Hud.CoreMenuPopup>();
+            var menu = Object.FindAnyObjectByType<Somnia.Battle.BattleCoreUnity.Hud.CoreMenuPopup>();
             Assert.IsNotNull(menu);
             yield return null;
             menu.Open();

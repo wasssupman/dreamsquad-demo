@@ -171,7 +171,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2339ec1e2d53147ad8d847e930c92078, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.WeaponTrailRig
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.WeaponTrailRig
 --- !u!1 &4253645290353972509
 GameObject:
   m_ObjectHideFlags: 0

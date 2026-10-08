@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-attack-decoupling unit 1 — 실제 에셋 가드 둘(캐스터 아키타입 분리 · 비수 폴백 반경).
     //

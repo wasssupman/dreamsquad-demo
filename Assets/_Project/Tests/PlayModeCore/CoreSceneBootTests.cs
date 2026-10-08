@@ -2,12 +2,12 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Core.TimeControl;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Core.TimeControl;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 5a — 새 씬 부팅 스모크.
     //
@@ -56,8 +56,8 @@ namespace Wassup.Tests.PlayMode.Core
             {
                 var s = stage[i];
                 if (s.data == null) continue;
-                if (Wassup.Data.StructurePlacements.DeriveFaction(s.side, s.data.kind)
-                    == Wassup.Skills.Faction.DefenderCore) continue;
+                if (Somnia.Battle.Data.StructurePlacements.DeriveFaction(s.side, s.data.kind)
+                    == Somnia.Battle.Skills.Faction.DefenderCore) continue;
                 authoredStructures++;
             }
             int worldStructures = CountStructures(driver, excludeDefenderCore: true);
@@ -117,8 +117,8 @@ namespace Wassup.Tests.PlayMode.Core
             int marked = 0;
             var units = driver.Match.World.Units;
             for (int i = 0; i < units.Count; i++)
-                if (units[i].Kind == UnitKind.Enemy && Wassup.BattleCore.Trigger.CardBindings.IsMarked(units[i])) marked++;
-            Assert.AreEqual(marked, statusFx.WantedCountOfKind(Wassup.Data.StatusFxKind.Marked),
+                if (units[i].Kind == UnitKind.Enemy && Somnia.Battle.BattleCore.Trigger.CardBindings.IsMarked(units[i])) marked++;
+            Assert.AreEqual(marked, statusFx.WantedCountOfKind(Somnia.Battle.Data.StatusFxKind.Marked),
                 $"틱 {driver.Match.Clock.Tick}: 표식 수 = 코어에서 표식된 적 수 — 어긋나면 카드 사건을 안 낸 소멸 경로가 있다");
         }
 
@@ -144,7 +144,7 @@ namespace Wassup.Tests.PlayMode.Core
             {
                 if (units[i].Kind != UnitKind.Structure) continue;
                 if (excludeDefenderCore
-                    && units[i].Faction == Wassup.Skills.Faction.DefenderCore) continue;
+                    && units[i].Faction == Somnia.Battle.Skills.Faction.DefenderCore) continue;
                 n++;
             }
             return n;

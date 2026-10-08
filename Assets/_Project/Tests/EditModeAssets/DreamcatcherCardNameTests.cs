@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-data-hygiene unit 3 — displayName is a short UI summary;
     // ids and effect data remain the stable source of truth.

@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4739c42e2394b412f846aa25fdfc1c62, type: 3}
   m_Name: BattleHudTrayConfig
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.BattleHudTrayConfig
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.BattleHudTrayConfig
   trayFrame: {fileID: 0}
   fallbackFill: {r: 0.05, g: 0.11, b: 0.2, a: 0.96}
   fallbackBorder: {r: 0.94, g: 0.72, b: 0.24, a: 1}

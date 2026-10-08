@@ -11,4 +11,4 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ff6e43e2db44b4c8d82ebcd2b039404b, type: 3}
   m_Name: SkeletonFlipX
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.SkeletonFlipXModifier
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.SkeletonFlipXModifier

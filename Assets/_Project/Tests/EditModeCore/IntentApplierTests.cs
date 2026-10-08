@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using static Wassup.Tests.EditMode.Core.CoreTriggerFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using static Somnia.Battle.Tests.EditMode.Core.CoreTriggerFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7a — 쓰기 표면: SimIntent 24 + MetaIntent 2 · 원자 개시(S19).
     //

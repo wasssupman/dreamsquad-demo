@@ -3,10 +3,10 @@ using NUnit.Framework;
 using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // 풀에 등록된 모든 스테이지(라이브+dev)가 스캔→조립(형식 검증 포함)→연결성을 통과하는지.
     // 조립 실패는 런타임 하드 실패(map-diorama-stage 계약 9)라 Assets lane 에서 선제 차단한다.

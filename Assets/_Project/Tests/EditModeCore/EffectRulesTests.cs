@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Effects;
-using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Effects;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCombatFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6a — 효과가 **판 위에서** 보이는 형태로 증언한다.
     //

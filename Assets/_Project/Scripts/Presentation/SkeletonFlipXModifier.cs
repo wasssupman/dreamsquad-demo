@@ -2,7 +2,7 @@ using Spine;
 using Spine.Unity;
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // Asset-level horizontal mirror for Spine rigs authored facing the opposite
     // direction from the project convention. The project convention is "rig faces
@@ -19,7 +19,7 @@ namespace Wassup.Presentation
     //
     // Runs once per SkeletonData load (SkeletonDataAsset applies modifiers right
     // after deserialization, before any Skeleton instance is created).
-    [CreateAssetMenu(fileName = "SkeletonFlipX", menuName = "Wassup/Spine/Skeleton Flip X", order = 100)]
+    [CreateAssetMenu(fileName = "SkeletonFlipX", menuName = "Somnia/Battle/Spine/Skeleton Flip X", order = 100)]
     public class SkeletonFlipXModifier : SkeletonDataModifierAsset
     {
         public override void Apply(SkeletonData skeletonData)

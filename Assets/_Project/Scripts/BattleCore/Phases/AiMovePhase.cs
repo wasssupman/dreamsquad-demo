@@ -1,11 +1,11 @@
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Move;
-using Wassup.UnitAi;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Move;
+using Somnia.Battle.UnitAi;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 2 — **적이 걷는다.**
     //
@@ -169,7 +169,7 @@ namespace Wassup.BattleCore
                 bool aggroed = u.Aggro != null && !u.Aggro.Target.IsNone;
                 bool guardianInRange = aggroed && ReachProbe.GuardianInRange(ctx.World, u, def, _map.TileSize);
                 bool hasFireTarget = !aggroed && ReachProbe.HasFireTarget(ctx.World, u, def, _map.TileSize);
-                // **결정은 `Wassup.UnitAi`, 저장은 `Unit.Ai`**(unit 3 구현 12) — 공격 루프가
+                // **결정은 `Somnia.Battle.UnitAi`, 저장은 `Unit.Ai`**(unit 3 구현 12) — 공격 루프가
                 // 읽는 자리와 같아야 「락은 있는데 Marching」 데드락이 안 난다.
                 u.Ai.Enemy = EnemyAi.Evaluate(aggroed, guardianInRange, hasFireTarget);
             }
@@ -573,7 +573,7 @@ namespace Wassup.BattleCore
                     // 대상 몸 0 = **옛 규칙**: 포탈은 «발밑 중심이 입구 칸에 들어섰나» 를 묻는다(옛
                     // `SpawnPortal(…, tileSize * 0.5, …)` 의 점 판정). 몸을 붙이면 큰 적이 먼저 빨려
                     // 들어가는 규칙 변경이다 — 그건 사용자 결정 사항이라 여기서 바꾸지 않는다.
-                    if (!Wassup.Skills.SkillMath.ReachFromCell(
+                    if (!Somnia.Battle.Skills.SkillMath.ReachFromCell(
                             (current.x - f.Center.x) * pinv, (current.z - f.Center.z) * pinv,
                             f.Range, 0f)) continue;
                     u.Position = new float3(f.Exit.x, current.y, f.Exit.z);
@@ -617,7 +617,7 @@ namespace Wassup.BattleCore
                     if (f.Kind != FieldKind.Pull) continue;
                     float inv = _map.TileSize > 1e-6f ? 1f / _map.TileSize : 1f;
                     // 판정은 **원 + 피해자 몸**(제약 13 「자리에 떨어지는 것」 — 회오리는 좌표에 선다).
-                    if (!Wassup.Skills.SkillMath.ReachFromCell(
+                    if (!Somnia.Battle.Skills.SkillMath.ReachFromCell(
                             (current.x - f.Center.x) * inv, (current.z - f.Center.z) * inv,
                             f.Range, u.HitRadius)) continue;
                     float3 toCenter = f.Center - current;

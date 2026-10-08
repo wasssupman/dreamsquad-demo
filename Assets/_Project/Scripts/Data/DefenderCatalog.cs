@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // outgame-scene-and-flow Unit 0 — id -> DefenderUnitData resolution for
     // save/load. Authoritative list of defender units a profile can reference.
-    [CreateAssetMenu(fileName = "DefenderCatalog", menuName = "Wassup/DefenderCatalog", order = 12)]
+    [CreateAssetMenu(fileName = "DefenderCatalog", menuName = "Somnia/Battle/DefenderCatalog", order = 12)]
     public class DefenderCatalog : ScriptableObject
     {
         public DefenderUnitData[] units;

@@ -1,10 +1,10 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity.Hud;
 
-namespace Wassup.BattleCoreUnity.Input
+namespace Somnia.Battle.BattleCoreUnity.Input
 {
     // battle-core-rebuild unit 5b — **제출.** 판을 플레이어 쪽에서 끝내는 통로다.
     //

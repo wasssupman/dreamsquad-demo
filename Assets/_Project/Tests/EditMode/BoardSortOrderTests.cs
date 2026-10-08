@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     public class BoardSortOrderTests
     {

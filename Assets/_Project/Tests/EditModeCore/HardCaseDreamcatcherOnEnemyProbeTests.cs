@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Emission;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using static Wassup.Tests.EditMode.Core.CoreTriggerFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Emission;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using static Somnia.Battle.Tests.EditMode.Core.CoreTriggerFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // 하드 케이스 4 탐침(2026-09-28) — 「적 유닛이 드림캐쳐 규칙을 **가졌다고 치면** 효과가 발동하나」.
     //

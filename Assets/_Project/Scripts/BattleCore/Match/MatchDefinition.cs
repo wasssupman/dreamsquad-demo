@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Text;
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;   // unit 2 — `MapSnapshot` 은 이제 맵 폴더가 소유한다
+using Somnia.Battle.BattleCore.Map;   // unit 2 — `MapSnapshot` 은 이제 맵 폴더가 소유한다
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 한 판의 «조건». 계약 6 의 도착지다.
     //

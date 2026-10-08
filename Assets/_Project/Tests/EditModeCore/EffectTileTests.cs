@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6b — **효과 타일.** 칸 하나가 그 위에 놓인 유닛에게 주는 것.
     // 적용은 활성화 엣지, 끝은 **회수**(퇴근) — 옛 전투가 못 하던 것(F33).
@@ -120,7 +120,7 @@ namespace Wassup.Tests.EditMode.Core
             }
 
             var kinds = new int[16];
-            Wassup.BattleCore.Map.EffectTileSelect.AssignKinds(123, 3, kinds, kinds.Length);
+            Somnia.Battle.BattleCore.Map.EffectTileSelect.AssignKinds(123, 3, kinds, kinds.Length);
             var seen = new HashSet<int>(kinds);
             Assert.IsTrue(seen.IsSubsetOf(new[] { 0, 1, 2 }));
             Assert.Greater(seen.Count, 1, "칸마다 난수 — round-robin 이 아니다");

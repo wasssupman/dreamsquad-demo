@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // battle-structures unit 3 — 거점의 두 저작 축.
     //

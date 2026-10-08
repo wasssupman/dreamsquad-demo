@@ -1,4 +1,4 @@
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // battle-core-rebuild unit 8a — `GameManager.cs` 에서 옮겨 왔다(값·순서 무변).
     // 새 전투 씬에는 `GameManager` 가 없지만 카메라·BGM 의 페이즈 먹이(`CorePhaseFeed`)가 이 값을 민다.

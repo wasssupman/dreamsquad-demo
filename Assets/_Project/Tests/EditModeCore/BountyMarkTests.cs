@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCardFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7b — 살찌운 제물. `fireCap 1` + **표식된 적이 사라질 때까지 부착**(정정 5 · M9).
     [TestFixture]

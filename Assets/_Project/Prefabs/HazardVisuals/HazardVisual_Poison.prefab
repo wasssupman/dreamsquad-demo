@@ -46,7 +46,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a616f2e7ebd294bdfa5f539fc7d016c5, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.HazardVisualLifetime
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.HazardVisualLifetime
   remainingLife: 5
 --- !u!1 &6282278546378522240
 GameObject:

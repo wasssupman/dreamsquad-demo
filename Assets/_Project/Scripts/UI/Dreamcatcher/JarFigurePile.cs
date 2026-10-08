@@ -2,9 +2,9 @@ using Spine.Unity;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // dreamcatcher-orb-dock unit 2b — 항아리 안 미니 피규어(SkeletonGraphic 미니어처) 물리 더미.
     // JarFigurePhysics(unit 0) 순수 시뮬을 고정 스텝으로 Tick 하고 위치를 RectTransform 에 매핑.

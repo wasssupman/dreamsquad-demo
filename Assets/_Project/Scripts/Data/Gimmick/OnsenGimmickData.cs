@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // season-gimmick-onsen unit 0 — "뜨끈하니 좋네요오오.. 뜨겁네?"(온천) 기믹.
     // 룰: 맵 위 모든 유닛(아군+적)이 heatInterval 마다 열기 +1. 스택 획득 시 최대체력의
@@ -8,7 +8,7 @@ namespace Wassup.Data
     //     (lossPercent, HP 1 바닥 — 열기는 아무도 못 죽인다). "열기"는 스택 명칭일 뿐, 별도
     //     스탯 디버프 없음.
     // 판마다 `MatchDefinitionBuilder` 가 모드의 기믹 풀에서 정의표로 옮긴다(옛 ECS 주입 seam 은 이력).
-    [CreateAssetMenu(fileName = "Gimmick_Onsen", menuName = "Wassup/Gimmick/Onsen", order = 42)]
+    [CreateAssetMenu(fileName = "Gimmick_Onsen", menuName = "Somnia/Battle/Gimmick/Onsen", order = 42)]
     public sealed class OnsenGimmickData : GimmickData
     {
         [Header("룰 — 열기(Heat) 누적 → 회복↔손실 반전")]

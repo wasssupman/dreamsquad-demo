@@ -3,7 +3,7 @@
 //   선정 규칙과 그 이력 주석은 그대로다 — 「가정하던 곳이 안 고쳐졌다」는 교훈이 여기 살아 있다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Combat
+namespace Somnia.Battle.BattleCore.Combat
 {
     // 가디언의 공격 타겟 선정(누구를 때릴지). 히트 모델 자석의 핵심이다:
     // 여유가 있으면 **아직 안 끌린 적**을 우선 때려 신규 팩을 흡수하고, 상한이 차면

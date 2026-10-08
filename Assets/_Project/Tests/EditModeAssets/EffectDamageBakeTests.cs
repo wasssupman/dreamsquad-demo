@@ -2,12 +2,12 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // skill-data-table unit 1b(U10) — **피해는 효과 줄 한 칸**(`EffectDef.Damage`). 패턴 · 장판 · 길막 줄에서 피해 칸이 빠졌고,
     // unit 4 전까지는 빌더가 옛 SO 필드(`ProjectilePatternData.damage` · 장판 DoT `param1` · 길막 `explodeDamage` ·
@@ -48,7 +48,7 @@ namespace Wassup.Tests.EditModeAssets
                     source = Source.Hazard;
                     if (p.hazard?.effects != null)
                         foreach (var he in p.hazard.effects)
-                            if (he.kind == Wassup.Data.Authoring.CcKind.DoT) return he.param1;
+                            if (he.kind == Somnia.Battle.Data.Authoring.CcKind.DoT) return he.param1;
                     return 0f;
                 case EffectKind.SelfBlink:
                 case EffectKind.UltimateLeap:

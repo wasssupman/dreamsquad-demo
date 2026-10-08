@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Combat
+namespace Somnia.Battle.BattleCore.Combat
 {
     // 직업 필터 — 「이 공격자는 이 직업의 방어유닛을 못 때린다」.
     //

@@ -1,10 +1,10 @@
 {
-    "name": "Wassup.Editor.UnitStatImport",
-    "rootNamespace": "Wassup.Editor.UnitStatImport",
+    "name": "Somnia.Battle.Editor.UnitStatImport",
+    "rootNamespace": "Somnia.Battle.Editor.UnitStatImport",
     "references": [
-        "Wassup.Runtime",
-        "Wassup.BattleCore",
-        "Wassup.SheetSync"
+        "Somnia.Battle.Runtime",
+        "Somnia.Battle.BattleCore",
+        "Somnia.Battle.SheetSync"
     ],
     "includePlatforms": [
         "Editor"

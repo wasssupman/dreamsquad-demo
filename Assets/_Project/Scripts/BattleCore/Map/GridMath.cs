@@ -2,7 +2,7 @@
 // 이식 시 바뀐 것: `Unity.Burst` 제거(코어는 Burst 를 모른다). 그 외 규칙·상수·주석 의도는 그대로.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     public static class GridMath
     {

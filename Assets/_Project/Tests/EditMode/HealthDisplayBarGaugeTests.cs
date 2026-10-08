@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // unit-health-display unit 2/3 — 마이크로바 fill 색 + 게이지 색/둘레 세그먼트의
     // 순수 계산 회귀 가드 (투트랙 리뷰 test-gap 반영).

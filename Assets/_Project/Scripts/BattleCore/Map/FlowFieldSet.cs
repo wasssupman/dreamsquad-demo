@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 슬롯 하나의 라우팅. **직접 인덱싱 금지의 «타입» 표현**이다.
     //

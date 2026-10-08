@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5b — 보드 오버레이가 쓰는 머티리얼 한 자리.
     //
@@ -23,6 +23,6 @@ namespace Wassup.BattleCoreUnity.View
         public static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
         /// <summary>새 인스턴스 하나. 못 만들면 null 이고 팩토리가 한 번 경고한다(조용히 마젠타가 되지 않게).</summary>
-        public static Material Create() => Wassup.Rendering.RuntimeMaterialFactory.CreateBoardOverlay();
+        public static Material Create() => Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateBoardOverlay();
     }
 }

@@ -1,13 +1,13 @@
 using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore.Map;
-using Wassup.Core;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.Core;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 9 — 옛 `BoardSpaceTests` 의 규칙을 옮긴 것. `BoardSpace` 는 남고 새 층(`CoreMapOverlay`·입력·뷰 풀)이 쓴다.
-    // sim 셀 중심의 출처는 코어의 `Wassup.BattleCore.Map.GridMath`.
+    // sim 셀 중심의 출처는 코어의 `Somnia.Battle.BattleCore.Map.GridMath`.
     //
     // 이 스위트가 지키는 계약 하나: **셀↔월드 정합의 권위는 주입된 보드 평면 Transform + tileSize 다.**
     // 셀 (0,0) 의 최소 모서리가 평면 원점, 평면 로컬 X/Y 가 셀 축(한 칸 = tileSize), 로컬 +Z 가 법선.

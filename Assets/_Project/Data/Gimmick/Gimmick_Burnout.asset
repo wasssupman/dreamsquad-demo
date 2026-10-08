@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 30aab63a954f5f04ca86cc28ef802e73, type: 3}
   m_Name: Gimmick_Burnout
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.BurnoutGimmickData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.BurnoutGimmickData
   gimmickId: G1_Burnout
   displayName: "\uBD88\uAE08\uC740 \uC5C6\uC2B5\uB2C8\uB2E4!"
   description: "\uBC30\uCE58\uD55C \uC720\uB2DB\uC5D0\uAC8C \uC2DC\uAC04\uC774 \uC9C0\uB0A0\uC218\uB85D

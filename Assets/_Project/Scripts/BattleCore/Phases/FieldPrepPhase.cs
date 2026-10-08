@@ -1,9 +1,9 @@
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Move;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Move;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 2 — **장(場)을 먼저 세운다.** 이동이 읽을 것을 이 단계가 굽는다.
     //
@@ -154,7 +154,7 @@ namespace Wassup.BattleCore
                     if (hd.EffectCount == 0) continue;
                     if (!LayerBits.CanTarget(h.TargetLayers, theirs)) continue;   // F15 — 0 = 필터 없음
                     // 제약 13 — 존은 「자리에 떨어지는 것」이다. 원점 항은 칸 반폭이고 깐 자의 몸은 안 붙는다.
-                    if (!Wassup.Skills.SkillMath.ReachFromCell(
+                    if (!Somnia.Battle.Skills.SkillMath.ReachFromCell(
                             (u.Position.x - h.Center.x) * inv, (u.Position.z - h.Center.z) * inv,
                             h.RadiusTiles, u.HitRadius)) continue;
 
@@ -306,7 +306,7 @@ namespace Wassup.BattleCore
                 {
                     var fc = fields[f];
                     if (fc.Kind != FieldKind.AllyBuff) continue;
-                    if (!Wassup.Skills.SkillMath.ReachFromCell(
+                    if (!Somnia.Battle.Skills.SkillMath.ReachFromCell(
                             (u.Position.x - fc.Center.x) * inv, (u.Position.z - fc.Center.z) * inv,
                             fc.Range, u.HitRadius)) continue;
                     int s = (int)fc.Stat;

@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 4 — **이번 판의 기믹.**
     //
@@ -53,7 +53,7 @@ namespace Wassup.BattleCore
         {
             _index = enabled
                 ? GimmickSelection.PickIndex(_def.Gimmicks.Length,
-                                             unchecked((uint)Wassup.Core.MatchSeed.DeriveGimmickSeed(matchSeed)))
+                                             unchecked((uint)Somnia.Battle.Core.MatchSeed.DeriveGimmickSeed(matchSeed)))
                 : -1;
 
             // 꺼진 판에서는 사건을 내지 않는다. 「없는 판」과 「기믹 기능이 없는 모드」는

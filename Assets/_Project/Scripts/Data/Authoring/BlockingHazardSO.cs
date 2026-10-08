@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace Wassup.Data.Authoring
+namespace Somnia.Battle.Data.Authoring
 {
-    [CreateAssetMenu(menuName = "Wassup/Hazards/Blocking Hazard SO", fileName = "Hazard_Blocking_New")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Hazards/Blocking Hazard SO", fileName = "Hazard_Blocking_New")]
     public class BlockingHazardSO : ScriptableObject
     {
         [Header("Visual")]
@@ -58,7 +58,7 @@ namespace Wassup.Data.Authoring
         // 없어도 되지만, 탄이 아예 없으면 index 가 0 으로 떨어져 **엉뚱한 탄의 비주얼이 한
         // 프레임 번쩍인다**(조용한 오작동). explodeDamage > 0 이면 반드시 배선한다.
         [Tooltip("폭발 해결용 즉발 탄. explodeDamage > 0 이면 필수.")]
-        public Wassup.Data.ProjectileData explodeProjectile;
+        public Somnia.Battle.Data.ProjectileData explodeProjectile;
 
         // unit 8 — 머리 위 체력 바가 뜨는 높이(월드 단위). 「언제 터지나」를 이제 시계가
         // 아니라 **남은 체력**이 말하므로, 그 값이 화면에 보여야 한다.

@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Wassup.Data.Authoring;
-using Wassup.Data;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Data;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // skill-layer-migration unit 8 — **문지기가 바뀌었으므로 그물도 바뀐다.**
     //

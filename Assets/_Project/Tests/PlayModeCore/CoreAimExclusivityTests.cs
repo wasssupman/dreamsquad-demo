@@ -4,14 +4,14 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Cards;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.BattleCoreUnity.Input;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Cards;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCoreUnity.Input;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 8b 이식 제외 G16 — **조준 모드 배타.** 옛 규칙: 스킬 탭 조준 중에는 다른 조작(배치 드래그·선택)이
     // 끼어들지 못한다. 새 층에서 그 배타를 지는 곳은 셋이고, 전용 잠금은 없다 — 구조가 배타다:

@@ -1,6 +1,6 @@
 // salvaged from Assets/_Project/Scripts/Battle/Effects/Modifiers/ModifierAuthoring.cs
 //   (battle-core-rebuild unit 6a) — 분류 규칙과 상한 산식은 **그대로**다.
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // 저작 배율 → (버킷, 값). **한 곳에서만 한다**(2026-07-03 사용자 결정).
     //

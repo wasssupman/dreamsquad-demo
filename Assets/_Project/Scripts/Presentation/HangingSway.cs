@@ -1,7 +1,7 @@
 using PrimeTween;
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // 천장 줄에 매달린 것(조명·간판·화분)의 느린 진자 흔들림.
     //

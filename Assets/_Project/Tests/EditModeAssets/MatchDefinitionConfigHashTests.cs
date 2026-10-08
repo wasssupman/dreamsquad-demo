@@ -1,15 +1,15 @@
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 1 완료 기준 ⑥ — `configHash` 가 **조건**에만 반응한다.
     //
     // 이 테스트가 Assets lane 에 있는 이유: 실제 SO 를 읽어야 한다. 코어 lane 은
-    // `Wassup.Runtime` 을 참조하지 않으므로 `DefenderUnitData` 를 이름조차 부를 수 없다.
+    // `Somnia.Battle.Runtime` 을 참조하지 않으므로 `DefenderUnitData` 를 이름조차 부를 수 없다.
     //
     // 이 해시가 답하는 질문은 하나다 — **「코드가 바뀐 건가, 값이 바뀐 건가」**.
     // 이 프로젝트에서 값은 조용히 바뀐다(로비 진입마다 시트 임포터가 SO 를 덮는다).

@@ -1,9 +1,9 @@
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // **이동의 정지 조건**. 「멈춰도 되나 = 지금 쏠 수 있나」를 묻는다.
     //

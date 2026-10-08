@@ -2,7 +2,7 @@
 // 이식 시 바뀐 것: 없음. `WaypointRouting` 도 같은 파일에 있었고 함께 옮겼다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // 「몇 번째 경유점까지 왔나」. 이동 방식·거리장을 모르고, 호출자가 준 도달 가능성과
     // 현재 칸만 해석한다.

@@ -5,7 +5,7 @@
 //   `TickProjectilePhase` 의 한 switch 라 한 자리에서 읽히는 편이 낫다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Combat.Projectile
+namespace Somnia.Battle.BattleCore.Combat.Projectile
 {
     // 포물선(`BallisticArcToPoint`). XZ 는 선형 보간이고 Y 에 사인 융기를 얹는다.
     //

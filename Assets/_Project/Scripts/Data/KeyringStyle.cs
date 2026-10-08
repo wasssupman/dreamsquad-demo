@@ -1,12 +1,12 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // keyring-unify 1 — 키링 스타일(스프라이트/머티리얼) 단일 소스. 인게임(월드)·아웃게임(UGUI) 공용.
     // 2단 폴백: settings 의 style == null → 전체 절차적, style 내 개별 슬롯 null → 해당 요소만 폴백.
     // 팔레트는 머티리얼 소유 — 팔레트 변경 = UI/월드 머티리얼 2곳 (UGUI 는 MaterialPropertyBlock
     // 미지원이라 SO 팔레트 런타임 주입은 clone 수명 관리 비용이 더 크다).
-    [CreateAssetMenu(menuName = "Wassup/Keyring Style", fileName = "KeyringStyle")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Keyring Style", fileName = "KeyringStyle")]
     public class KeyringStyle : ScriptableObject
     {
         [Header("공용 스프라이트")]

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
 // sprite-flipbook-player unit 3 — 시트 프레임 정렬 회귀 테스트.
 // spec 이 지목한 실패 모드: 사전순 정렬이면 _1, _10, _11, _2 … 로 프레임이 조용히 뒤섞인다.

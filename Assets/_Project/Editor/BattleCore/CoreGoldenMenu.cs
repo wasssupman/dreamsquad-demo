@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 1 — 새 코어 골든의 **정본 베이커**.
     //
@@ -18,7 +18,7 @@ namespace Wassup.EditorTools.BattleCore
     //      가장 비싼 실패다(옛 코퍼스가 203 커밋 동안 킬 0 으로 통과했다).
     public static class CoreGoldenMenu
     {
-        [MenuItem("Wassup/BattleCore/Golden/Bake Missing")]
+        [MenuItem("Somnia/Battle/BattleCore/Golden/Bake Missing")]
         public static void BakeMissing()
         {
             if (!TryDir(out string dir)) return;
@@ -45,7 +45,7 @@ namespace Wassup.EditorTools.BattleCore
             Debug.Log($"[CoreGolden] {dir} — 신규 {baked}건 · 기존 유지 {kept}건");
         }
 
-        [MenuItem("Wassup/BattleCore/Golden/Verify")]
+        [MenuItem("Somnia/Battle/BattleCore/Golden/Verify")]
         public static void Verify()
         {
             if (!TryDir(out _)) return;

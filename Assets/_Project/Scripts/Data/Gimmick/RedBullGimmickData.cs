@@ -1,12 +1,12 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // gimmick-match-integration — "괜찮아. 먹고 달리자!" 기믹 (레드불 → 라스트런).
     // 룰: redbullSpawnInterval 마다 레드불 스폰, 소비 시 라스트런
     //     (공속 ×lastRunAttackSpeedMul, lastRunDuration 후 최대체력의 lastRunDamageFraction 만큼 피해).
     // 판마다 `MatchDefinitionBuilder` 가 모드의 기믹 풀에서 정의표로 옮긴다(옛 ECS 주입 seam 은 이력).
-    [CreateAssetMenu(fileName = "Gimmick_RedBull", menuName = "Wassup/Gimmick/RedBull", order = 41)]
+    [CreateAssetMenu(fileName = "Gimmick_RedBull", menuName = "Somnia/Battle/Gimmick/RedBull", order = 41)]
     public sealed class RedBullGimmickData : GimmickData
     {
         [Header("룰 — 레드불 → 라스트런")]

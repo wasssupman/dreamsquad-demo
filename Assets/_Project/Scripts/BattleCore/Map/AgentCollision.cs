@@ -2,7 +2,7 @@
 // 이식 시 바뀐 것: 없음(타입 네임스페이스만). 순수 수학이라 그대로 옮겼다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 에이전트 vs 벽 칸 충돌 + 접선 슬라이드.
     //

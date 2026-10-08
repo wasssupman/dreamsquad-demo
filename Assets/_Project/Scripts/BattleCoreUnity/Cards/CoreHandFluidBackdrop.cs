@@ -1,8 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.Cards
+namespace Somnia.Battle.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 8a — 손패가 열릴 때 카드 뒤로 피어오르는 꿈 유체 배경.
     // 옛 `UI/Dreamcatcher/DreamcatcherFluidBackdrop.cs`(fluid-paint-mixing unit 4)의 복사·적응본이다.

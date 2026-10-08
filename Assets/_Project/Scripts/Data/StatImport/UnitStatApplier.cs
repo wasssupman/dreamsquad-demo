@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // runtime-stat-refresh Unit 1 — the id-match partial-update core, shared by the
     // editor importer (AssetDatabase scan + disk save) and the runtime refresher

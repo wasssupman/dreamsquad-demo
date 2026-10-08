@@ -1,9 +1,9 @@
 // salvaged from Assets/_Project/Scripts/Battle/Combat/EnemyTargetFilter.cs (battle-core-rebuild unit 2)
 // 이식 시 바뀐 것: 컴포넌트는 안 옮겼다(정의표 필드가 됐다). 기본값 규칙만 옮겼다 —
 // 이동이 「어느 거점으로 갈까」를 물을 때 같은 마스크를 써야 하기 때문이다.
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Combat
+namespace Somnia.Battle.BattleCore.Combat
 {
     // 적의 기본 타겟 = **상대 진영 전부**.
     //

@@ -6,7 +6,7 @@
 // 알고리즘·비용·동률 규칙은 한 줄도 바꾸지 않았다 — 여기가 바뀌면 모든 이동이 바뀐다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 다중 소스 다익스트라 → 방향장. 옥타일 비용 10/14, 코너컷 방지, 라벨 정정법.
     //

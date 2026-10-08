@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     /// <summary>
     /// 스택 누적 **요청** 한 줄(`BattleWorld.StackAccruals`). 「해 달라」이고 게이트는 받는 쪽

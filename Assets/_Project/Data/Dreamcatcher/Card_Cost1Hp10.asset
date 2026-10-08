@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
   m_Name: Card_Cost1Hp10
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.DreamcatcherCard
   id: cost1_hp
   displayName: "1\uCF54\uCCB4"
   visible: 0

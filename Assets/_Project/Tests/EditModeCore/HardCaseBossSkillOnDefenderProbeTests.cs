@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Trigger;
-using static Wassup.Tests.EditMode.Core.CoreTriggerFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Trigger;
+using static Somnia.Battle.Tests.EditMode.Core.CoreTriggerFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // 하드 케이스 3 탐침(2026-09-28) — 「방어유닛이 보스(짱쎈)의 도약 스킬을 **소유**하면 발동하나」.
     //

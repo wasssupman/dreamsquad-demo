@@ -1,9 +1,9 @@
 using System.Text;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 1 — 하네스를 에디터에서 한 번 돌려 본다.
     //
@@ -15,7 +15,7 @@ namespace Wassup.EditorTools.BattleCore
     // 모르므로 EditMode 에서 그냥 돈다.
     public static class CoreHarnessRunMenu
     {
-        [MenuItem("Wassup/BattleCore/Harness/Run Corpus (log only)")]
+        [MenuItem("Somnia/Battle/BattleCore/Harness/Run Corpus (log only)")]
         public static void RunCorpus()
         {
             var sb = new StringBuilder();
@@ -32,7 +32,7 @@ namespace Wassup.EditorTools.BattleCore
             Debug.Log(sb.ToString());
         }
 
-        [MenuItem("Wassup/BattleCore/Harness/Print Tick Order")]
+        [MenuItem("Somnia/Battle/BattleCore/Harness/Print Tick Order")]
         public static void PrintTickOrder()
         {
             var match = new BattleMatch(CoreGoldenCorpus.Fixture(0));

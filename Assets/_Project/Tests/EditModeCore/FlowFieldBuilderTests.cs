@@ -2,9 +2,9 @@
 // 기대값은 그대로다 — 비용 단위(직교 10 / 대각 14)도 코너컷 규칙도 안 바뀌었다.
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     public class FlowFieldBuilderTests
     {

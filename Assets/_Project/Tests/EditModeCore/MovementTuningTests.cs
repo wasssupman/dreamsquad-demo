@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild 5a 후속 — **분산 값이 정의표에서 온다**는 배선을 재는 테스트.
     //

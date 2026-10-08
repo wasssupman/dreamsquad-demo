@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.UI;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-hand-card-face unit 0 — 손패 카드 면의 스타일/라벨 선택 로직.
     // 색 상수 값 자체는 검증하지 않는다(튜닝 자유) — 타입/카테고리별 선택·분기만 고정.

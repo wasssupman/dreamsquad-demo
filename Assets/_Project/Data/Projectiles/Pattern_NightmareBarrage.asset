@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 307673a61f8ae4e65aac21b646eb26a2, type: 3}
   m_Name: Pattern_NightmareBarrage
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.ProjectilePatternData
   id: nightmare_barrage
   barrel: {fileID: 11400000, guid: 3b7c41e05f9a4d2eb18c6a7f2d5e8014, type: 2}
   damage: 150

@@ -1,11 +1,11 @@
 using System.Text;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.Data.StatImport;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Somnia.Battle.Editor.UnitStatImport
 {
     // unit-stat-spreadsheet-schema Unit 1 — fetches the spreadsheet-authored stat
     // payload from the REST API and applies it to existing Defender/Enemy SO assets.
@@ -16,9 +16,9 @@ namespace Wassup.Editor.UnitStatImport
     // UnitStatApplier), shared with the in-build refresher.
     public class UnitStatImportWindow : EditorWindow
     {
-        private const string BaseUrlPrefsKey = "Wassup.UnitStatImport.BaseUrl";
-        private const string DefenderSheetPrefsKey = "Wassup.UnitStatImport.DefenderSheet";
-        private const string EnemySheetPrefsKey = "Wassup.UnitStatImport.EnemySheet";
+        private const string BaseUrlPrefsKey = "Somnia.Battle.UnitStatImport.BaseUrl";
+        private const string DefenderSheetPrefsKey = "Somnia.Battle.UnitStatImport.DefenderSheet";
+        private const string EnemySheetPrefsKey = "Somnia.Battle.UnitStatImport.EnemySheet";
         private const string DefaultBaseUrl = "https://dev-api-somnia.cashroyale.games/demo/google/sheet";
         private const string DefenderFolder = "Assets/_Project/Data/Defenders";
         private const string EnemyFolder = "Assets/_Project/Data/Enemies";
@@ -28,7 +28,7 @@ namespace Wassup.Editor.UnitStatImport
         // skill-data-table unit 5 — 탭 계약 = `DcSheetTabs`(DcMechanics 은퇴 · Skills/SkillOwners 신설 · 7탭). 옛 6탭 목록이 남은
         // 에디터 prefs 가 버튼을 잠그지 않게 키를 바꿨다(.v2). unit 8 단계 B — DcCardEffects · DcAttackMods 은퇴(5탭) · 같은 이유로 .v3.
         // unit 9 — `DcCards` → `Cards` 개명(개수는 같아 옛 목록이 **조용히** 옛 이름을 fetch 한다) · .v4 로 새 기본값에 떨어뜨린다.
-        private const string DcSheetsPrefsKey = "Wassup.UnitStatImport.DcSheets.v4";
+        private const string DcSheetsPrefsKey = "Somnia.Battle.UnitStatImport.DcSheets.v4";
         private static readonly string DefaultDcSheets = string.Join(",", DcSheetTabs.Default());
         private const string DcFolder = "Assets/_Project/Data/Dreamcatcher";
         private const string SkillFolder = "Assets/_Project/Data/Skills";
@@ -39,7 +39,7 @@ namespace Wassup.Editor.UnitStatImport
         // 프로젝트에 커밋하지 않고 에디터 로컬(EditorPrefs)에만 둔다.
 
         // sheet-export-push unit 7 — CostConfig 탭. 시트 → SO 임포트와 SO → JSON export 만 있다(push 는 battle-content-finish 에서 뗐다).
-        private const string CostTabPrefsKey = "Wassup.UnitStatImport.CostSheet";
+        private const string CostTabPrefsKey = "Somnia.Battle.UnitStatImport.CostSheet";
         private const string DefaultCostTab = "CostConfig";
         private const string ConfigFolder = "Assets/_Project/Data/Config";
 
@@ -51,7 +51,7 @@ namespace Wassup.Editor.UnitStatImport
         private string _statusLog = "";
         private bool _requestInFlight;
 
-        [MenuItem("Window/Wassup/Unit Stat Import")]
+        [MenuItem("Window/Somnia/Battle/Unit Stat Import")]
         public static void Open() => GetWindow<UnitStatImportWindow>("Unit Stat Import");
 
         private void OnEnable()

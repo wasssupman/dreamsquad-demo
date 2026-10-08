@@ -7,7 +7,7 @@
 //
 // uv0 만 읽는다 — Canvas.additionalShaderChannels 를 건드릴 필요가 없다.
 // 쿨타임 림 글로우(제자리 호흡 = 밝기만)와 **움직임 문법**으로 구분된다.
-Shader "Wassup/UI/SlotRimFlow"
+Shader "Somnia/Battle/UI/SlotRimFlow"
 {
     Properties
     {

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7b — **카드 한 장이 숙주에 무엇을 싣는가**(← 옛 `BattleBridge.ApplyDreamcatcherCardToUnit` ·
     // `ApplyDreamcatcherCard` · `ApplyBountyMark` 의 판정 몫 + `DreamcatcherAttachEval.WouldApply`).

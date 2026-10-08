@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 2 — 「이 적을 저 가디언에게 끌어라」.
     //

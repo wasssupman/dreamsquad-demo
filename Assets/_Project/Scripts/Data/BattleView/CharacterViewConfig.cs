@@ -1,12 +1,12 @@
 using UnityEngine;
 
-namespace Wassup.Data.BattleView
+namespace Somnia.Battle.Data.BattleView
 {
     // battle-core-rebuild unit 5a — 캐릭터 뷰의 외형·모션 노브.
     // 옛 브리지의 `tilemapCharacterScale`·`tilemapBillboardTilt`·프랍 틸트 3 ·
     // `healthDisplayStyle`·`walkAnimSpeedStyle`·`unitHealthPresentationMode`·
     // `enemyDragDim*` 의 새 주인. E27(피격 팝)이 여기서 코드 상수를 벗는다.
-    [CreateAssetMenu(menuName = "Wassup/BattleView/Character View Config", fileName = "CharacterViewConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/BattleView/Character View Config", fileName = "CharacterViewConfig")]
     public sealed class CharacterViewConfig : ScriptableObject
     {
         [Header("외형")]

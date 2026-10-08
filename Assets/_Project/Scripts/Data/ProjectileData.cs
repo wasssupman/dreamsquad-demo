@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // Phase 3은 None만 소비한다. Phase 4에서 DoT/Splash/Slow 등으로 확장.
     public enum OnHitEffectType
@@ -63,7 +63,7 @@ namespace Wassup.Data
         BallisticBlocker,
     }
 
-    [CreateAssetMenu(fileName = "Projectile", menuName = "Wassup/Projectile", order = 13)]
+    [CreateAssetMenu(fileName = "Projectile", menuName = "Somnia/Battle/Projectile", order = 13)]
     public class ProjectileData : ScriptableObject
     {
         public string id;
@@ -163,7 +163,7 @@ namespace Wassup.Data
         // (sim 은 SO 를 모르고 index 만 나른다).
         [Header("Blocker (BallisticBlocker 전용)")]
         [Tooltip("착탄 칸에 세울 길막 설치물. flightMode = BallisticBlocker 이면 필수.")]
-        public Wassup.Data.Authoring.BlockingHazardSO spawnBlocker;
+        public Somnia.Battle.Data.Authoring.BlockingHazardSO spawnBlocker;
         [Tooltip("제어점을 진행 방향으로 밀어내는 비율(전체 거리 대비). 클수록 곡선이 늦게 휜다.")]
         [Range(0f, 0.5f)] public float bezierForwardBias = 0.35f;
 

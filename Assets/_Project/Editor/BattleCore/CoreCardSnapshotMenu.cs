@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 7e ② — **카드 굽기 스냅샷 갱신.** 의도한 카드 변경(시트 · SO)이면 이 메뉴로 다시 굽고
     // 파일 diff 를 같은 커밋에 싣는다. 테스트(`CardBakeSnapshotTests`)는 파일을 **읽기만** 한다.
@@ -17,11 +17,11 @@ namespace Wassup.EditorTools.BattleCore
     public static class CoreCardSnapshotMenu
     {
         private const string SnapshotPath = "Assets/_Project/Tests/EditModeAssets/Fixtures/card_bake_snapshot.txt";
-        private const string Header = "# battle-core-rebuild 7e — 카드 굽기 스냅샷. 손으로 고치지 말 것: Wassup/BattleCore/Debug/카드 스냅샷 갱신\n";
+        private const string Header = "# battle-core-rebuild 7e — 카드 굽기 스냅샷. 손으로 고치지 말 것: Somnia/Battle/BattleCore/Debug/카드 스냅샷 갱신\n";
         private const string CardsRoot = "Assets/_Project/Data/Dreamcatcher";
         private const string CatalogPath = "Assets/_Project/Data/Dreamcatcher/DreamcatcherCardCatalog.asset";
 
-        [MenuItem("Wassup/BattleCore/Debug/카드 스냅샷 갱신")]
+        [MenuItem("Somnia/Battle/BattleCore/Debug/카드 스냅샷 갱신")]
         private static void Update()
         {
             var cards = Cards();

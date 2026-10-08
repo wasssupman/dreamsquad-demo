@@ -103,7 +103,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 253b87c3cdad44f0c8d1476710d6b18b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.BlobShadow
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.BlobShadow
   authoredInPrefab: 1
   config: {fileID: 11400000, guid: 057ae949d711494bbb80cd87c12155ef, type: 2}
 --- !u!1 &938530192396069806
@@ -151,7 +151,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0d4932feaf6d4c9a9b8b441dbfaea12a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.PropBillboard
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.PropBillboard
   data: {fileID: 11400000, guid: 33290296dad74486da3fb7b118e9bdb4, type: 2}
   visualRoot: {fileID: 2707864757208484211}
   spriteRenderer: {fileID: 2884884675140627998}

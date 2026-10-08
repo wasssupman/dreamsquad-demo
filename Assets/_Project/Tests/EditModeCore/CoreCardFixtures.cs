@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7b — 카드 규칙 테스트의 공용 고정구.
     //

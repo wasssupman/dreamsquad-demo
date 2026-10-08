@@ -1,12 +1,12 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // bonus-wave-pull unit 3 — 보너스 당기기의 **모든 수치**를 소유하는 단일 에셋(제약 6).
     //
     // 전 맵·전 트리거 공통 1벌이다(README 계약 2). 맵별 차등이 필요해지면 맵/덱 참조로
     // 승격하는 것이 후속 후보이고, 지금 그렇게 만들면 13개 덱에 같은 값이 복제된다.
-    [CreateAssetMenu(fileName = "BonusWaveData", menuName = "Wassup/Bonus Wave", order = 14)]
+    [CreateAssetMenu(fileName = "BonusWaveData", menuName = "Somnia/Battle/Bonus Wave", order = 14)]
     public class BonusWaveData : ScriptableObject
     {
         [Header("편성")]

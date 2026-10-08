@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // dreamcatcher-awakening-hand unit 3 — CR-style cycle queue for the in-match
     // dreamcatcher hand. Pure C# (no ECS/Bridge/UI): the controller (unit 4)

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 8b — **전투 씬 화면 초기화**(rule-holders G17 의 씬 몫 · G18). 옛 `GameManager.Awake`(세로 1080 캡)와
     // `GameManager.Start → CalibrateDragThreshold`(탭/드래그 임계 DPI)를 옮겼다. 규칙은 없다 — 화면·입력 장치의 사정이다.

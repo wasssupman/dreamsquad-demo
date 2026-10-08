@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // **대상 지향 추격판** — 「그 유닛까지, 내 통행 층으로」 구운 거리/방향장.
     //

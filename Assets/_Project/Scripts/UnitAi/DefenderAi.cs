@@ -1,4 +1,4 @@
-namespace Wassup.UnitAi
+namespace Somnia.Battle.UnitAi
 {
     // defender-autobattle-ai unit 0 — 방어유닛 행동 상태(진영 의도층). 로직 레이어 · 엔진 참조 불가.
     // 큰 값이 우선한다. Deploying·Locked 는 «판/행동 불가», Engaging 은 «스윙 중», Sustaining 은 «소환물 유지», Ready 는 «행동 가능».

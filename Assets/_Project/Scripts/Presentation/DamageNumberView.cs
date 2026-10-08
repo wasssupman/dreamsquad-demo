@@ -1,9 +1,9 @@
 using System;
 using TMPro;
 using UnityEngine;
-using Wassup.Core.TimeControl;
+using Somnia.Battle.Core.TimeControl;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // World-space floating damage number. Self-animates (punch scale-in, upward
     // drift, fade-out), billboards to the battle camera, then reports completion so

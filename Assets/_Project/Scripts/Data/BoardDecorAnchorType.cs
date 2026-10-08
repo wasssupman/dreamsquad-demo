@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     public enum BoardDecorAnchorType : byte
     {

@@ -5,7 +5,7 @@
 //   캐시가 갈리는」 두 번째 상태가 생긴다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // 최대 체력 배율의 적용. **Effects 가 배율을 정하고 체력은 한 곳만 쓴다.**
     //

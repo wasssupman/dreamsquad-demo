@@ -4,7 +4,7 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 
-namespace Wassup.Editor
+namespace Somnia.Battle.Editor
 {
     // projectile-ga-reskin unit 0.
     // Gabriel Aguiar "Unique Projectiles Vol 4" 프리팹을 ECS-driven 파이프라인이
@@ -17,7 +17,7 @@ namespace Wassup.Editor
     {
         private const string OutputDir = "Assets/_Project/VFX/Projectiles/GA";
 
-        [MenuItem("Wassup/VFX/Strip GA Projectile (Selection)")]
+        [MenuItem("Somnia/Battle/VFX/Strip GA Projectile (Selection)")]
         public static void StripSelection()
         {
             var selected = Selection.GetFiltered<GameObject>(SelectionMode.Assets);

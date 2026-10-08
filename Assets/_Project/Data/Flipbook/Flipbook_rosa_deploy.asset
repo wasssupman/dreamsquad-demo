@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 86c49a8213e5b4a7c84cf1482b39aec3, type: 3}
   m_Name: Flipbook_rosa_deploy
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SpriteFlipbookData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.SpriteFlipbookData
   frames:
   - {fileID: -5818265096867889587, guid: 2c4345f2ce7d04c9e85565e1c3065820, type: 3}
   - {fileID: -2852258608817708209, guid: 2c4345f2ce7d04c9e85565e1c3065820, type: 3}

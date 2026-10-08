@@ -1,4 +1,4 @@
-namespace Wassup.Data.Authoring
+namespace Somnia.Battle.Data.Authoring
 {
     // battle-core-rebuild unit 8c — 이 타입의 **집**만 옮겼다(옛 `Battle/Combat/EnemyTargetFilter.cs` 에서 떼어냄). 네임스페이스·값·번호 무변 —
     // 새 층 저작 SO 가 이것을 부르는데 옛 폴더는 unit 9 가 통째로 지운다. 이름 정리는 unit 9.
@@ -18,8 +18,8 @@ namespace Wassup.Data.Authoring
         // `BlockingHazard` 는 `AnyDefender` 밖에 따로 있다 — 방벽은 진영×종류 축의 거점이
         // 아니라 «부술 수 있는 벽» 이고(Faction.cs 주석), 그 사실을 여기서 감추지 않는다.
         public const int DefaultEnemyMask =
-            Wassup.Skills.Factions.AnyDefender
-            | (int)Wassup.Skills.Faction.BlockingHazard;
+            Somnia.Battle.Skills.Factions.AnyDefender
+            | (int)Somnia.Battle.Skills.Faction.BlockingHazard;
 
         // 0(Faction.None) = 미저작 → 기본값. 그 외는 저작값을 그대로 존중한다.
         // 저작이란 «이 적은 특수하다» 는 선언이다 — 마음사냥꾼(거점 전담)이 유일한 예다.

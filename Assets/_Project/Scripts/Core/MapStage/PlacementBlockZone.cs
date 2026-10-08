@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 0 — 배치 금지 영역 선언. 런타임 로직 0.
     // 옛 placeMask 브러시의 후계이며 «전선»(여기 너머 배치 금지) 저작의 필수 수단이다 (README 계약 3

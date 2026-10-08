@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // test-suite-fast-lane unit 0 — WaveConceptBossTests 에서 추출한 라이브 덱 저작 검증.
     // 보스 재케이던스 로직 테스트(합성 덱)는 코어 lane 에 남는다.

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // defender-ability-assets unit 0 — 유닛 고유능력 서브에셋의 base. DefenderUnitData 의
     // 능력별 flat 필드 산발을 대체한다(유닛은 abilities 리스트 하나만 보유).

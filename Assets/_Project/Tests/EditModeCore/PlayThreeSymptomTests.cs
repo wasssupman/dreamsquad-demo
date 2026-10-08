@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCardFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // 플레이 3차 결함 — 사용자의 문장을 그대로 단언한다(CLAUDE.md 버그 절차 2).
     [TestFixture]

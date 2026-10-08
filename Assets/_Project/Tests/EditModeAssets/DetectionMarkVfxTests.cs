@@ -2,9 +2,9 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // enemy-detection-range unit 9 — 「발견」 표식 **프리팹 내부**의 조용한 파손을 잡는 그물.
     //

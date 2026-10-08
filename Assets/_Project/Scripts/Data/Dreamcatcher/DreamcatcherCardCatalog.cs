@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // dreamcatcher-deck-builder Unit 0 — id -> DreamcatcherCard resolution for
     // deck save/load. Authoritative list of cards a deck can reference.
-    [CreateAssetMenu(fileName = "DreamcatcherCardCatalog", menuName = "Wassup/DreamcatcherCardCatalog", order = 22)]
+    [CreateAssetMenu(fileName = "DreamcatcherCardCatalog", menuName = "Somnia/Battle/DreamcatcherCardCatalog", order = 22)]
     public class DreamcatcherCardCatalog : ScriptableObject
     {
         public DreamcatcherCard[] cards;

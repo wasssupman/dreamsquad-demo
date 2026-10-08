@@ -1,6 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.UI;
+using Somnia.Battle.UI;
 
 // placement-cell-snap unit 3 — throttle(주기적 커밋) 순수 스텝 회귀 테스트.
 public class PlacementSnapDebounceTests

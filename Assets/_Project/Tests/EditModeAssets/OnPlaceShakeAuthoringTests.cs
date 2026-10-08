@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // camera-direction unit 17 — 배치 스킬 셰이크의 **저작 계약**.
     //

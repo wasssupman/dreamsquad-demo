@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     public class FluidRenderTargetsTests
     {

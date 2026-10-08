@@ -2,12 +2,12 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Cards;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Cards;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 8b — 진입 입력의 **순수 함수 몫**(맵 풀 4갈래 · 웨이브 원천 서열 · 저작 플랜 시계 · 첫 손패 고정).
     // 판을 짓지 않는다 — 라이브 풀 에셋에 대고 「같은 시드 = 같은 엔트리」를 묻는다(옛 tournament-seed-map-select 결정론).

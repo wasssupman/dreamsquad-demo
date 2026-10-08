@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Effects;
-using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Effects;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCombatFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6a2 — **시전자가 쏘는 모든 탄이 시전자의 착탄 효과를 싣는다.**
     //
@@ -275,8 +275,8 @@ namespace Wassup.Tests.EditMode.Core
             req.Movement = MovementKind.SkyFall;
             req.Payload = PayloadKind.TileAoe;
             req.Owner = new SimEntityId(Caster);
-            req.OwnerFaction = Wassup.Skills.Faction.DefenderUnit;
-            req.TargetMask = (int)Wassup.Skills.Faction.EnemyUnit;
+            req.OwnerFaction = Somnia.Battle.Skills.Faction.DefenderUnit;
+            req.TargetMask = (int)Somnia.Battle.Skills.Faction.EnemyUnit;
             req.Origin = new float3(2f, 0f, 2f);
             req.Impact = new float3(8f, 0f, 1f);
             req.OnHitCc = CcRequestKind.Stun;

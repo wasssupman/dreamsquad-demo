@@ -1,4 +1,4 @@
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // sprite-flipbook-player unit 3 — 시트 서브스프라이트의 프레임 순서를 정하는 순수 비교.
     //

@@ -1,8 +1,8 @@
 using Newtonsoft.Json;
-using Wassup.BattleCore.Trigger;
-using Wassup.Data.Authoring;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Data.Authoring;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // skill-data-table unit 5 — 새 시트 두 탭의 줄 계약(`tables.md` §2 · §4 · 이름 = README U19).
     //

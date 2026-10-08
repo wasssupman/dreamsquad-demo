@@ -5,9 +5,9 @@ using System.Reflection;
 using System.Text;
 using Newtonsoft.Json;
 using UnityEngine;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     /// <summary>
     /// skill-data-table unit 5 — 임포터가 id 로 찾는 표들(`tables.md` §10 — 표마다 네임스페이스). 에디터는 에셋 스캔으로,

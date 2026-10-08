@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Wave
+namespace Somnia.Battle.BattleCore.Wave
 {
     // battle-core-rebuild unit 4 — 생성 결과. 「이 판에 무엇이 · 언제 · 어디서 나오나」.
     //

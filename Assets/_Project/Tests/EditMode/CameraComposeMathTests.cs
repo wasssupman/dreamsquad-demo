@@ -1,6 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
 // camera-direction unit 0 — 포즈 합성/킥 envelope 순수 함수 회귀 테스트.
 public class CameraComposeMathTests

@@ -1,6 +1,6 @@
 using System;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // enemy-behavior-components Unit 0 — enemy behavior axes selected per-SO and
     // baked to ECS components. enemyClass is a label only; these drive runtime.

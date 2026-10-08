@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Data.Authoring;
-using Wassup.Data;
-using CoreDotElement = Wassup.BattleCore.Effects.DotElement;
-using CoreFaction = Wassup.Skills.Faction;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Data;
+using CoreDotElement = Somnia.Battle.BattleCore.Effects.DotElement;
+using CoreFaction = Somnia.Battle.Skills.Faction;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     /// <summary>
     /// unit 6b — 판 위에 깔리는 것의 **저작 입력**. 모드와 같은 층의 선택 인자다(안 넘기면 셋 다 빈다).

@@ -1,6 +1,6 @@
 {
-    "name": "Wassup.Skills",
-    "rootNamespace": "Wassup.Skills",
+    "name": "Somnia.Battle.Skills",
+    "rootNamespace": "Somnia.Battle.Skills",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

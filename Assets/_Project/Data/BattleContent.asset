@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6c7ea41a213b4ea1952090eb53ec26d3, type: 3}
   m_Name: BattleContent
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.BattleContent
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.BattleContent
   defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
   stoneCatalog: {fileID: 11400000, guid: c8bc438b0fcdd46d099efeb04b7e8bac, type: 2}
   cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}

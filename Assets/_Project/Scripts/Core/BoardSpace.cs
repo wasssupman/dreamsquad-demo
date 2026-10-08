@@ -1,7 +1,7 @@
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // tilemap-view-backend unit 0 — sim(rect XZ 월드) ↔ view 변환의 유일한 지점.
     // MonoBehaviour 계층 전용. ECS/Burst 에서 호출 금지 (managed Transform 의존).

@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
-    // battle-core-rebuild unit 6c — 옛 `Wassup.Battle.Effects.PickupPresenter` 의 복사본(삭제 예정 폴더 안이라
+    // battle-core-rebuild unit 6c — 옛 `Somnia.Battle.Battle.Effects.PickupPresenter` 의 복사본(삭제 예정 폴더 안이라
     // unit 9 에 쓸려 간다). 바뀐 것은 **머티리얼 한 줄**뿐이다 — 옛 플레이스홀더는 `Shader.Find` + `new Material`
     // 이었고(추가 제약 위반 · 모바일 stripping 에서 null), 여기서는 `RuntimeMaterialFactory` 를 지난다.
     //
@@ -115,6 +115,6 @@ namespace Wassup.BattleCoreUnity.View
         }
 
         private static Material CreateEmissiveMaterial(Color color)
-            => Wassup.Rendering.RuntimeMaterialFactory.CreateOpaque(color);
+            => Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateOpaque(color);
     }
 }

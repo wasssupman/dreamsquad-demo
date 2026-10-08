@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data.BattleView
+namespace Somnia.Battle.Data.BattleView
 {
     // battle-core-rebuild unit 5a — 「뜬 높이」의 시각 반응 노브.
     //
@@ -11,7 +11,7 @@ namespace Wassup.Data.BattleView
     //
     // ⚠ 원근 보상이라 **화면 전역 단일 소유**다. 유닛별로 저작하지 않는다 — 같은 높이의
     // 두 유닛이 다른 크기로 보이면 그 순간 높이가 거리를 말하지 않게 된다.
-    [CreateAssetMenu(menuName = "Wassup/BattleView/Unit Lift Knobs", fileName = "UnitLiftKnobs")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/BattleView/Unit Lift Knobs", fileName = "UnitLiftKnobs")]
     public sealed class UnitLiftKnobs : ScriptableObject
     {
         [Header("뜬 높이 → 확대")]

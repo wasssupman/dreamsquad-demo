@@ -1,9 +1,9 @@
 using Spine.Unity;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
-    [CreateAssetMenu(fileName = "PropData", menuName = "Wassup/PropData", order = 20)]
+    [CreateAssetMenu(fileName = "PropData", menuName = "Somnia/Battle/PropData", order = 20)]
     public class PropData : ScriptableObject
     {
         [Header("Identity")]

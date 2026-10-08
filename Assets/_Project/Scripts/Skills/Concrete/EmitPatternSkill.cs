@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 1 — 발사 명세(패턴)를 쏜다.
     //

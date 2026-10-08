@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 874aef58f424040b6b29ff81aac64a00, type: 3}
   m_Name: CameraDirectionConfig
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.CameraDirectionConfig
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.CameraDirectionConfig
   kickPosAmp: 0.08
   kickRotAmp: 0.35
   kickDuration: 0.16

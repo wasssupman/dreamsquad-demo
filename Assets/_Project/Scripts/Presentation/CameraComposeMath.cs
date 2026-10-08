@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // camera-direction unit 0 — 카메라 포즈 합성 순수 수학 (plain in/out, EditMode 테스트 대상).
     // 델타는 전부 "base 포즈 기준 카메라 로컬 축" 해석: localPos 는 base 회전 축으로 변환해 더하고,

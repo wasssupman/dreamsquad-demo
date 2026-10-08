@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using static Wassup.Tests.EditMode.Core.CoreTriggerFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using static Somnia.Battle.Tests.EditMode.Core.CoreTriggerFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7a — **유닛이 저작으로 든 규칙**이 실제 concrete 로 끝까지 도는가
     // (적 악몽 · 배치 스킬 · 실드 · 브레스 · 감속 오라 · 출혈). 카드는 7b.
@@ -74,7 +74,7 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(RejectReason.None, m.Apply(Command.PlaceDefender(0, new int2(4, 1))).Reason);
             CoreCombatFixtures.Tick(m, 3);
             Assert.IsTrue(granted.Exists(g => g.B == ally.Id), "배치 순간 주변 아군에 실드");
-            Assert.AreEqual(40f, Wassup.BattleCore.Combat.ShieldMath.Sum(ally.Shield.Slots), 1e-4f, "한 틱 늦게 드레인(C17) 뒤 슬롯에 있다");
+            Assert.AreEqual(40f, Somnia.Battle.BattleCore.Combat.ShieldMath.Sum(ally.Shield.Slots), 1e-4f, "한 틱 늦게 드레인(C17) 뒤 슬롯에 있다");
         }
 
         [Test]

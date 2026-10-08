@@ -1,6 +1,6 @@
 {
-    "name": "Wassup.UnitAi",
-    "rootNamespace": "Wassup.UnitAi",
+    "name": "Somnia.Battle.UnitAi",
+    "rootNamespace": "Somnia.Battle.UnitAi",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

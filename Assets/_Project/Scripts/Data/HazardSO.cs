@@ -1,9 +1,9 @@
 using UnityEngine;
-using Wassup.Data.Authoring;
+using Somnia.Battle.Data.Authoring;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
-    [CreateAssetMenu(menuName = "Wassup/Hazard", fileName = "Hazard_New")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Hazard", fileName = "Hazard_New")]
     public class HazardSO : ScriptableObject
     {
         [Header("Shape")]
@@ -24,6 +24,6 @@ namespace Wassup.Data
         // 기본값이 오늘의 게이트(적만)라 기존 에셋은 판이 안 바뀐다. 옛 전투는 이 필드를 안 읽는다.
         [Header("Targets (battle core)")]
         [Tooltip("존 효과가 걸리는 진영 비트. 기본 = 적만(옛 하드 게이트와 같다).")]
-        public Wassup.Skills.Faction zoneTargetFactions = Wassup.Skills.Faction.EnemyUnit;
+        public Somnia.Battle.Skills.Faction zoneTargetFactions = Somnia.Battle.Skills.Faction.EnemyUnit;
     }
 }

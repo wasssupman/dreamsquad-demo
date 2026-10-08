@@ -1,11 +1,11 @@
 using NUnit.Framework;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
-using Probe = Wassup.BattleCore.CardProbe;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCardFixtures;
+using Probe = Somnia.Battle.BattleCore.CardProbe;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7e — **카드 프로브 자체**가 고정구 정의표로 도는가(순수 C# — 헤드리스 lane).
     // 라이브 카드 전량은 Assets lane(`CardEffectWitnessTests`)이 본다. 여기는 장치가 ○ 와 × 를 가른다는 것만 못박는다.

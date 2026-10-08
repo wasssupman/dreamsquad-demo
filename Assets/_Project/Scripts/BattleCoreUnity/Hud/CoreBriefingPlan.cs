@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Wave;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Wave;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild unit 8a — 메뉴 웨이브 브리핑의 **입력 어댑터**(구현 5).
     //

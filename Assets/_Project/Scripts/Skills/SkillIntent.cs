@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 3 — 스킬이 «무엇을 하고 싶은지» 말하는 어휘.
     //

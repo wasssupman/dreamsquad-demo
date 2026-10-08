@@ -1,4 +1,4 @@
-namespace Wassup.UnitAi
+namespace Somnia.Battle.UnitAi
 {
     // enemy-ai-fsm Unit 0 → defender-autobattle-ai unit 5 — 적 행동 FSM 상태(진영 의도층). 로직 레이어로 편입.
     // Combat 의 `EnemyAiState` 컴포넌트가 이 값을 나르고, `EnemyAiStateSystem` 만 쓴다. MovementSystem·AttackSystem 은 RO.

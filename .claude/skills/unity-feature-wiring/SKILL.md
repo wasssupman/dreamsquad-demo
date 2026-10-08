@@ -11,7 +11,7 @@ A Unity feature is "done" only when **(1) code compiles, (2) scene is wired, (3)
 
 **Core principle:** If a view pool's `_driver` (→ `BattleDriver`) is null at runtime, it never subscribes to core events and the feature does not exist — regardless of what the code says.
 
-**전투 씬** = `Assets/_Project/Scenes/BattleCoreScene.unity`(루트 `BattleDriver` 오브젝트 + `BattleCoreUnity/View/Core*` 뷰 풀·`Hud/`·`Input/` 컴포넌트). 전투 코어(`Scripts/BattleCore/`)는 순수 C# 이라 씬 배선 대상이 아니다 — 배선은 전부 Unity 층(드라이버·뷰 풀·입력의 `SerializeField`)에서 일어난다. 에디터 진입 = 메뉴 `Wassup/BattleCore/씬 열기 (BattleCoreScene)`.
+**전투 씬** = `Assets/_Project/Scenes/BattleCoreScene.unity`(루트 `BattleDriver` 오브젝트 + `BattleCoreUnity/View/Core*` 뷰 풀·`Hud/`·`Input/` 컴포넌트). 전투 코어(`Scripts/BattleCore/`)는 순수 C# 이라 씬 배선 대상이 아니다 — 배선은 전부 Unity 층(드라이버·뷰 풀·입력의 `SerializeField`)에서 일어난다. 에디터 진입 = 메뉴 `Somnia/Battle/BattleCore/씬 열기 (BattleCoreScene)`.
 
 ## The Iron Law
 
@@ -66,11 +66,11 @@ Invoke whenever the implementation touches any of these:
 The one wiring operation that's non-obvious. Template:
 
 ```csharp
-var target = UnityEngine.Object.FindAnyObjectByType<Wassup.BattleCoreUnity.View.CoreVfxSpawner>(
+var target = UnityEngine.Object.FindAnyObjectByType<Somnia.Battle.BattleCoreUnity.View.CoreVfxSpawner>(
     UnityEngine.FindObjectsInactive.Include);
-var value = UnityEngine.Object.FindAnyObjectByType<Wassup.BattleCoreUnity.BattleDriver>(
+var value = UnityEngine.Object.FindAnyObjectByType<Somnia.Battle.BattleCoreUnity.BattleDriver>(
     UnityEngine.FindObjectsInactive.Include);
-var field = typeof(Wassup.BattleCoreUnity.View.CoreVfxSpawner).GetField("_driver",
+var field = typeof(Somnia.Battle.BattleCoreUnity.View.CoreVfxSpawner).GetField("_driver",
     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 field.SetValue(target, value);
 UnityEditor.EditorUtility.SetDirty(target);

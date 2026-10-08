@@ -7,7 +7,7 @@
 //   0 Advection · 1 Divergence · 2 Curl · 3 Vorticity · 4 Pressure(Jacobi)
 //   5 GradientSubtract · 6 Splat · 7 Clear · 8 Display
 // 텍스처는 named uniform 으로만 읽는다(_MainTex 미사용). 소비자가 패스마다 SetTexture 후 Blit.
-Shader "Wassup/Fluid/FluidSolver"
+Shader "Somnia/Battle/Fluid/FluidSolver"
 {
     Properties
     {

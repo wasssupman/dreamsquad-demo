@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // keyring-cord-preview — 드래그/탭 배치 프리뷰 튜닝값 묶음(키링 스윙 = 제어형 스프링 진자).
     // 움직임은 자유 물리 시뮬이 아니라 이동범위·각도·스프링·댐핑으로 제어한다(고리 아래 실루엣이 진자처럼 스윙).
@@ -10,7 +10,7 @@ namespace Wassup.Data
     //
     // 그룹 맵(인스펙터 헤더 순): ① 키링 추종  ② 줄·고리 비주얼  ③ 스타일  ④ 배치 컷신
     //                          ⑤ 컷신 틸트  ⑥ 셀 스냅  ⑦ 탭 배치 시뮬  ⑧ 방향 페이즈
-    [CreateAssetMenu(menuName = "Wassup/Drag Sway Settings", fileName = "DragSwaySettings")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Drag Sway Settings", fileName = "DragSwaySettings")]
     public class DragSwaySettings : ScriptableObject
     {
         [Header("① 키링 추종 — 고리 밑 유닛이 진자처럼 지연 스윙 (스프링+속도상한)")]

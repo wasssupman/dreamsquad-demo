@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // directional-attack-shape unit 1 — 저작(`AttackShape`) → bake(`AttackShapeBaked`) 순수 변환.
     //

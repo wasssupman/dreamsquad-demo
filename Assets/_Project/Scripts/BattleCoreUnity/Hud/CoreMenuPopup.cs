@@ -1,8 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.Core.TimeControl;
+using Somnia.Battle.Core.TimeControl;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild unit 5b — **메뉴.** 옛 `MenuPopup`(294줄)의 후계다.
     //
@@ -37,7 +37,7 @@ namespace Wassup.BattleCoreUnity.Hud
 
         private RectTransform _panel;
         private Image _dim;
-        private Wassup.UI.WavePatternStripView _strip;
+        private Somnia.Battle.UI.WavePatternStripView _strip;
         private Button _open;
         private TimeLease _lease;
         private bool _paused;
@@ -57,7 +57,7 @@ namespace Wassup.BattleCoreUnity.Hud
         public bool IsOpen => _paused;
 
         /// <summary>브리핑 스트립. 테스트가 「카드 수 = 코어 플랜 웨이브 수」를 증언하는 창이다.</summary>
-        public Wassup.UI.WavePatternStripView Strip => _strip;
+        public Somnia.Battle.UI.WavePatternStripView Strip => _strip;
 
         /// <summary>마지막으로 스트립에 넘긴 플랜의 웨이브 수(카드 상한 12 와 무관한 입력 쪽 수).</summary>
         public int BriefedWaveCount { get; private set; }
@@ -83,7 +83,7 @@ namespace Wassup.BattleCoreUnity.Hud
             var stripRt = CoreHudUi.Rect("WavePatternStrip", transform, new Vector2(0.5f, 0.5f),
                                          new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(10f, 10f));
             CoreHudUi.Stretch(stripRt);
-            _strip = stripRt.gameObject.AddComponent<Wassup.UI.WavePatternStripView>();
+            _strip = stripRt.gameObject.AddComponent<Somnia.Battle.UI.WavePatternStripView>();
 
             _panel = CoreHudUi.Rect("MenuPanel", transform, new Vector2(0.5f, 0.5f),
                                     new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(10f, 10f));
@@ -147,7 +147,7 @@ namespace Wassup.BattleCoreUnity.Hud
             {
                 // 일시정지 리스를 먼저 놓아야 마감이 정상 진행된다(옛 `Close()` → `SubmitMatch`).
                 SetPaused(false);
-                var receipt = _driver.Apply(Wassup.BattleCore.Command.Submit());
+                var receipt = _driver.Apply(Somnia.Battle.BattleCore.Command.Submit());
                 if (!receipt.Accepted)
                     Debug.LogWarning($"[CoreMenuPopup] 성적 확정이 거절됐다 — {receipt.Reason}", this);
                 return;

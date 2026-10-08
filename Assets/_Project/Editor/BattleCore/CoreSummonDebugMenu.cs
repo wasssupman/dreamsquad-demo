@@ -3,10 +3,10 @@ using System.Text;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 7d — **순찰병 수동 소환** 도구. 옛 `PatrolDebugMenu`(도구 처분표 10행)의 후계이고,
     // 브리지 메서드 대신 코어 커맨드 `DebugSummonPatrol`(24)을 넣는다 — 하네스·리플레이가 같은 길을 탄다.
@@ -20,7 +20,7 @@ namespace Wassup.EditorTools.BattleCore
     // 소환사가 편성에 없으면 이 메뉴는 그 사실을 말하고 멈춘다(조용히 아무 일도 안 하지 않는다).
     public static class CoreSummonDebugMenu
     {
-        private const string Root = "Wassup/BattleCore/Debug/순찰/";
+        private const string Root = "Somnia/Battle/BattleCore/Debug/순찰/";
 
         [MenuItem(Root + "순찰병 소환 (반경 2 · 배치 유닛 칸)")] private static void Summon2() => Summon(2);
         [MenuItem(Root + "순찰병 소환 (반경 4 · 배치 유닛 칸)")] private static void Summon4() => Summon(4);
@@ -76,7 +76,7 @@ namespace Wassup.EditorTools.BattleCore
                 if (u.Kind != UnitKind.Patrol || u.Dead || u.Patrol == null) continue;
                 var p = u.Patrol;
                 var cell = match.Map.CellOf(u.Position);
-                bool inside = Wassup.BattleCore.Move.PatrolAreaMath.IsInArea(cell, p.Anchor, p.Radius);
+                bool inside = Somnia.Battle.BattleCore.Move.PatrolAreaMath.IsInArea(cell, p.Anchor, p.Radius);
                 sb.AppendLine($"{u.Id} | ({p.Anchor.x},{p.Anchor.y}) | ({p.Home.x},{p.Home.y}) | {p.Radius} | "
                     + $"{(p.SummonedBy.IsNone ? "없음(디버그)" : p.SummonedBy.ToString())} | ({cell.x},{cell.y}) | {(inside ? "O" : "X")}");
             }

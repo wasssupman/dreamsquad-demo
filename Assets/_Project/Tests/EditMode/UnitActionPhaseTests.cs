@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Wassup.UnitAi;
+using Somnia.Battle.UnitAi;
 
 // defender-deploy-phase unit 3 — 행동 시작 가능 여부의 단일 표. 여기가 빨개지면 Attack·Movement 의 START 게이트가 같이 바뀐 것.
 public class UnitActionPhaseTests

@@ -1,9 +1,9 @@
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // skill-layer-migration unit 7e — **조준 사양은 저작이 선언한다.**
     //

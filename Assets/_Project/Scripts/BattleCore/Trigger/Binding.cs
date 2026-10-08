@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — 규칙 하나의 **부착된 인스턴스**. 정의(`BindingDef`)는 판 밖 값이고,
     // 이것은 그 규칙이 그 소유자에게 붙어서 생긴 **상태**(카운터·경계 래치·주기 누적·발동 수·수명)다.

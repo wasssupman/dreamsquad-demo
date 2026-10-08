@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // **공용 사냥판** — 무제한 감지(보스·보너스)의 이동 필드.
     //

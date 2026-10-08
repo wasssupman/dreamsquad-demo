@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // battle-core-rebuild unit 7b — **라이브 카드 전량**이 정의표로 구워지는가(`CardDefinitionBuilder`).
     //

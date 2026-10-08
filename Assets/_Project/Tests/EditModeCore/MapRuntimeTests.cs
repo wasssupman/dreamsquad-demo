@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 2 — 맵 런타임의 계약: 슬롯·장애물·점유·효과 타일.
     public class FlowFieldSetTests

@@ -2,7 +2,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
 // sprite-unit-backend unit 0 — 빈 슬롯 폴백 규칙. 입력은 직렬화 참조, 출력은 참조 하나 —
 // 아키텍처 타입을 모르는 순수 결정이라 EditMode 대상이다.

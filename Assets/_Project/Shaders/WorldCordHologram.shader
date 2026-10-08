@@ -1,7 +1,7 @@
 // keyring-unify 2 — 키링 홀로그램 월드 셰이더 (인게임 LineRenderer/SpriteRenderer 용).
 // UICordHologram 과 동일 효과(KeyringHologramCommon.hlsl 공유)를 URP unlit 가산으로 렌더.
 // _LengthAxis 로 길이축을 선택: 줄(LineRenderer, textureMode=Stretch)=1(uv.x), 고리(SpriteRenderer)=0(uv.y).
-Shader "Wassup/World/CordHologram"
+Shader "Somnia/Battle/World/CordHologram"
 {
     Properties
     {

@@ -1,13 +1,13 @@
 using NUnit.Framework;
-using Wassup.UnitAi;
+using Somnia.Battle.UnitAi;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // 옛 `DefenderAiTests` · `UnitActionPhaseTests` · `EnemyAiStateTransitionTests` 의 복사본
-    // (battle-core-rebuild unit 3). 적응한 것: **없다** — `Wassup.UnitAi` 는 엔진 무참조라
+    // (battle-core-rebuild unit 3). 적응한 것: **없다** — `Somnia.Battle.UnitAi` 는 엔진 무참조라
     // 술어가 그대로 산다.
     //
-    // 왜 복사하나(중복처럼 보이는 이유): 옛 lane(`Wassup.Tests.EditMode`)은 Entities 를
+    // 왜 복사하나(중복처럼 보이는 이유): 옛 lane(`Somnia.Battle.Tests.EditMode`)은 Entities 를
     // 참조해 **헤드리스에서 돌지 않는다.** 이 진리표는 새 코어의 공격 루프가 매 틱 보는
     // 것이라 코어 lane 안에서 초록이어야 한다. 옛 사본은 unit 9 에서 사라진다.
     public class UnitAiRulesTests

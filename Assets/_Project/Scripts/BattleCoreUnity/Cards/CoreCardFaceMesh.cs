@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.Sprites;
 using UnityEngine.UI;
 
-namespace Wassup.BattleCoreUnity.Cards
+namespace Somnia.Battle.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 7c — 옛 `UiCardFaceMesh`(190줄)의 이식. **바뀐 것은 머티리얼 한 줄**이다: 옛 것은
     // 셰이더를 **이름으로 찾아** 새 머티리얼을 만들었고(추가 제약 위반 — 모바일 셰이더 스트리핑에서 null 로 조용히
@@ -10,7 +10,7 @@ namespace Wassup.BattleCoreUnity.Cards
     // 옛 `UiCardFaceMesh` 는 소비자가 없어 battle-content-finish 에서 지웠다.
     //
     // card-crumple-unfold — 손패 카드 art 를 N×N 격자로 테셀레이트하고, 각 버텍스에
-    // "구겨진 오프셋(uv1)+크리스 깊이(uv2)"를 정적으로 굽는다. 셰이더(Wassup/UI/CardCrumple)가
+    // "구겨진 오프셋(uv1)+크리스 깊이(uv2)"를 정적으로 굽는다. 셰이더(Somnia/Battle/UI/CardCrumple)가
     // per-instance `_Unfold` 로 crumpled↔flat 을 보간: pos.xy += crumple*(1-_Unfold).
     //
     // 주의(root-cause): uv1/uv2 는 Canvas.additionalShaderChannels(TexCoord1|TexCoord2)를
@@ -69,7 +69,7 @@ namespace Wassup.BattleCoreUnity.Cards
         private void EnsureMaterial()
         {
             if (_matInstance != null) return;
-            _matInstance = Wassup.Rendering.RuntimeMaterialFactory.CreateCardCrumpleUi();
+            _matInstance = Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateCardCrumpleUi();
             if (_matInstance == null) return; // 폴백: 기본 UI 머티리얼(구김 없음)
             _matInstance.SetFloat("_Unfold", _unfold);
             _matInstance.SetFloat("_CreaseAO", creaseAO);

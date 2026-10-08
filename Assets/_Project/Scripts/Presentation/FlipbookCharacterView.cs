@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // sprite-character-preview unit 0 — 캐릭터 상태 5개를 플립북 5개에 매핑하고 전이를 소유한다.
     //

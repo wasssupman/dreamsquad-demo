@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Goals
+namespace Somnia.Battle.BattleCore.Goals
 {
     // battle-core-rebuild unit 4 — 「정해진 웨이브를 **얼마나 빨리** 끝냈나」.
     //

@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // on-place-skill-rework unit 5 — 말파이트 배치 스킬의 **저작 계약**.
     //

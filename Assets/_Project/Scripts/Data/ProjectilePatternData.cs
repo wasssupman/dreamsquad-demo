@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     [System.Serializable]
     public struct ProjectileShotStep
@@ -26,7 +26,7 @@ namespace Wassup.Data
     // 계약 4 — 반복 주기는 트리거가 소유한다. shots 는 "한 번의 발사 안의
     // 연발" 이다(PeriodicTimer(0.5s) × 패턴(1발) 이 0.5초 간격 사격이고,
     // 패턴이 스스로 반복하지 않는다).
-    [CreateAssetMenu(fileName = "Pattern", menuName = "Wassup/ProjectilePattern", order = 14)]
+    [CreateAssetMenu(fileName = "Pattern", menuName = "Somnia/Battle/ProjectilePattern", order = 14)]
     public class ProjectilePatternData : ScriptableObject
     {
         public static int MaxShotCount

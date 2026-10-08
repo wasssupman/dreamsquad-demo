@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
-using Wassup.Data;
-using Wassup.Data.StatImport;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Somnia.Battle.Editor.UnitStatImport
 {
     // sheet-export-push unit 7 — 코스트 경제 SO(CostConfig) → 시트 탭 행. DcConfig
     // 탭과 같은 flat-config 방식(행 키 = id, 동명 필드 reflection 읽기)이고, 행 타입은

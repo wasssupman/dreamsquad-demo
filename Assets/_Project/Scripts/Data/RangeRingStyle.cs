@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // dreamcatcher-attach-range-preview 0b — 바닥 범위 링의 look 한 벌.
     //

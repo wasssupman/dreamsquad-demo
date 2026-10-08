@@ -2,8 +2,8 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
 // sprite-character-preview unit 0 — 상태 매핑과 전이 계약.
 //

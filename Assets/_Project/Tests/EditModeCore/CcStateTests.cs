@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6a — 군중 제어 슬롯.
     [TestFixture]

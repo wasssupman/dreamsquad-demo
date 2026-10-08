@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 9 — 보너스 당기기 포탈 칸 선언(선택 저작). 런타임 로직 0.
     // bonus-wave-pull 의 MapDocument.bonusSpawns 후계 — 빌더가 GeneratedMap.bonusSpawns 로 투영하고

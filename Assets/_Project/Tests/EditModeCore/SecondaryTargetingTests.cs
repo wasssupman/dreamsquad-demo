@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCombatFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 3 「나중에 고친 것」 — **부가 타격(2번째 이후 대상) 선정**이 옛 규칙과
     // 갈렸던 두 자리(2026-09-24 도달 패리티 감사). 옛 정본 = `Battle/Combat/AttackSystem.cs` 의

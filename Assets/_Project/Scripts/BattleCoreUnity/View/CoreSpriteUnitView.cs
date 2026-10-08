@@ -1,10 +1,10 @@
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 using UnityEngine;
-using Wassup.Presentation;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
+using Somnia.Battle.Presentation;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // sprite-unit-backend unit 2a/2b — 스프라이트 시트 유닛 뷰. CoreUnitView 의 두 번째 구현체.
     //
@@ -208,8 +208,8 @@ namespace Wassup.BattleCoreUnity.View
             float simDt = Time.deltaTime * _battleScale;
             if (simDt <= SimDtEpsilon) return;
             float disp = Vector3.Distance(
-                (Vector3)Wassup.Core.BoardSpace.ToView(world),
-                (Vector3)Wassup.Core.BoardSpace.ToView(_simWorld));
+                (Vector3)Somnia.Battle.Core.BoardSpace.ToView(world),
+                (Vector3)Somnia.Battle.Core.BoardSpace.ToView(_simWorld));
             if (disp >= _knobs.WalkAnimTeleportGuard) return;
             float simSpeed = disp / simDt;
             _smoothedSpeed = Mathf.Lerp(_smoothedSpeed, simSpeed, _knobs.WalkAnimSmoothing);
@@ -228,7 +228,7 @@ namespace Wassup.BattleCoreUnity.View
             _simWorld = world;
             Vector3 offset = _visualData != null ? (Vector3)_visualData.SpineVisualOffset : Vector3.zero;
             float lift = CurrentHopOffset() + _flightHeight;
-            transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset
+            transform.position = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(world) + offset
                                  + new Vector3(0f, lift, 0f);
             if (_blob != null) _blob.ClearGroundAnchor();
             ApplyLift(lift);
@@ -330,8 +330,8 @@ namespace Wassup.BattleCoreUnity.View
         private void FaceAlongMovement(Vector3 world)
         {
             if (_dying || IsAttackPlaying()) return;
-            float dx = ((Vector3)Wassup.Core.BoardSpace.ToView(world)).x
-                       - ((Vector3)Wassup.Core.BoardSpace.ToView(_simWorld)).x;
+            float dx = ((Vector3)Somnia.Battle.Core.BoardSpace.ToView(world)).x
+                       - ((Vector3)Somnia.Battle.Core.BoardSpace.ToView(_simWorld)).x;
             SetFacingByViewDelta(dx, immediate: false);
         }
 
@@ -350,7 +350,7 @@ namespace Wassup.BattleCoreUnity.View
         public override void FaceToward(Vector3 worldPoint)
         {
             if (_dying || _sr == null) return;
-            float dx = ((Vector3)Wassup.Core.BoardSpace.ToView(worldPoint)).x - transform.position.x;
+            float dx = ((Vector3)Somnia.Battle.Core.BoardSpace.ToView(worldPoint)).x - transform.position.x;
             SetFacingByViewDelta(dx, immediate: true);
         }
 

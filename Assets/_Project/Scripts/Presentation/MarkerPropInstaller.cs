@@ -1,8 +1,8 @@
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // map-diorama-stage unit 6 — 스폰/골 마커 **공용** 프랍(포탈) 설치자. 사용자 결정(2026-08-27): 포탈 프랍은 맵에 상관없이
     // 공유한다 — 스테이지 프리팹은 마커만 두고, 스테이지가 켜지면(MapStage.Enabled) visualRoot 가 빈 마커에 스타일의 프랍을 얹는다.

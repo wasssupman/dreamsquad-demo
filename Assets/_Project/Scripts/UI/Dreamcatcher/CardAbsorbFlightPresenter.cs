@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // card-fly-to-target-absorb unit 0 — 손패 카드(UGUI)가 커밋 성공 시 타겟으로
     // 가속 비행 → 찰싹 splat → 즉시 dissolve. 순수 프레젠테이션(ECS 변경 0).

@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 0 — 자기 자리 즉발 폭발. 경계 자폭·진동갑주가 쓴다.
     //

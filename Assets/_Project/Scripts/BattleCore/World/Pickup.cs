@@ -1,7 +1,7 @@
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     /// <summary>픽업 종류. append-only(옛 `PickupKind` 와 같은 번호).</summary>
     public enum PickupKind : byte

@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // battle-core-rebuild unit 6a — 슬롯들이 **접힌** 값. 옛 `ModifierStats` 의 후계다.
     //

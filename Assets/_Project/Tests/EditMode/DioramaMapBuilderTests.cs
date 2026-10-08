@@ -2,11 +2,11 @@ using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Skills;
-using Wassup.Data;
-using Wassup.Data.MapGrid;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.MapGrid;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // map-diorama-stage unit 1 — 스캔(plain) → GeneratedMap 조립의 순수 코어 검증.
     // 씬/컴포넌트 없이 StageScan 픽스처로만 검증한다 — 스캔 자체는 얇은 변환(MapStageScanner)이라

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // dreamcatcher-deck-builder Unit 1 — pure deck validity: exact deck size +
     // per-type caps. Single source of truth for the builder (save gate) and the

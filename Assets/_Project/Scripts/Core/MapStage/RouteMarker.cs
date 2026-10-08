@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 0 — 웨이포인트 루트 선언(선택 저작). 런타임 로직 0.
     // 같은 routeIndex 의 마커를 order 오름차순으로 이으면 경로 하나가 된다.

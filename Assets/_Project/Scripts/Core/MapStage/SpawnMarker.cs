@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 0 — 적 스폰 지점 선언. 런타임 로직 0.
     // laneIndex 는 웨이브 결정론의 정본이다 (README 계약 5) — 씬 계층 순서에 기대지 않는다.

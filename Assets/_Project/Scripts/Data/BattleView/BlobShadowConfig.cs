@@ -1,13 +1,13 @@
 using UnityEngine;
 
-namespace Wassup.Data.BattleView
+namespace Somnia.Battle.Data.BattleView
 {
     // battle-core-rebuild unit 5a — 발밑 블롭 그림자의 외형. 옛 브리지 필드
     // `blobShadowSprite`·`blobShadowColor`·`blobShadowLift`·`useRealShadows` 의 새 주인.
     //
     // ⚠ 지름은 여기 없다 — **판정 몸 반경에서 파생**된다(2r). 저작 가능한 지름 노브를 두면
     // 화면이 몸보다 크거나 작은 그림자를 그려 「그림자가 링에 닿으면 사거리 안」이 거짓이 된다.
-    [CreateAssetMenu(menuName = "Wassup/BattleView/Blob Shadow Config", fileName = "BlobShadowConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/BattleView/Blob Shadow Config", fileName = "BlobShadowConfig")]
     public sealed class BlobShadowConfig : ScriptableObject
     {
         [Tooltip("블롭 스프라이트. 비우면 그림자를 달지 않는다.")]

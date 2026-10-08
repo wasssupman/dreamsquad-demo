@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7e — **「걸렸나」를 무엇으로 보나**의 표. 판정도 상태도 갖지 않는 도구다.
     //

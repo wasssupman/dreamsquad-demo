@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 62db7ae9296bc4a84b9df10a4401c33d, type: 3}
   m_Name: effect_tile_attack_speed
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.EffectTileData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.EffectTileData
   id: effect_tile_attack_speed
   displayName: "\uACF5\uC18D +20%"
   overlaySprite: {fileID: 21300000, guid: 7c38b5faf6eb34f8ca5d1cc45f043618, type: 3}

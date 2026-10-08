@@ -1,6 +1,6 @@
 using Unity.Collections;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // projectile-emission-pattern unit 0 — 타겟 선택 규칙. index 기반 결정론만
     // (seeded RNG 금지, README 계약 6). v1 어휘 2종: RoundRobin(융단폭격 순회),

@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 934f1261c7a44f2389308d8e101207cd, type: 3}
   m_Name: prop_style_boulder_cluster_2_2
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.PropData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.PropData
   id: prop_style_boulder_cluster_2_2
   displayName: boulder cluster 2 2
   footprintX: 2

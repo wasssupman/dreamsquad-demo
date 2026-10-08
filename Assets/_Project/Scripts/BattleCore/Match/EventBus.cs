@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 사건 배달. **구독 순서가 계약**이다(UML §1).
     //

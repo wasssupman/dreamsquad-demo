@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // tilemap-world-surround 13 — Billboard/PropBillboard 공유 회전 수학 회귀.
     public class BillboardRotationTests

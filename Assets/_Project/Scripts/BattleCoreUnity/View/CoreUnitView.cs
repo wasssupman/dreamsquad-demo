@@ -1,7 +1,7 @@
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 using UnityEngine;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // sprite-unit-backend unit 1 — 유닛 뷰 백엔드의 공통 표면. **선언만 있다** — 필드도 헬퍼도 0.
     //
@@ -56,7 +56,7 @@ namespace Wassup.BattleCoreUnity.View
         public abstract void PlayAttack(float attackAnimPeriod = 0f);
         // defender-autobattle-ai unit 4 — 뷰는 sim 의 AI 상태 하나를 받아 «루프»를 고른다(Sustaining → 능력 루프, 그 외 → 기본 로코모션).
         // 원샷(배치·공격·사망)은 사건 채널 그대로다 — 상태로 바꾸면 프레임 유실이 생긴다. 백엔드가 루프 오버라이드를 모르면 무동작.
-        public virtual void SetAiState(Wassup.UnitAi.DefenderAiState state, string sustainLoop, string sustainLostOneShot) { }
+        public virtual void SetAiState(Somnia.Battle.UnitAi.DefenderAiState state, string sustainLoop, string sustainLostOneShot) { }
         public abstract bool PlayDeploy();
         public abstract void Kill();
         public abstract void Dispose();

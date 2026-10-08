@@ -1,11 +1,11 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // Phase 6: global cost economy parameters. Held in one SO so the designer
     // can tune resource pacing without code changes. Read per match through
     // `MatchModeData.costConfig` by `MatchDefinitionBuilder`.
-    [CreateAssetMenu(fileName = "CostConfig", menuName = "Wassup/CostConfig", order = 14)]
+    [CreateAssetMenu(fileName = "CostConfig", menuName = "Somnia/Battle/CostConfig", order = 14)]
     public class CostConfig : ScriptableObject
     {
         // sheet-export-push unit 7 — CostConfig sheet-tab row key (upsert key on

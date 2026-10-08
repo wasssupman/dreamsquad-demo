@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
 // sprite-unit-backend unit 1 — 두 백엔드가 공유하는 반전 판정. 규칙은 SpineUnitView 의 것을
 // 그대로 옮겼으므로 여기가 빨개지면 Spine 쪽 동작이 바뀐 것이다.

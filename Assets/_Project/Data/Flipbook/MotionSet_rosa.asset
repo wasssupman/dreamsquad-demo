@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c694421dc6c684e73b2db67421d54d82, type: 3}
   m_Name: MotionSet_rosa
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.UnitSpriteMotionSet
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.UnitSpriteMotionSet
   idle: {fileID: 11400000, guid: 7585fceadd11a47c18579f3dac9a5dbe, type: 2}
   walk: {fileID: 0}
   attack: {fileID: 11400000, guid: 4ca788c2d52844128a51ded1b42f5ee5, type: 2}

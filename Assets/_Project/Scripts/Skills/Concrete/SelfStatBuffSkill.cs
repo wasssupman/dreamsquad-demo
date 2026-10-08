@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 3b — 발동할 때마다 **자기에게** 스탯 버프(광란).
     //

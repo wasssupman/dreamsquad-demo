@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using Wassup.BattleCore.Goals;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Move;
+using Somnia.Battle.BattleCore.Goals;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Move;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — **조립 지점.** 규칙도 상태도 여기 없다(계약 12).
     //
@@ -25,7 +25,7 @@ namespace Wassup.BattleCore
         /// skill-data-table unit 2 — **플레이어가 조종하는 편의 유닛 진영**. 플레이어가 거는 규칙(카드 · 액티브 · 드림스톤 · 판 기믹)이
         /// 규칙 인스턴스에 싣는 시전 진영(`Binding.CastFaction`)의 정본이다.
         /// </summary>
-        public const Wassup.Skills.Faction PlayerFaction = Wassup.Skills.Faction.DefenderUnit;
+        public const Somnia.Battle.Skills.Faction PlayerFaction = Somnia.Battle.Skills.Faction.DefenderUnit;
 
         private readonly MatchDefinition _def;
         private readonly EventBus _bus;
@@ -284,7 +284,7 @@ namespace Wassup.BattleCore
             _heart.Begin(in _def.Heart);
             _placement.Begin(_def.Roster, mode.PlacementInputEnabled, mode.RetireEnabled,
                              mode.BoardCap, _def.EffectTileCount,
-                             Wassup.Core.MatchSeed.DeriveMapSeed(_def.Seed));
+                             Somnia.Battle.Core.MatchSeed.DeriveMapSeed(_def.Seed));
             _waves.Begin(in _def.WaveDeck, in _def.WavePlan,
                          mode.WaveSource == WaveSourceKind.AuthoredPlan,
                          _def.Enemies, _def.Seed,

@@ -3,7 +3,7 @@
 // 배열로 바뀌어 **순서가 구조적으로 고정**됐다 — XOR 의 교환법칙에 기대지 않아도 된다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 「지금 어느 칸이 막혀 있나」 + 「그게 바뀌었나」.
     //

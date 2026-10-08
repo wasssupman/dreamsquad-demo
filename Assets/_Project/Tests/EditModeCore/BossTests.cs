@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7d — **보스 규칙.** ⑴ 일반 도약(짱쎈)은 밀집한 곳으로 순간이동하고, 비행 창이 끝나는 틱에
     // 그 자리에 착지 슬램(자리형 · 몸 0)이 떨어진다 — 옛 전투는 슬램을 뷰가 도착한 시각에 브리지가 쐈다.

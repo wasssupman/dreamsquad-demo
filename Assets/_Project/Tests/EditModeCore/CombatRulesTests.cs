@@ -1,13 +1,13 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCore.Map;
-using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Map;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCombatFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 3 — 전투 판정의 **필수 규칙**을 판 위에서 증언한다.
     //
@@ -231,7 +231,7 @@ namespace Wassup.Tests.EditMode.Core
             Tick(m, 1);
             Assert.IsFalse(d.Shield.Any, "부여된 틱에는 아직 슬롯이 없다");
             Tick(m, 1);
-            Assert.AreEqual(40f, Wassup.BattleCore.Combat.ShieldMath.Sum(d.Shield.Slots), 1e-3f);
+            Assert.AreEqual(40f, Somnia.Battle.BattleCore.Combat.ShieldMath.Sum(d.Shield.Slots), 1e-3f);
         }
 
         [Test]
@@ -513,7 +513,7 @@ namespace Wassup.Tests.EditMode.Core
             // 획득·유지·정지는 **원**이다. 도형은 부가 타격에만 곱해지고 넓히지 못한다.
             var def = Definition(defenderDamage: 5f, defenderRange: 4f, defenderTargetCount: 3);
             // 반각 15° 부채꼴 — 주 대상 축에서 크게 벗어난 후보는 빠진다.
-            def.Units[0].Attack.ShapeKind = Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind;
+            def.Units[0].Attack.ShapeKind = Somnia.Battle.BattleCore.Combat.AttackShapeBaked.SectorKind;
             def.Units[0].Attack.ShapeSinHalf = math.sin(math.radians(15f));
             def.Units[0].Attack.ShapeCosHalf = math.cos(math.radians(15f));
             def.ConfigHash = def.ComputeConfigHash();
@@ -538,7 +538,7 @@ namespace Wassup.Tests.EditMode.Core
             // 6c 후속 — 참격 자국은 이 스냅샷으로만 그린다(뷰가 공격자를 되묻지 않는다). 사거리는
             // **런타임 값**이라 저작값이 아니라 RESOLVE 시점의 `Attack.Range` 여야 한다.
             var def = Definition(defenderDamage: 5f, defenderRange: 4f, defenderTargetCount: 3);
-            def.Units[0].Attack.ShapeKind = Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind;
+            def.Units[0].Attack.ShapeKind = Somnia.Battle.BattleCore.Combat.AttackShapeBaked.SectorKind;
             def.Units[0].Attack.ShapeSinHalf = math.sin(math.radians(15f));
             def.Units[0].Attack.ShapeCosHalf = math.cos(math.radians(15f));
             def.ConfigHash = def.ComputeConfigHash();
@@ -557,7 +557,7 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsTrue(found, "방어유닛의 공격이 성사돼야 한다");
 
             var attacker = m.World.Units[0];
-            Assert.AreEqual(Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind, e.AttackShape.kind);
+            Assert.AreEqual(Somnia.Battle.BattleCore.Combat.AttackShapeBaked.SectorKind, e.AttackShape.kind);
             Assert.AreEqual(attacker.Attack.Shape.sinHalf, e.AttackShape.sinHalf, 1e-6f, "반각 = 판정 bake 그대로");
             Assert.AreEqual(attacker.Attack.Range, e.AttackRange, 1e-6f, "사거리 = 런타임 값");
             Assert.AreEqual(0f, e.AttackDir.x, 1e-5f, "축 = 주 대상 방향(+Z)");

@@ -4,16 +4,16 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Cards;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Core;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Cards;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Core;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 8a — **옛 화면에만 있던 것이 새 씬에 섰는가.**
     //
@@ -111,7 +111,7 @@ namespace Wassup.Tests.PlayMode.Core
             dock.OnBonusClicked();
             Assert.IsTrue(dock.LastReceipt.Accepted, $"보너스 당김 거절: {dock.LastReceipt.Reason}");
 
-            var entries = Wassup.BattleCore.Wave.BonusWaveSchedule.Build(driver.Match.Map.Snapshot.BonusSpawns.Length,
+            var entries = Somnia.Battle.BattleCore.Wave.BonusWaveSchedule.Build(driver.Match.Map.Snapshot.BonusSpawns.Length,
                 def.Bonus.EnemyCount, def.Bonus.FirstSpawnAtSec, def.Bonus.SpawnIntervalSec);
             float linger = driver.BonusAuthoring != null ? driver.BonusAuthoring.portalLingerSec : 0f;
             Assert.AreEqual(pullAt + def.Bonus.PortalAppearDelaySec, portal.OpenAtSec, 1e-4f, "열림 = 당김 + 등장 지연");
@@ -254,9 +254,9 @@ namespace Wassup.Tests.PlayMode.Core
         public IEnumerator 프랍_프리팹의_틸트와_블롭은_외형_SO_에서_온다()
         {
 #if UNITY_EDITOR
-            var view = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.BattleView.CharacterViewConfig>(
+            var view = UnityEditor.AssetDatabase.LoadAssetAtPath<Somnia.Battle.Data.BattleView.CharacterViewConfig>(
                 "Assets/_Project/Data/BattleView/CharacterViewConfig.asset");
-            var blob = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.BattleView.BlobShadowConfig>(
+            var blob = UnityEditor.AssetDatabase.LoadAssetAtPath<Somnia.Battle.Data.BattleView.BlobShadowConfig>(
                 "Assets/_Project/Data/BattleView/BlobShadowConfig.asset");
             Assert.IsNotNull(view);
             Assert.IsNotNull(blob);
@@ -267,13 +267,13 @@ namespace Wassup.Tests.PlayMode.Core
             foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/_Project/Prefabs/Props" }))
             {
                 var go = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
-                foreach (var pb in go.GetComponentsInChildren<Wassup.Presentation.PropBillboard>(true))
+                foreach (var pb in go.GetComponentsInChildren<Somnia.Battle.Presentation.PropBillboard>(true))
                 {
                     billboards++;
                     Assert.AreEqual(view.PropDistanceTiltFactor, pb.DistanceTiltFactor, 1e-6f,
                         $"프랍 '{go.name}' 의 거리 틸트가 저작 값이 아니다(브리지 static 미러 = 새 씬에서 0)");
                 }
-                if (sample == null && go.GetComponentInChildren<Wassup.Presentation.BlobShadow>(true) != null) sample = go;
+                if (sample == null && go.GetComponentInChildren<Somnia.Battle.Presentation.BlobShadow>(true) != null) sample = go;
             }
             Assert.Greater(billboards, 0, "프랍 프리팹이 없다");
             Assert.IsNotNull(sample, "블롭을 든 프랍 프리팹이 없다");
@@ -281,7 +281,7 @@ namespace Wassup.Tests.PlayMode.Core
             // 브리지가 없는 씬에서 **Awake 가 읽는 색**이 SO 색이다(옛 씬 브리지 색 = 같은 값).
             var inst = Object.Instantiate(sample);
             yield return null;
-            var sr = inst.GetComponentInChildren<Wassup.Presentation.BlobShadow>(true).GetComponent<SpriteRenderer>();
+            var sr = inst.GetComponentInChildren<Somnia.Battle.Presentation.BlobShadow>(true).GetComponent<SpriteRenderer>();
             Assert.AreEqual(blob.Color, sr.color, "스테이지 블롭 색이 외형 SO 가 아니다(코드 기본값)");
             Assert.AreSame(blob.Sprite, sr.sprite);
             Object.Destroy(inst);
@@ -366,7 +366,7 @@ namespace Wassup.Tests.PlayMode.Core
             yield return null;
             Assert.AreEqual(hand.State == CoreHandView.HandState.Hand, backdrop.Open,
                 "배경의 게이트가 손패 상태를 따르지 않는다");
-            var sim = backdrop.GetComponent<Wassup.Presentation.FluidPaintSim>();
+            var sim = backdrop.GetComponent<Somnia.Battle.Presentation.FluidPaintSim>();
             if (sim != null && !backdrop.Open) Assert.IsFalse(sim.enabled, "닫힌 손패인데 유체 sim 이 돈다");
         }
 
@@ -381,7 +381,7 @@ namespace Wassup.Tests.PlayMode.Core
         {
             var units = driver.Match.World.Units;
             for (int i = 0; i < units.Count; i++)
-                if (units[i].Faction == Wassup.Skills.Faction.EnemyUnit && !units[i].Dead) return true;
+                if (units[i].Faction == Somnia.Battle.Skills.Faction.EnemyUnit && !units[i].Dead) return true;
             return false;
         }
 
@@ -392,7 +392,7 @@ namespace Wassup.Tests.PlayMode.Core
             for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
-                if (u.Faction != Wassup.Skills.Faction.EnemyUnit || u.Dead) continue;
+                if (u.Faction != Somnia.Battle.Skills.Faction.EnemyUnit || u.Dead) continue;
                 u.Inbox.Damage.Add(new DamageEntry { Amount = 99999f, Source = SimEntityId.Match });
             }
         }

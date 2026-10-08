@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 2c — **판 밖 런타임**을 바꾸는 스킬 둘.
     //

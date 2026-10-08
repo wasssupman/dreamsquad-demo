@@ -1,4 +1,4 @@
-Shader "Wassup/PlacementLiquidTile"
+Shader "Somnia/Battle/PlacementLiquidTile"
 {
     // placement-cell-snap unit 7 rev — 포커스 셀 하이라이트 자체가 끈적한 액체.
     // 테두리(둥근사각 SDF)는 셀에 고정 = "릴리즈하면 여기" 계약. 내부 fill 은 손가락 방향

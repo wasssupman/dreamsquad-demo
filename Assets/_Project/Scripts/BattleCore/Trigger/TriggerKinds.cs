@@ -1,8 +1,8 @@
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — 트리거 레이어의 어휘. **이 enum 들이 정본이다**(skill-data-table 2026-09-28).
     //
-    // 저작(`Wassup.Data` — 카드 · 유닛 · 적 규칙 저작)이 **이 enum 들을 직접** 든다(skill-data-table unit 4 — 거울 enum
+    // 저작(`Somnia.Battle.Data` — 카드 · 유닛 · 적 규칙 저작)이 **이 enum 들을 직접** 든다(skill-data-table unit 4 — 거울 enum
     // `DcTriggerKind` · `DcPayloadKind` · `DcGateKind` · `DcGateSubject` · `DcTriggerSubject` 와 번역 함수 · 번호 핀 은퇴).
     // 에셋은 정수로 직렬화하므로 번호가 곧 저장 형식이다.
     //

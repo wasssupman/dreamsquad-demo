@@ -1,6 +1,6 @@
-using Wassup.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Combat.Projectile;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     /// <summary>
     /// 조합 검증의 답. 원점 사유 셋(unified-effect-layer 계약 5) + 비율형 수치 사유 둘(skill-data-table unit 3) + 배선 전 하나(unit 8) · append-only.

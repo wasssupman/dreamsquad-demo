@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 0 — 도약. 상대 진영이 가장 몰린 곳으로 뛴다.
     //

@@ -5,16 +5,16 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.Presentation;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 9 — 옛 `PlayMode/BeamPresentationTest` 의 규칙을 새 빔 프리젠터(`CoreBeamPresenter`)로 옮긴 것.
     //
@@ -106,7 +106,7 @@ namespace Wassup.Tests.PlayMode.Core
             System.Action<CoreEvent> probe = e =>
             {
                 if (e.Kind == CoreEventKind.SkillVisual && e.A == caster
-                    && (Wassup.Skills.SkillVisualKind)e.Arg == Wassup.Skills.SkillVisualKind.Beam)
+                    && (Somnia.Battle.Skills.SkillVisualKind)e.Arg == Somnia.Battle.Skills.SkillVisualKind.Beam)
                     beamTargets.Add(e.B);
             };
             driver.Subscribe(ViewOrder.Trace, probe);

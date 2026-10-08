@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // fluid-paint-mixing unit 0 — 유체 솔버가 핑퐁하는 RenderTexture 세트의 소유·수명 관리.
     // 순수 아님(RenderTexture 를 잡는 런타임 헬퍼). 해상도는 FluidMath 로 산출, 포맷은 SystemInfo 폴백.

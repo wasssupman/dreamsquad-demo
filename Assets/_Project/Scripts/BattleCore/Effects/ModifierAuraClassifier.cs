@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // battle-core-rebuild unit 6c — **몸에 붙는 오라가 켜져야 하나**의 순수 판정.
-    // 옛 `Wassup.Battle.Effects.ModifierAuraClassifier`(dreamcatcher-empower-aura)의 salvage 다.
+    // 옛 `Somnia.Battle.Battle.Effects.ModifierAuraClassifier`(dreamcatcher-empower-aura)의 salvage 다.
     //
     // 옮긴 것은 규칙 둘이다:
     //   · **출처 필터** — 슬롯의 꼬리표(`ModifierOrigin`)만 본다. 병합 키(`SlotTag`)가 아니다.

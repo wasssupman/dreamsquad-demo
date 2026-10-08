@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // bonus-wave-pull 계약 4 ↔ 계약 12 — 이 둘은 한 줄로 묶여 있다.
     //

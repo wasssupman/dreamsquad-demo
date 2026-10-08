@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 10 — 거점(본능) 셀 선언. 런타임 로직 0.
     // MapDocument.structures(StructureEntry) 후계 — 스캐너가 StructureEntry 로 옮기고 빌더가

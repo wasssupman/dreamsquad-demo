@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
   m_Name: Card_Frostbite
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.DreamcatcherCard
   id: frostbite
   displayName: "\uB3D9\uC0C1"
   visible: 1

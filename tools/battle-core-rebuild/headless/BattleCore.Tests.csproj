@@ -31,8 +31,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Wassup.Skills"><HintPath>$(UnityScriptAssemblies)/Wassup.Skills.dll</HintPath><Private>true</Private></Reference>
-    <Reference Include="Wassup.UnitAi"><HintPath>$(UnityScriptAssemblies)/Wassup.UnitAi.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="Somnia.Battle.Skills"><HintPath>$(UnityScriptAssemblies)/Somnia.Battle.Skills.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="Somnia.Battle.UnitAi"><HintPath>$(UnityScriptAssemblies)/Somnia.Battle.UnitAi.dll</HintPath><Private>true</Private></Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="BattleCore.csproj" />

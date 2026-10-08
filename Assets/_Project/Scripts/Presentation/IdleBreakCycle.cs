@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // idle-break-shared unit 0 — 대기 컷 규칙의 단일 소유자. 백엔드 중립(아키텍처 타입 0).
     //

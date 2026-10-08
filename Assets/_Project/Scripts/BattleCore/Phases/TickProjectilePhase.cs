@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 3 — **날아가는 것이 간다.**
     //
@@ -207,7 +207,7 @@ namespace Wassup.BattleCore
                 if (c.Progressive != null && c.Progressive.LastRunActive) continue;
                 // 제약 13 — 픽업은 「자리에 떨어지는 것」. 원점 항 = 칸 반폭(진입점의 성질),
                 // 범위 = 0(그 칸 하나), 대상의 몸 = 소비자 몸.
-                if (!Wassup.Skills.SkillMath.ReachFromCell(
+                if (!Somnia.Battle.Skills.SkillMath.ReachFromCell(
                         (c.Position.x - p.Center.x) * inv, (c.Position.z - p.Center.z) * inv,
                         PickupReachTiles, c.HitRadius)) continue;
                 return c;
@@ -914,7 +914,7 @@ namespace Wassup.BattleCore
                 // 제약 13 — **착탄 지점** 진입점. 원점에 주인이 있으면 그 몸, 없으면 칸 반폭.
                 float dx = (u.Position.x - p.Impact.x) / tileSize;
                 float dz = (u.Position.z - p.Impact.z) / tileSize;
-                if (!Wassup.Skills.SkillMath.ReachFromImpact(dx, dz, p.ImpactTileRange,
+                if (!Somnia.Battle.Skills.SkillMath.ReachFromImpact(dx, dz, p.ImpactTileRange,
                                                              p.OriginBodyRadius, u.HitRadius)) continue;
                 if (n >= _victims.Length) Grow(ref _victims, ref _victimDistSq, ref _victimPick);
                 _victims[n] = u;

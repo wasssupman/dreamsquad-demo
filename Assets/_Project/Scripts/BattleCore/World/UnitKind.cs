@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 개체의 «종류». UML §2 의 닫힌 축이다.
     //

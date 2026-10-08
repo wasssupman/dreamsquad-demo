@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 0 — 골(방어 마음) 위치 선언.
     // 셀만 준다 — 골 HP 는 AttackDeck.goalStabilityMax 단독 소유(이중 저작 금지, critic Minor 3).

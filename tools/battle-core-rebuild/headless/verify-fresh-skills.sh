@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# unified-effect-layer unit 5 — 헤드리스 검증: 클린 export + **export 소스로 새로 구운 Wassup.Skills.dll**.
+# unified-effect-layer unit 5 — 헤드리스 검증: 클린 export + **export 소스로 새로 구운 Somnia.Battle.Skills.dll**.
 #
 # 헤드리스 csproj 는 Skills dll 을 워크트리 `Library/ScriptAssemblies` 에서 받는다 — 에디터가 재컴파일하기 전이면 옛 dll 이라
 # Skills 를 바꾼 커밋이 거짓 빨강/초록을 낸다. 이 스크립트는 export 의 Skills 소스로 dll 을 새로 구워 참조 폴더에 끼운다.
-# ⚠ `BattleCoreUnity.Check` 는 여전히 옛 `Wassup.Runtime.dll` 을 참조한다 — Data/ 저작 타입에 새 필드·타입이 생긴 커밋은
+# ⚠ `BattleCoreUnity.Check` 는 여전히 옛 `Somnia.Battle.Runtime.dll` 을 참조한다 — Data/ 저작 타입에 새 필드·타입이 생긴 커밋은
 #    그 lane 이 거짓 빨강(CS0246 · CS1061)이다. 그땐 전 소스 컴파일인 `Retire.Check` 가 증거다.
 #
 # 사용: verify-fresh-skills.sh [ref=HEAD] [덮어쓸 워크트리 파일 ...]
@@ -26,23 +26,23 @@ if [ "${KEEP_VERIFY:-0}" != "1" ]; then trap 'rm -rf "$OUT"' EXIT; fi
 git -C "$REPO" archive "$REF" -- Assets/_Project/Scripts Assets/_Project/Editor Assets/_Project/Tests tools docs/spec/battle-core-rebuild | tar -x -C "$EXPORT"
 for f in "$@"; do mkdir -p "$EXPORT/$(dirname "$f")"; cp "$REPO/$f" "$EXPORT/$f"; done
 
-# ① export 의 Skills 소스로 Wassup.Skills.dll 을 새로 굽는다(워크트리 Library 의 옛 dll 을 쓰지 않는다).
-cat > "$OUT/skills/Wassup.Skills.csproj" <<EOF
+# ① export 의 Skills 소스로 Somnia.Battle.Skills.dll 을 새로 굽는다(워크트리 Library 의 옛 dll 을 쓰지 않는다).
+cat > "$OUT/skills/Somnia.Battle.Skills.csproj" <<EOF
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework><LangVersion>9</LangVersion><Nullable>disable</Nullable>
-    <AssemblyName>Wassup.Skills</AssemblyName><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>Somnia.Battle.Skills</AssemblyName><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo><ProduceReferenceAssembly>false</ProduceReferenceAssembly>
   </PropertyGroup>
   <ItemGroup><Compile Include="$EXPORT/Assets/_Project/Scripts/Skills/**/*.cs" /></ItemGroup>
   <ItemGroup><Reference Include="UnityEngine.MathematicsModule"><HintPath>$ENGINE/UnityEngine.MathematicsModule.dll</HintPath><Private>false</Private></Reference></ItemGroup>
 </Project>
 EOF
-dotnet build "$OUT/skills/Wassup.Skills.csproj" -c Debug -o "$OUT/skills/bin" -nologo -v q 2>&1 | tail -3
+dotnet build "$OUT/skills/Somnia.Battle.Skills.csproj" -c Debug -o "$OUT/skills/bin" -nologo -v q 2>&1 | tail -3
 
 # ② 참조 폴더 = Library 사본 + 새 Skills dll.
 cp "$LIB"/*.dll "$ASM"/
-cp "$OUT/skills/bin/Wassup.Skills.dll" "$ASM/Wassup.Skills.dll"
+cp "$OUT/skills/bin/Somnia.Battle.Skills.dll" "$ASM/Somnia.Battle.Skills.dll"
 
 H=$EXPORT/tools/battle-core-rebuild/headless
 P=(-p:UnityScriptAssemblies="$ASM" -p:UnityEngineDir="$ENGINE")

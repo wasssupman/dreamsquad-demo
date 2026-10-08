@@ -1,10 +1,10 @@
 // 적응: Assets/_Project/Tests/EditMode/PatrolAreaMathTests.cs (battle-core-rebuild unit 2)
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Move;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Move;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     public class PatrolAreaMathTests
     {

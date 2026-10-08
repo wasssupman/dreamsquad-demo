@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
-    [CreateAssetMenu(fileName = "AttackDeck", menuName = "Wassup/AttackDeck", order = 11)]
+    [CreateAssetMenu(fileName = "AttackDeck", menuName = "Somnia/Battle/AttackDeck", order = 11)]
     public class AttackDeck : ScriptableObject
     {
         public string deckId = "WaveA";

@@ -3,7 +3,7 @@
 //   갖고 있던 것을 하나로 접었다(둘이 갈리면 「존은 되는데 카드는 안 되는」 차이가 난다).
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     public static class CcMerge
     {

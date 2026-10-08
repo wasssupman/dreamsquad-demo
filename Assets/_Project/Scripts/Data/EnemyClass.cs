@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // enemy-class-system Unit 0 — enemy archetype. Parallel to DefenderClass
     // (defenders keep their own role). Drives future behavior branches

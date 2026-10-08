@@ -1,4 +1,4 @@
-namespace Wassup.Data.Authoring
+namespace Somnia.Battle.Data.Authoring
 {
     public enum HazardShape : byte
     {

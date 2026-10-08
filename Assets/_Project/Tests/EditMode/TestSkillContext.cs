@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // skill-layer-foundation unit 3/5 — 포트의 **페이크**.
     //
@@ -176,7 +176,7 @@ namespace Wassup.Tests.EditMode
                 {
                     var host = Get(caster.Unit);
                     byte hostLayers = host?.AttackTraversalLayers ?? (byte)0;
-                    if (!Wassup.Data.PlacementLayers.CanTarget(hostLayers, u.TraversalLayers)) continue;
+                    if (!Somnia.Battle.Data.PlacementLayers.CanTarget(hostLayers, u.TraversalLayers)) continue;
                 }
 
                 // 판정 본체·반폭 매핑은 어댑터(`EcsSkillContext.Collect`)와 **같은 함수**를 부른다 — 페이크가

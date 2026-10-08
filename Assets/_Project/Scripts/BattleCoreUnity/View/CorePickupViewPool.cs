@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Data.BattleView;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 6c — **바닥에 떨어진 픽업**(레드불). 옛 브리지 `ReconcilePickupViews` +
     // `PickupPresenter`(131줄)의 후계다.
@@ -65,7 +65,7 @@ namespace Wassup.BattleCoreUnity.View
                 _missingConfigLogged = true;
             }
             var center = e.SiteFired.Pos;
-            var view = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(center.x, 0f, center.z));
+            var view = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(new float3(center.x, 0f, center.z));
             var go = new GameObject($"CorePickup_{(PickupKind)e.Arg}_{e.A.Value}");
             go.transform.SetParent(transform, worldPositionStays: false);
             go.transform.position = view + Vector3.up * (_config != null ? _config.PickupHeight : 0f);

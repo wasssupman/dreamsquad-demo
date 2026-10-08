@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // tilemap-world-surround 13 — Billboard / PropBillboard 가 중복 구현하던 빌보드 회전 수학의 단일 소유자.
     // 순수 함수(모드/틸트/카메라/위치 → Quaternion). 대상(self vs visualRoot) 선택과 enum→Facing 매핑,

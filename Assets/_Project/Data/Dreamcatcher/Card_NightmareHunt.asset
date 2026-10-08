@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
   m_Name: Card_NightmareHunt
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.DreamcatcherCard
   id: nightmare_hunt
   displayName: "\uC545\uBABD\uC0AC\uB0E5"
   visible: 1

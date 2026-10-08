@@ -1,4 +1,4 @@
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     /// <summary>
     /// 단일 매치 시드에서 맵/웨이브/비주얼 시드를 결정론적·decorrelated 하게 파생한다.
@@ -19,7 +19,7 @@ namespace Wassup.Core
         /// 미지정(0) 시 매 판 새 시드. 시간 + 프로세스 고유값 혼합으로 같은 tick 충돌 회피.
         /// 결정론 함수가 아니다 — 매치 진입점에서 1회만 호출한다.
         /// </summary>
-        // battle-core-rebuild unit 1 — 이 파일이 `Wassup.BattleCore`(noEngineReferences)로
+        // battle-core-rebuild unit 1 — 이 파일이 `Somnia.Battle.BattleCore`(noEngineReferences)로
         // 이사하면서 난수원을 `UnityEngine.Random.Range` 에서 `Guid` 로 바꿨다. 호출 계약은
         // 그대로다(매 호출 다른 int, 같은 tick 에도 충돌 없음) — 이 함수는 **정의상 비결정론**
         // 이라 난수원이 무엇인지가 규칙에 영향을 주지 않는 유일한 자리다.

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Somnia.Battle.Editor.UnitStatImport
 {
     // simplify pass (2026-07-06) — the one AssetDatabase scan shared by the
     // importer (index build) and the exporter (row dump).

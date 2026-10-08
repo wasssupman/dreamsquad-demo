@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // defender-deploy-phase unit 0 — 실에셋 불변식. 정확한 초는 못박지 않는다(리그 재수출마다 바뀐다 — 표는 spec README).
     // 단언하는 것: ① 명시 배치 슬롯이 있으면 > 0, 없으면 0 ② 값 = 실제로 재생될 트랙/시트의 길이(길이의 출처 = 재생의 출처).

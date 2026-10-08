@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // summon-patrol-defender unit 10 — idle 변형 선택 회귀.
     //

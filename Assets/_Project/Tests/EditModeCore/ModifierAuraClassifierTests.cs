@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6c — 오라 판정(순수 함수). 옛 `ModifierAuraClassifier` 의 규칙 둘 —
     // **출처 필터** + **net 편차** — 이 salvage 뒤에도 서 있는가.

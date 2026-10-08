@@ -1,8 +1,8 @@
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     [DisallowMultipleComponent]
     public class CoreQuadUnitView : MonoBehaviour
@@ -120,7 +120,7 @@ namespace Wassup.BattleCoreUnity.View
                 ? (source.HasProperty("_BaseMap") ? source.GetTexture("_BaseMap") : source.mainTexture)
                 : null;
             Color col = source != null && source.HasProperty("_BaseColor") ? source.GetColor("_BaseColor") : Color.white;
-            var m = Wassup.Rendering.RuntimeMaterialFactory.CreateOpaqueTexture(tex, col);
+            var m = Somnia.Battle.Rendering.RuntimeMaterialFactory.CreateOpaqueTexture(tex, col);
             if (m == null) return null;
             // 알파 컷아웃 + 양면(빌보드 메시 뒷면도 보이게)
             if (m.HasProperty("_AlphaClip")) m.SetFloat("_AlphaClip", 1f);
@@ -134,7 +134,7 @@ namespace Wassup.BattleCoreUnity.View
         public void UpdatePosition(Vector3 world)
         {
             _simWorld = world;
-            Vector3 view = Wassup.Core.BoardSpace.ToView(world);
+            Vector3 view = Somnia.Battle.Core.BoardSpace.ToView(world);
             // 타일맵이 XZ 바닥. 빌보드 밑동이 바닥 Y 와 같으면 z-fighting → 살짝 띄운다.
             view.y += 0.01f + _flightHeight;
             transform.position = view;

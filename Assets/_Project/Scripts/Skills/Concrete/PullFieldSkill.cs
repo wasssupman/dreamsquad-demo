@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 7c — **토네이도.** 지정한 칸으로 반경 안 적을 계속 당긴다.
     //

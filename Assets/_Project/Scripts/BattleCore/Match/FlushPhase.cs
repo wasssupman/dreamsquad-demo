@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 틱의 마지막 단계. 쌓인 사건을 배달한다.
     //

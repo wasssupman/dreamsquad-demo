@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6fe1f8ec57f5b42c9b01a7f13108d25e, type: 3}
   m_Name: Hazard_Poison_1x1
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.HazardSO
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.HazardSO
   shape: 0
   radius: 1
   lifetime: 6

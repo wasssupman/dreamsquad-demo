@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.Core;
+using Somnia.Battle.Core;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 5a — 규칙 장부 X16.
     //
@@ -35,7 +35,7 @@ namespace Wassup.Tests.PlayMode.Core
         [Test]
         public void CameraDirectionConfig_BreathPhases_AreAllDefinedGamePhases()
         {
-            var cfg = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.CameraDirectionConfig>(
+            var cfg = UnityEditor.AssetDatabase.LoadAssetAtPath<Somnia.Battle.Data.CameraDirectionConfig>(
                 "Assets/_Project/Data/Camera/CameraDirectionConfig.asset");
             Assert.IsNotNull(cfg, "CameraDirectionConfig.asset 을 찾을 수 없다");
             Assert.IsNotNull(cfg.breathPhases);

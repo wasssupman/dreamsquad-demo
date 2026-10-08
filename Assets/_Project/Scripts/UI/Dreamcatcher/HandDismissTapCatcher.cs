@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // selection-hand-attach unit 2 — 손패 오픈 중 보드 탭 수신기(전화면 투명 Image 에 부착).
     // 수명·배치·활성 토글은 DreamcatcherHandView 가 소유하고, 여기서는 "이 탭이 보드 탭인가"만

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7b — **사직서 임계 → 운석 barrage**(← 옛 `BattleBridge.DrainMeteorBarrageRequests`).
     //

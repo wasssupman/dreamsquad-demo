@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 4a — **마지막 불꽃.** 짧게 강해지고 그 시간이 끝나면 죽는다.
     //

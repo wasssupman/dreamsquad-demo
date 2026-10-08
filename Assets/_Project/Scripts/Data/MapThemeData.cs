@@ -1,9 +1,9 @@
 using System;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
-    [CreateAssetMenu(fileName = "MapThemeData", menuName = "Wassup/MapThemeData")]
+    [CreateAssetMenu(fileName = "MapThemeData", menuName = "Somnia/Battle/MapThemeData")]
     public class MapThemeData : ScriptableObject
     {
         [Header("Prop Tint")]

@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // effect-tiles unit 0 — SelectCells 결정론/필터/상한 회귀.
     public class EffectTilePlacerTests

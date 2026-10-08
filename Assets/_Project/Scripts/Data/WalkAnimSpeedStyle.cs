@@ -1,11 +1,11 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // enemy-walk-anim-speed unit 0 — 걷기 애니 재생속도를 이동속도에 맞추는 변조 파라미터.
     // SpineUnitView 가 프레임당 실제 view 변위로 고유 속도를 추정 → walkFactor 로 timeScale 변조.
     // 하드코딩 금지 계약상 모든 튜닝 값은 여기서 나온다. SO 미할당 시 뷰는 배율 1.0(현행 동작) 유지.
-    [CreateAssetMenu(fileName = "WalkAnimSpeedStyle", menuName = "Wassup/Presentation/Walk Anim Speed Style", order = 30)]
+    [CreateAssetMenu(fileName = "WalkAnimSpeedStyle", menuName = "Somnia/Battle/Presentation/Walk Anim Speed Style", order = 30)]
     public class WalkAnimSpeedStyle : ScriptableObject
     {
         [Tooltip("walkFactor 1.0 이 되는 기준 이동속도(view units/sec, sim-time 기준).")]

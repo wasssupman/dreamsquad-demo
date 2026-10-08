@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // season-gimmick-overwork unit 2 — 시즌 기믹 base SO.
     // BattleConfig.gimmickPool 슬롯용 base (concrete 는 BurnoutGimmickData / RedBullGimmickData, 상속 2단계 상한 준수).

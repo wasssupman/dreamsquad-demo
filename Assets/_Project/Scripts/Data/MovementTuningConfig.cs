@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // battle-core-rebuild 5a 후속 — 적이 어떻게 서고 어떻게 퍼지나의 **저작**.
     //
@@ -10,7 +10,7 @@ namespace Wassup.Data
     //
     // ⚠ **뷰 설정이 아니다.** 화면이 아니라 판이 읽는 값이라 `Data/BattleView/` 가 아니라
     // 여기 있고, 소비처는 `MatchDefinitionBuilder` 다.
-    [CreateAssetMenu(menuName = "Wassup/Movement Tuning Config", fileName = "MovementTuningConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Movement Tuning Config", fileName = "MovementTuningConfig")]
     public sealed class MovementTuningConfig : ScriptableObject
     {
         [Tooltip("적의 몸 반지름(칸). **군집 통과로 검산한 값** — 단독 통과는 검산이 아니다. " +

@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild unit 5b — **트레이.** 옛 `DefenderSelector`(1,281줄)의 후계다.
     //

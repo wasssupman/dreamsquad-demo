@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Text;
 using UnityEngine;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // battle-sim-extraction M0 unit 3 — 한 판의 «조건» 을 불변 텍스트로 물질화하고 해시한다.
     //

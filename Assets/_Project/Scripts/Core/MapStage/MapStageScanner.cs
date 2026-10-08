@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 1 — 스테이지 컴포넌트 → StageScan(plain) 얇은 변환.
     // 양자화는 MapStageMath 단일 산식(기즈모와 동일), 좌표는 스테이지 로컬 기준 —

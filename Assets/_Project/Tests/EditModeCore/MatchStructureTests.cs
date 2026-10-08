@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 4 — **거점이 판에 선다.**
     //
@@ -295,10 +295,10 @@ namespace Wassup.Tests.EditMode.Core
         private static MatchDefinition WithEnemyBlast(bool shielded)
         {
             var def = Armed();
-            var p = Wassup.BattleCore.ProjectileDef.Default();
+            var p = Somnia.Battle.BattleCore.ProjectileDef.Default();
             p.Id = "fixture_blast";
-            p.Movement = (int)Wassup.BattleCore.Combat.Projectile.MovementKind.SkyFall;
-            p.Payload = (int)Wassup.BattleCore.Combat.Projectile.PayloadKind.TileAoe;
+            p.Movement = (int)Somnia.Battle.BattleCore.Combat.Projectile.MovementKind.SkyFall;
+            p.Payload = (int)Somnia.Battle.BattleCore.Combat.Projectile.PayloadKind.TileAoe;
             p.ImpactTileRange = 1;
             p.MinFlightTime = 0.05f;
             def.Projectiles = new[] { p };

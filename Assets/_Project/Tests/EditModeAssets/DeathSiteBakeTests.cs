@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 7d — 사망 seam 의 두 코어 규칙(분열 · 길막 폭발)이 **라이브 저작에서 정의표로** 들어오나.
     // 코어 쪽 규칙은 `SplitTests`·`BlockingHazardTests` 가 고정구로 증언한다 — 여기는 빌더 매핑이 조용히 빠지지 않았나만 본다

@@ -1,4 +1,4 @@
-Shader "Wassup/Solid_Transparent"
+Shader "Somnia/Battle/Solid_Transparent"
 {
     Properties
     {

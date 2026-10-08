@@ -1,7 +1,7 @@
 using Spine.Unity;
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // spine-weapon-trail unit 3 — 무기 궤적 리그의 자립 컴포넌트.
     //

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // tilted-billboard unit 0 — 틸트/페이싱 회전의 유일 소유자.
     // 틸트 각도는 호출측/데이터에서 주입(Setup)받는다 — 컴포넌트는 레이어별 각도 정책을 모른다.

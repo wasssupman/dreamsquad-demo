@@ -3,12 +3,12 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 5b 수정 — **배치 하이라이트가 규칙을 옳게 가르치는가.**
     //
@@ -203,7 +203,7 @@ namespace Wassup.Tests.PlayMode.Core
                                             Sprite sprite, int2 cell, out Color tint)
         {
             float ts = driver.TileSize;
-            Vector3 want = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(cell.x * ts, 0f, cell.y * ts));
+            Vector3 want = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(new float3(cell.x * ts, 0f, cell.y * ts));
             var mpb = new MaterialPropertyBlock();
             var renderers = overlay.GetComponentsInChildren<SpriteRenderer>(true);
             for (int i = 0; i < renderers.Length; i++)

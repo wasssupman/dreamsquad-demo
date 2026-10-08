@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     public enum DreamstoneGrade
     {
@@ -10,7 +10,7 @@ namespace Wassup.Data
         Unique
     }
 
-    [CreateAssetMenu(fileName = "DreamstoneData", menuName = "Wassup/Dreamstone", order = 23)]
+    [CreateAssetMenu(fileName = "DreamstoneData", menuName = "Somnia/Battle/Dreamstone", order = 23)]
     public class DreamstoneData : ScriptableObject
     {
         public string id;

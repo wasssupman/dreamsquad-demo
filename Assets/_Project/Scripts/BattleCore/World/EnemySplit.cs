@@ -1,7 +1,7 @@
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 7d — **분열.** 슬라임을 잡으면 **그 칸에서** 자식이 퍼진다.
     //

@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // wave-concept-blocks unit 0 — 슬롯의 고도 축.
     //
@@ -58,7 +58,7 @@ namespace Wassup.Data
     // 컨셉은 웨이브가 아니라 **블록**의 속성이다. 블록 안에서 컨셉과 lane 배정이 고정되고
     // 수량만 ExponentialWaveTotal 곡선을 따라 오른다 — «배우고 → 대응하고 → 겨우 버티고»
     // 다음 컨셉이 온다. 웨이브당 12~18초라 매 웨이브 바뀌면 반응할 창이 없다.
-    [CreateAssetMenu(fileName = "WaveConcept", menuName = "Wassup/WaveConcept", order = 12)]
+    [CreateAssetMenu(fileName = "WaveConcept", menuName = "Somnia/Battle/WaveConcept", order = 12)]
     public class WaveConceptData : ScriptableObject
     {
         public string id = "concept";

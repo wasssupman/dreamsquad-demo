@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 7a — **seam 의 틱 안 실행 순서.**
     //

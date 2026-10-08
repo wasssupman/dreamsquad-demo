@@ -1,8 +1,8 @@
 using NUnit.Framework;
-using Wassup.Data.Authoring;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-unit-trigger Unit 2 — pins the AttackN counting contract:
     // fire exactly on every N-th resolve, reset after firing, period 0 inert,

@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // test-suite-fast-lane unit 0 — UnitKitSummaryTests 에서 추출한 실카탈로그 검증.
     // 문장 조립 로직 테스트(합성 유닛)는 코어 lane 에 남는다.

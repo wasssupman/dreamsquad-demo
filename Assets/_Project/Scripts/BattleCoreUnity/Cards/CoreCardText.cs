@@ -1,8 +1,8 @@
-using Wassup.BattleCore;
-using Wassup.Data;
-using Wassup.UI;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI;
 
-namespace Wassup.BattleCoreUnity.Cards
+namespace Somnia.Battle.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 7c — **카드 화면의 말**.
     //

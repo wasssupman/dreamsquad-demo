@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Wassup.UnitAi;
+using Somnia.Battle.UnitAi;
 
 // defender-autobattle-ai unit 0 — 방어유닛 AI 진리표 = 규칙서. 여기가 빨개지면 판정이 바뀐 것이다(계약 3: 동작 무변 기본).
 public class DefenderAiTests

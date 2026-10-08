@@ -1,8 +1,8 @@
 using System;
-using Wassup.BattleCore.Trigger;
-using Wassup.Data.Authoring;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Data.Authoring;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     /// <summary>
     /// skill-data-table unit 4 — **효과 한 줄의 값**(`tables.md` §2 `Effects` 의 스칼라 · enum 칸). 참조(탄 · 명세 · 장판)와 뷰 칸은

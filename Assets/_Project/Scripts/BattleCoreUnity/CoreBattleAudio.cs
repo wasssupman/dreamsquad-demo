@@ -1,10 +1,10 @@
 using UnityEngine;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     // battle-core-rebuild unit 5c — **전투가 내는 소리 셋.**
     //

@@ -1,6 +1,6 @@
 using System;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 0 항목 9 / unit 1 — 코어의 유일한 개체 손잡이.
     //

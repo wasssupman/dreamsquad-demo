@@ -1,4 +1,4 @@
-Shader "Wassup/Tile_Unlit"
+Shader "Somnia/Battle/Tile_Unlit"
 {
     Properties
     {

@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.Data;
-using Wassup.Data.BattleView;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5a — 유닛 머리 위 체력 바. 옛 `UnitOverheadUiLayer` 의 후계다.
     //
@@ -152,7 +152,7 @@ namespace Wassup.BattleCoreUnity.View
                 var anchor = view.transform;
                 Vector2 screenAnchor = UnitOverheadLayout.ScreenAnchor(
                     cam.WorldToScreenPoint(anchor.position).x, rect);
-                SetUnit(u.Id, ((int)u.Faction & Wassup.Skills.Factions.AnyDefender) != 0,
+                SetUnit(u.Id, ((int)u.Faction & Somnia.Battle.Skills.Factions.AnyDefender) != 0,
                         Mathf.Clamp01(u.Health / u.MaxHealth),
                         screenAnchor, ProjectTileScreenWidth(cam, anchor.position),
                         ShieldRatioOf(u), GatherStacks(u));
@@ -186,7 +186,7 @@ namespace Wassup.BattleCoreUnity.View
             _stackScratch.Clear();
             var slots = u.Stacks.Slots;
             for (int i = 0; i < slots.Count; i++)
-                if (slots[i].Kind == Wassup.BattleCore.Effects.StackKind.Fatigue && slots[i].Count > 0)
+                if (slots[i].Kind == Somnia.Battle.BattleCore.Effects.StackKind.Fatigue && slots[i].Count > 0)
                     _stackScratch.Add(new OverheadStackEntry { kind = OverheadStackKind.Fatigue, count = slots[i].Count });
             if (u.Stacks.Heat > 0)
                 _stackScratch.Add(new OverheadStackEntry { kind = OverheadStackKind.Heat, count = u.Stacks.Heat });
@@ -199,7 +199,7 @@ namespace Wassup.BattleCoreUnity.View
             if (_hazards == null) return;
             var so = _hazards.BlockerAuthoringOf(u.Id);
             if (so == null || so.overheadHeight <= 0f) return;   // 0 = 바 없음(옛 옵트인)
-            var baseView = (Vector3)Wassup.Core.BoardSpace.ToView(
+            var baseView = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(
                 new Unity.Mathematics.float3(u.Position.x, 0f, u.Position.z));
             Vector3 baseScreen = cam.WorldToScreenPoint(baseView);
             Vector3 topScreen = cam.WorldToScreenPoint(baseView + Vector3.up * so.overheadHeight);

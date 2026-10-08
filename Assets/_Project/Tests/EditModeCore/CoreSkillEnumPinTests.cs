@@ -1,11 +1,11 @@
 using NUnit.Framework;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
-    // battle-core-rebuild unit 6a — 코어 어휘와 `Wassup.Skills` 미러의 **값 일치**.
+    // battle-core-rebuild unit 6a — 코어 어휘와 `Somnia.Battle.Skills` 미러의 **값 일치**.
     //
     // 어댑터가 캐스트로 번역하는데 **어셈블리가 갈려 컴파일러가 못 잡는다** — 갈리면
     // 컴파일은 통과하고 «이속 버프가 조용히 공격력 버프가 된다». 옛 `SkillModifierKindPinTests`
@@ -64,8 +64,8 @@ namespace Wassup.Tests.EditMode.Core
         public void 자리형_궤적_토큰은_코어_궤적_페이로드와_값이_같다()
         {
             // unified-effect-layer unit 1 — 자리형 concrete 가 의도에 명시하는 궤적(부분 미러). 갈리면 운석이 조용히 다른 궤적을 탄다.
-            Assert.AreEqual((int)Wassup.BattleCore.Combat.Projectile.MovementKind.SkyFall, SkillProjectileAxis.SkyFall);
-            Assert.AreEqual((int)Wassup.BattleCore.Combat.Projectile.PayloadKind.TileAoe, SkillProjectileAxis.TileAoe);
+            Assert.AreEqual((int)Somnia.Battle.BattleCore.Combat.Projectile.MovementKind.SkyFall, SkillProjectileAxis.SkyFall);
+            Assert.AreEqual((int)Somnia.Battle.BattleCore.Combat.Projectile.PayloadKind.TileAoe, SkillProjectileAxis.TileAoe);
             Assert.AreNotEqual(0, SkillProjectileAxis.SkyFall, "0 = 저작 없음(탄 정의) — 명시로 못 쓴다");
             Assert.AreNotEqual(0, SkillProjectileAxis.TileAoe);
         }

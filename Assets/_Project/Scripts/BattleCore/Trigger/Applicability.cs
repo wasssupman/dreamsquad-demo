@@ -1,8 +1,8 @@
-using Wassup.Skills;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Combat.Projectile;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Combat.Projectile;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7b — 「이 카드 규칙이 **이 숙주에서** 발동할 수 있나」의 순수 판정
     // (← 옛 `Core/Dreamcatcher/DcApplicability.cs` 291줄 + `DreamcatcherAttachEval.cs` 137줄).

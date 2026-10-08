@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // dreamcatcher-deck-page unit 1 — shared card frame/fallback color + label,
     // lifted from the retired DreamcatcherDeckBuilderView's FrameColorOf/ArtFallbackOf so the

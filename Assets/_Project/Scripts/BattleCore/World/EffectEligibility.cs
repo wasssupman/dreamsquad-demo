@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 4 — **누가 효과를 받을 수 있나.** 순수 술어 셋이다.
     //

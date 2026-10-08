@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 「몇 번째 틱에 무슨 커맨드」. 하네스 시나리오의 입력이다.
     //

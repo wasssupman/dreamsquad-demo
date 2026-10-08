@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Data;
-using Wassup.Data.BattleView;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5a — 적 피격 마이크로바. 옛 `EnemyHitBarSpawner` 의 후계다.
     //
@@ -45,11 +45,11 @@ namespace Wassup.BattleCoreUnity.View
         {
             if (e.Kind != CoreEventKind.DamageApplied) return;
             // 적만 — 방어유닛 체력은 오버헤드 바가 든다.
-            if (e.Faction != Wassup.Skills.Faction.EnemyUnit) return;
+            if (e.Faction != Somnia.Battle.Skills.Faction.EnemyUnit) return;
 
             // ⚠ `SiteTarget.OriginBody` 자리에 **그 틱 최종 체력 비율**이 실려 온다(C7).
             // 몸 반경이 아니다 — 그 자리의 뜻을 사건 종류가 정한다.
-            Show(e.B, (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteTarget.Pos), e.SiteTarget.OriginBody);
+            Show(e.B, (Vector3)Somnia.Battle.Core.BoardSpace.ToView(e.SiteTarget.Pos), e.SiteTarget.OriginBody);
         }
 
         private void Show(SimEntityId id, Vector3 fallbackViewBase, float hpRatio)

@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Wave;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Wave;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 4 — 웨이브 케이던스·당김·보너스.
     [TestFixture]
@@ -73,7 +73,7 @@ namespace Wassup.Tests.EditMode.Core
             for (int i = 0; i < match.World.Units.Count;)
             {
                 var u = match.World.Units[i];
-                if (u.Faction == Wassup.Skills.Faction.EnemyUnit)
+                if (u.Faction == Somnia.Battle.Skills.Faction.EnemyUnit)
                     match.Apply(Command.DebugDestroy(u.Id));
                 else i++;
             }
@@ -257,7 +257,7 @@ namespace Wassup.Tests.EditMode.Core
             for (int i = 0; i < units.Count; i++)
             {
                 var u = units[i];
-                if (u.Faction != Wassup.Skills.Faction.EnemyUnit || u.Dead) continue;
+                if (u.Faction != Somnia.Battle.Skills.Faction.EnemyUnit || u.Dead) continue;
                 u.Inbox.Damage.Add(new DamageEntry { Amount = 99999f, Source = SimEntityId.Match });
                 n++;
             }

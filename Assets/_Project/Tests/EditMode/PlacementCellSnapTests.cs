@@ -1,6 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.UI;
+using Somnia.Battle.UI;
 
 // placement-cell-snap unit 0 — 히스테리시스 셀 선택 순수 함수 회귀 테스트.
 public class PlacementCellSnapTests

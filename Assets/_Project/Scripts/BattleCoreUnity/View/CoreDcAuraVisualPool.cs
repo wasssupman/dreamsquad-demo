@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
-using Wassup.Data;
-using Wassup.Data.BattleView;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 6c — **강화 오라**(옛 이름 「드림캐쳐가 건 스탯의 오라」). 옛 `DcAuraVisualPool`
     // (92줄) + 브리지 `ReconcileStatusFx` 의 `Empowered` 분기의 후계다.

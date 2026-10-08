@@ -1,16 +1,16 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Combat.Emission;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Map;
-using Wassup.Skills;
-using Wassup.UnitAi;
-using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Combat.Emission;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.Skills;
+using Somnia.Battle.UnitAi;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCombatFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 9 구현 2 — **옛 테스트가 증언하던 전투 규칙**을 코어로 옮긴다.
     //

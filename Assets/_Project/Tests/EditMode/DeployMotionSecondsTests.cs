@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
 // defender-deploy-phase unit 0 — 배치 페이즈 길이는 배치 모션에서 나온다(저작 초 없음).
 // 입력은 직렬화 참조, 출력은 초 하나 — 아키텍처를 모르는 순수 결정이라 EditMode 대상.

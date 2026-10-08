@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 927092c2058148fd9a20d1b5b886823a, type: 3}
   m_Name: Effect_frost_arrow
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.EffectData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.EffectData
   id: frost_arrow
   deprecated: 0
   values:

@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // defender-footprint unit 0 — 대표 셀 규약(홀수 정중앙·짝수 floor)과 앵커 왕복 대칭.
     public class FootprintMathTests

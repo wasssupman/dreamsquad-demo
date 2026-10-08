@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Wave;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Wave;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 4 — 모드 × 저작 유효성, 그리고 모드가 담당자에게 «값으로만» 말한다는 것.
     [TestFixture]

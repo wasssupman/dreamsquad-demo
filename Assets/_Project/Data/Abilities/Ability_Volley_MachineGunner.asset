@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15a5f2ac49e88b54ab8bc4b48cfe1b35, type: 3}
   m_Name: Ability_Volley_MachineGunner
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DirectionalVolleyAbility
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.DirectionalVolleyAbility
   id: volley_machine_gunner
   pattern: {fileID: 11400000, guid: bd48014d0b9e4c29aa840df358a6c439, type: 2}
   requiresFacing: 1

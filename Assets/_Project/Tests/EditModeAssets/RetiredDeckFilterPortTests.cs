@@ -1,17 +1,17 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.BattleCoreUnity.Cards;
-using Wassup.Data;
+using Somnia.Battle.BattleCoreUnity.Cards;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 9 구현 2 — 옛 `SkillLoadoutControllerTests` 의 「숨긴 카드의 스킬을 풀에서 뺀다」
     // (S4) 단언을 그 규칙의 새 주인 `CoreDeckComposition.FilterHiddenSkills` 로 옮긴다(8c 가 본문을 이사했고
     // 옛 쪽은 위임만 남았다 — 옛 파일이 지워지면 이 규칙을 부르는 테스트가 0 이 된다).
     //
-    // 이 폴더(`Wassup.Tests.EditMode.Assets`)인 이유: 대상이 Unity 층(`Wassup.Runtime` · SO 입력)이라 헤드리스
-    // `EditModeCore`(엔진 참조 없음 · `Wassup.Runtime` 미참조)에서는 컴파일되지 않고, `CoreDeckComposition` 의
+    // 이 폴더(`Somnia.Battle.Tests.EditMode.Assets`)인 이유: 대상이 Unity 층(`Somnia.Battle.Runtime` · SO 입력)이라 헤드리스
+    // `EditModeCore`(엔진 참조 없음 · `Somnia.Battle.Runtime` 미참조)에서는 컴파일되지 않고, `CoreDeckComposition` 의
     // 다른 규칙(굴림 결정론·확정 덱 검증)이 이미 `CardViewAssetTests` 로 여기 있다. 에셋 로드는 쓰지 않는다 —
     // SO 를 메모리에서 만든다.
     public class RetiredDeckFilterPortTests

@@ -1,4 +1,4 @@
-namespace Wassup.Data.MapGrid
+namespace Somnia.Battle.Data.MapGrid
 {
     /// <summary>
     /// 맵 풀에서 seed 로 엔트리 인덱스를 결정론적으로 고르는 순수 함수(random-map-pool unit 0).

@@ -6,10 +6,10 @@
 //   지역 변수라 타입이 필요 없다 — 옛것은 ECS 가 Entity 를 못 나르는 제약의 산물이었다).
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Combat.Emission
+namespace Somnia.Battle.BattleCore.Combat.Emission
 {
     /// <summary>
-    /// 후보 선정 규칙. **번호는 옛 저작(`Wassup.Data.PatternSelectionRule`)과 같다** —
+    /// 후보 선정 규칙. **번호는 옛 저작(`Somnia.Battle.Data.PatternSelectionRule`)과 같다** —
     /// 그 값이 이미 구워진 `ProjectilePatternData` 에셋에 직렬화돼 있기 때문이다.
     ///
     /// ⚠ 초판이 이 순서를 「읽기 좋게」 재배열해 `None = 0` 으로 두었고, 빌더가 통짜
@@ -205,7 +205,7 @@ namespace Wassup.BattleCore.Combat.Emission
             for (int i = 0; i < count && outCount < outIndices.Length; i++)
             {
                 float bodyR = bodyRadiiTiles != null && i < bodyRadiiTiles.Length ? bodyRadiiTiles[i] : 0f;
-                if (Wassup.Skills.SkillMath.ReachFromUnit(
+                if (Somnia.Battle.Skills.SkillMath.ReachFromUnit(
                         candidateXZTiles[i].x - hostXZTiles.x,
                         candidateXZTiles[i].y - hostXZTiles.y,
                         rangeTiles, hostBodyRadiusTiles, bodyR))

@@ -3,10 +3,10 @@ using System.Text;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 5a — 감지 계측기. 옛 `DetectionProbeMenu`(도구 처분표 5행)의 후계다.
     //
@@ -20,7 +20,7 @@ namespace Wassup.EditorTools.BattleCore
     // 지금 필요한 것은 「이 판의 이 적이 왜 저러고 있나」다.
     public static class CoreDetectionProbeMenu
     {
-        [MenuItem("Wassup/BattleCore/Debug/감지 상태 찍기")]
+        [MenuItem("Somnia/Battle/BattleCore/Debug/감지 상태 찍기")]
         private static void Dump()
         {
             if (!CoreObstacleDebugMenu.TryGetDriver(out var driver)) return;
@@ -48,7 +48,7 @@ namespace Wassup.EditorTools.BattleCore
             Debug.Log(sb.ToString());
         }
 
-        [MenuItem("Wassup/BattleCore/Debug/감지 상태 찍기", true)]
+        [MenuItem("Somnia/Battle/BattleCore/Debug/감지 상태 찍기", true)]
         private static bool Validate() => Application.isPlaying;
 
         // ⚠ **이것은 「감지가 고를 대상」이 아니다.** 직선 최근접일 뿐이고, 실제 감지는 통행
@@ -63,7 +63,7 @@ namespace Wassup.EditorTools.BattleCore
             {
                 var o = units[i];
                 if (o.Id == self.Id || o.Dead) continue;
-                if (((int)o.Faction & Wassup.Skills.Factions.AnyDefender) == 0) continue;
+                if (((int)o.Faction & Somnia.Battle.Skills.Factions.AnyDefender) == 0) continue;
                 float dist = math.distance(o.Position, self.Position);
                 if (dist >= best) continue;
                 best = dist;

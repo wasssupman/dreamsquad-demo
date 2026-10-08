@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // elite-enemy-tier unit 6 rev(2단계 분열) — 분열 사슬의 저작 검증.
     //

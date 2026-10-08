@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Text;
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 6b — **길을 막는 설치물의 저작.**
     //

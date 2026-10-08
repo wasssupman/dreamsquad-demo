@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 360bc1462ab48d64b88bb42e08475abe, type: 3}
   m_Name: StackIconRegistry
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.StackIconRegistry
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.StackIconRegistry
   entries:
   - kind: 0
     icon: {fileID: 21300000, guid: a17f3c8d5e6249b0b6d2f4a8c9017e35, type: 3}

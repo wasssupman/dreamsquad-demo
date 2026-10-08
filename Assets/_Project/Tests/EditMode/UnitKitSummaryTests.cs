@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // squad-character-page Unit 0 — pins the data-derived kit summary contract.
     // The summary is the detail card's "설명문", assembled purely from existing

@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 3f — **불꽃 팽이.** host 를 도는 화염구를 수명만큼 띄운다.
     //

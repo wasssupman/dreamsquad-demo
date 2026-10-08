@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.StatImport;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Somnia.Battle.Editor.UnitStatImport
 {
     // dreamcatcher-sheet-sync unit 3 — SO → per-tab JSON rows, the reverse of
     // DcSheetApplier. `_`-prefixed informational columns (asset-ref ids, structural enums) are filled here by

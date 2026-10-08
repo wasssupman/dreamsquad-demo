@@ -1,14 +1,14 @@
 using Unity.Mathematics;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Effects;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — 스킬이 세상을 바꾸는 **단 하나의 표면**(S20 을 「보류 → 결정」으로 닫는다).
     //
     // 옛 전투는 asmdef 가 「쓰기는 발행으로만」을 컴파일러로 강제했고 예외 4건이 폐쇄 목록이었다(ECB 스테이징
-    // vs 직접 쓰기). 새 코어에서 concrete 는 여전히 엔진 무참조 `Wassup.Skills` 에 살지만 **코어 안에서는
+    // vs 직접 쓰기). 새 코어에서 concrete 는 여전히 엔진 무참조 `Somnia.Battle.Skills` 에 살지만 **코어 안에서는
     // 아무것도 막지 않으므로**, 규율을 표면 하나로 옮긴다: 스킬 경로의 상태 변경은 전부 `Apply` 를 지나고,
     // 그 사실을 `CoreArchitectureTests` 가 소스로 못박는다(막으려는 것이 값이 아니라 **형태**라서).
     //

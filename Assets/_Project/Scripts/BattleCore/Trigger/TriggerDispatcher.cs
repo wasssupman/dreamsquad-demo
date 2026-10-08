@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — seam 훅에 붙는 **유일한 핸들러**. 「무슨 일이 일어나면 무엇이 터지나」의
     // 레일이다.

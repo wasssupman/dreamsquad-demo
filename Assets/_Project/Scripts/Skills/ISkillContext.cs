@@ -1,7 +1,7 @@
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 3 — 도메인과 아키텍처 사이의 **프로토콜**.
     //

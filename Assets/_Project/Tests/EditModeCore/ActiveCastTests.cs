@@ -1,12 +1,12 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
-using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCardFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7b — 액티브는 **시전자가 없다**. 칸을 조준하고 진영은 플레이어로 접힌다.
     [TestFixture]

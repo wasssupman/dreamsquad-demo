@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // sprite-unit-backend unit 1 — 좌우 반전 판정의 단일 소유자. SpineUnitView.SetFacingByViewDelta 의
     // 판정부를 그대로 옮겼다(2026-08-09 팩팩거림 수정 규칙). 두 백엔드가 **이 함수를 호출만** 한다 —

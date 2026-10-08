@@ -2,10 +2,10 @@
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 5a — 장애물 토글. 옛 `ObstacleDebugMenu`(도구 처분표 8행)의 후계다.
     //
@@ -17,16 +17,16 @@ namespace Wassup.EditorTools.BattleCore
     {
         private static int2 _cell = new int2(3, 1);
 
-        [MenuItem("Wassup/BattleCore/Debug/장애물 켜기")]
+        [MenuItem("Somnia/Battle/BattleCore/Debug/장애물 켜기")]
         private static void On() => Set(true);
 
-        [MenuItem("Wassup/BattleCore/Debug/장애물 끄기")]
+        [MenuItem("Somnia/Battle/BattleCore/Debug/장애물 끄기")]
         private static void Off() => Set(false);
 
-        [MenuItem("Wassup/BattleCore/Debug/장애물 켜기", true)]
+        [MenuItem("Somnia/Battle/BattleCore/Debug/장애물 켜기", true)]
         private static bool ValidateOn() => Application.isPlaying;
 
-        [MenuItem("Wassup/BattleCore/Debug/장애물 끄기", true)]
+        [MenuItem("Somnia/Battle/BattleCore/Debug/장애물 끄기", true)]
         private static bool ValidateOff() => Application.isPlaying;
 
         private static void Set(bool on)

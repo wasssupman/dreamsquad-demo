@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.Core;
+using Somnia.Battle.Core;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     public class MatchSeedTests
     {

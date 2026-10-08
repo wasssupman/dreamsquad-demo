@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 2b — 반경 안 대상에게 스탯 모디파이어를 TTL 로 얹는다.
     //

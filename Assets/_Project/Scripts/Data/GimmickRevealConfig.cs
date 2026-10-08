@@ -1,12 +1,12 @@
 using System;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // gimmick-recognition-upgrade unit 1 — 기믹 리빌 연출의 수치 소유자.
     // 공통 타이밍 + 기믹당 연출 엔트리. 프리팹/클립은 null 허용이고, 엔트리 자체가
     // 없어도 리빌은 기본 tint 로 성립한다 — 아트가 늦게 와도 기능이 막히지 않는다.
-    [CreateAssetMenu(fileName = "GimmickRevealConfig", menuName = "Wassup/Gimmick Reveal Config", order = 26)]
+    [CreateAssetMenu(fileName = "GimmickRevealConfig", menuName = "Somnia/Battle/Gimmick Reveal Config", order = 26)]
     public class GimmickRevealConfig : ScriptableObject
     {
         [Serializable]

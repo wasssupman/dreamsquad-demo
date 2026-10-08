@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8bf4e43b5104a4537a201022bb0f9ea2, type: 3}
   m_Name: forest
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MapThemeData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.MapThemeData
   propGlobalTint: {r: 0.98, g: 0.9, b: 0.76, a: 1}
   playAreaProps:
   - prop: {fileID: 11400000, guid: b6e6c460ab1b947ae9aca94977bba8da, type: 2}

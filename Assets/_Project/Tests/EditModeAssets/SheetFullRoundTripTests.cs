@@ -5,11 +5,11 @@ using System.Text;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.StatImport;
-using Wassup.Editor.UnitStatImport;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
+using Somnia.Battle.Editor.UnitStatImport;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // skill-data-table unit 9 완료 기준 — **전 탭 왕복 = 무변**. 라이브 에셋 → 8탭 전부의 줄(메모리 — export 와 같은 줄 짓기) → 시트 JSON
     // (스네이크 열) → 봉투 파서(계약 밖 헤더 0) → **시트가 싣는 칸을 비운 메모리 사본**에 적용 → ① 사본에서 다시 낸 줄 = 원본 줄(스탯 칸 동일)

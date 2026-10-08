@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Wave;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Wave;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 8a — **보너스 포탈**. 옛 `Bridge/BattleBridge.BonusWave.cs:161~167·234~258`
     // (`ForceBonusWave` 의 열림·닫힘 시각 + `OpenBonusPortals`·`ClearBonusPortalViews`)의 뷰 몫이다.
@@ -108,7 +108,7 @@ namespace Wassup.BattleCoreUnity.View
             {
                 int2 cell = portals[i];
                 // sim 셀 중심 → **뷰** 월드. 평면 보드라 sim 좌표를 그대로 쓰면 어긋난다.
-                var world = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(cell.x * tile, 0f, cell.y * tile));
+                var world = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(new float3(cell.x * tile, 0f, cell.y * tile));
                 var go = Instantiate(_portalPrefab, world, Quaternion.identity, transform);
                 go.name = $"BonusPortal_{cell.x}_{cell.y}";
                 _views.Add(go);

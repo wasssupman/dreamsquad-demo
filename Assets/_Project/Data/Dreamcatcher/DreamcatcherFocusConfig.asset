@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6f2bd396253204f439c3b0a74a413869, type: 3}
   m_Name: DreamcatcherFocusConfig
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DreamcatcherFocusConfig
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.UI.DreamcatcherFocusConfig
   dimColor: {r: 0.02, g: 0.02, b: 0.06, a: 1}
   dimAlpha: 0.42
   dimFadeInSec: 0.12

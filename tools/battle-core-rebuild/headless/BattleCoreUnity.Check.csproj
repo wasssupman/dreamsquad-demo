@@ -8,7 +8,7 @@
     에디터의 UnityEngine 모듈 dll + 메인 워크트리 `Library/ScriptAssemblies` 의 옛 어셈블리에 대고
     **컴파일만** 한다(실행·테스트 없음). 코어는 ProjectReference 로 받는다. 정본은 여전히 Unity 에디터.
 
-    ⚠ 옛 `Wassup.Runtime.dll` 에는 코어로 옮긴 `MatchSeed` 사본이 아직 들어 있을 수 있고(`LegacyTraceV0` 는 2026-10-07 삭제), 새 타입(`RuntimeMaterialSet`)은 에디터가 한 번 컴파일해야 보인다
+    ⚠ 옛 `Somnia.Battle.Runtime.dll` 에는 코어로 옮긴 `MatchSeed` 사본이 아직 들어 있을 수 있고(`LegacyTraceV0` 는 2026-10-07 삭제), 새 타입(`RuntimeMaterialSet`)은 에디터가 한 번 컴파일해야 보인다
     (에디터가 그 이동 뒤 재컴파일한 적이 없다). Unity 층 소스가 그 둘을 직접 쓰면 CS0433 모호성이
     난다 — 그 경우만 이 lane 이 거짓 빨강이다(에디터 재컴파일 뒤 소멸).
   -->
@@ -17,7 +17,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>9</LangVersion>
     <Nullable>disable</Nullable>
-    <AssemblyName>Wassup.BattleCoreUnity.Check</AssemblyName>
+    <AssemblyName>Somnia.Battle.BattleCoreUnity.Check</AssemblyName>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
@@ -28,7 +28,7 @@
 
   <ItemGroup>
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\BattleCoreUnity\**\*.cs" />
-    <!-- unit 4 — 새 모드 SO. `Wassup.Runtime.dll` 은 에디터가 이 타입을 컴파일하기 전 것이라 여기 명시로 넣는다(에디터 재컴파일 뒤에는 중복이 아니라 «먼저 찾는 쪽»이 된다). -->
+    <!-- unit 4 — 새 모드 SO. `Somnia.Battle.Runtime.dll` 은 에디터가 이 타입을 컴파일하기 전 것이라 여기 명시로 넣는다(에디터 재컴파일 뒤에는 중복이 아니라 «먼저 찾는 쪽»이 된다). -->
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\MatchModeData.cs" />
     <!-- unit 5a — 뷰 설정 SO 7종. 같은 이유(에디터가 아직 컴파일한 적 없는 새 타입)로 명시한다. -->
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\BattleView\**\*.cs" />
@@ -50,9 +50,9 @@
 
   <ItemGroup>
     <Reference Include="$(UnityEngineDir)/*.dll" Private="false" />
-    <Reference Include="$(UnityScriptAssemblies)/Wassup.Runtime.dll" Private="false" />
-    <Reference Include="$(UnityScriptAssemblies)/Wassup.Skills.dll" Private="false" />
-    <Reference Include="$(UnityScriptAssemblies)/Wassup.UnitAi.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Somnia.Battle.Runtime.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Somnia.Battle.Skills.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Somnia.Battle.UnitAi.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.Collections.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.Burst.dll" Private="false" />
     <Reference Include="$(UnityScriptAssemblies)/Unity.TextMeshPro.dll" Private="false" />

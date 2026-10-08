@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 3 — 궤적·착탄 수학. 옛 순수 테스트의 후계이고, 단언의 대부분은
     // **실패에서 나온 문장**이다(발사점 뒤로 날아가는 부메랑 · 첫 바퀴 뒤 장식이 되는 궤도 …).

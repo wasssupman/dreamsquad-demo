@@ -1,10 +1,10 @@
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 6b2 — 시즌 기믹 **저작 → 정의표**.
     //
@@ -104,7 +104,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, row.Burnout.FatigueStackRule, "빈 표 → 끝에 붙은 첫 줄");
             ref var rule = ref def.StackRules[row.Burnout.FatigueStackRule];
             Assert.AreEqual(so.fatigueStack.name, rule.Id);
-            Assert.AreEqual((int)Wassup.BattleCore.Effects.StackKind.Fatigue, rule.Kind);
+            Assert.AreEqual((int)Somnia.Battle.BattleCore.Effects.StackKind.Fatigue, rule.Kind);
             Assert.AreEqual((int)so.fatigueStack.maxStack, rule.MaxStack);
             Assert.AreEqual(so.fatigueStack.perAppDuration, rule.PerAppDuration);
 

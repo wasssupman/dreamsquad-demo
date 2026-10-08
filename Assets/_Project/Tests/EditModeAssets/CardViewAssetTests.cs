@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Cards;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Cards;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // battle-core-rebuild unit 7c — **카드 화면이 읽는 뷰 표**가 번호를 매긴 순회와 같은가 + 카드 단위 범위 도형이 고정 표와 같은가.
     //

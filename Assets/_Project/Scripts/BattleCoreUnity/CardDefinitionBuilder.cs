@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Trigger;
-using Wassup.Data;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     /// <summary>카드 bake 의 입력 — 이 판의 덱(저장 부착 + 공용 액티브, 구성 순서 그대로) · 값 저작 · 판 진입 드림스톤.</summary>
     public struct CardAuthoring
@@ -281,7 +281,7 @@ namespace Wassup.BattleCoreUnity
                 case DcAttachType.None: return r;
                 case DcAttachType.Class:
                     r.Kind = AttachRequirementKind.Class;
-                    if (Wassup.Core.DreamcatcherAttachEval.TryParseAttachClass(card.attachValue, out var cls)) r.Role = (int)cls;
+                    if (Somnia.Battle.Core.DreamcatcherAttachEval.TryParseAttachClass(card.attachValue, out var cls)) r.Role = (int)cls;
                     else { r.Invalid = true; Warn($"'{card.id}': 부착 제한 직업 '{card.attachValue}' 이 무효 — 어떤 유닛에도 안 붙는다."); }
                     return r;
                 case DcAttachType.UnitId:

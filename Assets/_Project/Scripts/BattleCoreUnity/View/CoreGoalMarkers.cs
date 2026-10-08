@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Core;
+using Somnia.Battle.Core;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 8a2 — **스테이지 골 마커 ↔ 정의표 골 칸** 사상 하나.
     //
@@ -22,7 +22,7 @@ namespace Wassup.BattleCoreUnity.View
             foreach (var marker in stage.GetComponentsInChildren<GoalMarker>(false))
             {
                 var local = stage.transform.InverseTransformPoint(marker.transform.position);
-                var cell = Wassup.Data.MapStageMath.LocalToCell(local, stage.gridOriginLocal, driver.TileSize);
+                var cell = Somnia.Battle.Data.MapStageMath.LocalToCell(local, stage.gridOriginLocal, driver.TileSize);
                 for (int i = 0; i < goals.Length; i++)
                 {
                     if (goals[i].x != cell.x || goals[i].y != cell.y) continue;

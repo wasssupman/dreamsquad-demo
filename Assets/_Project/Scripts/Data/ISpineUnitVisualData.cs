@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Spine.Unity;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // Common Spine visual contract shared by every unit type that renders via
     // SkeletonAnimation (defenders and enemies alike). Defender-specific knobs

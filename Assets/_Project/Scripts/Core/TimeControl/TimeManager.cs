@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Wassup.Core.TimeControl
+namespace Somnia.Battle.Core.TimeControl
 {
     // 도메인 스코프 시간 스케일의 단일 소유자.
     //

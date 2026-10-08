@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // unit-stat-projection Unit 1 — single implementation of the "unique output
     // of a kind" invariant shared by the draft-card stat display and the

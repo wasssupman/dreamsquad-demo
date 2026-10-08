@@ -1,8 +1,8 @@
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 6b — **길막 설치물을 세우는 단 하나의 문.**
     //

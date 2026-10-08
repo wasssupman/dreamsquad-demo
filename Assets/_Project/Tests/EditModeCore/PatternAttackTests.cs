@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Emission;
-using Wassup.BattleCore.Combat.Projectile;
-using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Emission;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCombatFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild 2026-09-24 드리프트 감사 — **발사 명세(연발) 유닛의 평타.**
     //

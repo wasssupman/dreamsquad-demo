@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 7a — 저작 어휘 ↔ 코어 어휘의 **매핑 핀** + 라이브 저작이 규칙으로 구워지는가.
     //
@@ -116,7 +116,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 캐논_배치_스킬은_한_발이_반경_안_전원에게인_명세를_가리킨다()
         {
-            var cannon = AssetDatabase.LoadAssetAtPath<Wassup.Data.ProjectilePatternData>(
+            var cannon = AssetDatabase.LoadAssetAtPath<Somnia.Battle.Data.ProjectilePatternData>(
                 "Assets/_Project/Data/Projectiles/Pattern_Cannon_Strike.asset");
             Assert.IsNotNull(cannon);
             Assert.IsTrue(cannon.fanOutToAllCandidates, "라이브 저작 = 1:1 융단폭격");

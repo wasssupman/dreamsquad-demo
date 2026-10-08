@@ -2,7 +2,7 @@ using System;
 using Unity.Collections;
 using Unity.Mathematics;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // Phase 10: 판 1회용 맵 데이터(옛 owner 는 BattleBridge — 이력).
     // map-diorama-stage — 생산자는 DioramaMapBuilder.Assemble(스테이지 스캔). 연결성 실패는 하드 실패

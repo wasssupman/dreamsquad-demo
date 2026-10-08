@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 7e ③ — **카드 자가진단.** 플레이 중 사람이 ×만 보게 한다.
     //
@@ -21,7 +21,7 @@ namespace Wassup.EditorTools.BattleCore
     // ⚠ 판정은 코어의 것(`CardProbe` · `EffectWitness` · `BindingDiagnosis`)이다. 이 메뉴는 찍기만 한다.
     public static class CoreCardSelfCheckMenu
     {
-        private const string MenuPath = "Wassup/BattleCore/Debug/카드 자가진단";
+        private const string MenuPath = "Somnia/Battle/BattleCore/Debug/카드 자가진단";
         private const string CardsRoot = "Assets/_Project/Data/Dreamcatcher";
 
         [MenuItem(MenuPath)]

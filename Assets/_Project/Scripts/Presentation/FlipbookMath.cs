@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // sprite-flipbook-player unit 0 — 플립북 프레임 선택 순수 수학 (plain in/out, EditMode 테스트 대상).
     // 시계·렌더러·에셋을 모른다. 오직 (경과시간, fps, 프레임수, 루프) 만 보고 인덱스를 결정하며,

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Combat;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 3 — 개체의 **때리고·맞고·죽는** 부분.
     //
@@ -306,20 +306,20 @@ namespace Wassup.BattleCore
 
     // ── 행동 상태 ────────────────────────────────────────────────────────────
     //
-    // **결정은 `Wassup.UnitAi`, 저장은 여기**다(spec 구현 12). 공격 루프와 **같은 술어 함수**를
+    // **결정은 `Somnia.Battle.UnitAi`, 저장은 여기**다(spec 구현 12). 공격 루프와 **같은 술어 함수**를
     // 봐야 「락은 있는데 Marching」 데드락이 안 난다 — 옛 전투에서 두 벌이 갈렸을 때 적이
     // 대상을 문 채 발사도 않고 골로 걸어갔다.
     //
     // struct 인 이유: 개체마다 반드시 있고(UML §2 의 `*--`) 값이 둘뿐이라 할당할 이유가 없다.
     public struct AiStatus
     {
-        public Wassup.UnitAi.DefenderAiState Defender;
-        public Wassup.UnitAi.AiState Enemy;
+        public Somnia.Battle.UnitAi.DefenderAiState Defender;
+        public Somnia.Battle.UnitAi.AiState Enemy;
 
         public void Reset()
         {
-            Defender = Wassup.UnitAi.DefenderAiState.Ready;
-            Enemy = Wassup.UnitAi.AiState.Marching;
+            Defender = Somnia.Battle.UnitAi.DefenderAiState.Ready;
+            Enemy = Somnia.Battle.UnitAi.AiState.Marching;
         }
     }
 

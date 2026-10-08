@@ -1,12 +1,12 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // dreamcatcher-awakening-hand unit 0 — tunable numbers for the awakening
     // currency + CR-style cycling hand. Designers adjust economy/UX pacing here
     // without code. Per-unit death rewards live on the unit SOs
     // (DefenderUnitData/AttackUnitData.awakeningReward), not here.
-    [CreateAssetMenu(fileName = "AwakeningConfig", menuName = "Wassup/AwakeningConfig", order = 24)]
+    [CreateAssetMenu(fileName = "AwakeningConfig", menuName = "Somnia/Battle/AwakeningConfig", order = 24)]
     public class AwakeningConfig : ScriptableObject
     {
         // dreamcatcher-sheet-sync unit 2 — DcConfig sheet-tab row key. Appended so

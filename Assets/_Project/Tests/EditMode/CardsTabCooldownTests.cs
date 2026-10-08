@@ -2,14 +2,14 @@ using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
-using Wassup.Data.StatImport;
-using Wassup.UI;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
+using Somnia.Battle.UI;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // skill-data-table unit 9 완료 기준 — **액티브 쿨다운 = 한 원천**: 시트 `Cards.cooldown_sec` 를 고치면 굽기 값(`CardDef.CooldownSeconds`)과
     // 카드 문안의 「재사용」이 같이 바뀐다(옛 `DcSkills.cooldownSec` 은 문안만 움직이던 두 번째 원천 — 은퇴). 합성 SO · 디스크 0 · 네트워크 0.

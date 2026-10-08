@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.UI;
+using Somnia.Battle.UI;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-orb-dock unit 8 — 항아리 독은 회차가 오르는 순간에만 터진다.
     // «언제 올랐나» 를 결정하는 건 이 순수 계산이라, 연출 트리거의 회귀는 여기서 잡는다.

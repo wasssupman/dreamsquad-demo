@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // Lightweight object pool for DamageNumberView instances. Plain C# (not a
     // MonoBehaviour); owned by CoreDamageNumberSpawner. Recycles popups to avoid GC

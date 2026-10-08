@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Wassup.UI.Layout
+namespace Somnia.Battle.UI.Layout
 {
     public readonly struct UiCanvasRoots
     {

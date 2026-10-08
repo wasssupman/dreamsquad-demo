@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 307673a61f8ae4e65aac21b646eb26a2, type: 3}
   m_Name: Pattern_Cannon_Strike
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.ProjectilePatternData
   id: cannon_strike
   barrel: {fileID: 11400000, guid: 17cda1f91b50401dbc84b3ee99a06ec5, type: 2}
   damage: 200

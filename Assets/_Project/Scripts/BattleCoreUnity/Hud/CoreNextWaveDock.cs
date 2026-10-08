@@ -3,11 +3,11 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.UI;
-using Wassup.UI.Layout;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.UI;
+using Somnia.Battle.UI.Layout;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild unit 8a — 좌하단 「다음 웨이브」·「보너스 웨이브」 알약.
     // 옛 `UI/NextWaveDock.cs`(593줄, rev 9)의 복사·적응본이다. 바뀐 것은 **누가 답하나**뿐이다:

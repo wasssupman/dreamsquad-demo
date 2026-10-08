@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 307673a61f8ae4e65aac21b646eb26a2, type: 3}
   m_Name: Pattern_MachineGunner_OnPlace
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.ProjectilePatternData
   id: machine_gunner_onplace
   barrel: {fileID: 11400000, guid: 671680d8ee284d028a344f0234553d1e, type: 2}
   damage: 70

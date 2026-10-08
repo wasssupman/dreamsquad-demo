@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // dreamcatcher-orb-dock unit 0 — 항아리 안 미니 피규어의 정착(settle) 물리 순수 시뮬.
     // 아키텍처 중립: Time/EntityManager/Spine 무관, plain 값 in/out → EditMode 회귀 대상.

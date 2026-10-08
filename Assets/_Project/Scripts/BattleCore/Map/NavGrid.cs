@@ -5,7 +5,7 @@
 //   배열이면 row-major 라 순서가 구조적으로 고정된다. 술어 자체는 한 줄도 안 바꿨다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 벽 질의의 단일 진입점.
     //

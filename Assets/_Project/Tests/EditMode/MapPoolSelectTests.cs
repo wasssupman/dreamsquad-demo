@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.Data.MapGrid;
+using Somnia.Battle.Data.MapGrid;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // random-map-pool unit 0 — seed→인덱스 선택의 결정론·범위·엣지(int.MinValue/count≤1) 고정.
     public class MapPoolSelectTests

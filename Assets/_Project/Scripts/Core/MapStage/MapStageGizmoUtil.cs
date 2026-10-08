@@ -1,8 +1,8 @@
 #if UNITY_EDITOR
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 0 — 마커/footprint 기즈모 공용 헬퍼. 에디터 전용(빌드에 미포함).
     // 양자화는 반드시 MapStageMath 를 경유한다 — 기즈모가 보여주는 셀과 빌더가 굽는 셀이

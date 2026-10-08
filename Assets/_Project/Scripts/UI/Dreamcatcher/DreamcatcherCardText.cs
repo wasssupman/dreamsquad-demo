@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using Wassup.Data.Authoring;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // Shared card body formatter for the deck builder, inspect panel and hand tooltip.
     // Numbers come from the serialized effect/mechanic/skill data; authored prose is
@@ -602,7 +602,7 @@ namespace Wassup.UI
         }
 
         // dreamcatcher-hand-card-face unit 0 — CardCategoryStyle.TargetTag 가 위임(축 라벨
-        // 이중 정의 금지). 같은 어셈블리(Wassup.Runtime) 한정.
+        // 이중 정의 금지). 같은 어셈블리(Somnia.Battle.Runtime) 한정.
         internal static string AxisLabel(CardTargetAxis axis)
         {
             switch (axis)

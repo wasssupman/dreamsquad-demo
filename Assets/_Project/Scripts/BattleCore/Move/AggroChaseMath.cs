@@ -3,9 +3,9 @@
 //   ⚠ `ResolveTileRange` 의 「도발 프로파일」 인자는 그대로 두었다 — 도발 대상이 무기 없는
 //   적일 때 사거리의 출처가 프로파일이고, 그 규칙은 unit 3 에서 프로파일이 생겨도 안 바뀐다.
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // 어그로 추격의 목적지 후보 / 도달 가능 판정.
     //

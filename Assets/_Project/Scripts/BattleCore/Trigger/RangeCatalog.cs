@@ -1,7 +1,7 @@
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — 「이 규칙은 host 에서 어떤 형·어떤 반경으로 작용하나」
     // (← 옛 `Core/Dreamcatcher/DcRangeCatalog.cs` 137줄 — 카드 단위 `ResolveCard` 는 카드 화면(7c)의 것).

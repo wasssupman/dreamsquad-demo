@@ -2,19 +2,19 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCoreUnity;
 using UnityEngine.TestTools;
-using Wassup.Data;
-using Faction = Wassup.Skills.Faction;
+using Somnia.Battle.Data;
+using Faction = Somnia.Battle.Skills.Faction;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild 2026-09-24 드리프트 감사 — **빌더가 저작 의미를 옮기는가.**
     //
     // 코어 규칙은 맞는데 SO → 정의표 번역에서 한 칸이 빠져 라이브가 틀리는 결함들이다.
-    // 코어 lane 은 `Wassup.Runtime` 을 못 불러 SO 를 이름조차 모르므로 여기(Assets lane)에 둔다.
+    // 코어 lane 은 `Somnia.Battle.Runtime` 을 못 불러 SO 를 이름조차 모르므로 여기(Assets lane)에 둔다.
     // 판정은 **빌더를 거친 정의표로 판을 돌려** 사용자 증상으로 묻는다 — 필드 값만 보면
     // 「빌더는 옳은데 코어가 다르게 읽는」 반대편 결함을 못 본다.
     //
@@ -121,7 +121,7 @@ namespace Wassup.Tests.EditMode
             flyer.attackMethod = EnemyAttackMethod.Melee;
             flyer.attackRange = 1f;
             flyer.attackCooldown = 0.5f;
-            flyer.outputs = new[] { new AttackOutput { kind = Wassup.Data.AttackOutputKind.Damage, magnitude = 10f } };
+            flyer.outputs = new[] { new AttackOutput { kind = Somnia.Battle.Data.AttackOutputKind.Damage, magnitude = 10f } };
             try
             {
                 var def = MatchDefinitionBuilder.Build(new[] { patrol }, new[] { flyer }, 1, ModeDef.Default());
@@ -165,7 +165,7 @@ namespace Wassup.Tests.EditMode
             e.attackMethod = method;
             e.attackRange = 1f;
             e.attackCooldown = 0.5f;
-            e.outputs = new[] { new AttackOutput { kind = Wassup.Data.AttackOutputKind.Damage, magnitude = 10f } };
+            e.outputs = new[] { new AttackOutput { kind = Somnia.Battle.Data.AttackOutputKind.Damage, magnitude = 10f } };
             return e;
         }
 
@@ -271,7 +271,7 @@ namespace Wassup.Tests.EditMode
             var pat = ScriptableObject.CreateInstance<ProjectilePatternData>();
             pat.id = "drift_volley";
             pat.barrel = barrel;
-            pat.selection = Wassup.Data.PatternSelectionRule.None;
+            pat.selection = Somnia.Battle.Data.PatternSelectionRule.None;
             pat.minAngleDeg = -10f;
             pat.maxAngleDeg = 10f;
             pat.shots = new[]
@@ -318,7 +318,7 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(0, def.Units[0].Attack.PatternDefIndices.Length, "각도가 뒤집힌 패턴이 붙었다");
 
                 v.pat.minAngleDeg = -10f; v.pat.maxAngleDeg = 10f;
-                v.pat.selection = Wassup.Data.PatternSelectionRule.RoundRobin;
+                v.pat.selection = Somnia.Battle.Data.PatternSelectionRule.RoundRobin;
                 def = MatchDefinitionBuilder.Build(new[] { v.d }, new[] { dummy }, 1, ModeDef.Default());
                 Assert.AreEqual(0, def.Units[0].Attack.PatternDefIndices.Length,
                     "방향 탄인데 대상 선정 규칙이 있는 패턴이 붙었다");

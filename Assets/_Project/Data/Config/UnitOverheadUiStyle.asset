@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 95bd3d0701364ad8a67055a9e0cc6497, type: 3}
   m_Name: UnitOverheadUiStyle
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.UnitOverheadUiStyle
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.UnitOverheadUiStyle
   referenceResolution: {x: 1920, y: 1080}
   headGap: 5
   cardGap: 5

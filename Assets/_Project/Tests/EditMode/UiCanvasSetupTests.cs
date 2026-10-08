@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.UI.Layout;
+using Somnia.Battle.UI.Layout;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     public class UiCanvasSetupTests
     {

@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.UI;
+using Somnia.Battle.UI;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-orb-dock unit 0 — 항아리 피규어 정착 물리 순수 코어 회귀.
     // 게이지 값이 아니라 렌더 위치·정착 채움 높이의 결정론/격리/수렴을 박제한다.

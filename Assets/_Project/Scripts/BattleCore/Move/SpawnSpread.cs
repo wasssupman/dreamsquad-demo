@@ -2,7 +2,7 @@
 // 이식 시 바뀐 것: 없음(순수 수학).
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // 같은 문에서 나와도 겹치지 않게 옆으로 벌린다. **RNG 없는 이산 N-레인 round-robin** 이다 —
     // 같은 index 면 같은 레인이라 결정론이 구조적으로 성립한다.

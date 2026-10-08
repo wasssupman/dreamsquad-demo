@@ -5,10 +5,10 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data.StatImport;
-using Wassup.Editor.UnitStatImport;
+using Somnia.Battle.Data.StatImport;
+using Somnia.Battle.Editor.UnitStatImport;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // skill-data-table unit 9 — **시트 헤더 문서 = DTO 의 JSON 이름**(문서가 코드와 따로 늙지 않게). `5_sheet_io.md` 「실제 시트 설정」의 탭별
     // 헤더 줄(사용자가 시트 1행에 그대로 친다)이 export 가 쓰는 열 순서(`SheetColumns.Of`)와 글자까지 같아야 한다. 디스크 읽기만(문서 한 파일).

@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Goals
+namespace Somnia.Battle.BattleCore.Goals
 {
     // battle-core-rebuild unit 4 — **현행 라이브의 목표.**
     //

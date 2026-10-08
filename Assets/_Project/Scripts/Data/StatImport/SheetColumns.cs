@@ -4,7 +4,7 @@ using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     /// <summary>
     /// skill-data-table unit 9 — **시트 열 이름 = DTO 의 JSON 이름**(전 탭 스네이크 · `[JsonProperty]`). C# 필드 이름은 SO 와 1:1 로 두고

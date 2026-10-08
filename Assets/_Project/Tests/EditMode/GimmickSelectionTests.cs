@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     public class GimmickSelectionTests
     {

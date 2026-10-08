@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Tests.EditMode;
-using Wassup.Editor.UnitStatImport;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.Tests.EditMode;
+using Somnia.Battle.Editor.UnitStatImport;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // dreamcatcher-attach-requirement unit 3 — validator 규칙 핀. 위반 카드는 코드로
     // 만든다(에셋 무오염). 각 위반이 정확히 1건씩 잡히는지, 정상 카드는 조용한지 고정.

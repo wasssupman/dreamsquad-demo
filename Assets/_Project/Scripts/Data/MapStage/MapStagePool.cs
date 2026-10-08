@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.Core;
+using Somnia.Battle.Core;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // map-diorama-stage unit 2 — 스테이지 인코운터 풀. MapDocumentPool 의 구조 승계:
     // 엔트리 = (MapStage 프리팹, AttackDeck, WavePlanAsset) — 맵과 덱·플랜은 같은 인덱스로
     // 잠긴다("맵마다 고정된 적 패턴"). 선택 로직은 순수 함수 MapPoolSelect 재사용.
     // WarnOnSiegeCoreHpMismatch 는 승계하지 않는다 — 이 브랜치에서 공성/거점 비가용(README 계약 11).
-    [CreateAssetMenu(fileName = "MapStagePool", menuName = "Wassup/Map/MapStagePool", order = 3)]
+    [CreateAssetMenu(fileName = "MapStagePool", menuName = "Somnia/Battle/Map/MapStagePool", order = 3)]
     public class MapStagePool : ScriptableObject
     {
         [Serializable]

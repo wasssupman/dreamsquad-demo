@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 4 — **모드 × 저작의 유효성.**
     //

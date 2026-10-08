@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Goals
+namespace Somnia.Battle.BattleCore.Goals
 {
     // battle-core-rebuild unit 4 — 목표가 틱 순서에 서는 자리.
     //

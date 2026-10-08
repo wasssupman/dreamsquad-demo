@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 0 — 차단 프랍의 점유 셀 선언. 런타임 로직 0.
     // 명시 선언이 정본이다(사용자 결정 D6) — 바운즈/콜라이더는 제안(에디터 버튼)일 뿐,

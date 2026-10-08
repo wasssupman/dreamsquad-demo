@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Trigger;
-using Wassup.Data;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     // battle-core-rebuild unit 7a — SO → **규칙(바인딩) 정의표**(← 옛 `BattleBridge.BakeUnitMechanics` ·
     // `BakeNightmareMechanics` · 실드 캐스트 bake).

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     /// 여러 화면이 공유하는 **라운드렉트/원** UI 스프라이트를 런타임에 굽는다.
     /// 새 아트 없이 네이비 플레이트·골드 테두리·순위 배지 등을 코드로 만든다.

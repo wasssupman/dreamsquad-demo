@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // placement-cell-snap unit 0 — 포커스 셀 선택에 히스테리시스(2D 슈미트)를 주는 순수 정책 함수.
     // 좌표 변환(origin/tileSize)은 호출부(bridge read 헬퍼)가 담당하고, 이 함수는

@@ -3,11 +3,11 @@ using System.Linq;
 using System.Text;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.BattleCore.Trigger;
-using Wassup.Data;
-using Wassup.Data.StatImport;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // skill-data-table unit 5 — 새 시트 두 탭(`Skills` · `SkillOwners`)의 임포터 하나(`SkillSheet`). 네트워크 · 디스크 0 — 메모리 SO 만.
     //  - 쓰기 전에 diff 표를 로그에 쓴다 · 미리보기(apply:false)는 아무것도 안 쓴다
@@ -232,7 +232,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.AreEqual(4, e.values.radiusTiles);
             Assert.AreEqual(0.5f, e.values.tickSec);
             // skill-data-table unit 9 — 광역 지속 피해(AreaDot)는 cc_kind 를 안 쓴다 → 경고하고 무시(에셋 칸 그대로).
-            Assert.AreEqual(default(Wassup.Data.Authoring.CcKind), e.values.ccKind, "안 쓰는 칸은 쓰지 않는다");
+            Assert.AreEqual(default(Somnia.Battle.Data.Authoring.CcKind), e.values.ccKind, "안 쓰는 칸은 쓰지 않는다");
             Assert.AreEqual(20f, e.values.damage, "빈 칸 = 그대로");
         }
 
@@ -356,7 +356,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             aura.values = new EffectValues
             {
                 kind = EffectKind.PlacementAura, percent = 50f, durationSec = 2f, allyFilter = CardTargetAxis.All,
-                ccKind = Wassup.Data.Authoring.CcKind.Stun, stackKind = Wassup.Data.Authoring.StackKind.Fire, damage = 7f,
+                ccKind = Somnia.Battle.Data.Authoring.CcKind.Stun, stackKind = Somnia.Battle.Data.Authoring.StackKind.Fire, damage = 7f,
             };
             aura.projectile = New<ProjectileData>();
             aura.projectile.id = "stray_projectile";
@@ -411,11 +411,11 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             proj.id = "p";
             string log = SkillSheet.Import(new SkillSheetPayload
             {
-                skills = new[] { new SkillRowDto { id = "aura", percent = 30f, ccKind = Wassup.Data.Authoring.CcKind.Sleep, damage = 9f, projectileId = "p" } },
+                skills = new[] { new SkillRowDto { id = "aura", percent = 30f, ccKind = Somnia.Battle.Data.Authoring.CcKind.Sleep, damage = 9f, projectileId = "p" } },
             }, Index(new[] { aura }, projectiles: new[] { proj }), true, null, new StringBuilder());
 
             Assert.AreEqual(30f, aura.values.percent, "쓰는 칸은 반영");
-            Assert.AreEqual(default(Wassup.Data.Authoring.CcKind), aura.values.ccKind, "안 쓰는 칸은 무시");
+            Assert.AreEqual(default(Somnia.Battle.Data.Authoring.CcKind), aura.values.ccKind, "안 쓰는 칸은 무시");
             Assert.AreEqual(0f, aura.values.damage);
             Assert.IsNull(aura.projectile, "안 쓰는 참조 칸도 무시");
             StringAssert.Contains("'aura' cc_kind=Sleep — kind PlacementAura does not use this column; ignored.", log);

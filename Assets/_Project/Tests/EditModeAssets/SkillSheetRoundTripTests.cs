@@ -4,10 +4,10 @@ using System.Text;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.StatImport;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // skill-data-table unit 5 — **시트 왕복 = 굽기 무변**(5 완료 기준 「export → import 왕복 후 굽기 스냅샷 동치」).
     //

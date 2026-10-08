@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // directional-attack-shape unit 7 — 공격 판정 도형(부채꼴·띠)을 **메시로 만드는 유일한 자리.**
     //
@@ -87,7 +87,7 @@ namespace Wassup.Presentation
             float cs = spec.cellSize > 0f ? spec.cellSize : 1f;
             float len = spec.lengthTiles * cs;
             float rim = DefaultRimWidthTiles * cs;
-            if (spec.kind == Wassup.Data.AttackShapeBaked.BandKind)
+            if (spec.kind == Somnia.Battle.Data.AttackShapeBaked.BandKind)
             {
                 // 폭 0 저작(축 위 몸 걸침만 히트)도 선으로는 보이게 테 폭을 하한으로 — 가이드와 같은 규칙.
                 float hw = Mathf.Max(spec.halfWidthTiles, DefaultRimWidthTiles) * cs;
@@ -209,18 +209,18 @@ namespace Wassup.Presentation
         }
 
         // bake 에서 되돌린다 — 저작 `angleDeg` 를 읽으면 reflex 저작이 Omni 로 접힌 경우 sim 과 갈린다.
-        public static ShapeMarkSpec FromBaked(in Wassup.Data.AttackShapeBaked shape, float lengthTiles, float cellSize)
+        public static ShapeMarkSpec FromBaked(in Somnia.Battle.Data.AttackShapeBaked shape, float lengthTiles, float cellSize)
         {
             float ang = AngleDegOf(in shape);
             // 반폭 하한을 **키에서** 적용한다 — 하한 아래 값 둘이 같은 메시를 두 장 만들지 않게(리뷰 L-9). `BuildMark` 의 하한과 같은 값.
-            float hw = shape.kind == Wassup.Data.AttackShapeBaked.BandKind
+            float hw = shape.kind == Somnia.Battle.Data.AttackShapeBaked.BandKind
                 ? Mathf.Max(shape.halfWidth, ShapeMeshBuilder.DefaultRimWidthTiles) : shape.halfWidth;
             return new ShapeMarkSpec(shape.kind, ang, hw, lengthTiles, cellSize);
         }
 
         // bake → 전체각(도). 가이드(`SetShapeGuide`)와 참격이 **같은 역산**을 읽어야 「같은 빌더 = 같은 윤곽」이 구조가 된다(리뷰 L-5).
-        public static float AngleDegOf(in Wassup.Data.AttackShapeBaked shape) =>
-            shape.kind == Wassup.Data.AttackShapeBaked.SectorKind
+        public static float AngleDegOf(in Somnia.Battle.Data.AttackShapeBaked shape) =>
+            shape.kind == Somnia.Battle.Data.AttackShapeBaked.SectorKind
                 ? 2f * Mathf.Atan2(shape.sinHalf, shape.cosHalf) * Mathf.Rad2Deg
                 : 360f;
 

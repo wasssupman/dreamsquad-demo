@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 3a — 이번 공격의 대상 하나에게 CC 를 건다(서리화살·돌풍).
     //

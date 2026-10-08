@@ -1,6 +1,6 @@
 using System;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 3 — 트리거 레이어가 들어올 **자리**. unit 6b2 가 `Periodic`(4), unit 7a 가 `Immediate`(5) 를 append 했다.
     //

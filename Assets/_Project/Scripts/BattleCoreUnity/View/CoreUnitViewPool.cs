@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
-using Wassup.Data.BattleView;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5a — 유닛 뷰 풀. 옛 `SpineUnitPool` + `QuadUnitViewPool` 의 후계다.
     //
@@ -72,13 +72,13 @@ namespace Wassup.BattleCoreUnity.View
 
         // 증언 창(테스트) — 풀이 **마지막으로 민 값**. 「사건/입력 → 뷰 호출」을 백엔드 내부를 열지 않고 잰다.
         private readonly Dictionary<int, Color> _pushedTint = new Dictionary<int, Color>();
-        private readonly Dictionary<int, Wassup.UnitAi.DefenderAiState> _pushedAi = new Dictionary<int, Wassup.UnitAi.DefenderAiState>();
+        private readonly Dictionary<int, Somnia.Battle.UnitAi.DefenderAiState> _pushedAi = new Dictionary<int, Somnia.Battle.UnitAi.DefenderAiState>();
 
         /// <summary>테스트 창구 — 그 적에게 마지막으로 민 체력 틴트(행 5).</summary>
         public bool TryGetPushedEnemyTint(SimEntityId id, out Color tint) => _pushedTint.TryGetValue(id.Value, out tint);
 
         /// <summary>테스트 창구 — 그 소환사에게 마지막으로 민 AI 상태(행 6).</summary>
-        public bool TryGetPushedAiState(SimEntityId id, out Wassup.UnitAi.DefenderAiState state)
+        public bool TryGetPushedAiState(SimEntityId id, out Somnia.Battle.UnitAi.DefenderAiState state)
             => _pushedAi.TryGetValue(id.Value, out state);
 
         /// <summary>살아 있는 유닛 뷰 수. 「뷰 수 = 코어 유닛 수」 검사의 오른쪽 항이다.</summary>
@@ -142,7 +142,7 @@ namespace Wassup.BattleCoreUnity.View
                     // `Amount` = 실주기. 애니가 실발사보다 빨리 끝나지 않게 뷰가 압축한다.
                     if (TryGet(e.A, out var attacker))
                     {
-                        attacker.FaceToward((Vector3)Wassup.Core.BoardSpace.ToView(e.SiteTarget.Pos));
+                        attacker.FaceToward((Vector3)Somnia.Battle.Core.BoardSpace.ToView(e.SiteTarget.Pos));
                         attacker.PlayAttack(e.Amount);
                     }
                     break;
@@ -222,7 +222,7 @@ namespace Wassup.BattleCoreUnity.View
             // 개발용 폴백. 「안 보이는 유닛」이 판에 도는 것보다 네모라도 보이는 편이 낫다.
             var quadGo = new GameObject($"QuadUnit_{prefix}_{e.A.Value}");
             quadGo.transform.SetParent(transform, worldPositionStays: false);
-            quadGo.transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(e.SiteFired.Pos);
+            quadGo.transform.position = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(e.SiteFired.Pos);
             var quad = quadGo.AddComponent<CoreQuadUnitView>();
             // 몸 반경은 **사건이 값으로 나른다**(`SiteFired.OriginBody`) — 기본값을 두지 않는다.
             // 호출처마다 정답이 다르고, 기본값이 있으면 새 호출처가 조용히 표준값을 받는다.
@@ -231,7 +231,7 @@ namespace Wassup.BattleCoreUnity.View
             _quadById[e.A.Value] = quad;
         }
 
-        private ISpineUnitVisualData ResolveVisual(UnitKind kind, Wassup.Skills.Faction faction, int defIndex)
+        private ISpineUnitVisualData ResolveVisual(UnitKind kind, Somnia.Battle.Skills.Faction faction, int defIndex)
         {
             if (_driver == null || defIndex < 0) return null;
             // ⚠ 종류에 따라 **가리키는 표가 다르다**. 적이면 적 표, 그 외(방어유닛·순찰)는 유닛 표다.
@@ -292,7 +292,7 @@ namespace Wassup.BattleCoreUnity.View
             }
             if (_driver != null && _driver.TryGetRenderPosition(id, out var sim))
             {
-                pos = (Vector3)Wassup.Core.BoardSpace.ToView(sim);
+                pos = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(sim);
                 return true;
             }
             pos = default;

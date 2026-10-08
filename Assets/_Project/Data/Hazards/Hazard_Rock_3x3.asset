@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 41574a5e919f3409b8adb23fba27b205, type: 3}
   m_Name: Hazard_Rock_3x3
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Battle.Effects.BlockingHazardSO
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Battle.Effects.BlockingHazardSO
   visualPrefab: {fileID: 9038635551483064803, guid: a5a44ae9f83494b39a8032b6dc51f44d, type: 3}
   spawnVfxPrefab: {fileID: 2166874625917827316, guid: c666c19f830b84752a4a6427be633190, type: 3}
   shape: 1

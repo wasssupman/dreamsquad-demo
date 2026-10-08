@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 「어느 칸을 누가 쓰고 있나」. **점유와 주인은 항상 쌍으로 바뀐다.**
     //

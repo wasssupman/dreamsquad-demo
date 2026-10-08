@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // elite-whirlpot unit 2 — Whirlpot 저작 pin.
     //

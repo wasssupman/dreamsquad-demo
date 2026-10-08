@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 41574a5e919f3409b8adb23fba27b205, type: 3}
   m_Name: Blocker_BombBarrel
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Battle.Effects.BlockingHazardSO
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Battle.Effects.BlockingHazardSO
   visualPrefab: {fileID: 6753501269801307967, guid: f8b0d3cb121aa4ed2bc72ff5323d39a9, type: 3}
   spawnVfxPrefab: {fileID: 8053883155973515113, guid: cf6e23343ef194cdd972a28ca709b0dc, type: 3}
   shape: 0

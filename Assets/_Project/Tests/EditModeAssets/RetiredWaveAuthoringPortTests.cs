@@ -2,13 +2,13 @@ using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Wave;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
-using CoreAltitude = Wassup.BattleCore.Wave.SlotAltitude;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Wave;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
+using CoreAltitude = Somnia.Battle.BattleCore.Wave.SlotAltitude;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 9 구현 2 — 옛 `WaveConceptAuthoringTests` · `WaveKillBudgetPinTests` 의 규칙을
     // **라이브 덱 × 코어 생성기**로 옮긴다. 옛 쪽은 SO 를 옛 `WavePatternGenerator` 에 직접 넣었다 —
@@ -148,7 +148,7 @@ namespace Wassup.Tests.EditMode
         public void 평소는_지상만_뽑는다()
         {
             foreach (var slot in Concept("Concept_Spread").slots)
-                Assert.AreEqual(Wassup.Data.SlotAltitude.Ground, slot.altitude,
+                Assert.AreEqual(Somnia.Battle.Data.SlotAltitude.Ground, slot.altitude,
                     "「평소」가 비행을 뽑으면 대공 없는 첫 3웨이브에서 막을 수 없는 적이 나온다");
         }
 
@@ -171,7 +171,7 @@ namespace Wassup.Tests.EditMode
             foreach (var slot in ranged.slots)
             {
                 Assert.AreEqual(EnemyClass.Shooter, slot.classFilter);
-                Assert.AreEqual(Wassup.Data.SlotAltitude.Ground, slot.altitude,
+                Assert.AreEqual(Somnia.Battle.Data.SlotAltitude.Ground, slot.altitude,
                     "고도와 성질은 직교한다 — Ground 를 명시하지 않으면 비행 Shooter 가 섞인다");
             }
             Assert.GreaterOrEqual(ranged.minWaveNumber, 7, "방어선을 깎는 압력이라 게이트를 늦게 둔다");
@@ -183,7 +183,7 @@ namespace Wassup.Tests.EditMode
         {
             var air = Concept("Concept_Airstrike");
             Assert.AreEqual(2, air.slots.Length, "슬롯이 하나면 엘리트(동시 등장 1)를 뽑을 때 웨이브가 1기로 붕괴한다");
-            foreach (var slot in air.slots) Assert.AreEqual(Wassup.Data.SlotAltitude.Air, slot.altitude);
+            foreach (var slot in air.slots) Assert.AreEqual(Somnia.Battle.Data.SlotAltitude.Air, slot.altitude);
             Assert.AreEqual(1, air.RequiredLaneCount, "공습은 한 입구로 온다");
             Assert.Less(air.countMul, 0.5f, "소수여야 «스킬 한 발 값»으로 번역된다");
         }
@@ -196,7 +196,7 @@ namespace Wassup.Tests.EditMode
             {
                 var c = Concept(name);
                 if (c.variantSlots == null || c.variantSlots.Length == 0) continue;
-                var main = new HashSet<Wassup.Data.SlotAltitude>();
+                var main = new HashSet<Somnia.Battle.Data.SlotAltitude>();
                 foreach (var s in c.slots) if (s != null) main.Add(s.altitude);
                 foreach (var s in c.variantSlots)
                     if (s != null)

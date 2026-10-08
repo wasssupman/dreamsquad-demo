@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
-using Wassup.BattleCore.Trigger;
-using Wassup.Data;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // skill-data-table unit 8 — **종류별 사용 칸 표**(`EffectSlots.UsedColumns` — 정본 `tables.md` §3 · §9). unit 9 export 가 「그 종류가 쓰는
     // 칸만」 쓰는 데 쓴다. 표가 종류를 빠뜨리거나(append 한 종류) 칸을 빠뜨리면(늘린 칸) 시트가 조용히 값을 잃는다 — 여기서 닫는다.

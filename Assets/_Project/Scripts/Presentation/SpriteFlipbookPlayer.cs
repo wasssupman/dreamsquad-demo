@@ -1,8 +1,8 @@
 using UnityEngine;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // sprite-flipbook-player unit 2 — SpriteFlipbookData 를 SpriteRenderer 위에서 재생하는 얇은 컴포넌트.
     // 프레임 판정은 FlipbookMath(순수), 재생 속성은 SO 에 위임하고 여기는 시간 누적 + 스프라이트 반영 +

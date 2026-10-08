@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // battle-core-rebuild unit 8b — **앱 전역 시작 훅**(rule-holders G17). 옛 `GameManager` 안에 있던 두 훅을 그대로 옮겼다.
     // 그 매니저는 옛 전투 씬 스코프라 「그 씬이 없으면 이 훅도 없다」가 unit 9 에서 사실이 된다 — 훅은 씬·인스턴스와

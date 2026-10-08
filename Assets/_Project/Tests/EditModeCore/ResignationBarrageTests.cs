@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7b — 사직서 임계 → **운석 barrage**(옛 `DrainMeteorBarrageRequests`). 임계는 6b2 의 사건,
     // 이 파일은 그 소비자다. 이동 칸 · 겹침 없음 · 순차 예고 · 적 피해 · 자리형(원점 몸 0).
@@ -34,10 +34,10 @@ namespace Wassup.Tests.EditMode.Core
             foreach (var e in spawned)
             {
                 var cell = m.Map.CellOf(e.SiteTarget.Pos);
-                Assert.AreEqual(Wassup.BattleCore.Map.MapTile.Walk, m.Map.Snapshot.Tiles[cell.y * m.Map.Snapshot.Width + cell.x]);
+                Assert.AreEqual(Somnia.Battle.BattleCore.Map.MapTile.Walk, m.Map.Snapshot.Tiles[cell.y * m.Map.Snapshot.Width + cell.x]);
                 Assert.IsTrue(cells.Add(cell), "같은 칸에 두 번 떨어지지 않는다");
                 Assert.AreEqual(0f, e.SiteFired.OriginBody, 1e-6f, "자리에 떨어지는 것 — 몸 0(제약 13)");
-                Assert.AreEqual(Wassup.Skills.Faction.DefenderUnit, e.Faction, "플레이어 쪽 탄 — 적을 때린다");
+                Assert.AreEqual(Somnia.Battle.Skills.Faction.DefenderUnit, e.Faction, "플레이어 쪽 탄 — 적을 때린다");
             }
             foreach (var p in m.World.Projectiles) flights.Add(p.FlightTime);
             flights.Sort();

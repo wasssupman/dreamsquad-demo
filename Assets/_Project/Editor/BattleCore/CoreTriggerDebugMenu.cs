@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 7d — **규칙(바인딩) 도구**: 목록 · 강제 발화 · 「왜 안 터졌나」.
     //
@@ -23,7 +23,7 @@ namespace Wassup.EditorTools.BattleCore
     [InitializeOnLoad]
     public static class CoreTriggerDebugMenu
     {
-        private const string Root = "Wassup/BattleCore/Debug/규칙/";
+        private const string Root = "Somnia/Battle/BattleCore/Debug/규칙/";
         private const int DetachLogCap = 256;
 
         private static BattleMatch _watched;

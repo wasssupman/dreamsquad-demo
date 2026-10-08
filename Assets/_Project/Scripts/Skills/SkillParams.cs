@@ -1,4 +1,4 @@
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 3 — 저작 수치가 concrete 에 도달하는 형태.
     //

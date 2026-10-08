@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data.BattleView
+namespace Somnia.Battle.Data.BattleView
 {
     // battle-core-rebuild unit 5a — 도약 연출 노브. 옛 브리지 partial 두 개
     // (`BattleBridge.BossLeap.cs` 10 · `BattleBridge.UltimateLeap.cs` 5)의 새 주인.
@@ -12,7 +12,7 @@ namespace Wassup.Data.BattleView
     // 기하 4종은 드롭 하마(D&D)와 값이 **의도적으로 동일**하다(사용자 지시 2026-07-29):
     // 같은 함수를 쓰는데 값까지 같으면 두 연출이 한 몸짓으로 읽힌다. 다만 `DragSwaySettings`
     // 를 참조하지는 않는다 — UI 튜닝이 전투 연출을 조용히 바꾸면 안 된다.
-    [CreateAssetMenu(menuName = "Wassup/BattleView/Leap Visual Config", fileName = "LeapVisualConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/BattleView/Leap Visual Config", fileName = "LeapVisualConfig")]
     public sealed class LeapVisualConfig : ScriptableObject
     {
         [Header("보스 도약 (일반)")]

@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // dreamcatcher-card-art unit 7 — 실제 노출되는 카드는 작은 카드 슬롯의 얼굴이라
     // 폴백이나 공유 이미지를 허용하지 않는다. 밸런스/콘텐츠 개수는 pin 하지 않고

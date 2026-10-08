@@ -1,9 +1,9 @@
 using System;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.UI;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // unit-overhead-ui review — 동일 style texture를 유닛마다 굽지 않고 Layer 수명 동안 공유한다.
     public sealed class UnitOverheadSpriteSet : IDisposable

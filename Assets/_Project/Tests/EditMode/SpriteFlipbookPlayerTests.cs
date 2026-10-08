@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
 // sprite-flipbook-player unit 2 — 재생기 자체의 계약 테스트.
 //

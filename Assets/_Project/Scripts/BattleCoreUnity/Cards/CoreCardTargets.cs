@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Core;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Core;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.Cards
+namespace Somnia.Battle.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 7c — **손끝 → 대상** 기하(← 옛 브리지의 화면 조회 몫: `EnumerateDefenderScreenRects` ·
     // `TryPickDefenderAtScreen` · `ScreenDistanceToRect` · `TryPickNearestEnemy` · `TryScreenToCellStrict` ·
@@ -102,7 +102,7 @@ namespace Wassup.BattleCoreUnity.Cards
                     rect.yMin -= paddingPx; rect.yMax += paddingPx;
                 }
                 // 앞면 = 렌더 정렬(발밑 칸의 정렬 값) — 뷰가 그리는 순서와 같은 사상이다.
-                var cell = Wassup.BattleCore.Map.GridMath.WorldToCellUnclamped(u.Position, _driver.TileSize);
+                var cell = Somnia.Battle.BattleCore.Map.GridMath.WorldToCellUnclamped(u.Position, _driver.TileSize);
                 int order = BoardSortOrder.Compute(grid, cell.x, cell.y);
                 if (rect.Contains(screen))
                 {
@@ -160,7 +160,7 @@ namespace Wassup.BattleCoreUnity.Cards
         {
             cell = default;
             if (_driver == null || !_driver.Running || !TryScreenToSim(screen, out var sim)) return false;
-            cell = Wassup.BattleCore.Map.GridMath.WorldToCellUnclamped(sim, _driver.TileSize);
+            cell = Somnia.Battle.BattleCore.Map.GridMath.WorldToCellUnclamped(sim, _driver.TileSize);
             return _driver.Match.Map.InBounds(cell);
         }
 

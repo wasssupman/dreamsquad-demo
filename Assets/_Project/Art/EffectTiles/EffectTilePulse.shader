@@ -1,4 +1,4 @@
-Shader "Wassup/EffectTilePulse"
+Shader "Somnia/Battle/EffectTilePulse"
 {
     // effect-tiles — 효과 타일맵 전용 부드러운 발광 펄스(모든 효과 타일 균일 적용).
     // TilemapRenderer 는 타일맵당 머티리얼 1개라, 전용 _effectTilemap 에 이 머티리얼 하나를 건다.

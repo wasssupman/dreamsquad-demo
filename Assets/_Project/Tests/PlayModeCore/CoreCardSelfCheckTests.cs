@@ -2,15 +2,15 @@ using System.Collections;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 7e ③ — **카드 자가진단은 사용자 판을 건드리지 않는다.**
     //
-    // 메뉴(`Wassup/BattleCore/Debug/카드 자가진단`)는 에디터 어셈블리라 여기서 못 부른다. 그 메뉴가 부르는 것은
+    // 메뉴(`Somnia/Battle/BattleCore/Debug/카드 자가진단`)는 에디터 어셈블리라 여기서 못 부른다. 그 메뉴가 부르는 것은
     // 코어의 `CardProbe.RunAll(driver.Definition)` 이고, 여기서는 **그 호출** 전후로 살아 있는 판의 틱 · 개체 수 ·
     // 사건 수 · 정의표 해시가 같은지 본다. 프로브가 정의표를 복사하지 않거나 살아 있는 판에 커맨드를 넣으면 빨갛다.
     //

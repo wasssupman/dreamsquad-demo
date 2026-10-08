@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 맵의 **런타임 상태**. 스냅샷은 읽기만 한다.
     //

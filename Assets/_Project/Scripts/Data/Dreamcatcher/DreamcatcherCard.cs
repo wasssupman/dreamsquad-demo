@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // ingame-dreamcatcher Unit 1 — which allied units a card targets.
     // dreamstone-loadout Unit 3 — All appended at the end (existing DreamcatcherCard
@@ -41,7 +41,7 @@ namespace Wassup.Data
         public float percent; // +10 = +10%, -50 = -50%
     }
 
-    [CreateAssetMenu(fileName = "DreamcatcherCard", menuName = "Wassup/DreamcatcherCard", order = 20)]
+    [CreateAssetMenu(fileName = "DreamcatcherCard", menuName = "Somnia/Battle/DreamcatcherCard", order = 20)]
     public class DreamcatcherCard : ScriptableObject
     {
         public string id;

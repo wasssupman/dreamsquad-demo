@@ -1,12 +1,12 @@
 using System;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
-using Wassup.Data.Season;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.Season;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 6b — 판 위에 깔리는 것의 **저작 → 정의표**.
     //
@@ -32,15 +32,15 @@ namespace Wassup.Tests.EditMode
 
         [Test]
         public void 장판_모양()
-            => Pin<Wassup.Data.Authoring.HazardShape, HazardShapeKind>(BoardEffectDefinitionBuilder.ToCoreShape);
+            => Pin<Somnia.Battle.Data.Authoring.HazardShape, HazardShapeKind>(BoardEffectDefinitionBuilder.ToCoreShape);
 
         [Test]
         public void 장판_효과_토큰()
-            => Pin<Wassup.Data.Authoring.CcKind, HazardEffectKind>(BoardEffectDefinitionBuilder.ToCoreEffectKind);
+            => Pin<Somnia.Battle.Data.Authoring.CcKind, HazardEffectKind>(BoardEffectDefinitionBuilder.ToCoreEffectKind);
 
         [Test]
         public void 지속_피해_원소()
-            => Pin<Wassup.Data.Authoring.DotElement, Wassup.BattleCore.Effects.DotElement>(
+            => Pin<Somnia.Battle.Data.Authoring.DotElement, Somnia.Battle.BattleCore.Effects.DotElement>(
                 BoardEffectDefinitionBuilder.ToCoreDotElement);
 
         private static MapThemeData LiveTheme()
@@ -84,14 +84,14 @@ namespace Wassup.Tests.EditMode
             var rows = BoardEffectDefinitionBuilder.ToHazardDefs(list.ToArray());
             foreach (var r in rows)
                 foreach (var e in r.Effects)
-                    Assert.AreEqual((int)Wassup.Skills.Faction.EnemyUnit, e.TargetFactions, r.Id);
+                    Assert.AreEqual((int)Somnia.Battle.Skills.Faction.EnemyUnit, e.TargetFactions, r.Id);
         }
 
         [Test]
         public void 길막_폭발_저작은_탄_미배선이면_거절된다()
         {
             // F12 — 옛 전투는 경고만 내고 0번 탄 비주얼을 한 프레임 빌렸다.
-            var so = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.Authoring.BlockingHazardSO>();
+            var so = UnityEngine.ScriptableObject.CreateInstance<Somnia.Battle.Data.Authoring.BlockingHazardSO>();
             try
             {
                 so.maxHp = 50f;

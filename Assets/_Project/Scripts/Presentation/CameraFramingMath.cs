@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // camera-direction unit 8 — 보드가 화면에 다 들어오는 카메라 거리 계산 (plain in/out,
     // EditMode 테스트 대상). 회전은 건드리지 않고 거리만 구한다 — pitch/FOV 는 씬이 소유.
@@ -48,7 +48,7 @@ namespace Wassup.Presentation
         // 레시피가 없으면 false — 호출부가 "현재 포즈 유지" 로 처리한다(구 FindPhasePose
         // null → hold 의 자리를 대신한다).
         public static bool SolveStatePose(
-            Vector3 target, Wassup.Data.CameraStateFraming framing, Bounds boardWorld, float aspect,
+            Vector3 target, Somnia.Battle.Data.CameraStateFraming framing, Bounds boardWorld, float aspect,
             out Vector3 pos, out Quaternion rot, out float fov, Vector3[] cornerBuffer = null)
         {
             pos = Vector3.zero;

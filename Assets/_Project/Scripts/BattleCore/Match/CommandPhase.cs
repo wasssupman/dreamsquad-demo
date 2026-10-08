@@ -1,8 +1,8 @@
 using Unity.Mathematics;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1·4 — phase 0. 커맨드의 자리.
     //
@@ -306,7 +306,7 @@ namespace Wassup.BattleCore
             if (_map != null && !_map.Snapshot.InBounds(cmd.Cell)) return Receipt.Reject(RejectReason.OutOfBounds);
             var src = _world.Find(cmd.Target);
             var r = ResignationDrop.At(_world, _map, cmd.Cell, cmd.Target,
-                                       src != null ? src.Faction : Wassup.Skills.Faction.None, tick);
+                                       src != null ? src.Faction : Somnia.Battle.Skills.Faction.None, tick);
             return r != null ? Receipt.Ok : Receipt.Reject(RejectReason.OutOfBounds);
         }
 

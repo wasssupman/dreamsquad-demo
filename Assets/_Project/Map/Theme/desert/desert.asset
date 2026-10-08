@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8bf4e43b5104a4537a201022bb0f9ea2, type: 3}
   m_Name: desert
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MapThemeData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.MapThemeData
   propGlobalTint: {r: 1, g: 0.78, b: 0.52, a: 1}
   playAreaProps:
   - prop: {fileID: 11400000, guid: 847f963c6a6b24affa8e907354530ace, type: 2}

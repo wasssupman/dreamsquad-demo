@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 2 — 판 위에 깔린 «장(場)». 유닛이 아니라서 `BattleWorld.Units`
     // 밖에 산다(UML §2 의 `FieldCarrier`).

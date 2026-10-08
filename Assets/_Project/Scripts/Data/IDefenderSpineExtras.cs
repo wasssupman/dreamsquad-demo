@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // Defender-only Spine knobs that have no meaning for enemy units
     // (drag-to-place feedback, deploy/landing animation, cast anchor bone for

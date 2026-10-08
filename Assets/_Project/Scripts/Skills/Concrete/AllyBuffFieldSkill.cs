@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 7b — **아군 버프 장판**(파워 서지 · 래피드 파이어).
     //

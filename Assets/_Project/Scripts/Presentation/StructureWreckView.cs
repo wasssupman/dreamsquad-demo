@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Core.TimeControl;
+using Somnia.Battle.Core.TimeControl;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // instinct-wreck — 부서진 본능(3×3 공격 거점)의 잔해.
     //

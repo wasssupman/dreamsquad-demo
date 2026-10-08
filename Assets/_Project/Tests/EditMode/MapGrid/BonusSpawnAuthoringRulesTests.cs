@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.MapGrid;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.MapGrid;
 
-namespace Wassup.Tests.EditMode.MapGrid
+namespace Somnia.Battle.Tests.EditMode.MapGrid
 {
     // bonus-wave-pull unit 1 — 포탈 칸 저작의 **양성 조건 3개**를 고정한다.
     // 금지 목록이 아니라 양성 조건인 이유: 포탈은 보드 한가운데 열리므로 「벽이 아니다」

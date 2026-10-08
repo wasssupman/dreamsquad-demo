@@ -224,7 +224,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 568707b1a0c54dd7ab5e65fbb275f41a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.CoreCameraFeed
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.CoreCameraFeed
   _driver: {fileID: 302}
   _director: {fileID: 105}
   _sound: {fileID: 1575143365}
@@ -239,7 +239,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e4e88b48aa588437bad5cad6bbbeed2e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.CameraDirector
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.CameraDirector
   config: {fileID: 11400000, guid: 7643de17742f54f4296f83b72a792c37, type: 2}
 --- !u!1 &200
 GameObject:
@@ -473,7 +473,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0b2f551a0106435384d3bee78d87abf2, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreDefenderTray
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CoreDefenderTray
   _driver: {fileID: 302}
   _slotSize: 132
   _slotGap: 12
@@ -490,7 +490,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fd05474f0d3a4c3f8d0f4f18ff79085b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Input.SubmitInput
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Input.SubmitInput
   _driver: {fileID: 302}
   _tray: {fileID: 402}
   _anchoredPos: {x: -40, y: 40}
@@ -506,7 +506,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7fab8cff23b840cea5dc8b3eef986200, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreMenuPopup
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CoreMenuPopup
   _driver: {fileID: 302}
 --- !u!114 &405
 MonoBehaviour:
@@ -519,7 +519,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 98ac8f2bc8914d4481db1188c84e654d, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CorePlacementPhaseView
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CorePlacementPhaseView
   _driver: {fileID: 302}
   _outroSeconds: 0.35
 --- !u!114 &406
@@ -533,7 +533,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: daac3a8f7d734ad69c2b198b10942f92, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreCostDisplay
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CoreCostDisplay
   _driver: {fileID: 302}
   _anchoredPos: {x: 40, y: 40}
   _size: {x: 300, y: 56}
@@ -548,7 +548,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1d796275fb094fe3ba906482e8a5db0d, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreScoreHud
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CoreScoreHud
   _driver: {fileID: 302}
   _restBpm: 52
   _maxBpm: 168
@@ -1092,7 +1092,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fdbff98e11264cd485185ec38a877d37, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Cards.CoreHandView
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Cards.CoreHandView
   _driver: {fileID: 302}
   _units: {fileID: 522}
   _overlay: {fileID: 1402320339}
@@ -1195,7 +1195,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e19809130c5fa4354a236981fecf947d, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreBossWarning
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CoreBossWarning
   _driver: {fileID: 302}
   warningFont: {fileID: 11400000, guid: 3e875d8f3088f4559af897fb924f19a5, type: 2}
   warningMaterial: {fileID: 2100000, guid: 52e1410b5122a4e3b980294f42e9eb02, type: 2}
@@ -1281,7 +1281,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f519a3fba77ad4c199a8cbc874520503, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Cards.CoreHandFluidBackdrop
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Cards.CoreHandFluidBackdrop
   _handView: {fileID: 513532}
   _sim: {fileID: 137040113}
   _image: {fileID: 137040110}
@@ -1346,7 +1346,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 59f73fc488ce3d6409616b230125a7be, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.FluidPaintSim
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.FluidPaintSim
   config: {fileID: 11400000, guid: 77787a3555ae5d5499d90f0bce1bac02, type: 2}
   solverMaterial: {fileID: 2100000, guid: 7b6825863ff3d91458589a90bef3e476, type: 2}
   referenceSize: {x: 1920, y: 1080}
@@ -1378,7 +1378,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b3f857717cb34e07aa0cf0609ea60fca, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreBeamPresenter
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreBeamPresenter
   _driver: {fileID: 302}
   _units: {fileID: 522}
   _ttlMargin: 1.75
@@ -1510,7 +1510,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ce29cca5177e4af5a49eaf2e5a49bcc2, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.CoreMatchEndBeat
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.CoreMatchEndBeat
   _driver: {fileID: 302}
   _heartHud: {fileID: 11400000, guid: 1df5bd25f175423fa01bc16f433452e3, type: 2}
 --- !u!4 &269632760
@@ -1635,7 +1635,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bed7448e7d2d34c4eb4d2559fbb63899, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreBonusPortalPresenter
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreBonusPortalPresenter
   _driver: {fileID: 302}
   _portalPrefab: {fileID: 5267086104337941674, guid: 3b6178451ae0a46e6a7fb150b769f661, type: 3}
 --- !u!4 &276394731
@@ -1681,7 +1681,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0b4e1e1081c154cb1b3a96a361905783, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreNextWaveDock
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CoreNextWaveDock
   _driver: {fileID: 302}
   panelOffset: {x: 40, y: 110}
   pillSize: {x: 256, y: 96}
@@ -1754,7 +1754,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7eac115dc56d4e6185ed9166d0f20435, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Input.DragPlacementInput
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Input.DragPlacementInput
   _driver: {fileID: 302}
   _tray: {fileID: 402}
   _overlay: {fileID: 1402320339}
@@ -1794,7 +1794,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0f8841272c894544a1bcc0a1eea224f0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Input.SelectionInput
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Input.SelectionInput
   _driver: {fileID: 302}
   _panel: {fileID: 1375787158}
   _tray: {fileID: 402}
@@ -1833,7 +1833,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 656d1b8b8a8b444597b74e8c4764b2ab, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreStatusFxSpawner
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreStatusFxSpawner
   _driver: {fileID: 302}
   _units: {fileID: 522}
   _config: {fileID: 11400000, guid: 017af4ea8f9b45609cac86ea96a038a8, type: 2}
@@ -1881,7 +1881,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 20ceda71c64841b8a8b4c7172d961622, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreSpawnAlertPresenter
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreSpawnAlertPresenter
   _driver: {fileID: 302}
   _leadSeconds: 2.5
   _drawSeconds: 0.55
@@ -1936,7 +1936,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f3691505529b41a9bd722058983d3e22, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreVfxSpawner
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreVfxSpawner
   _driver: {fileID: 302}
   _units: {fileID: 522}
   _projectiles: {fileID: 532}
@@ -1991,7 +1991,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9121a923c5ac4801a93cc1c9245aede2, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreFieldPresenter
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreFieldPresenter
   _driver: {fileID: 302}
   _tornadoPrefab: {fileID: 207745087118991948, guid: ae85f8af7e5c6c44c91e2f6966a4354b, type: 3}
   _portalPrefab: {fileID: 6817788139784616374, guid: 8a018bf2f3cb64a26b5a382a6bfc6d73, type: 3}
@@ -2023,7 +2023,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4c6f9beac7204e2bb134979b58d51444, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CorePickupViewPool
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CorePickupViewPool
   _driver: {fileID: 302}
   _config: {fileID: 11400000, guid: 8b99f9a4eb2b45b59262e33e2cb8b000, type: 2}
 --- !u!4 &725576255
@@ -2069,7 +2069,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a0ac8a96822e746a9b9a0ac7db108773, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreHudGate
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CoreHudGate
   _driver: {fileID: 302}
   _hudRoots:
   - {fileID: 400}
@@ -2120,7 +2120,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7ca85017e93d448baa099e6d7b7f03f5, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreResignationViewPool
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreResignationViewPool
   _driver: {fileID: 302}
   _config: {fileID: 11400000, guid: 8b99f9a4eb2b45b59262e33e2cb8b000, type: 2}
 --- !u!4 &779237443
@@ -2166,7 +2166,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5e75367e15144ec5b997ce132b145548, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Cards.CoreAwakeningGaugeView
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Cards.CoreAwakeningGaugeView
   _driver: {fileID: 302}
   _tray: {fileID: 402}
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
@@ -2241,7 +2241,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 071f0a076b07f47d8b004cccaff9fec1, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreGimmickReveal
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CoreGimmickReveal
   _driver: {fileID: 302}
   config: {fileID: 11400000, guid: 2c83ead52291f493fa48cb3c50739ae3, type: 2}
   sortingOrder: 20
@@ -2289,7 +2289,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d108f7e0e3c748d1bef6b7b7381fe891, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreDcAuraVisualPool
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreDcAuraVisualPool
   _driver: {fileID: 302}
   _units: {fileID: 522}
   _config: {fileID: 11400000, guid: 017af4ea8f9b45609cac86ea96a038a8, type: 2}
@@ -2337,7 +2337,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 379af7ae9baf46f9b2f9fef957ef8742, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.MarkerPropInstaller
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.MarkerPropInstaller
   style: {fileID: 11400000, guid: 352c3ed7c90443c996a8de804b3e3ace, type: 2}
 --- !u!4 &1159201333
 Transform:
@@ -2382,7 +2382,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 46753f57d2dd4812bd9935d5d9fd0aa8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.Hud.CoreSelectionPanel
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.Hud.CoreSelectionPanel
   _driver: {fileID: 302}
   _width: 320
   _anchoredPos: {x: 24, y: 0}
@@ -2432,7 +2432,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e86bbb35413440f0955ae4e37e0b4904, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreMapOverlay
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreMapOverlay
   _driver: {fileID: 302}
   _showGrid: 1
   _gridColor: {r: 1, g: 1, b: 1, a: 0.09}
@@ -2488,7 +2488,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 471f136d3802430080dd8c40a15a741e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreHazardViewPool
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreHazardViewPool
   _driver: {fileID: 302}
 --- !u!4 &1432694101
 Transform:
@@ -2533,7 +2533,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c01d18bdd639e4ab4b51841743ba090a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SoundManager
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.SoundManager
   scoreTickClip: {fileID: 8300000, guid: 8b656e97eda9946f18e43b434b780a9e, type: 3}
   scoreTickVolume: 0.6
   projectileFireClip: {fileID: 8300000, guid: fc4cd59f881f84776b2dd2d22526b617, type: 3}
@@ -2608,7 +2608,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: af4a9965bb3ff4d2f9ddef1981d14425, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreDragPreviewPresenter
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreDragPreviewPresenter
   _driver: {fileID: 302}
   _config: {fileID: 11400000, guid: 680d35e2ba6a44815bf731006e75eddf, type: 2}
   _characterView: {fileID: 11400000, guid: 27f8a8d23e5446c693a430cb57a8791a, type: 2}
@@ -2655,7 +2655,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 84468606c5b99441ea0fded4497885fa, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreRetireFlightPresenter
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreRetireFlightPresenter
   _driver: {fileID: 302}
   _units: {fileID: 522}
   _vfx: {fileID: 678589399}
@@ -2720,7 +2720,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4b4a9bf994f94a6bb0b6e561efefaed7, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.CoreBattleAudio
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.CoreBattleAudio
   _driver: {fileID: 302}
 --- !u!4 &1978911363
 Transform:
@@ -2765,7 +2765,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 69cc7031b92d470f9295179e8518ad93, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreDeployFlightPresenter
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreDeployFlightPresenter
   _driver: {fileID: 302}
   _units: {fileID: 522}
   _config: {fileID: 11400000, guid: 680d35e2ba6a44815bf731006e75eddf, type: 2}
@@ -2814,7 +2814,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5be39aef9cfee4e5989ddcf184419fdc, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.BattleCoreUnity.View.CoreScreenSetup
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.BattleCoreUnity.View.CoreScreenSetup
 --- !u!4 &2116349303
 Transform:
   m_ObjectHideFlags: 0

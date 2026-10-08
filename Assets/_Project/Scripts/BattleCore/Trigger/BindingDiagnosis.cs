@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     /// <summary>규칙 하나가 「왜 안 터졌나」 — tools.md 「트리거 강제 발화」의 네 원인 + 터지고 있음.</summary>
     public enum BindingStatus : byte

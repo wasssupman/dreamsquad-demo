@@ -1,9 +1,9 @@
 using System;
 using UnityEngine;
 
-namespace Wassup.Data.Season
+namespace Somnia.Battle.Data.Season
 {
-    [CreateAssetMenu(menuName = "Wassup/Season/SeasonRegistry", fileName = "SeasonRegistry")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Season/SeasonRegistry", fileName = "SeasonRegistry")]
     public sealed class SeasonRegistry : ScriptableObject
     {
         public SeasonData[] allSeasons = Array.Empty<SeasonData>();

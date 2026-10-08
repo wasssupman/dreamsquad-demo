@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // defender-clock-out unit 5 — 이탈 쿨타임의 **불변식**을 잡는다: 퇴근 대기는 어떤 저작
     // 값으로도 사망 대기를 넘지 못한다. 이 파일이 지키는 것은 초 단위 밸런스가 아니라

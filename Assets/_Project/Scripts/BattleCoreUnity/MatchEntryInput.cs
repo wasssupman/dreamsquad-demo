@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     /// <summary>
     /// demo-diet unit 0 — **전투 입구의 값.** 바깥(에디터 런처 · 테스트 하네스 · 훗날 App)이 채우고 드라이버가 읽는다.

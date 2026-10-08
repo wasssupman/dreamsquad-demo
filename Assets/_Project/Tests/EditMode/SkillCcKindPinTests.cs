@@ -1,8 +1,8 @@
 using NUnit.Framework;
-using Wassup.Data.Authoring;
-using Wassup.Skills;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // skill-layer-foundation unit 5 — 도메인 CC enum 과 Runtime CC enum 의 **값 일치**.
     //

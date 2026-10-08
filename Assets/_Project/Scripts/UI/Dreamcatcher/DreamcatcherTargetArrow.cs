@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // dreamcatcher-awakening-hand rev 4-6 — StS-style targeting arrow: the card
     // stays seated in the hand and a dotted bezier arc runs from it to the

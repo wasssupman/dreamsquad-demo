@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7ab5e078a362e412c86ac988a6644911, type: 3}
   m_Name: season_overwork
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.Season.SeasonData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.Season.SeasonData
   seasonId: S_Overwork
   displayName: "\uC57C\uADFC"
   mapTheme: {fileID: 11400000, guid: cee6d79be1d0942669279b9cbfac6717, type: 2}

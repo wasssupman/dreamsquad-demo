@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // camera-direction unit 10 — 카메라 상태. 페이즈 enum(7종)과 별개다: 상태는 훨씬 적고,
     // "어느 페이즈에 어떤 그림을 보여줄까"는 연출 정책이지 게임 규칙이 아니다.
@@ -41,7 +41,7 @@ namespace Wassup.Data
 
     // camera-direction unit 0 — 연출 카메라 튜닝값 (하드코딩 금지 계약).
     // 채널별 섹션은 후속 유닛에서 누적된다 (unit 2 구두점, unit 3 브리딩).
-    [CreateAssetMenu(menuName = "Wassup/Camera Direction Config", fileName = "CameraDirectionConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Camera Direction Config", fileName = "CameraDirectionConfig")]
     public class CameraDirectionConfig : ScriptableObject
     {
         // camera-direction unit 16 — 구 `enableNonDragEffects` 전역 토글은 은퇴했다.
@@ -194,10 +194,10 @@ namespace Wassup.Data
         // GamePhase 에서 값을 빼거나 순서를 바꾸면 저장된 정수의 의미가 밀리므로,
         // 반드시 CameraDirectionConfig.asset 의 breathPhases 도 같은 커밋에서 마이그레이션한다.
         [Tooltip("브리딩이 켜지는 페이즈 (기본 Placement/Battle — Result 는 자체 연출과 간섭 방지).")]
-        public Wassup.Core.GamePhase[] breathPhases =
+        public Somnia.Battle.Core.GamePhase[] breathPhases =
         {
-            Wassup.Core.GamePhase.Placement,
-            Wassup.Core.GamePhase.Battle,
+            Somnia.Battle.Core.GamePhase.Placement,
+            Somnia.Battle.Core.GamePhase.Battle,
         };
         [Tooltip("브리딩 가중치 크로스페이드 시간(초) — 비행 중 0, 종료 후 서서히 복귀. 급격한 on/off 금지(spec).")]
         public float breathFadeSec = 1.5f;

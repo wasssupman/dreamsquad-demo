@@ -1,4 +1,4 @@
-Shader "Wassup/UI/CardCrumple"
+Shader "Somnia/Battle/UI/CardCrumple"
 {
     // card-crumple-unfold unit 1 — 손패 카드 art 의 구김→펴짐. UGUI(UI/Default 계열) CG.
     // 버텍스 변위는 UiCardFaceMesh 가 정적 스트림에 구운 오프셋(TEXCOORD1)을 _Unfold 로

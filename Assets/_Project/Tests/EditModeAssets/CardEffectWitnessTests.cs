@@ -3,12 +3,12 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // battle-core-rebuild unit 7e ① — **카드 전량이 「구워졌고 · 발동하고 · 그 종류의 효과가 실제로 걸렸다」.**
     //
@@ -62,7 +62,7 @@ namespace Wassup.Tests.EditModeAssets
             public MatchModeData Mode;
             public AttackDeck Deck;
             public BonusWaveData Bonus;
-            public Wassup.Core.MapStage Stage;
+            public Somnia.Battle.Core.MapStage Stage;
             public MovementTuningConfig Movement;
             public StackModifierSO[] Stacks;
             public ImbueCapConfig Imbue;
@@ -89,7 +89,7 @@ namespace Wassup.Tests.EditModeAssets
                 Mode = One<MatchModeData>(block, "_mode"),
                 Deck = One<AttackDeck>(block, "_deck"),
                 Bonus = content.bonus,
-                Stage = One<Wassup.Core.MapStage>(block, "_stagePrefab"),
+                Stage = One<Somnia.Battle.Core.MapStage>(block, "_stagePrefab"),
                 Movement = content.movementTuning,
                 Stacks = content.stackModifiers,
                 Imbue = content.imbueCaps,
@@ -130,7 +130,7 @@ namespace Wassup.Tests.EditModeAssets
             {
                 stage.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
                 stage.transform.localScale = Vector3.one;
-                var scan = Wassup.Core.MapStageScanner.Scan(stage, 1f);
+                var scan = Somnia.Battle.Core.MapStageScanner.Scan(stage, 1f);
                 map = DioramaMapBuilder.Assemble(scan, Unity.Collections.Allocator.Persistent);
                 var structures = new List<StructureEntry>(scan.structures);
                 structures.Sort(DioramaMapBuilder.CompareStructureRowMajor);

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.UI.Layout
+namespace Somnia.Battle.UI.Layout
 {
     public readonly struct UiSafeAreaAnchors
     {

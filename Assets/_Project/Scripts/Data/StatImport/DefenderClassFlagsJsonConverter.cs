@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // unit-stat-spreadsheet-schema Unit 1 — targetClassMask is contracted as enum
     // member names OR'd into one [Flags] value. Newtonsoft has no built-in way to do

@@ -1,6 +1,6 @@
 // salvaged from Assets/_Project/Scripts/Battle/Effects/DotTick.cs (battle-core-rebuild unit 6a)
 //   규칙(이산 틱 누산 · 안전 상한)은 그대로다.
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // 지속 피해의 이산 틱 누산. plain 값 입출력이라 아키텍처를 모른다(제약 10 모범).
     public static class DotTick

@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Editor.Portraits
+namespace Somnia.Battle.Editor.Portraits
 {
     [Serializable]
     public sealed class DefenderPortraitFramingOverride
@@ -20,7 +20,7 @@ namespace Wassup.Editor.Portraits
 
     [CreateAssetMenu(
         fileName = "DefenderPortraitBakeProfile",
-        menuName = "Wassup/Editor/Defender Portrait Bake Profile",
+        menuName = "Somnia/Battle/Editor/Defender Portrait Bake Profile",
         order = 200)]
     public sealed class DefenderPortraitBakeProfile : ScriptableObject
     {

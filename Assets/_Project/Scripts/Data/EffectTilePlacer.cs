@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // effect-tiles unit 0 — 맵 seed 결정론으로 효과 타일을 놓을 배치 가능 셀을 선정하는 순수 함수.
-    // BackgroundPropPlacer 미러(static, Wassup.Data). 같은 맵/seed = 양측 동일 (비동기 토너먼트).
+    // BackgroundPropPlacer 미러(static, Somnia.Battle.Data). 같은 맵/seed = 양측 동일 (비동기 토너먼트).
     // placement-mask unit 1 — 효과 타일은 "그 칸에 유닛을 놓으면" 발동하는 배치 결합 시스템이라
     // 배치 정본(placeMask)을 따른다. 파생 마스크(≡ tiles==Place)에서는 결과 불변.
     public static class EffectTilePlacer

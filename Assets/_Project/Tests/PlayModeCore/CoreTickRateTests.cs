@@ -2,11 +2,11 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.Core.TimeControl;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Core.TimeControl;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 5a — **슬로모·정지는 규칙이 아니라 틱 발행률이다**(계약 5).
     //
@@ -66,7 +66,7 @@ namespace Wassup.Tests.PlayMode.Core
         // 한다(흐름장 슬롯이 셀 수에서 나온다) — 그래서 4×3 빈 판을 준다.
         private static MatchDefinition MinimalDefinition()
         {
-            var map = new Wassup.BattleCore.Map.MapSnapshot
+            var map = new Somnia.Battle.BattleCore.Map.MapSnapshot
             {
                 Width = 4,
                 Height = 3,

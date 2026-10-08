@@ -2,7 +2,7 @@ using System;
 using System.Text;
 using UnityEngine.Networking;
 
-namespace Wassup.SheetSync
+namespace Somnia.Battle.SheetSync
 {
     // 이식 가능한 sheet-sync 코어의 POST transport. push payload(JSON) 를 Apps Script
     // 웹앱 /exec (또는 {success, data, errorDetail} 로 응답하는 임의 엔드포인트)로 보낸다.

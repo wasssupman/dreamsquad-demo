@@ -1,7 +1,7 @@
 ---
 name: core-reviewer
 description: >
-  Review the new pure-C# 「전투 코어」 (Assets/_Project/Scripts/BattleCore/, asmdef Wassup.BattleCore)
+  Review the new pure-C# 「전투 코어」 (Assets/_Project/Scripts/BattleCore/, asmdef Somnia.Battle.BattleCore)
   and its Unity layer (BattleDriver · view pools · input → commands) for the wassup project.
   Checks CLAUDE.md 「제약」, the invariants in
   docs/reference/battle-core-architecture.md §8, and the battle-core-rebuild spec contracts. Use when files under Scripts/BattleCore/ or the new
@@ -37,7 +37,7 @@ destroy event, (6) determinism breaks. Style last.
   module the core may touch is `UnityEngine.MathematicsModule` (`Unity.Mathematics` types — an engine module
   since 6.6, so `noEngineReferences` is `false` on purpose). The guard is `CoreArchitectureTests.코어에는_엔진_참조가_없다`
   plus the headless `BattleCore.csproj` (no `CoreModule` reference). asmdef `references` stay limited to
-  `Wassup.Skills`, `Wassup.UnitAi` — no `Unity.Mathematics` entry: on 6.6 that name is an empty forwarder
+  `Somnia.Battle.Skills`, `Somnia.Battle.UnitAi` — no `Unity.Mathematics` entry: on 6.6 that name is an empty forwarder
   package and the types come from the engine module automatically.
 - **커맨드 ≠ 이벤트**: player input entering as an event; events that carry a live handle instead of a
   value snapshot (position + originBody pair, faction, traversal layers); code that re-queries an
@@ -51,7 +51,7 @@ destroy event, (6) determinism breaks. Style last.
   its own parameters; `EndMatch` called from anywhere except `MatchClock`, `HeartMeter`, the goal, or the submit command.
 - **판정 산식 하나(§8-7)**: every 「닿나/들어갔나」 check must call the canonical reach entry point (`AttackReach.InReach`·`InReachShaped`·`InCellReach` in `BattleCore/Combat/AttackReach.cs` · `SkillMath.ReachFromUnit`·`ReachFromCell`·`ReachWithOrigin`·`ReachFromImpact` in `Skills/SkillMath.cs`). An inline distance/range comparison, a hand-passed constant in the 「내 몸」 slot, or a cell-to-cell comparison that folds the target to a point is **HIGH**. The only exception is placement (grid occupancy).
 - **코어 숫자 리터럴 금지(CLAUDE.md 「데이터」)**: a tuning number (radius, speed, duration, spread, body size) written as a literal under `Scripts/BattleCore/` is a finding — it belongs in the definition table built by `MatchDefinitionBuilder` (precedent: spawn spread · body radius → `MovementTuningConfig`). Structural constants (tick 1/60, enum sentinels, `SimEntityId` 0/-1) are not.
-- ⚠ **「죽은 using」 지적은 네임스페이스 선언으로 확인한다 — 폴더·asmdef 이름으로 판단하지 않는다.** `using Wassup.Battle.Units` 는 `Faction` 의 namespace 였다(파일은 `Wassup.Skills` asmdef 안) — 리뷰가 이를 죽은 import 로 **두 번** 오판했다(5c · 7e). unit 9(`64dc493da`) 이후 `Faction` 의 namespace 는 `Wassup.Skills` 이고 `Wassup.Battle.*` 선언은 0 이다 — 지금 `using Wassup.Battle.*` 가 보이면 그것은 잔류물(컴파일 오류)이다. `grep -rn 'namespace <ns>'` 또는 컴파일로 확인한 뒤 지적한다.
+- ⚠ **「죽은 using」 지적은 네임스페이스 선언으로 확인한다 — 폴더·asmdef 이름으로 판단하지 않는다.** `using Somnia.Battle.Battle.Units` 는 `Faction` 의 namespace 였다(파일은 `Somnia.Battle.Skills` asmdef 안) — 리뷰가 이를 죽은 import 로 **두 번** 오판했다(5c · 7e). unit 9(`64dc493da`) 이후 `Faction` 의 namespace 는 `Somnia.Battle.Skills` 이고 `Somnia.Battle.Battle.*` 선언은 0 이다 — 지금 `using Somnia.Battle.Battle.*` 가 보이면 그것은 잔류물(컴파일 오류)이다. `grep -rn 'namespace <ns>'` 또는 컴파일로 확인한 뒤 지적한다.
 
 ## Severity
 

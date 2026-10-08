@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 개체 목록. 계약 5·7 의 자리다.
     //

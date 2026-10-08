@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Combat.Projectile
+namespace Somnia.Battle.BattleCore.Combat.Projectile
 {
     // battle-core-rebuild unit 3 — 「이런 탄을 쏴라」. **값 스냅샷**이다.
     //
@@ -18,7 +18,7 @@ namespace Wassup.BattleCore.Combat.Projectile
         public PayloadKind Payload;
 
         public SimEntityId Owner;
-        public Wassup.Skills.Faction OwnerFaction;
+        public Somnia.Battle.Skills.Faction OwnerFaction;
         public int TargetMask;
         public byte TargetLayers;
 

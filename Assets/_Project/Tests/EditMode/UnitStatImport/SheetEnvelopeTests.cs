@@ -1,8 +1,8 @@
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using Wassup.SheetSync;
+using Somnia.Battle.SheetSync;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // sheet-export-push unit 0 — SheetSync 코어의 봉투 파서 회귀. 동일 wire shape
     // ({success,data,errorDetail})의 분기를 직접 검증(전엔 BuildReport 통해 간접만).

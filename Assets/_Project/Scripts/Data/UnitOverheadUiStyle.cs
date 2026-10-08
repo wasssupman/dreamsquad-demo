@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // three-minute-survival unit 1 — 오버헤드 바의 스킨 종류. 스킨이 3종이 된 순간
     // `bool defender` 조합은 거짓말을 시작하므로(구 GoalStability 는 방어유닛도 적도 아니었다)
@@ -18,7 +18,7 @@ namespace Wassup.Data
     }
 
     // unit-overhead-ui — 1920x1080 reference pixel 기반 공통 레이아웃과 진영별 skin.
-    [CreateAssetMenu(fileName = "UnitOverheadUiStyle", menuName = "Wassup/Unit Overhead UI Style", order = 21)]
+    [CreateAssetMenu(fileName = "UnitOverheadUiStyle", menuName = "Somnia/Battle/Unit Overhead UI Style", order = 21)]
     public class UnitOverheadUiStyle : ScriptableObject
     {
         [Serializable]

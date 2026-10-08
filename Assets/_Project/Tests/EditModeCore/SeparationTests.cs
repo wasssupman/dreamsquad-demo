@@ -4,9 +4,9 @@
 //   테스트는 `MovementRulesTests.분리_누적은_id_오름차순이다` 다.
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore.Move;
+using Somnia.Battle.BattleCore.Move;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     public class SeparationTests
     {

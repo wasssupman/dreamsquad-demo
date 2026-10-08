@@ -1,12 +1,12 @@
 using System;
 using UnityEngine;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // dreamcatcher-unit-trigger Unit 0 — architecture-agnostic triggered-mechanic
     // definition. This layer is pure data + asset references: it must not reference
-    // Unity.Entities or Wassup.Battle types. Interpretation (bake into unmanaged
+    // Unity.Entities or Somnia.Battle.Battle types. Interpretation (bake into unmanaged
     // slots + execution) lives entirely in the Unity-layer translator (`CardDefinitionBuilder`) and the battle core, so an architecture
     // swap only rewrites the translator, never these definitions.
     // Append new enum cases at the end (existing card assets serialize these as
@@ -121,7 +121,7 @@ namespace Wassup.Data
         // `AttackSystem` 이 그 프레임에 이미 들고 있는 후보 배열 위에서 판정한다.
         // 필드: magnitude = 피해 · tileRange = 사거리(타일) · coneHalfAngleDeg = 반각.
         //
-        // ⚠ 반각 정의역은 **(0°, 90°)** 다. 판정 게이트(`Wassup.Skills.SkillMath.SectorGate`)가 볼록 쐐기만
+        // ⚠ 반각 정의역은 **(0°, 90°)** 다. 판정 게이트(`Somnia.Battle.Skills.SkillMath.SectorGate`)가 볼록 쐐기만
         // 재서, 그 이상은 조용히 다른 도형이 된다 → bake 가 >= 90 을 loud 거절한다. 저작 초기값 50° — 45° 는
         // 셀 대각선 경계에 정확히 걸려 부동소수 비교가 동전 던지기가 된다(결정론 요건).
         // 도달 = 후보 원(사거리 + 시전자 몸 + 대상 몸) AND 그 게이트(대상 몸 걸침) — 제약 13 · unified-effect-layer unit 7.
@@ -337,7 +337,7 @@ namespace Wassup.Data
         public int orbitCount;
         // dreamcatcher-content-5 unit 0 — SpawnHazard 전용. 깔 장판 SO.
         // 정의 계층의 SO 참조는 위 projectile·auraPrefab·pattern·stackModifier·splitUnit
-        // 선례와 동일하다 — 금지 대상은 Entities/Battle 타입이고 HazardSO 는 같은 Wassup.Data
+        // 선례와 동일하다 — 금지 대상은 Entities/Battle 타입이고 HazardSO 는 같은 Somnia.Battle.Data
         // 다. null = bake 가 loud 거절. 다른 kind 는 무시.
         public HazardSO hazard;
         // elite-enemy-tier unit 4 — AreaBreath 전용 반각(도). 정의역 (0, 90) — 위 kind 주석 참조.

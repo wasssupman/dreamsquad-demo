@@ -2,11 +2,11 @@ using System.IO;
 using Spine.Unity;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.BattleView;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Editor
+namespace Somnia.Battle.Editor
 {
     [CustomEditor(typeof(PropData))]
     public class PropDataEditor : UnityEditor.Editor

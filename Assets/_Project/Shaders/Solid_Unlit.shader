@@ -1,4 +1,4 @@
-Shader "Wassup/Solid_Unlit"
+Shader "Somnia/Battle/Solid_Unlit"
 {
     Properties
     {

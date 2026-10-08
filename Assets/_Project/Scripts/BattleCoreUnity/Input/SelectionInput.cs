@@ -2,12 +2,12 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.Core;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.Core;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.Input
+namespace Somnia.Battle.BattleCoreUnity.Input
 {
     // battle-core-rebuild 5b 수정 — **선택.** 판 위의 방어유닛을 눌러 상세를 보고, 거기서 퇴근시킨다.
     //

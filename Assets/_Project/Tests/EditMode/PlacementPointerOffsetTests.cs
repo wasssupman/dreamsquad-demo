@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.UI;
+using Somnia.Battle.UI;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // placement-thumb-occlusion unit 1 — 배치 판정 포인터 오프셋의 순수 정책 함수.
     // 지키는 계약: 램프는 **승격 임계에서 0 에서 시작**하고 이동량에 비례해 1 로 차오른다.

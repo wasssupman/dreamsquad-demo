@@ -1,11 +1,11 @@
 using Newtonsoft.Json;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.StatImport;
-using Wassup.Editor.UnitStatImport;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
+using Somnia.Battle.Editor.UnitStatImport;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // unit-stat-spreadsheet-schema Unit 1 — regression coverage for the JSON contract
     // (string enums, targetClassMask flags array) and the partial-update mapper.

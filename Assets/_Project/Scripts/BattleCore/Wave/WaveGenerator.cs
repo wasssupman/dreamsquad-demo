@@ -19,12 +19,12 @@
 using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Map;
 // `System.Random` 과 이름이 겹친다. 플랫폼·런타임 버전에 매인 그쪽은 결정론 보장이 없으므로
 // **이 별칭이 그 혼동을 구조적으로 막는다** — 이 파일에서 `Random` 은 xorshift 값 타입뿐이다.
 using Random = Unity.Mathematics.Random;
 
-namespace Wassup.BattleCore.Wave
+namespace Somnia.Battle.BattleCore.Wave
 {
     public static class WaveGenerator
     {

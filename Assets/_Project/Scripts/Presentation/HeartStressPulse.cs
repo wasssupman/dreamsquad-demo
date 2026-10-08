@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     /// <summary>
     /// heart-stress-axis unit 1 rev 2 — **스트레스 = 심박수.**

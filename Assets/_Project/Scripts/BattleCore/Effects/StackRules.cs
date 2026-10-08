@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // battle-core-rebuild unit 6a — 스택 저작을 읽는 **순수 함수들**.
     //

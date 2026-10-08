@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     /// <summary>
     /// skill-data-table unit 4 — 테스트 픽스처를 **옛 메커닉 모양으로 적어 소유 줄로** 만든다. 이전 뒤 빌더 · 문안 · 진단은 소유 줄

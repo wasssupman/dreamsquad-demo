@@ -1,4 +1,4 @@
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     // battle-core-rebuild unit 5a — **뷰 사이의 순서 계약을 한 화면에 모은 곳.**
     //

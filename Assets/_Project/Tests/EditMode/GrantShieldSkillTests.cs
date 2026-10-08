@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // skill-layer-migration unit 0 — 실드 부여. **한 payload 가 두 능력을 맡는다.**
     // `tileRange` 가 그 둘을 가르고, bake 가 조합을 거절한다.

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // battle-core-rebuild unit 6a — 한 개체에 쌓인 **스택 슬롯들**.
     //
@@ -32,7 +32,7 @@ namespace Wassup.BattleCore.Effects
     // unit 6b2 — **열기(온천)도 여기 산다**(`Heat`). 슬롯이 아니라 카운터 하나인 이유:
     //   ① 열기에는 출처 축도 지속도 임계 파생도 없다 — 효과는 누적마다 `HeatMath` 가 내고
     //      상한에서 멈출 뿐이다(옛 `HeatAccrual.stacks` 가 그랬다).
-    //   ② `StackKind` 에 값을 따지 않았다 — 그 enum 은 `Wassup.Skills.SkillStackKind` 와 **개수까지**
+    //   ② `StackKind` 에 값을 따지 않았다 — 그 enum 은 `Somnia.Battle.Skills.SkillStackKind` 와 **개수까지**
     //      핀으로 묶여 있고(`CoreSkillEnumPinTests`), 저쪽은 다시 동결된 옛 전투 enum 과 묶여 있다.
     //      열기 하나를 위해 동결 코드의 핀을 풀 수 없다.
     public sealed class StackSet

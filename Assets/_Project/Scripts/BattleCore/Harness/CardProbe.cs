@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     /// <summary>프로브 한 장의 결과. ○ = 구워졌고 · 발동했고 · 기대한 신호가 전부 판에 남았다.</summary>
     public struct CardProbeResult

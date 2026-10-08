@@ -3,14 +3,14 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.BattleCoreUnity.Input;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCoreUnity.Input;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 5b 수정 — **끄는 동안 판 위에 그 유닛의 그림이 서는가.**
     //
@@ -123,7 +123,7 @@ namespace Wassup.Tests.PlayMode.Core
             public Vector2 BoardScreen(int dx)
             {
                 float ts = Driver.TileSize;
-                var w = (Vector3)Wassup.Core.BoardSpace.ToView(new float3((Anchor.x + dx) * ts, 0f, Anchor.y * ts));
+                var w = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(new float3((Anchor.x + dx) * ts, 0f, Anchor.y * ts));
                 return Cam.WorldToScreenPoint(w);
             }
         }

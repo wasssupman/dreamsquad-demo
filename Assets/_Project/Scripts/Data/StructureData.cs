@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // battle-structures unit 3 — 거점 정의. 마음(Core)과 본능(Instinct)이 같은 SO 타입을
     // 쓰고 kind 로 갈린다.
@@ -9,7 +9,7 @@ namespace Wassup.Data
     // **진영은 여기 없다.** 방어 본능과 적 본능이 같은 스탯일 수 있어 SO 를 두 벌 만들게
     // 되고 «진영만 다른 같은 거점» 이 데이터 중복이 된다. 진영은 배치가 정한다
     // (MapDocument.structures 의 side × 이 kind → StructurePlacements.DeriveFaction).
-    [CreateAssetMenu(fileName = "Structure", menuName = "Wassup/Map/StructureData", order = 2)]
+    [CreateAssetMenu(fileName = "Structure", menuName = "Somnia/Battle/Map/StructureData", order = 2)]
     public class StructureData : ScriptableObject
     {
         public string displayName;

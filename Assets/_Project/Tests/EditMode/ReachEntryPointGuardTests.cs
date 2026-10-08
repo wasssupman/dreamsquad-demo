@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // distance-based-range unit 23a — **「원점 항을 손으로 넘길 수 없다」를 그물로 고정한다.**
     //
@@ -19,7 +19,7 @@ namespace Wassup.Tests.EditMode
     // `SkillAdapterDirectWriteTests` 와 같은 관용구(소스 정규식 스캔)이고, 그 파일이 적어 둔
     // 한계도 같이 진다 — **개수만 세면 「하나 빼고 하나 더하면」 통과**하므로 위치를 같이 본다.
     // ⚠ battle-core-rebuild unit 9 — 옛 ECS sim(`Scripts/Battle/`·`Bridge/`)의 소스를 읽던 그물 10개는 대상과 함께 은퇴했다.
-    //   남은 것은 `Wassup.Skills` 쪽 형태 그물이다. 전투 코어의 원점 항은 행동 테스트(`Tests/EditModeCore/`)가 증언한다.
+    //   남은 것은 `Somnia.Battle.Skills` 쪽 형태 그물이다. 전투 코어의 원점 항은 행동 테스트(`Tests/EditModeCore/`)가 증언한다.
     public class ReachEntryPointGuardTests
     {
 

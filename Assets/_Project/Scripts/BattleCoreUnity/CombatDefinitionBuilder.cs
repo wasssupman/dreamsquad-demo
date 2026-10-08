@@ -1,12 +1,12 @@
 using System.Collections.Generic;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.Data;
-using CoreOp = Wassup.BattleCore.Effects.CombineOp;
-using CoreStack = Wassup.BattleCore.Effects.StackKind;
-using CoreStat = Wassup.BattleCore.Effects.StatKind;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.Data;
+using CoreOp = Somnia.Battle.BattleCore.Effects.CombineOp;
+using CoreStack = Somnia.Battle.BattleCore.Effects.StackKind;
+using CoreStat = Somnia.Battle.BattleCore.Effects.StatKind;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     // battle-core-rebuild unit 3 — SO → **전투** 정의표.
     //
@@ -236,7 +236,7 @@ namespace Wassup.BattleCoreUnity
                 {
                     new AttackOutputDef
                     {
-                        Kind = Wassup.BattleCore.AttackOutputKind.Damage,
+                        Kind = Somnia.Battle.BattleCore.AttackOutputKind.Damage,
                         Magnitude = d.attackDamage,
                     },
                 }
@@ -453,7 +453,7 @@ namespace Wassup.BattleCoreUnity
         }
 
         /// <summary>
-        /// 저작 bake 도형 종류(`Wassup.Data.AttackShapeBaked` 상수) → 코어 상수. 두 쪽이 **상수 집합**
+        /// 저작 bake 도형 종류(`Somnia.Battle.Data.AttackShapeBaked` 상수) → 코어 상수. 두 쪽이 **상수 집합**
         /// 이라 enum 핀이 못 잡는다 — 이름(상수)으로 옮기고 값 핀은 테스트가 진다. 모르는 값은
         /// 전방위로 접는다(`bake` 가 정의역 밖을 전방위로 읽는 것과 같은 방향).
         /// </summary>
@@ -461,43 +461,43 @@ namespace Wassup.BattleCoreUnity
         {
             switch (authored)
             {
-                case Wassup.Data.AttackShapeBaked.OmniKind: return Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind;
-                case Wassup.Data.AttackShapeBaked.SectorKind: return Wassup.BattleCore.Combat.AttackShapeBaked.SectorKind;
-                case Wassup.Data.AttackShapeBaked.BandKind: return Wassup.BattleCore.Combat.AttackShapeBaked.BandKind;
+                case Somnia.Battle.Data.AttackShapeBaked.OmniKind: return Somnia.Battle.BattleCore.Combat.AttackShapeBaked.OmniKind;
+                case Somnia.Battle.Data.AttackShapeBaked.SectorKind: return Somnia.Battle.BattleCore.Combat.AttackShapeBaked.SectorKind;
+                case Somnia.Battle.Data.AttackShapeBaked.BandKind: return Somnia.Battle.BattleCore.Combat.AttackShapeBaked.BandKind;
                 default:
                     UnityEngine.Debug.LogError(
                         $"[CombatDefinitionBuilder] 모르는 도형 종류({authored}) — 전방위로 접는다.");
-                    return Wassup.BattleCore.Combat.AttackShapeBaked.OmniKind;
+                    return Somnia.Battle.BattleCore.Combat.AttackShapeBaked.OmniKind;
             }
         }
 
-        public static Wassup.BattleCore.AttackOutputKind ToCoreOutputKind(
-            Wassup.Data.AttackOutputKind authored)
+        public static Somnia.Battle.BattleCore.AttackOutputKind ToCoreOutputKind(
+            Somnia.Battle.Data.AttackOutputKind authored)
         {
             switch (authored)
             {
-                case Wassup.Data.AttackOutputKind.Damage: return Wassup.BattleCore.AttackOutputKind.Damage;
-                case Wassup.Data.AttackOutputKind.Heal: return Wassup.BattleCore.AttackOutputKind.Heal;
-                case Wassup.Data.AttackOutputKind.ApplyStat: return Wassup.BattleCore.AttackOutputKind.ApplyStat;
-                case Wassup.Data.AttackOutputKind.ApplyStack: return Wassup.BattleCore.AttackOutputKind.ApplyStack;
+                case Somnia.Battle.Data.AttackOutputKind.Damage: return Somnia.Battle.BattleCore.AttackOutputKind.Damage;
+                case Somnia.Battle.Data.AttackOutputKind.Heal: return Somnia.Battle.BattleCore.AttackOutputKind.Heal;
+                case Somnia.Battle.Data.AttackOutputKind.ApplyStat: return Somnia.Battle.BattleCore.AttackOutputKind.ApplyStat;
+                case Somnia.Battle.Data.AttackOutputKind.ApplyStack: return Somnia.Battle.BattleCore.AttackOutputKind.ApplyStack;
                 default:
                     UnityEngine.Debug.LogError(
                         $"[CombatDefinitionBuilder] 모르는 산출물 종류({authored}) — 피해로 접는다.");
-                    return Wassup.BattleCore.AttackOutputKind.Damage;
+                    return Somnia.Battle.BattleCore.AttackOutputKind.Damage;
             }
         }
 
-        public static CoreStat ToCoreStat(Wassup.Data.Authoring.StatKind authored)
+        public static CoreStat ToCoreStat(Somnia.Battle.Data.Authoring.StatKind authored)
         {
             switch (authored)
             {
-                case Wassup.Data.Authoring.StatKind.DamageMul: return CoreStat.DamageMul;
-                case Wassup.Data.Authoring.StatKind.AttackSpeedMul: return CoreStat.AttackSpeedMul;
-                case Wassup.Data.Authoring.StatKind.DmgTakenMul: return CoreStat.DmgTakenMul;
-                case Wassup.Data.Authoring.StatKind.RegenPerSec: return CoreStat.RegenPerSec;
-                case Wassup.Data.Authoring.StatKind.MoveSpeedMul: return CoreStat.MoveSpeedMul;
-                case Wassup.Data.Authoring.StatKind.DamageVsCcMul: return CoreStat.DamageVsCcMul;
-                case Wassup.Data.Authoring.StatKind.MaxHealthMul: return CoreStat.MaxHealthMul;
+                case Somnia.Battle.Data.Authoring.StatKind.DamageMul: return CoreStat.DamageMul;
+                case Somnia.Battle.Data.Authoring.StatKind.AttackSpeedMul: return CoreStat.AttackSpeedMul;
+                case Somnia.Battle.Data.Authoring.StatKind.DmgTakenMul: return CoreStat.DmgTakenMul;
+                case Somnia.Battle.Data.Authoring.StatKind.RegenPerSec: return CoreStat.RegenPerSec;
+                case Somnia.Battle.Data.Authoring.StatKind.MoveSpeedMul: return CoreStat.MoveSpeedMul;
+                case Somnia.Battle.Data.Authoring.StatKind.DamageVsCcMul: return CoreStat.DamageVsCcMul;
+                case Somnia.Battle.Data.Authoring.StatKind.MaxHealthMul: return CoreStat.MaxHealthMul;
                 default:
                     UnityEngine.Debug.LogError(
                         $"[CombatDefinitionBuilder] 모르는 스탯({authored}) — 피해 배율로 접는다.");
@@ -505,13 +505,13 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
-        public static CoreOp ToCoreOp(Wassup.Data.Authoring.CombineOp authored)
+        public static CoreOp ToCoreOp(Somnia.Battle.Data.Authoring.CombineOp authored)
         {
             switch (authored)
             {
-                case Wassup.Data.Authoring.CombineOp.Multiplicative: return CoreOp.Multiplicative;
-                case Wassup.Data.Authoring.CombineOp.Additive: return CoreOp.Additive;
-                case Wassup.Data.Authoring.CombineOp.Override: return CoreOp.Override;
+                case Somnia.Battle.Data.Authoring.CombineOp.Multiplicative: return CoreOp.Multiplicative;
+                case Somnia.Battle.Data.Authoring.CombineOp.Additive: return CoreOp.Additive;
+                case Somnia.Battle.Data.Authoring.CombineOp.Override: return CoreOp.Override;
                 default:
                     UnityEngine.Debug.LogError(
                         $"[CombatDefinitionBuilder] 모르는 결합 연산자({authored}) — 곱셈으로 접는다.");
@@ -519,16 +519,16 @@ namespace Wassup.BattleCoreUnity
             }
         }
 
-        public static CoreStack ToCoreStackKind(Wassup.Data.Authoring.StackKind authored)
+        public static CoreStack ToCoreStackKind(Somnia.Battle.Data.Authoring.StackKind authored)
         {
             switch (authored)
             {
-                case Wassup.Data.Authoring.StackKind.None: return CoreStack.None;
-                case Wassup.Data.Authoring.StackKind.Fire: return CoreStack.Fire;
-                case Wassup.Data.Authoring.StackKind.Ice: return CoreStack.Ice;
-                case Wassup.Data.Authoring.StackKind.Bleed: return CoreStack.Bleed;
-                case Wassup.Data.Authoring.StackKind.Poison: return CoreStack.Poison;
-                case Wassup.Data.Authoring.StackKind.Fatigue: return CoreStack.Fatigue;
+                case Somnia.Battle.Data.Authoring.StackKind.None: return CoreStack.None;
+                case Somnia.Battle.Data.Authoring.StackKind.Fire: return CoreStack.Fire;
+                case Somnia.Battle.Data.Authoring.StackKind.Ice: return CoreStack.Ice;
+                case Somnia.Battle.Data.Authoring.StackKind.Bleed: return CoreStack.Bleed;
+                case Somnia.Battle.Data.Authoring.StackKind.Poison: return CoreStack.Poison;
+                case Somnia.Battle.Data.Authoring.StackKind.Fatigue: return CoreStack.Fatigue;
                 default:
                     UnityEngine.Debug.LogError(
                         $"[CombatDefinitionBuilder] 모르는 스택 종류({authored}) — 없음으로 접는다.");
@@ -544,23 +544,23 @@ namespace Wassup.BattleCoreUnity
         /// 방향 발사 → 무작위 저격). 번호가 지금은 같아도 캐스트로 되돌리지 말 것 —
         /// 한쪽이 append 하는 날 같은 일이 조용히 다시 난다.
         /// </summary>
-        public static Wassup.BattleCore.Combat.Emission.PatternSelectionRule ToCoreSelection(
+        public static Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule ToCoreSelection(
             PatternSelectionRule authored)
         {
             switch (authored)
             {
                 case PatternSelectionRule.RoundRobin:
-                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin;
+                    return Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin;
                 case PatternSelectionRule.DeterministicShuffle:
-                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.DeterministicShuffle;
+                    return Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule.DeterministicShuffle;
                 case PatternSelectionRule.None:
-                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.None;
+                    return Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule.None;
                 case PatternSelectionRule.Nearest:
-                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.Nearest;
+                    return Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule.Nearest;
                 default:
                     UnityEngine.Debug.LogError(
                         $"[CombatDefinitionBuilder] 모르는 선정 규칙({authored}) — 순회로 접는다.");
-                    return Wassup.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin;
+                    return Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin;
             }
         }
 

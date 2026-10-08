@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // map-diorama-stage unit 0 — 디오라마 스테이지 루트 선언. 런타임 로직 0 — 예외는 아래 Enabled 수명 신호 하나(로직 없는 알림).
     // 소비는 DioramaMapBuilder(unit 1)와 브리지 빌드 경로(unit 2)가 한다.

@@ -3,10 +3,10 @@ using System.Text;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.StatImport;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // dreamcatcher-sheet-sync unit 2 — regression coverage for the DC tab DTOs(flat tabs — cards · skills · configs).
     // 시트-정본 자식 탭 둘은 skill-data-table unit 8 단계 B 에서 은퇴(아래 표시).

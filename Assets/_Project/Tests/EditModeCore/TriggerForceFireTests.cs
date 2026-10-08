@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7d — **규칙 강제 발화와 「왜 안 터졌나」** (tools.md 「트리거 강제 발화」의 코어 쪽).
     //

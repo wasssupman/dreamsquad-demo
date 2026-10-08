@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5a — **보드 평면을 선언하는 곳.**
     //
@@ -38,7 +38,7 @@ namespace Wassup.BattleCoreUnity.View
             transform.position = cellZeroMinCornerWorld;
 
             // sim origin 은 무조건 zero 다(맵 계약) — 평면이 어디 있든 sim 좌표계는 안 움직인다.
-            Wassup.Core.BoardSpace.Configure(Unity.Mathematics.float3.zero, tileSize, transform);
+            Somnia.Battle.Core.BoardSpace.Configure(Unity.Mathematics.float3.zero, tileSize, transform);
         }
     }
 }

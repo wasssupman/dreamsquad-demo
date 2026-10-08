@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // runtime-stat-refresh Unit 0 — extracted from UnitStatImportWindow so the
     // build-side refresher shares the exact same envelope/row parsing rules.

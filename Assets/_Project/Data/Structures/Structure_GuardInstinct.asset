@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c952ad4f3f21f814eb6d7be8ea510d68, type: 3}
   m_Name: Structure_GuardInstinct
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.StructureData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.StructureData
   displayName: "\uC218\uD638 \uBCF8\uB2A5"
   kind: 1
   health: 1000

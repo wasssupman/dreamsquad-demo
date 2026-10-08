@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.Data.BattleView;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // tilted-billboard unit 3 — 발밑 접지 블롭 그림자. 빌보드는 틸트가 제각각이라 진짜 그림자는
     // 일관성이 깨지므로, XZ 바닥에 평평한 원형 스프라이트를 깐다. 캐릭터/프랍 공용.
@@ -157,8 +157,8 @@ namespace Wassup.Presentation
             // 맵 미빌드 하네스(IngameCharacterTest 등)에는 평면이 없다 → 대상 자신의 높이를 쓴다.
             // ⚠ 이 폴백은 «오브젝트별» 높이다(옛 절대 상수는 «공유 지면선» 이었다). 한 캐릭터의
             //    여러 파츠에 블롭을 붙이는 하네스에서는 블롭이 파츠 높이로 흩어진다.
-            float groundY = Wassup.Core.BoardSpace.IsConfigured
-                ? Wassup.Core.BoardSpace.RaycastPlane().ClosestPointOnPlane(p).y
+            float groundY = Somnia.Battle.Core.BoardSpace.IsConfigured
+                ? Somnia.Battle.Core.BoardSpace.RaycastPlane().ClosestPointOnPlane(p).y
                 : p.y;
             transform.position = new Vector3(p.x, groundY + _lift, p.z);
             transform.rotation = Quaternion.Euler(90f, 0f, 0f);

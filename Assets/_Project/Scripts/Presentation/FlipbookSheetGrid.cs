@@ -1,11 +1,11 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // sprite-flipbook-player unit 5 — NxM 균일 격자 시트의 셀 사각형을 정하는 순수 계산.
     //
     // FlipbookFrameOrder 와 같은 이유로 런타임 어셈블리에 있다 — 오소링(에디터)에서만 호출되지만
-    // Wassup.Tests.EditMode 가 참조할 수 있는 위치가 여기뿐이다. 순수 정수 연산이라 런타임 비용 0.
+    // Somnia.Battle.Tests.EditMode 가 참조할 수 있는 위치가 여기뿐이다. 순수 정수 연산이라 런타임 비용 0.
     //
     // 이 계산의 함정은 좌표계다: 사람은 시트를 왼쪽 **위**부터 읽는데 텍스처 원점은 왼쪽 **아래**다.
     // 변환을 호출측에 두면 프레임이 행 단위로 뒤집힌 채 각 행 안에서는 순서가 맞아,

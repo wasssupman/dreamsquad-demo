@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
+using Somnia.Battle.BattleCore;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCombatFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7d — **소환사의 순찰병**과 그 디버그 문(tools.md 10 `PatrolDebugMenu` 의 후계).
     //
@@ -86,7 +86,7 @@ namespace Wassup.Tests.EditMode.Core
             var anchor = m.Map.CellOf(summoner.Position);
             Assert.AreEqual(anchor, patrol.Patrol.Anchor);
             Assert.AreEqual(anchor, patrol.Patrol.Home);
-            Assert.AreEqual(math.max(1, Wassup.Skills.SkillMath.RangeToTiles(summoner.Attack.Range)), patrol.Patrol.Radius);
+            Assert.AreEqual(math.max(1, Somnia.Battle.Skills.SkillMath.RangeToTiles(summoner.Attack.Range)), patrol.Patrol.Radius);
             Assert.AreEqual(summoner.Id, patrol.Patrol.SummonedBy);
         }
 

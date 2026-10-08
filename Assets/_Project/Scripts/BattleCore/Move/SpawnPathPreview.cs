@@ -5,9 +5,9 @@
 //   (고르는 자는 `AiMovePhase` 하나여야 하기 때문 — 아래 헤더 참조).
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
+using Somnia.Battle.BattleCore.Map;
 
-namespace Wassup.BattleCore.Move
+namespace Somnia.Battle.BattleCore.Move
 {
     // **예고선이 그릴 대표 경로.** 스폰 칸 → 저작 웨이포인트들 → (거점) → 골.
     //

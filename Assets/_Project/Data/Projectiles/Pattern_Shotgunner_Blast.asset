@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 307673a61f8ae4e65aac21b646eb26a2, type: 3}
   m_Name: Pattern_Shotgunner_Blast
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.ProjectilePatternData
   id: shotgunner_blast
   barrel: {fileID: 11400000, guid: c3c7bf7537d947278f27b931df1ff7c2, type: 2}
   damage: 100

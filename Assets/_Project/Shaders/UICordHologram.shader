@@ -1,7 +1,7 @@
 // lobby-keyring-drag 6 — 키링 홀로그램 UI 셰이더 (SF).
 // UGUI 스텐실/클립 골격 + 가산 발광. 그레이스케일 빔 텍스처에 시안→마젠타
 // 그라데이션 + 스캔라인 + 플리커 + 이동 펄스 + 행 글리치를 입힌다.
-Shader "Wassup/UI/CordHologram"
+Shader "Somnia/Battle/UI/CordHologram"
 {
     Properties
     {

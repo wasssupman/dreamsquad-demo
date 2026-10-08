@@ -85,7 +85,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8befaa591b20046198151841c7e0ff41, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.StructureTurretView
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.StructureTurretView
   barrel: {fileID: 8009030292237326652}
   turnDegreesPerSecond: 540
 --- !u!114 &748731549798161046
@@ -99,7 +99,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 87256864d75ff4d348095dd166aa55a8, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.StructureWreckView
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Presentation.StructureWreckView
   turret: {fileID: 4870613465133484760}
   scorchTint: {r: 0.45, g: 0.4, b: 0.37, a: 1}
   settleScale: 0.72

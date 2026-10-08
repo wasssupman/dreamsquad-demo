@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 55bb39c500f840a49da5a91055b0430f, type: 3}
   m_Name: RuntimeMaterialSet
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.RuntimeMaterialSet
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.RuntimeMaterialSet
   solidOpaque: {fileID: 2100000, guid: c1d750bcb8c74978ad7973d5e31c7641, type: 2}
   solidTransparent: {fileID: 2100000, guid: 4f413d8a91f04b8887d89bed8516409e, type: 2}
   texturedOpaque: {fileID: 2100000, guid: 1e14c43f5ed64e1199f077ba5b84ed4c, type: 2}

@@ -4,15 +4,15 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // skill-data-table unit 8 — **상시 효과도 스킬 줄이다**(계약 11). 카드 전용 저장처 둘(`effects` · `attackMods`)을 효과 줄 + 소유 줄(트리거
     // `None`)로 옮긴 뒤 굽기가 옛 두 갈래와 같은 코어 모양을 내는가(빌더 픽스처 — 합성 SO · 디스크 쓰기 0 · 옛 칸은 단계 B 에서 은퇴).

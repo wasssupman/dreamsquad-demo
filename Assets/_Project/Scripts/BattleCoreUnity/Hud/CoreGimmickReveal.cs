@@ -4,14 +4,14 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.Core;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
-using Wassup.UI;
-using Wassup.UI.Layout;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI;
+using Somnia.Battle.UI.Layout;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild unit 8a — 배치 직전 **기믹 리빌**. 옛 `UI/GimmickPhaseView.cs`(517줄,
     // gimmick-recognition-upgrade unit 1)의 복사·적응본이다. 장부 bridge-fields 31 `_gimmickPhaseView` 의 새 주인.

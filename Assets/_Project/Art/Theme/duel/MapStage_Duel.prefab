@@ -44,7 +44,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 16287c6215e62a74fbfacf8f4820f60c, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PropFootprint
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.PropFootprint
   size: {x: 1, y: 1}
   anchorOffset: {x: 0, y: 0}
 --- !u!1 &2764586009015149014
@@ -90,7 +90,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 925edd18e2418c54d8a85f227db837ba, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SpawnMarker
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.SpawnMarker
   laneIndex: 0
   routeIndex: -1
   visualRoot: {fileID: 0}
@@ -141,7 +141,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 16287c6215e62a74fbfacf8f4820f60c, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PropFootprint
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.PropFootprint
   size: {x: 1, y: 4}
   anchorOffset: {x: 0, y: 0}
 --- !u!1 &3213799714714426172
@@ -505,7 +505,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 16287c6215e62a74fbfacf8f4820f60c, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PropFootprint
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.PropFootprint
   size: {x: 1, y: 1}
   anchorOffset: {x: 0, y: 0}
 --- !u!1 &3815630313561680227
@@ -575,7 +575,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0b4f8f52120d9fc40896f862bff82bb1, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.MapStage
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.MapStage
   playAreaCells: {x: 23, y: 10}
   gridOriginLocal: {x: 0, y: 0.19, z: 0}
   previewTileSize: 1
@@ -714,7 +714,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c5676d857045a0a428a4a1c2c1bf0772, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.BonusSpawnMarker
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.BonusSpawnMarker
 --- !u!1 &4038582738108848852
 GameObject:
   m_ObjectHideFlags: 0
@@ -940,7 +940,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 925edd18e2418c54d8a85f227db837ba, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SpawnMarker
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.SpawnMarker
   laneIndex: 1
   routeIndex: -1
   visualRoot: {fileID: 0}
@@ -1191,7 +1191,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c5676d857045a0a428a4a1c2c1bf0772, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.BonusSpawnMarker
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.BonusSpawnMarker
 --- !u!1 &5770277929247073122
 GameObject:
   m_ObjectHideFlags: 0
@@ -1284,7 +1284,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1924173c6216958448be8cde6b5d4962, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.GoalMarker
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.GoalMarker
   visualRoot: {fileID: 0}
   stressTint: {r: 0.95, g: 0.13, b: 0.11, a: 1}
 --- !u!1 &6476144353766610306
@@ -1330,7 +1330,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 699dd57e7fd5b6f42b9009572d574fa6, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PlacementBlockZone
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.PlacementBlockZone
   size: {x: 6, y: 10}
 --- !u!1 &6861492125592581990
 GameObject:
@@ -1466,7 +1466,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4fdfee03554cd44438fe64df9a82738f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.StructureMarker
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.StructureMarker
   side: 0
   data: {fileID: 11400000, guid: 04406efb7eee4826afc8b3f9889cf564, type: 2}
 --- !u!1 &7553780987774548052
@@ -1694,7 +1694,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4fdfee03554cd44438fe64df9a82738f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.StructureMarker
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.StructureMarker
   side: 1
   data: {fileID: 11400000, guid: 76f22a24bda441faa865363222e884eb, type: 2}
 --- !u!1 &7791025881528292830
@@ -2126,7 +2126,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4fdfee03554cd44438fe64df9a82738f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.StructureMarker
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.StructureMarker
   side: 1
   data: {fileID: 11400000, guid: 76f22a24bda441faa865363222e884eb, type: 2}
 --- !u!1 &8552643576485247231
@@ -2172,7 +2172,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4fdfee03554cd44438fe64df9a82738f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.StructureMarker
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Core.StructureMarker
   side: 0
   data: {fileID: 11400000, guid: 04406efb7eee4826afc8b3f9889cf564, type: 2}
 --- !u!1 &9028727325285095647

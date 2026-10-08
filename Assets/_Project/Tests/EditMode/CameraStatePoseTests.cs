@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // camera-direction unit 10 — 상태 레시피 → 절대 포즈.
     //

@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Text;
-using Wassup.BattleCore.Combat.Emission;
-using Wassup.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Combat.Emission;
+using Somnia.Battle.BattleCore.Combat.Projectile;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 3 — 전투가 쓰는 정의표 줄.
     //

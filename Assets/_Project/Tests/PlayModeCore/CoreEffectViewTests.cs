@@ -3,13 +3,13 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 6c — **효과의 그림이 사건을 따라가는가.**
     //
@@ -79,12 +79,12 @@ namespace Wassup.Tests.PlayMode.Core
             // 그림의 지름 = 2 × (반경 + 칸 반폭) — 규칙 쪽 짝에서 나온다(뷰가 다시 재지 않는다).
             var h = world.Hazards[0];
             Assert.IsTrue(pool.TryGetZoneDiameter(h.Id, out float diameter));
-            float expected = 2f * (Mathf.Max(0, h.RadiusTiles) + Wassup.Skills.SkillMath.CellShapePaddingTiles)
+            float expected = 2f * (Mathf.Max(0, h.RadiusTiles) + Somnia.Battle.Skills.SkillMath.CellShapePaddingTiles)
                              * driver.TileSize;
             Assert.AreEqual(expected, diameter, 1e-4f, "장판 그림 지름 = 판정 자(자리형 원점 항 = 칸 반폭)");
             // 옛 프리팹의 **자기 시계**가 남아 있으면 판이 멈춰도 그림이 저작 수명 뒤에 스스로 사라진다
             // (6c Play 스모크 실측 — 뷰 수 2, 선 오브젝트 0). 그림의 수명은 코어 개체의 수명이어야 한다.
-            Assert.IsNull(pool.GetComponentInChildren<Wassup.Presentation.HazardVisualLifetime>(true),
+            Assert.IsNull(pool.GetComponentInChildren<Somnia.Battle.Presentation.HazardVisualLifetime>(true),
                 "장판 뷰에 옛 자기 수명 시계가 남아 있다");
 
             int ticks = Mathf.CeilToInt(def.Hazards[0].Lifetime * 60f) + 2;
@@ -158,8 +158,8 @@ namespace Wassup.Tests.PlayMode.Core
             int enemyDef = -1;
             for (int i = 0; i < def.Enemies.Length && enemyDef < 0; i++)
                 if (def.Enemies[i].AttackRange > 0f
-                    && (Wassup.BattleCore.Combat.TargetDefaults.ResolveEnemy(def.Enemies[i].TargetFactions)
-                        & Wassup.Skills.Factions.AnyUnit) != 0)
+                    && (Somnia.Battle.BattleCore.Combat.TargetDefaults.ResolveEnemy(def.Enemies[i].TargetFactions)
+                        & Somnia.Battle.Skills.Factions.AnyUnit) != 0)
                     enemyDef = i;
             Assert.GreaterOrEqual(enemyDef, 0, "라이브 정의표에 유닛을 노리는 적이 없다");
 
@@ -257,7 +257,7 @@ namespace Wassup.Tests.PlayMode.Core
             // 놓는 자는 unit 7 이다 — 여기서는 월드의 **유일한 스폰·제거 문**을 직접 부른다(그 문이 사건을 낸다).
             var p = world.SpawnPickup(PickupKind.RedBull, a, map.CenterOf(a), 30f, tick);
             var r = world.DropResignation(b, map.CenterOf(b), SimEntityId.None,
-                                          Wassup.Skills.Faction.None, tick);
+                                          Somnia.Battle.Skills.Faction.None, tick);
             yield return Ticks(driver, 1);
             Assert.AreEqual(world.Pickups.Count, pickups.ViewCount, "픽업 사건 → 픽업 뷰");
             Assert.AreEqual(1, pickups.ViewCount);

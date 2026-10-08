@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // unified-effect-layer unit 5 — **저작 조합 검증 한 함수**(`EffectComboRule`)의 표.
     //

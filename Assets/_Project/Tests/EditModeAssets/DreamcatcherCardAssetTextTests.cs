@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
-using Wassup.UI;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // test-suite-fast-lane unit 0 — DreamcatcherCardTextTests 에서 추출한 실카탈로그 검증.
     // 문안 조립 로직 테스트(합성 카드)는 코어 lane 에 남는다.
@@ -83,7 +83,7 @@ namespace Wassup.Tests.EditMode
                         for (int i = 0; i < legacy.bindings.Length; i++)
                         {
                             var e = legacy.bindings[i].effect;
-                            if (e == null || e.values.kind != Wassup.BattleCore.Trigger.EffectKind.ProjectileToTarget
+                            if (e == null || e.values.kind != Somnia.Battle.BattleCore.Trigger.EffectKind.ProjectileToTarget
                                 || e.projectile == null || e.projectile.flightMode != ProjectileFlightMode.SkyFall) continue;
                             var e2 = UnityEngine.Object.Instantiate(e);
                             var p2 = UnityEngine.Object.Instantiate(e.projectile);

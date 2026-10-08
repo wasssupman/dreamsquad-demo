@@ -1,13 +1,13 @@
 using Spine.Unity;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
-using Wassup.Data.BattleView;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild 5b 수정(사용자 플레이 2차) — **드래그 실루엣.** 유닛을 끄는 동안 판 위,
     // 고스트 칸 자리에 **그 유닛의 그림**이 반투명으로 서서 손끝 칸을 따라간다.
@@ -89,7 +89,7 @@ namespace Wassup.BattleCoreUnity.View
             _footprint.Anchor = anchor;
             _footprint.Width = math.max(1, def.Units[defIndex].FootprintWidth);
             _footprint.Height = math.max(1, def.Units[defIndex].FootprintHeight);
-            _target = (Vector3)Wassup.Core.BoardSpace.ToView(_footprint.FootPosition(_driver.TileSize));
+            _target = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(_footprint.FootPosition(_driver.TileSize));
             _wanted = true;
 
             if (!_root.activeSelf)

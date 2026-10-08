@@ -1,10 +1,10 @@
 using System.Collections;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Core.TimeControl;
-using Wassup.Data.BattleView;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     // battle-core-rebuild unit 5c → demo-diet unit 0 — **판이 끝난 뒤의 박자.**
     //

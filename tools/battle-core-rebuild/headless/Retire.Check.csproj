@@ -9,7 +9,7 @@
     C# 참조를 흉내 내지 않고 컴파일러에게 묻는다 — 이름이 같은 코어 사본(`GridMath`·`NavGrid`·`StatKind`…)을
     혼동할 여지가 없다.
 
-    ⚠ `Wassup.Runtime.dll`·`Assembly-CSharp-Editor.dll`·`Wassup.Tests.*`·`Wassup.Editor.*` 는 **참조하지 않는다** —
+    ⚠ `Somnia.Battle.Runtime.dll`·`Assembly-CSharp-Editor.dll`·`Somnia.Battle.Tests.*`·`Somnia.Battle.Editor.*` 는 **참조하지 않는다** —
     그 dll 들은 에디터가 옛 소스로 구운 것이라 퇴역 타입을 품고 있고, 참조하면 지운 타입이 dll 에서 보여
     거짓 초록이 난다. 그 어셈블리들은 전부 여기서 소스로 다시 컴파일된다.
     ⚠ 한 어셈블리로 합친다 — asmdef 경계(Runtime · Editor · 테스트 5)는 재현하지 않는다. 이 lane 이 묻는 것은
@@ -23,7 +23,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>9</LangVersion>
     <Nullable>disable</Nullable>
-    <AssemblyName>Wassup.Retire.Check</AssemblyName>
+    <AssemblyName>Somnia.Battle.Retire.Check</AssemblyName>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
@@ -53,7 +53,7 @@
     <Reference Include="$(UnityContents)/Resources/Scripting/Managed/UnityEditor.Graphs.dll" Private="false" />
     <!-- 패키지·벤더 어셈블리 전부 — 단 옛 소스로 구운 우리 어셈블리는 뺀다(머리말). Skills·UnitAi·SheetSync·DepthParallax 는 퇴역과 무관해 dll 로 받는다. -->
     <Reference Include="$(UnityScriptAssemblies)/*.dll"
-               Exclude="$(UnityScriptAssemblies)/Wassup.Runtime.dll;$(UnityScriptAssemblies)/Wassup.BattleCore.dll;$(UnityScriptAssemblies)/Wassup.Tests.*.dll;$(UnityScriptAssemblies)/Wassup.Editor.*.dll;$(UnityScriptAssemblies)/Assembly-CSharp-Editor.dll;$(UnityScriptAssemblies)/*CodeGen*.dll;$(UnityScriptAssemblies)/Wassup.DepthParallax.Tests.dll;$(UnityScriptAssemblies)/Unity.Entities*.dll;$(UnityScriptAssemblies)/Unity.Transforms*.dll;$(UnityScriptAssemblies)/Unity.Serialization*.dll;$(UnityScriptAssemblies)/Unity.Mathematics.Extensions.Hybrid.dll;$(UnityScriptAssemblies)/Unity.PlasticSCM.Editor.Entities.dll" Private="false" />
+               Exclude="$(UnityScriptAssemblies)/Somnia.Battle.Runtime.dll;$(UnityScriptAssemblies)/Somnia.Battle.BattleCore.dll;$(UnityScriptAssemblies)/Somnia.Battle.Tests.*.dll;$(UnityScriptAssemblies)/Somnia.Battle.Editor.*.dll;$(UnityScriptAssemblies)/Assembly-CSharp-Editor.dll;$(UnityScriptAssemblies)/*CodeGen*.dll;$(UnityScriptAssemblies)/Somnia.Battle.DepthParallax.Tests.dll;$(UnityScriptAssemblies)/Unity.Entities*.dll;$(UnityScriptAssemblies)/Unity.Transforms*.dll;$(UnityScriptAssemblies)/Unity.Serialization*.dll;$(UnityScriptAssemblies)/Unity.Mathematics.Extensions.Hybrid.dll;$(UnityScriptAssemblies)/Unity.PlasticSCM.Editor.Entities.dll" Private="false" />
     <!-- 모바일 빌드 CLI 가 플랫폼 확장을 부른다(Unity 생성 csproj 와 같은 집합). -->
     <Reference Include="$(UnityContents)/../../PlaybackEngines/AndroidPlayer/*.dll;$(UnityContents)/../../PlaybackEngines/iOSSupport/*.dll;$(UnityContents)/PlaybackEngines/MacStandaloneSupport/UnityEditor.OSXStandalone.Extensions.dll" Private="false" />
     <Reference Include="$(UnityPackageCache)/com.unity.ext.nunit@*/net40/unity-custom/nunit.framework.dll" Private="false" />

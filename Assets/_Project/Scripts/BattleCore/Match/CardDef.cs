@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 4 — 드림캐쳐 카드와 기믹의 **정의표 줄**.
     //

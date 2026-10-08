@@ -1,11 +1,11 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // on-place-shuttle-shotgun unit 1 — 배치 발사 조준 규칙의 순수 계약.
-    // (skill-layer-migration unit 1 에서 `Wassup.Skills.SkillAim` 로 이사 — 규칙 무변경.)
+    // (skill-layer-migration unit 1 에서 `Somnia.Battle.Skills.SkillAim` 로 이사 — 규칙 무변경.)
     //
     // 고정하는 것 셋:
     //  ① **조준이 최근접보다 세다** — 조준 방향에 아무도 없어도 그쪽으로 쏜다(어디를 쏠지는

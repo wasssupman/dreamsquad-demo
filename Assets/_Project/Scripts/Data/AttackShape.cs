@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // directional-attack-shape unit 1 — 공격 판정 도형의 **저작** 형태. `DefenderUnitData`·`AttackUnitData` 공통.
     //

@@ -1,6 +1,6 @@
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 2a — 「호출자 = 소유자」를 표현하는 타입.
     //

@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // battle-core-rebuild unit 6a — **한 번의 타격이 내는 것을 대상에게 얹는 단 하나의 자리.**
     //

@@ -3,7 +3,7 @@
 // 이식 시 바뀐 것: 경계 상수가 집계 시스템 안이 아니라 여기 산다(소비처가 `ModifierSet` 하나).
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // 「슬롯들이 하나의 값으로 접힌다」의 산식.
     //

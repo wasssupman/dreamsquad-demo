@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 6a — 스택의 저작. 옛 `StackModifierSO` 의 **수치 부분**이다.
     //

@@ -1,7 +1,7 @@
-using Wassup.Skills;
-using Wassup.Skills.Concrete;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Skills.Concrete;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — (트리거 × 페이로드) → concrete **정적 라우팅 표**
     // (← 옛 `Core/Dreamcatcher/DcSkillRouting.cs` 111줄 + `Data/Dreamcatcher/SkillPayloadPolicy.cs`).

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // Phase 8 §13 — prefab-only VFX layer. Creates particle effects at world
     // positions. Non-singleton. (Old battle: driven by BattleBridge drains — history;
@@ -75,7 +75,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] placementRingPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
-            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // tilemap-view-backend: sim→view 1회 (진입부)
+            worldPos = Somnia.Battle.Core.BoardSpace.ToView(worldPos); // tilemap-view-backend: sim→view 1회 (진입부)
             var go = Instantiate(placementRingPrefab,
                 new Vector3(worldPos.x, worldPos.y + 0.02f, worldPos.z),
                 Quaternion.identity, transform);
@@ -90,7 +90,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] meteorBurstPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
-            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
+            worldPos = Somnia.Battle.Core.BoardSpace.ToView(worldPos); // sim→view 1회
             var pos = new Vector3(worldPos.x, worldPos.y + 0.05f, worldPos.z);
             var go = Instantiate(meteorBurstPrefab, pos, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * Mathf.Max(0.1f, radiusWorld);
@@ -135,7 +135,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] tornadoPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
-            centerWorld = Wassup.Core.BoardSpace.ToView(centerWorld); // sim→view 1회
+            centerWorld = Somnia.Battle.Core.BoardSpace.ToView(centerWorld); // sim→view 1회
             var pos = new Vector3(centerWorld.x, centerWorld.y + 0.05f, centerWorld.z);
             var go = Instantiate(tornadoPrefab, pos, Quaternion.identity, transform);
             if (HasPixPlaysVfx(go))
@@ -153,8 +153,8 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] portalPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
-            entryWorld = Wassup.Core.BoardSpace.ToView(entryWorld); // sim→view 1회
-            exitWorld = Wassup.Core.BoardSpace.ToView(exitWorld);
+            entryWorld = Somnia.Battle.Core.BoardSpace.ToView(entryWorld); // sim→view 1회
+            exitWorld = Somnia.Battle.Core.BoardSpace.ToView(exitWorld);
             var root = Instantiate(portalPrefab, Vector3.zero, Quaternion.identity, transform);
             var entryT = root.transform.Find("Entry");
             var exitT = root.transform.Find("Exit");
@@ -190,7 +190,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] healAppliedPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
-            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
+            worldPos = Somnia.Battle.Core.BoardSpace.ToView(worldPos); // sim→view 1회
             var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
             var go = Instantiate(healAppliedPrefab, pos, Quaternion.identity, transform);
             Destroy(go, 1.1f);
@@ -211,7 +211,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] detectionMarkPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
-            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
+            worldPos = Somnia.Battle.Core.BoardSpace.ToView(worldPos); // sim→view 1회
             var pos = new Vector3(worldPos.x, worldPos.y + detectionMarkLift, worldPos.z);
             var go = Instantiate(detectionMarkPrefab, pos, Quaternion.identity, transform);
             float lifetime = ConfigureOneShot(go);
@@ -227,7 +227,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] shieldGrantedPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
-            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
+            worldPos = Somnia.Battle.Core.BoardSpace.ToView(worldPos); // sim→view 1회
             var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
             var go = Instantiate(shieldGrantedPrefab, pos, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * Mathf.Max(0.1f, shieldGrantedScale);
@@ -245,7 +245,7 @@ namespace Wassup.Presentation
                 SpawnPlacementRing(worldPos); // 폴백: 최소한 붕괴 지점 링 펄스
                 return;
             }
-            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
+            worldPos = Somnia.Battle.Core.BoardSpace.ToView(worldPos); // sim→view 1회
             var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
             var go = Instantiate(goalCollapsePrefab, pos, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * Mathf.Max(0.1f, goalCollapseScale);
@@ -278,7 +278,7 @@ namespace Wassup.Presentation
             // `BoardSpace.ToViewVector` 가 이미 하는 일이고(주석에 용도로 "cast 방향"이 적혀
             // 있다), 초판은 그걸 손수 복제했다. 위치가 아니라 **방향**이므로 변환의 선형부만
             // 적용하는 이 API 가 정본이다.
-            Vector3 aheadView = (Vector3)Wassup.Core.BoardSpace.ToViewVector(
+            Vector3 aheadView = (Vector3)Somnia.Battle.Core.BoardSpace.ToViewVector(
                 new Vector3(aimDirXZ.x, 0f, aimDirXZ.y));
             if (aheadView.sqrMagnitude < 1e-6f) aheadView = Vector3.right;
             aheadView.Normalize();

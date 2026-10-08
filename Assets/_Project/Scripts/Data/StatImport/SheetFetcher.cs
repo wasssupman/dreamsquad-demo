@@ -2,7 +2,7 @@ using System;
 using System.Text;
 using UnityEngine.Networking;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // simplify pass (2026-07-06) — the one fetch wrapper shared by the editor
     // importer and the runtime refresher. Keeps the body even on HTTP failure:

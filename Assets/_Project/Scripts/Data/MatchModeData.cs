@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // battle-core-rebuild unit 4 — **매치 모드.**
     //
@@ -16,7 +16,7 @@ namespace Wassup.Data
     //
     // 코어는 이 타입을 모른다. `MatchDefinitionBuilder` 가 여기서 plain `ModeDef` 로 굽고,
     // **그 빌더가 모드를 읽는 유일한 지점**이다.
-    [CreateAssetMenu(fileName = "MatchMode", menuName = "Wassup/Match/Mode", order = 1)]
+    [CreateAssetMenu(fileName = "MatchMode", menuName = "Somnia/Battle/Match/Mode", order = 1)]
     public sealed class MatchModeData : ScriptableObject
     {
         [Header("정체성")]

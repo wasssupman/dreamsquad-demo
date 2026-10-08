@@ -2,9 +2,9 @@ using System.Globalization;
 using System.Threading;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Core;
+using Somnia.Battle.Core;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-sim-extraction M0 unit 3 — 조건 지문의 계약.
     //

@@ -1,9 +1,9 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Editor
+namespace Somnia.Battle.Editor
 {
     // wave-plan-authoring-inspector unit 1 — 인스펙터 "Test this plan" 런치.
     // 선택 플랜 GUID 를 SessionState 에 적고 BattleCoreScene Play 진입. 실제 소비는 런타임

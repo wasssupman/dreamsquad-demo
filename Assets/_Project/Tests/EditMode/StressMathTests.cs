@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // heart-stress-axis unit 0 — 마음 체력 → 차오르는 스트레스.
     //

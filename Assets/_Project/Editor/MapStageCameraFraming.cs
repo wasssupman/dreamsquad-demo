@@ -4,11 +4,11 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.EditorTools
+namespace Somnia.Battle.EditorTools
 {
     // map-diorama-stage — 테스트 씬의 카메라를 «배틀 시작 시 전투 상태» 포즈로 맞춘다.
     // 런타임과 같은 산식(CameraFramingMath.SolveStatePose + CameraDirectionConfig 의 Battle 레시피)을
@@ -19,7 +19,7 @@ namespace Wassup.EditorTools
     {
         const string ConfigPath = "Assets/_Project/Data/Camera/CameraDirectionConfig.asset";
 
-        [MenuItem("Window/Wassup/Map Stage/Frame Scene Camera As Battle")]
+        [MenuItem("Window/Somnia/Battle/Map Stage/Frame Scene Camera As Battle")]
         public static void FrameOpenScene() => Debug.Log(FrameActiveScene());
 
         // 열린 씬에 적용. 결과 요약 문자열을 돌려준다(러너 태스크가 파일에 쓴다).

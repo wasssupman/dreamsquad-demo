@@ -9,7 +9,7 @@
 // ⚠ **`Shader.Find` + `new Material` 로 때우지 않는다**(추가 제약). 모바일 shader stripping 이
 // null 을 돌려주면 렌더가 깨지고, 그 증상은 에디터에서 안 보인다. 그래서 이 셰이더를 명시
 // 추가하고 `Assets/Resources/RuntimeMaterials/BoardOverlay.mat` 으로 always-included 등록한다.
-Shader "Wassup/BoardOverlay_Unlit"
+Shader "Somnia/Battle/BoardOverlay_Unlit"
 {
     Properties
     {

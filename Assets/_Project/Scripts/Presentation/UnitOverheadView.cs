@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // unit-overhead-ui — 공통 수명주기/레이아웃, defender/enemy 는 skin만 다르다.
     public class UnitOverheadView : MonoBehaviour
@@ -213,7 +213,7 @@ namespace Wassup.Presentation
                 _pulseRing.anchorMin = _pulseRing.anchorMax = new Vector2(0.5f, 0f);
                 _pulseRing.pivot = new Vector2(0.5f, 0.5f);
                 _pulseRingImg = AddImage(_pulseRing.gameObject,
-                    Wassup.UI.UiRoundedSprite.MakeCircle(128, Color.clear, 10f, Color.white),
+                    Somnia.Battle.UI.UiRoundedSprite.MakeCircle(128, Color.clear, 10f, Color.white),
                     Image.Type.Simple);
                 _pulseRingImg.raycastTarget = false;
             }

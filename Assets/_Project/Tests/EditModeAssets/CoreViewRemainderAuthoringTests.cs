@@ -1,11 +1,11 @@
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Data;
-using Wassup.Data.BattleView;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 8a2 — 뷰 이전 잔여의 **순수 산식과 옮긴 저작 값**.
     //

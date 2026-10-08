@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ee4e6ae89f00b4fd9ac986808bbfc626, type: 3}
   m_Name: WalkAnimSpeedStyle
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.WalkAnimSpeedStyle
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.WalkAnimSpeedStyle
   referenceSpeed: 1.2
   minTimeScale: 0.15
   maxTimeScale: 3

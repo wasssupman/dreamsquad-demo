@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Core
+namespace Somnia.Battle.Core
 {
     // Lightweight global SFX + BGM player (sanctioned singleton — CLAUDE.md §5 /
     // TRD §5.2). Scene-local (BattleScene). Round-robins a small AudioSource pool for

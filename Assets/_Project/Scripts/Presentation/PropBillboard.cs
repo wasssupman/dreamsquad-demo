@@ -1,9 +1,9 @@
 using Spine.Unity;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.BattleView;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     [DisallowMultipleComponent]
     public class PropBillboard : MonoBehaviour

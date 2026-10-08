@@ -1,12 +1,12 @@
 using System;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // unit-status-fx Unit 0 — 상태 종류별 연출 프리팹 매핑(SO). 하드코딩 금지:
     // 프리팹/오프셋/스케일/빌보드/폴백틴트를 전부 여기서. 상태마다 다른 프리팹을 끼운다.
     // prefab 이 비면 절차적 "!" 폴백(현 어그로 외형 유지).
-    [CreateAssetMenu(fileName = "StatusFxRegistry", menuName = "Wassup/Status FX Registry")]
+    [CreateAssetMenu(fileName = "StatusFxRegistry", menuName = "Somnia/Battle/Status FX Registry")]
     public class StatusFxRegistry : ScriptableObject
     {
         // unit-status-fx 5 — 절차 폴백 글리프. 기본 0(Exclamation)이라 기존 Aggro

@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 890a67de3581940a590a09e2b2d535f8, type: 3}
   m_Name: Skill_Portal
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SkillData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.SkillData
   id: portal
   displayName: Portal
   description: "\uB450 \uD0C0\uC77C \uC5F0\uACB0: \uC785\uAD6C\uB85C \uB4E4\uC5B4\uAC04

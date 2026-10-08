@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Wave;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Wave;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 4 — **웨이브.**
     //
@@ -236,7 +236,7 @@ namespace Wassup.BattleCore
             {
                 int waveSeed = deck.WaveSeed != 0
                     ? deck.WaveSeed
-                    : Wassup.Core.MatchSeed.DeriveWaveSeed(matchSeed);
+                    : Somnia.Battle.Core.MatchSeed.DeriveWaveSeed(matchSeed);
                 plan = WaveGenerator.Generate(in deck, enemies, waveSeed, laneCount, report);
             }
             else

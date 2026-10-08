@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // squad-character-page Unit 0 — the detail card's "설명문" is assembled purely
     // from existing DefenderUnitData fields (class + attack archetype + traits),

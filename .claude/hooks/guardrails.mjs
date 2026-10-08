@@ -5,7 +5,7 @@
  * CLAUDE.md 의 산문 규칙 중 되돌리기 어려운 것만 기계로 막는다.
  *   1. git push 강제(--force · -f · --force-with-lease · +refspec) — 보호 브랜치 미러가 갈라진다
  *   2. git commit --amend — 여러 세션이 한 인덱스를 쓴다(남의 스테이징을 삼킨다)
- *   3. Unity MCP run_tests 의 PlayMode 는 `Wassup.Tests.PlayMode.Core` 만 —
+ *   3. Unity MCP run_tests 의 PlayMode 는 `Somnia.Battle.Tests.PlayMode.Core` 만 —
  *      아웃게임 PlayMode 어셈블리는 [Explicit] 이 안 걸러져 실서버에 가입을 시도한다
  *   4. Unity MCP refresh_unity mode=force — 전 에셋 reimport + MCP 브리지 단절
  * push 승인 자체는 settings.json 의 permissions.ask 가 맡는다(이 훅은 거절만 한다).
@@ -83,8 +83,8 @@ function checkRunTests(input) {
   const mode = String(input.mode ?? input.testMode ?? 'EditMode').toLowerCase();
   if (mode !== 'playmode') return;
   const assemblies = asList(input.assembly_names ?? input.assemblyNames);
-  if (assemblies.length === 1 && assemblies[0] === 'Wassup.Tests.PlayMode.Core') return;
-  deny('PlayMode 테스트는 assembly_names=["Wassup.Tests.PlayMode.Core"] 로만 돌린다 — 아웃게임 PlayMode 어셈블리는 [Explicit] 이 안 걸러져 실서버에 가입을 시도한다(CLAUDE.md 「검증」).');
+  if (assemblies.length === 1 && assemblies[0] === 'Somnia.Battle.Tests.PlayMode.Core') return;
+  deny('PlayMode 테스트는 assembly_names=["Somnia.Battle.Tests.PlayMode.Core"] 로만 돌린다 — 아웃게임 PlayMode 어셈블리는 [Explicit] 이 안 걸러져 실서버에 가입을 시도한다(CLAUDE.md 「검증」).');
 }
 
 function checkRefresh(input) {

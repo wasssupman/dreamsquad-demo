@@ -1,4 +1,4 @@
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     /// <summary>
     /// 드림캐쳐 · 스킬 시트 탭 계약(위치 고정 — 에디터 창 · 런타임 refresher · export · push 가 같은 순서를 쓴다).

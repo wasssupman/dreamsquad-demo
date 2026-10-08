@@ -4,14 +4,14 @@ using Spine.Unity;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.UI;
-using Wassup.UI.Layout;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI;
+using Somnia.Battle.UI.Layout;
 
-namespace Wassup.BattleCoreUnity.Cards
+namespace Somnia.Battle.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 7c — **각성 항아리 독**(판독면). 옛 `AwakeningGaugeView`(771줄)의 이식이다 — 룩은 옛 것 그대로
     // (세로 항아리 · 큰 숫자 · 게이지 비례 Spine 피규어 더미 · 처치 위치에서 날아오는 흡수 비행 · ready 림 · 넘침 -N).
@@ -154,7 +154,7 @@ namespace Wassup.BattleCoreUnity.Cards
         private ISpineUnitVisualData VisualOf(CoreEvent e)
         {
             if (_driver == null || e.DefIndex < 0) return null;
-            if (e.Faction == Wassup.Skills.Faction.EnemyUnit)
+            if (e.Faction == Somnia.Battle.Skills.Faction.EnemyUnit)
                 return e.DefIndex < _driver.EnemyAssets.Count ? _driver.EnemyAssets[e.DefIndex] : null;
             return e.DefIndex < _driver.DefenderAssets.Count ? _driver.DefenderAssets[e.DefIndex] : null;
         }

@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // keyring-unify 0 → demo-diet unit 0 — 옛 `KeyringSimTests` 의 후계. 전투가 쓰는 운동 수학만 남겼다
     // (낙하 `FallStep`·기울임 `LeanAngle` 은 로비 키링과 함께 사라졌다).

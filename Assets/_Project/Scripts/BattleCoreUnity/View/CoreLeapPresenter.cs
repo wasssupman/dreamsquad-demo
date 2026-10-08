@@ -2,11 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Core.TimeControl;
-using Wassup.Data.BattleView;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data.BattleView;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5a — 도약 연출. 옛 `BattleBridge.BossLeap.cs` ·
     // `BattleBridge.UltimateLeap.cs` 의 후계다.
@@ -137,10 +137,10 @@ namespace Wassup.BattleCoreUnity.View
                 float raw = Mathf.Clamp01(t / duration);
                 float t01 = raw <= recoilFrac
                     ? raw
-                    : recoilFrac + (1f - recoilFrac) * Wassup.Presentation.MotionMath.FlightTimeRemap(
+                    : recoilFrac + (1f - recoilFrac) * Somnia.Battle.Presentation.MotionMath.FlightTimeRemap(
                           (raw - recoilFrac) / (1f - recoilFrac), _config.BossHangPower);
 
-                Vector3 p = Wassup.Presentation.MotionMath.DismountPoint(
+                Vector3 p = Somnia.Battle.Presentation.MotionMath.DismountPoint(
                     flatStart, Vector3.zero, flatEnd, Vector3.up,
                     recoilFrac, _config.BossRecoilDip,
                     _config.BossArcHeightFactor, _config.BossArcMinHeight,

@@ -1,11 +1,11 @@
 using NUnit.Framework;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // shield-guardian-defender unit 1 — 필터별 대상 선별(순수) 검증.
     //
-    // skill-layer-migration unit 5b — 규칙이 `Wassup.Skills.SkillShieldSelect` 로 이사했다
+    // skill-layer-migration unit 5b — 규칙이 `Somnia.Battle.Skills.SkillShieldSelect` 로 이사했다
     // (`SkillAim` 과 같은 이사: 도메인은 `NativeArray` 를 모른다). **단언 여덟은 그대로다** —
     // 바뀐 것은 그릇뿐이고, 그 여덟이 이 규칙의 정본이다.
     public class ShieldTargetingTests

@@ -1,7 +1,7 @@
 using Newtonsoft.Json;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // unit-stat-spreadsheet-schema Unit 1 — JSON contract per
     // docs/spec/unit-stat-spreadsheet-schema/0_json_schema_contract.md.

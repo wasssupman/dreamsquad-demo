@@ -3,7 +3,7 @@
 //   가리킨다. 상수와 그 근거는 **한 글자도 안 바꿨다** — 실측에서 나온 값이라 다시 고를 수 없다.
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Combat
+namespace Somnia.Battle.BattleCore.Combat
 {
     // 타겟 락 유지 술어의 **단일 정의**.
     //

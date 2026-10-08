@@ -1,9 +1,9 @@
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Core;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild unit 5b → 8a — 새 전투 코어의 판을 **카메라와 BGM 에 먹여 주는** 한 줄.
     // (옛 이름 `CoreCameraFeed` — 8a 에서 `BattleCoreUnity/` 로 옮기며 BGM 을 더해 개명. `.meta` GUID 보존.)

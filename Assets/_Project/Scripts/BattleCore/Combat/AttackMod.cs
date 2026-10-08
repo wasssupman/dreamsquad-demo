@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using Unity.Mathematics;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.BattleCore.Combat
+namespace Somnia.Battle.BattleCore.Combat
 {
     // battle-core-rebuild unit 7a — **공격 수식자** 5축(rev 3 §1 「어휘 밖 = 5」).
     //

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // Serialized tuning bundle for floating damage numbers. Lives on
     // CoreDamageNumberSpawner and is passed by-ref to each DamageNumberView.Play.

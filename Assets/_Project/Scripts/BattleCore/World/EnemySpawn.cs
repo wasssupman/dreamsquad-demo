@@ -1,9 +1,9 @@
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Move;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Move;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 4 — 적 하나를 세우는 **단일 배선**.
     //

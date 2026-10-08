@@ -4,12 +4,12 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.BattleCoreUnity.Input;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCoreUnity.Input;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 5b 수정 — **배치된 유닛을 눌러 상세를 보고 거기서 퇴근시키는가.**
     //
@@ -133,7 +133,7 @@ namespace Wassup.Tests.PlayMode.Core
             yield return null;
             // 옛 게임에 없던 축이라 이식이 아니라 **발명**이었다. 패널 버튼이 정본 경로다.
             var legacy = System.Type.GetType(
-                "Wassup.BattleCoreUnity.Input.RetireInput, Wassup.Runtime", throwOnError: false);
+                "Somnia.Battle.BattleCoreUnity.Input.RetireInput, Somnia.Battle.Runtime", throwOnError: false);
             Assert.IsNull(legacy, "길게 누르기 퇴근이 아직 살아 있다 — 퇴근 통로가 둘이다");
         }
 

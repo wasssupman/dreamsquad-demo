@@ -1,4 +1,4 @@
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // 은퇴 — skill-layer-migration unit 8.
     //

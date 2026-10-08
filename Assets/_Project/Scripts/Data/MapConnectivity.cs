@@ -1,7 +1,7 @@
 using Unity.Collections;
 using Unity.Mathematics;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     public static class MapConnectivity
     {

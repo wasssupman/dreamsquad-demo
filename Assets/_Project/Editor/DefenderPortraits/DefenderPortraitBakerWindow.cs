@@ -7,10 +7,10 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Editor.Portraits
+namespace Somnia.Battle.Editor.Portraits
 {
     public sealed class DefenderPortraitBakerWindow : EditorWindow
     {
@@ -30,7 +30,7 @@ namespace Wassup.Editor.Portraits
         private int _selectedIndex;
         private PreviewBackground _previewBackground = PreviewBackground.GameTone;
 
-        [MenuItem("Window/Wassup/Defender Portrait Baker")]
+        [MenuItem("Window/Somnia/Battle/Defender Portrait Baker")]
         public static void Open()
         {
             GetWindow<DefenderPortraitBakerWindow>("Defender Portraits");

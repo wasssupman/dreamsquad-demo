@@ -1,7 +1,7 @@
 using Unity.Mathematics;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — 「무슨 일이 일어났나」의 **값 스냅샷**(S18 · 정정 9).
     //

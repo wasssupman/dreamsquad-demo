@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using Wassup.Data.Authoring;
-using Wassup.Data;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     // battle-core-rebuild unit 5a — **정의표 줄 번호 → 저작 에셋** 되찾기 표.
     //

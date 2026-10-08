@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity.Cards;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity.Cards;
 
-namespace Wassup.BattleCoreUnity.Input
+namespace Somnia.Battle.BattleCoreUnity.Input
 {
     // battle-core-rebuild unit 7c — **손패 → 커맨드.** 옛 `DreamcatcherHandController.CommitAttach`·`CommitMarkEnemy`·
     // `CommitActiveTile`·`CommitActivePortal` 의 호출부 몫이다(그 효과·자원 몫은 7b 가 `HandDeck` 으로 옮겼다).

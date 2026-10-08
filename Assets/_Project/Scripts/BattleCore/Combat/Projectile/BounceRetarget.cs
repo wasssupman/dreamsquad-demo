@@ -6,7 +6,7 @@
 //   (unit 18 에서 위치 기반이 된 뒤로 읽히지 않았다).
 using Unity.Mathematics;
 
-namespace Wassup.BattleCore.Combat.Projectile
+namespace Somnia.Battle.BattleCore.Combat.Projectile
 {
     // 튕기는 탄의 **재조준 결정**: 방금 때린 대상을 빼고 착탄 지점이 닿는 가장 가까운 생존자.
     //
@@ -48,7 +48,7 @@ namespace Wassup.BattleCore.Combat.Projectile
                 var c = cands[i];
                 if (!Map.LayerBits.CanTarget(attackTargetLayers, c.TraversalLayers)) continue;
                 if (wantedFactionMask != 0 && (c.Faction & wantedFactionMask) == 0) continue;
-                if (!Wassup.Skills.SkillMath.ReachFromCell(
+                if (!Somnia.Battle.Skills.SkillMath.ReachFromCell(
                         (c.Pos.x - hitPos.x) * invT, (c.Pos.z - hitPos.z) * invT,
                         tileRange, c.BodyRadius)) continue;
                 float dx = c.Pos.x - hitPos.x;

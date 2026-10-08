@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — **누가 어떤 규칙을 들고 있나**의 등록부.
     //

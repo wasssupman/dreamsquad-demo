@@ -1,12 +1,12 @@
 using Spine;
 using Spine.Unity;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 using UnityEngine;
-using Wassup.Presentation;
-using Wassup.Core.TimeControl;
-using Wassup.Data;
+using Somnia.Battle.Presentation;
+using Somnia.Battle.Core.TimeControl;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     [DisallowMultipleComponent]
     // sprite-unit-backend unit 1 — seam 표면은 CoreUnitView(추상·선언만)가 소유한다. 이 파일의 본문은
@@ -199,8 +199,8 @@ namespace Wassup.BattleCoreUnity.View
             float simDt = Time.deltaTime * _battleScale;
             if (simDt <= SimDtEpsilon) return; // 정지/도메인리로드 프레임 — 직전 배율 유지(ApplyTimeScale 은 battleScale 로 프리즈)
             float disp = Vector3.Distance(
-                (Vector3)Wassup.Core.BoardSpace.ToView(world),
-                (Vector3)Wassup.Core.BoardSpace.ToView(_simWorld));
+                (Vector3)Somnia.Battle.Core.BoardSpace.ToView(world),
+                (Vector3)Somnia.Battle.Core.BoardSpace.ToView(_simWorld));
             if (disp >= _knobs.WalkAnimTeleportGuard) return; // 포탈 점프 — 측정 스킵
             float simSpeed = disp / simDt;
             _smoothedSpeed = Mathf.Lerp(_smoothedSpeed, simSpeed, _knobs.WalkAnimSmoothing);
@@ -223,7 +223,7 @@ namespace Wassup.BattleCoreUnity.View
             // flight-lift-feel unit 1 — 이 합이 곧 lift(지면에서 뜬 view 공간 높이)다. 위치·크기·
             // 그림자의 **공통 입력**이라 한 지점에서 구해 함께 흘린다.
             float lift = CurrentHopOffset() + _flightHeight;
-            transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset
+            transform.position = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(world) + offset
                                  + new Vector3(0f, lift, 0f);
             // 정상 피드 = 비행 아님 → 그림자 앵커 해제(매 프레임 피드가 자기해제하는 규약).
             // 보스 도약·넉업은 이 경로를 타는데, 아치가 +Y 라 XZ 가 안 밀려 앵커가 필요 없다.
@@ -697,15 +697,15 @@ namespace Wassup.BattleCoreUnity.View
         {
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
             // worldPoint 는 sim 좌표(NotifyAttack 경유) — view 좌표로 변환해 view transform 과 같은 공간에서 비교.
-            float dx = ((Vector3)Wassup.Core.BoardSpace.ToView(worldPoint)).x - transform.position.x;
+            float dx = ((Vector3)Somnia.Battle.Core.BoardSpace.ToView(worldPoint)).x - transform.position.x;
             SetFacingByViewDelta(dx, immediate: true);   // 타겟 지정은 명시 이벤트 — 즉시 반전
         }
 
         private void FaceAlongMovement(Vector3 world)
         {
             if (_dying || IsAttackAnimationPlaying()) return;
-            float dx = ((Vector3)Wassup.Core.BoardSpace.ToView(world)).x
-                       - ((Vector3)Wassup.Core.BoardSpace.ToView(_simWorld)).x;
+            float dx = ((Vector3)Somnia.Battle.Core.BoardSpace.ToView(world)).x
+                       - ((Vector3)Somnia.Battle.Core.BoardSpace.ToView(_simWorld)).x;
             SetFacingByViewDelta(dx, immediate: false);  // 이동 유래 — 누적 히스테리시스 적용
         }
 
@@ -806,9 +806,9 @@ namespace Wassup.BattleCoreUnity.View
         private string _currentBreak;          // 재생 중인 컷 이름(루프 중이면 null)
 
         // defender-autobattle-ai unit 4 — 결정 입력은 AI 상태 하나. 메커니즘(오버라이드·엣지 판정)은 아래 그대로.
-        public override void SetAiState(Wassup.UnitAi.DefenderAiState state, string sustainLoop, string sustainLostOneShot)
+        public override void SetAiState(Somnia.Battle.UnitAi.DefenderAiState state, string sustainLoop, string sustainLostOneShot)
         {
-            if (state == Wassup.UnitAi.DefenderAiState.Sustaining) SetLoopOverride(sustainLoop, sustainLostOneShot);
+            if (state == Somnia.Battle.UnitAi.DefenderAiState.Sustaining) SetLoopOverride(sustainLoop, sustainLostOneShot);
             else ClearLoopOverride();
         }
 

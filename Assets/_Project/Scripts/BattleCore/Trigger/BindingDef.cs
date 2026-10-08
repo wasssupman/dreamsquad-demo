@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — **규칙 하나**의 정의표 줄. 유닛 스킬·카드·기믹·배치 오라·액티브가
     // 전부 이 타입 하나다(어휘 6개념: Command · Event · **Binding** · Condition · Effect · Owner/Lifetime).
@@ -12,7 +12,7 @@ namespace Wassup.BattleCore.Trigger
     // `tileRange` 한 칸이 7~13가지 뜻을 겸직했다(S24). 여기서는 ⑴ 실행자를 **concrete 참조**로 들고
     // (`Skill`, 정적 라우팅 표가 bake 때 한 번 고른다) ⑵ 효과 값(종류 + 수치)은 **효과 줄**(`EffectDef` ·
     // `MatchDefinition.Effects`)에 있고 이 줄은 `EffectIndex` 로 가리킨다(skill-data-table 1b — 이 줄은 「언제 · 누구 ·
-    // 조건 · 수명 → 효과 id」다). 이름 붙은 읽기는 `Wassup.Skills` 의 params 뷰가 한다(`AreaSleepParams.SleepCount` …).
+    // 조건 · 수명 → 효과 id」다). 이름 붙은 읽기는 `Somnia.Battle.Skills` 의 params 뷰가 한다(`AreaSleepParams.SleepCount` …).
     //
     // ⚠ **「없음」은 -1 이다**(S4) — 효과 줄 번호도 같다. struct 기본값 0 은 **유효 index** 라 줄은 반드시
     // `Default()` 에서 시작한다.
@@ -55,7 +55,7 @@ namespace Wassup.BattleCore.Trigger
         public ISkill Skill;
 
         /// <summary>
-        /// unit 7d — **코어가 직접 실행하는 효과**(시즌 기믹 4종). `Wassup.Skills` 의 의도 어휘에 없는 일
+        /// unit 7d — **코어가 직접 실행하는 효과**(시즌 기믹 4종). `Somnia.Battle.Skills` 의 의도 어휘에 없는 일
         /// (열기 한 걸음 · 피로 요청 · 픽업 놓기 · 사직서 떨어뜨리기)이라 `ISkill` 로 못 싣는다 — 그 어셈블리는
         /// 무변이 계약이다(7a). 이 칸이 차 있으면 디스패처가 `Skill` 대신 이것을 부른다.
         /// ⚠ 정의표(`MatchDefinition.Bindings`)의 줄에는 **서지 않는다** — 판 규칙이 런타임에 조립하는 줄(`DefIndex = -1`)

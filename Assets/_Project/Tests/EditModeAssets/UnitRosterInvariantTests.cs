@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.BattleCoreUnity;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode.UnitStatImport
+namespace Somnia.Battle.Tests.EditMode.UnitStatImport
 {
     // unit-stat-projection Unit 3 — freezes the roster invariants the atk/heal
     // projection depends on: a kind with 0 or 2+ entries cannot be projected.

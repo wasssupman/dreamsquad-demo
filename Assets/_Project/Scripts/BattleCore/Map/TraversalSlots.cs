@@ -1,6 +1,6 @@
 // salvaged from Assets/_Project/Scripts/Battle/Effects/TraversalSlots.cs (battle-core-rebuild unit 2)
 // 이식 시 바뀐 것: `NativeArray<byte>` → `byte[]`, `Unity.Burst`·`Unity.Collections` 제거.
-namespace Wassup.BattleCore.Map
+namespace Somnia.Battle.BattleCore.Map
 {
     // 통행 슬롯의 순수 계산.
     //

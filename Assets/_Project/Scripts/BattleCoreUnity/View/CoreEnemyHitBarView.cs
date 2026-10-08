@@ -1,10 +1,10 @@
 using System;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 using UnityEngine;
-using Wassup.Presentation;
-using Wassup.Data;
+using Somnia.Battle.Presentation;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // unit-health-display unit 2 — 적 피격 시 잠깐 뜨는 마이크로 체력바.
     // 살아있는 동안 적 뷰(anchor)를 따라가고, hold 후 fade. anchor 가 파괴되면

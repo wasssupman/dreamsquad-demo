@@ -4,9 +4,9 @@ using PrimeTween;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // "Incoming Waves" announcement panel.
     // Unroll(): dramatic drop + staggered card fade (auto-called at draft start).

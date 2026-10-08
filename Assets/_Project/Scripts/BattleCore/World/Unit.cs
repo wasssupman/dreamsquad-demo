@@ -1,8 +1,8 @@
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Effects;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Effects;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 판 위의 개체. plain class 다.
     //
@@ -132,7 +132,7 @@ namespace Wassup.BattleCore
         public ProjectileImbueSet Imbue;
 
         /// <summary>
-        /// 행동 상태. **결정은 `Wassup.UnitAi`, 저장은 여기**다 — 공격 루프와 이동이 같은
+        /// 행동 상태. **결정은 `Somnia.Battle.UnitAi`, 저장은 여기**다 — 공격 루프와 이동이 같은
         /// 술어를 보게 만드는 자리다(둘이 갈리면 「락은 있는데 Marching」 데드락이 난다).
         /// </summary>
         public AiStatus Ai;

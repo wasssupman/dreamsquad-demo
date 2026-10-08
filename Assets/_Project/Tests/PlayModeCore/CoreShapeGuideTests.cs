@@ -3,13 +3,13 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Core;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Core;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 6c 후속 — **배치 드래그 중 공격 도형 가이드**(directional-attack-shape unit 6 이식).
     //
@@ -42,7 +42,7 @@ namespace Wassup.Tests.PlayMode.Core
                 var u = def.Units[i];
                 if (u.AttackRange <= 0f) continue;
                 // 힐러(아군 마스크)는 적을 안 겨눈다 — 전방위 대조군으로 쓸 수 없다.
-                if ((TargetDefaults.ResolveDefender(u.TargetFactions) & (int)Wassup.Skills.Faction.EnemyUnit) == 0)
+                if ((TargetDefaults.ResolveDefender(u.TargetFactions) & (int)Somnia.Battle.Skills.Faction.EnemyUnit) == 0)
                     continue;
                 if (u.Attack.ShapeKind == AttackShapeBaked.SectorKind && shaped < 0) shaped = i;
                 else if (u.Attack.ShapeKind == AttackShapeBaked.OmniKind && omni < 0) omni = i;
@@ -68,7 +68,7 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsTrue(overlay.TryGetShapeGuide(out var spec, out var originView, out var dirView),
                 "방향 유닛을 끄는데 사거리 안 적이 있는데도 도형 가이드가 없다");
             var su = def.Units[shaped];
-            Assert.AreEqual(Wassup.Data.AttackShapeBaked.SectorKind, spec.kind, "가이드 형이 저작 bake 와 다르다");
+            Assert.AreEqual(Somnia.Battle.Data.AttackShapeBaked.SectorKind, spec.kind, "가이드 형이 저작 bake 와 다르다");
             Assert.AreEqual(su.AttackRange + su.BodyRadiusTiles, spec.lengthTiles, 1e-5f,
                 "가이드 반경 ≠ 범위 + 자기 몸 — 링과 다른 자다(대상 몸을 더했거나 몸을 뺐다)");
             float expectAngle = 2f * Mathf.Atan2(su.Attack.ShapeSinHalf, su.Attack.ShapeCosHalf) * Mathf.Rad2Deg;
@@ -140,16 +140,16 @@ namespace Wassup.Tests.PlayMode.Core
             int air = -1, ground = -1;
             for (int i = 0; i < def.Enemies.Length; i++)
             {
-                bool flies = (def.Enemies[i].TraversalLayers & Wassup.BattleCore.Map.LayerBits.Air) != 0;
+                bool flies = (def.Enemies[i].TraversalLayers & Somnia.Battle.BattleCore.Map.LayerBits.Air) != 0;
                 if (flies && air < 0) air = i;
                 if (!flies && def.Enemies[i].TraversalLayers != 0 && ground < 0) ground = i;
             }
             Assert.GreaterOrEqual(air, 0, "적 정의표에 비행 적이 없다 — 증언할 수 없다");
             Assert.GreaterOrEqual(ground, 0, "적 정의표에 지상 적이 없다");
-            Assert.IsFalse(Wassup.BattleCore.Map.LayerBits.CanTarget((byte)su.Attack.TargetLayers,
+            Assert.IsFalse(Somnia.Battle.BattleCore.Map.LayerBits.CanTarget((byte)su.Attack.TargetLayers,
                                                                      (byte)def.Enemies[air].TraversalLayers),
                 "이 부채꼴 유닛은 비행 적을 때릴 수 있다 — 전제(지상 전용)가 깨졌다");
-            Assert.IsTrue(Wassup.BattleCore.Map.LayerBits.CanTarget((byte)su.Attack.TargetLayers,
+            Assert.IsTrue(Somnia.Battle.BattleCore.Map.LayerBits.CanTarget((byte)su.Attack.TargetLayers,
                                                                     (byte)def.Enemies[ground].TraversalLayers),
                 "이 부채꼴 유닛이 지상 적도 못 때린다 — 대조군이 없다");
 
@@ -232,7 +232,7 @@ namespace Wassup.Tests.PlayMode.Core
             {
                 var u = def.Units[i];
                 if (u.AttackRange <= 0f || u.Attack.ShapeKind != AttackShapeBaked.SectorKind) continue;
-                if ((TargetDefaults.ResolveDefender(u.TargetFactions) & (int)Wassup.Skills.Faction.EnemyUnit) == 0)
+                if ((TargetDefaults.ResolveDefender(u.TargetFactions) & (int)Somnia.Battle.Skills.Faction.EnemyUnit) == 0)
                     continue;
                 shaped = i;
             }

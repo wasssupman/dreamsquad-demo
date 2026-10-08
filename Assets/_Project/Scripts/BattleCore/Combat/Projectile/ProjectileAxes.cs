@@ -4,7 +4,7 @@
 //   셋이 한 축의 세 면이기 때문이다 — 궤적(어떻게 나나) × 페이로드(닿으면 뭐 하나) × 바인딩
 //   (무엇을 겨누나). 바인딩은 앞의 것에서 **파생**이라 저작 축이 아니다.
 
-namespace Wassup.BattleCore.Combat.Projectile
+namespace Somnia.Battle.BattleCore.Combat.Projectile
 {
     // 궤적 축. 「위치가 매 틱 어떻게 변하나」 + 「언제 도착인가」를 소유한다.
     //

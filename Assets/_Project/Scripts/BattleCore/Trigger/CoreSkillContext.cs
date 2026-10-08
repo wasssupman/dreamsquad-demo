@@ -1,14 +1,14 @@
 using Unity.Mathematics;
-using Wassup.BattleCore.Map;
-using Wassup.Skills;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.Skills;
 
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     // battle-core-rebuild unit 7a — `ISkillContext` 의 코어 구현(← 옛 `Battle/Skills/EcsSkillContext.cs` 1,215줄).
     //
     // **질의와 `Emit` 둘뿐이다.** 옛 어댑터의 나머지(ECS 핸들 역변환 · 풀 복사 · 큐 싱크 14개 · ECB)는 버렸다 —
     // foundation README 가 「버려지는 것은 이것뿐이고 그것이 포트 패턴의 비용」이라 선언한 그 부분이다.
-    // `ISkillContext`·concrete·seam 규칙은 그대로 산다(`Wassup.Skills` 는 한 줄도 안 고쳤다).
+    // `ISkillContext`·concrete·seam 규칙은 그대로 산다(`Somnia.Battle.Skills` 는 한 줄도 안 고쳤다).
     //
     // concrete 는 상태를 **안 바꾼다**(계약 3). `Emit` 은 곧장 `IntentApplier` 로 간다 — 그것이
     // `BattleWorld` 를 바꾸는 스킬 경로의 **유일한 표면**이다(S20 — `CoreArchitectureTests` 가 소스로 못박는다).

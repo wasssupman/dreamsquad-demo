@@ -1,8 +1,8 @@
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-migration unit 5b — **누구에게 실드를 줄까.**
     //
-    // `Wassup.Battle.Effects.ShieldTargeting` 에서 이사했다(`SkillAim` 과 같은 이사).
+    // `Somnia.Battle.Battle.Effects.ShieldTargeting` 에서 이사했다(`SkillAim` 과 같은 이사).
     // 규칙도 상수도 부등호도 그대로이고 **그릇만** 바뀐다 — 도메인은 `NativeArray` 를
     // 모르므로 plain 배열 + 개수로 받는다.
     public enum SkillShieldFilter : byte

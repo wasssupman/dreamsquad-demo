@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.Skills;
+using Somnia.Battle.Skills;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // skill-layer-foundation unit 2b — 진영 상대화의 순수 코어를 고정한다.
     //

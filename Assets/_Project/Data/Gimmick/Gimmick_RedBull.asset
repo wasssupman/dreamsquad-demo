@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a57c278c9a7850a48995f88611f12d70, type: 3}
   m_Name: Gimmick_RedBull
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.RedBullGimmickData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.RedBullGimmickData
   gimmickId: G2_RedBull
   displayName: "\uAD1C\uCC2E\uC544. \uB9C8\uC2DC\uACE0 \uC77C\uD558\uC790!"
   description: "\uC774\uB3D9\xB7\uBC30\uCE58 \uD0C0\uC77C\uC5D0 \uC8FC\uAE30\uC801\uC73C\uB85C

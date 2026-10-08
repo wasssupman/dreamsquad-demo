@@ -1,11 +1,11 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
-using static Wassup.Tests.EditMode.Core.CoreCombatFixtures;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCombatFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 3 — 궤적 × 페이로드가 **판 위에서** 도는지.
     //
@@ -155,7 +155,7 @@ namespace Wassup.Tests.EditMode.Core
         public void 적의_칸_광역은_길막을_치지_않고_옆의_방어유닛은_친다()
         {
             var (m, enemy, defender, barrier) = BarrierBoard();
-            m.World.ProjectileRequests.Add(AreaShot(enemy, 0, Wassup.BattleCore.Combat.TargetDefaults.EnemyMask,
+            m.World.ProjectileRequests.Add(AreaShot(enemy, 0, Somnia.Battle.BattleCore.Combat.TargetDefaults.EnemyMask,
                                                     barrier.Position));
             Tick(m, 10);
             Assert.Less(defender.Health, defender.MaxHealth, "전제 — 광역이 터졌다(이웃 칸 방어유닛)");
@@ -168,7 +168,7 @@ namespace Wassup.Tests.EditMode.Core
             var (m, _, defender, barrier) = BarrierBoard();
             m.Apply(Command.DebugSpawnEnemy(0, new int2(6, 1)));
             var near = m.World.Units[m.World.Units.Count - 1];
-            m.World.ProjectileRequests.Add(AreaShot(defender, 0, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask,
+            m.World.ProjectileRequests.Add(AreaShot(defender, 0, Somnia.Battle.BattleCore.Combat.TargetDefaults.DefenderMask,
                                                     barrier.Position));
             Tick(m, 10);
             Assert.Less(near.Health, near.MaxHealth, "전제 — 광역이 터졌다(이웃 칸 적)");
@@ -179,14 +179,14 @@ namespace Wassup.Tests.EditMode.Core
         public void 적_탄의_스플래시는_길막을_치지_않지만_길막을_겨눈_직격은_맞는다()
         {
             var (m, enemy, defender, barrier) = BarrierBoard();
-            var toDefender = AreaShot(enemy, 1, Wassup.BattleCore.Combat.TargetDefaults.EnemyMask, enemy.Position);
+            var toDefender = AreaShot(enemy, 1, Somnia.Battle.BattleCore.Combat.TargetDefaults.EnemyMask, enemy.Position);
             toDefender.Target = defender.Id;
             m.World.ProjectileRequests.Add(toDefender);
             Tick(m, 60);
             Assert.Less(defender.Health, defender.MaxHealth, "전제 — 직격이 닿았다");
             Assert.AreEqual(BarrierHealth, barrier.Health, 1e-4f, "스플래시가 길막을 쳤다");
 
-            var toBarrier = AreaShot(enemy, 1, Wassup.BattleCore.Combat.TargetDefaults.EnemyMask, enemy.Position);
+            var toBarrier = AreaShot(enemy, 1, Somnia.Battle.BattleCore.Combat.TargetDefaults.EnemyMask, enemy.Position);
             toBarrier.Target = barrier.Id;
             m.World.ProjectileRequests.Add(toBarrier);
             Tick(m, 60);
@@ -209,7 +209,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var (m, enemy, defender, _) = BarrierBoard();
             var heart = SpawnStructure(m, Faction.DefenderCore, new float3(5.5f, 0f, 3.5f));   // 방어유닛 바로 옆
-            var shot = AreaShot(enemy, 1, Wassup.BattleCore.Combat.TargetDefaults.EnemyMask, enemy.Position);
+            var shot = AreaShot(enemy, 1, Somnia.Battle.BattleCore.Combat.TargetDefaults.EnemyMask, enemy.Position);
             shot.Target = defender.Id;
             m.World.ProjectileRequests.Add(shot);
             Tick(m, 60);
@@ -226,7 +226,7 @@ namespace Wassup.Tests.EditMode.Core
             var core = SpawnStructure(m, Faction.EnemyCore, new float3(3.5f, 0f, 3.5f));   // 더 가깝다
             m.Apply(Command.DebugSpawnEnemy(0, new int2(3, 4)));   // 거점보다 멀고 (8,3) 의 적보다 가깝다
             var farther = m.World.Units[m.World.Units.Count - 1];
-            var shot = AreaShot(defender, 1, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
+            var shot = AreaShot(defender, 1, Somnia.Battle.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
             shot.Target = doomed.Id;
             shot.RetargetTileRange = 6;
             m.World.ProjectileRequests.Add(shot);
@@ -247,7 +247,7 @@ namespace Wassup.Tests.EditMode.Core
             var core = SpawnStructure(m, Faction.EnemyCore, new float3(3.5f, 0f, 3.5f));   // 더 가깝다
             m.Apply(Command.DebugSpawnEnemy(0, new int2(0, 3)));
             var farther = m.World.Units[m.World.Units.Count - 1];
-            var shot = AreaShot(defender, 1, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
+            var shot = AreaShot(defender, 1, Somnia.Battle.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
             shot.Target = first.Id;
             shot.BounceCount = 1;
             shot.BounceTileRange = 6;
@@ -267,7 +267,7 @@ namespace Wassup.Tests.EditMode.Core
             var instinct = SpawnStructure(m, Faction.EnemyInstinct, new float3(7.5f, 0f, 2.5f));
             m.Apply(Command.DebugSpawnEnemy(0, new int2(9, 2)));
             var behind = m.World.Units[m.World.Units.Count - 1];
-            var shot = AreaShot(defender, 2, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
+            var shot = AreaShot(defender, 2, Somnia.Battle.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
             shot.Movement = MovementKind.DirectionalLinear;
             shot.Payload = PayloadKind.PathHit;
             shot.Direction = new float2(1f, 0f);
@@ -283,7 +283,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var (m, _, defender, _) = BarrierBoard();
             var heart = SpawnStructure(m, Faction.EnemyCore, new float3(2.5f, 0f, 3.5f));
-            m.World.ProjectileRequests.Add(AreaShot(defender, 0, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask,
+            m.World.ProjectileRequests.Add(AreaShot(defender, 0, Somnia.Battle.BattleCore.Combat.TargetDefaults.DefenderMask,
                                                     heart.Position));
             Tick(m, 10);
             Assert.Less(heart.Health, StructureHealth, "칸 광역이 적 거점을 치지 않았다");
@@ -355,11 +355,11 @@ namespace Wassup.Tests.EditMode.Core
             var (m, enemy, defender, _) = BarrierBoard();
             var spawned = Listen(m, CoreEventKind.ProjectileSpawned);
 
-            var cell = AreaShot(defender, 0, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, enemy.Position);
-            var entity = AreaShot(defender, 1, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
+            var cell = AreaShot(defender, 0, Somnia.Battle.BattleCore.Combat.TargetDefaults.DefenderMask, enemy.Position);
+            var entity = AreaShot(defender, 1, Somnia.Battle.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
             entity.Target = enemy.Id;
             entity.Impact = enemy.Position;
-            var dir = AreaShot(defender, 2, Wassup.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
+            var dir = AreaShot(defender, 2, Somnia.Battle.BattleCore.Combat.TargetDefaults.DefenderMask, defender.Position);
             dir.Movement = MovementKind.DirectionalLinear;
             dir.Payload = PayloadKind.PathHit;
             dir.Direction = new float2(1f, 0f);

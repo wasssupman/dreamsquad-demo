@@ -1,11 +1,11 @@
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Wave;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Wave;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     // battle-core-rebuild unit 1 — SO → 정의표. 계약 6 의 «판 밖에서 안으로» 의 문이다.
     //
@@ -175,12 +175,12 @@ namespace Wassup.BattleCoreUnity
             }
             else if (fixedMapSeed != 0)
             {
-                index = Wassup.Data.MapGrid.MapPoolSelect.SelectIndex(fixedMapSeed, pool.Count);
+                index = Somnia.Battle.Data.MapGrid.MapPoolSelect.SelectIndex(fixedMapSeed, pool.Count);
                 source = "debug";
             }
             else if (hasTournamentSeed)
             {
-                index = Wassup.Data.MapGrid.MapPoolSelect.SelectIndexFromTournamentSeed(tournamentSeed, pool.Count);
+                index = Somnia.Battle.Data.MapGrid.MapPoolSelect.SelectIndexFromTournamentSeed(tournamentSeed, pool.Count);
                 source = "tournament";
             }
             else
@@ -388,7 +388,7 @@ namespace Wassup.BattleCoreUnity
                 // `targetFactions: 98`(적 전부)을 들고 있어 raw 로 실으면 **적을 회복시킨다**
                 // (2026-09-24 드리프트 감사 H4). 거점까지 넓히지 않는다 — 마음이 회복을 받는다.
                 TargetFactions = d.targetAllies
-                    ? (int)Wassup.Skills.Faction.DefenderUnit
+                    ? (int)Somnia.Battle.Skills.Faction.DefenderUnit
                     : (int)d.targetFactions,
                 MoveSpeed = d.moveSpeed,
 
@@ -594,9 +594,9 @@ namespace Wassup.BattleCoreUnity
                 list.Add(new WaveSlotDef
                 {
                     ClassFilter = (int)s.classFilter,
-                    Altitude = s.altitude == Wassup.Data.SlotAltitude.Air
-                        ? Wassup.BattleCore.Wave.SlotAltitude.Air
-                        : Wassup.BattleCore.Wave.SlotAltitude.Ground,
+                    Altitude = s.altitude == Somnia.Battle.Data.SlotAltitude.Air
+                        ? Somnia.Battle.BattleCore.Wave.SlotAltitude.Air
+                        : Somnia.Battle.BattleCore.Wave.SlotAltitude.Ground,
                     LaneGroup = s.laneGroup,
                     PathIndex = s.pathIndex,
                 });
@@ -823,16 +823,16 @@ namespace Wassup.BattleCoreUnity
         }
 
         /// <summary>저작 교전 이동 → 코어 어휘. **이름으로 옮긴다.** 모르는 값은 멈춤(Halt)으로 접고 loud 하다.</summary>
-        public static Wassup.BattleCore.EngageMovement ToCoreEngage(Wassup.Data.EngageMovement authored)
+        public static Somnia.Battle.BattleCore.EngageMovement ToCoreEngage(Somnia.Battle.Data.EngageMovement authored)
         {
             switch (authored)
             {
-                case Wassup.Data.EngageMovement.Halt: return Wassup.BattleCore.EngageMovement.Halt;
-                case Wassup.Data.EngageMovement.Advance: return Wassup.BattleCore.EngageMovement.Advance;
-                case Wassup.Data.EngageMovement.Pulse: return Wassup.BattleCore.EngageMovement.Pulse;
+                case Somnia.Battle.Data.EngageMovement.Halt: return Somnia.Battle.BattleCore.EngageMovement.Halt;
+                case Somnia.Battle.Data.EngageMovement.Advance: return Somnia.Battle.BattleCore.EngageMovement.Advance;
+                case Somnia.Battle.Data.EngageMovement.Pulse: return Somnia.Battle.BattleCore.EngageMovement.Pulse;
                 default:
                     Debug.LogError($"[MatchDefinitionBuilder] 모르는 교전 이동({authored}) — 멈춤으로 접는다.");
-                    return Wassup.BattleCore.EngageMovement.Halt;
+                    return Somnia.Battle.BattleCore.EngageMovement.Halt;
             }
         }
 
@@ -906,7 +906,7 @@ namespace Wassup.BattleCoreUnity
                     };
                 }
 
-                if (!Wassup.BattleCore.Effects.StackRules.IsAscending(rows))
+                if (!Somnia.Battle.BattleCore.Effects.StackRules.IsAscending(rows))
                 {
                     Debug.LogError(
                         $"[MatchDefinitionBuilder] 스택 저작 '{so.name}' 의 임계가 비내림차순이 아니다 — "
@@ -940,7 +940,7 @@ namespace Wassup.BattleCoreUnity
             if (rows.Length == 0) return System.Array.Empty<ImbueCapDef>();
 
             var list = new System.Collections.Generic.List<ImbueCapDef>(rows.Length);
-            var seen = new System.Collections.Generic.List<Wassup.BattleCore.Effects.ImbueKey>(rows.Length);
+            var seen = new System.Collections.Generic.List<Somnia.Battle.BattleCore.Effects.ImbueKey>(rows.Length);
             for (int i = 0; i < rows.Length; i++)
             {
                 var key = rows[i].Key();

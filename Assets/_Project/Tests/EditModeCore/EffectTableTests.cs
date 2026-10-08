@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using static Wassup.Tests.EditMode.Core.CoreCardFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using static Somnia.Battle.Tests.EditMode.Core.CoreCardFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // skill-data-table unit 1a·1b — **효과 표**(규칙 줄 → 효과 줄) 계약. 효과 값의 정본은 효과 줄 하나이고, 해시는 **해석된
     // 값**만 본다(README 계약 8 — 효과 id · 표 순서는 해시 밖). 라이브 에셋의 굽기 동치는 Assets lane 의 굽기 스냅샷(파일 diff 0)이 본다.

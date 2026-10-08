@@ -3,9 +3,9 @@ using System.Text;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.Data.MapGrid;
+using Somnia.Battle.Data.MapGrid;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // map-diorama-stage unit 1 — 스테이지 스캔 결과(plain) → GeneratedMap 조립 순수 코어.
     // 씬/컴포넌트를 모른다 — 스캔은 MapStageScanner(Core)가 하고 여기는 plain 값만 받는다(제약 10).

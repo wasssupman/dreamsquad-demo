@@ -1,7 +1,7 @@
 using Unity.Mathematics;
-using Wassup.Core;
+using Somnia.Battle.Core;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 1 — 난수. 계열 6개, 전부 `MatchSeed.Derive*` 에서 나온다.
     //

@@ -1,4 +1,4 @@
-Shader "Wassup/Sprite_ShadowCaster"
+Shader "Somnia/Battle/Sprite_ShadowCaster"
 {
     // SpriteRenderer 가 그림자를 드리우게 하는 최소 스프라이트 셰이더.
     // URP 기본 스프라이트 셰이더(Sprite-Unlit-Default)에는 ShadowCaster 패스가 없어서

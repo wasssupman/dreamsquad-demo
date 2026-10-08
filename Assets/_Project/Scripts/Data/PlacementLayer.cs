@@ -1,6 +1,6 @@
 using System;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // placement-mask unit 4 — 배치 층 비트필드.
     // 셀은 자기가 여는 층을, 유닛은 자기가 설 수 있는 층을 갖고, 판정은 교집합 하나다:

@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using UnityEditor;
-using Wassup.Data;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // elite-enemy-tier unit 6 — 슬라임 저작 pin. 분열은 «SO 를 드레인에서 직독» 하는 구조라
     // (unit 5 ②) **저작이 곧 계약**이다: 슬롯도 이벤트 필드도 없어서 배선이 어긋나면 잡아줄

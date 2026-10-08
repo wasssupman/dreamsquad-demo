@@ -3,11 +3,11 @@ using System.Text;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCoreUnity;
 
-namespace Wassup.EditorTools.BattleCore
+namespace Somnia.Battle.EditorTools.BattleCore
 {
     // battle-core-rebuild unit 6c — **기믹 셈판** 도구. 옛 `FatigueDebugMenu`(도구 처분표 9행 — 피로 스택
     // 로그 · 레드불 로그)의 후계이고, 6b2 가 연 디버그 커맨드 셋을 넣는다(`DebugSpawnPickup` 19 ·
@@ -25,7 +25,7 @@ namespace Wassup.EditorTools.BattleCore
     // ⑶ 반경(픽업을 밟을 수 있는 자리인가 — 코어 진입점) ⑷ 병합 키(같은 종류의 스택이 **출처마다** 따로 쌓인다).
     public static class CoreGimmickDebugMenu
     {
-        private const string Root = "Wassup/BattleCore/Debug/기믹/";
+        private const string Root = "Somnia/Battle/BattleCore/Debug/기믹/";
 
         [MenuItem(Root + "셈판 찍기 (기믹·피로·열기·픽업·사직서)")] private static void Dump() => DumpGimmick();
         [MenuItem(Root + "피로 +3 (방어유닛 전원)")] private static void Fatigue() => BumpFatigue(3);
@@ -139,7 +139,7 @@ namespace Wassup.EditorTools.BattleCore
                 {
                     var pk = world.Pickups[p];
                     float dx = (u.Position.x - pk.Center.x) * inv, dz = (u.Position.z - pk.Center.z) * inv;
-                    if (Wassup.Skills.SkillMath.ReachFromCell(dx, dz, 0f, u.HitRadius)) reach.Append($"[{pk.Id}]");
+                    if (Somnia.Battle.Skills.SkillMath.ReachFromCell(dx, dz, 0f, u.HitRadius)) reach.Append($"[{pk.Id}]");
                 }
                 if (reach.Length == 0) reach.Append("-");
 

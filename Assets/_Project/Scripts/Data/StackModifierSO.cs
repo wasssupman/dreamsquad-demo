@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
-using Wassup.Data.Authoring;
+using Somnia.Battle.Data.Authoring;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     public enum StackPolicy : byte
     {
@@ -50,7 +50,7 @@ namespace Wassup.Data
         public float tickInterval;
     }
 
-    [CreateAssetMenu(fileName = "StackModifier", menuName = "Wassup/StackModifier", order = 30)]
+    [CreateAssetMenu(fileName = "StackModifier", menuName = "Somnia/Battle/StackModifier", order = 30)]
     public class StackModifierSO : ScriptableObject
     {
         // 미등록 StackKind 의 상한 폴백. 여러 producer(AttackSystem outputs, on-place 도포)가

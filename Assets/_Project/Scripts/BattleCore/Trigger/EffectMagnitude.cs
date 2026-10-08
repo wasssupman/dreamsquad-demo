@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore.Trigger
+namespace Somnia.Battle.BattleCore.Trigger
 {
     /// <summary>
     /// skill-data-table unit 3(U7) — 효과 수치의 **방식**. 닫힌 집합 · append-only. 기본 `Flat` = 저작값 그대로(오늘 전량).

@@ -1,4 +1,4 @@
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Wassup.Tests.EditMode")]
-[assembly: InternalsVisibleTo("Wassup.Tests.EditMode.Assets")]
+[assembly: InternalsVisibleTo("Somnia.Battle.Tests.EditMode")]
+[assembly: InternalsVisibleTo("Somnia.Battle.Tests.EditMode.Assets")]

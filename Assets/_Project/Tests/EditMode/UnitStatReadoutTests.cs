@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // selection-hand-attach unit 10 — 표시용 스탯 결정 로직.
     //

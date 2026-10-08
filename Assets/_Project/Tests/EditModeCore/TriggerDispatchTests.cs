@@ -3,12 +3,12 @@ using System.IO;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using static Wassup.Tests.EditMode.Core.CoreTriggerFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using static Somnia.Battle.Tests.EditMode.Core.CoreTriggerFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7a — 디스패처: 전순서 키 · 세대 BFS(직접 재진입만) · 깊이 4 · 잔여 큐 후속/지난 seam.
     [TestFixture]
@@ -213,7 +213,7 @@ namespace Wassup.Tests.EditMode.Core
             var probe = new ProbeSkill();
             var r = Probe(TriggerKind.PeriodicTimer, probe); r.Rule.PeriodSeconds = BattleMatch.Dt;
             CoreTriggerFixtures.AttachRuntime(m, d, r, 0);
-            d.Cc.Apply(Wassup.BattleCore.Effects.CcSlotKind.Sleep, 99f, float3.zero, SimEntityId.None);
+            d.Cc.Apply(Somnia.Battle.BattleCore.Effects.CcSlotKind.Sleep, 99f, float3.zero, SimEntityId.None);
             CoreCombatFixtures.Tick(m, 3);
             Assert.AreEqual(3, probe.Count, "잠든 채로 쏜다");
             d.Dead = true;

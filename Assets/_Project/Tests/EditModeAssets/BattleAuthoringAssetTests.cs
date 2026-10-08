@@ -2,9 +2,9 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // battle-content-finish unit 0 · 4 — **판 저작 SO 세 장이 채워져 있고 씬이 그것을 가리킨다.**
     //
@@ -72,8 +72,8 @@ namespace Wassup.Tests.EditModeAssets
             {
                 Assert.IsNotNull(mat, $"{name} 슬롯이 비었다 — 그 머티리얼을 쓰는 것이 마젠타로 그려진다");
                 Assert.IsNotNull(mat.shader, $"{name}: 셰이더 없음");
-                Assert.IsTrue(mat.shader.name.StartsWith("Wassup/") || mat.shader.name.StartsWith("Universal Render Pipeline/"),
-                    $"{name}: 셰이더 '{mat.shader.name}' 은 이 프로젝트(Wassup/*) 나 URP 것이 아니다 — 빌드 스트리핑 대상");
+                Assert.IsTrue(mat.shader.name.StartsWith("Somnia/Battle/") || mat.shader.name.StartsWith("Universal Render Pipeline/"),
+                    $"{name}: 셰이더 '{mat.shader.name}' 은 이 프로젝트(Somnia/Battle/*) 나 URP 것이 아니다 — 빌드 스트리핑 대상");
             }
         }
 

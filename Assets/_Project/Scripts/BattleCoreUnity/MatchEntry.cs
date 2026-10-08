@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     /// <summary>이 판이 어느 문으로 들어왔나. 규칙이 갈리는 축이 이것 하나다(G5 · G13).</summary>
     public enum MatchEntryKind : byte

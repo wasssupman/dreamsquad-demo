@@ -3,9 +3,9 @@ using System.Runtime.CompilerServices;
 using Spine;
 using Spine.Unity;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // unit-parts-appearance 1 — 파츠 스킨 합성 + 캐시 + 공용 적용 헬퍼.
     // 스폰(SpineUnitView)과 드래그 프리뷰(DefenderDragPlacementController)가 같은 경로를 탄다.

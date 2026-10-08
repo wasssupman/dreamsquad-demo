@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 2e — 반경 안 상대 전원을 지속 시간 동안 지진다(버스터즈의 개점 조사).
     //

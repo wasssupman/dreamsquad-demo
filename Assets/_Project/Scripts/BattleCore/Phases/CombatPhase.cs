@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Wassup.Skills;
-using Wassup.BattleCore.Combat;
-using Wassup.BattleCore.Combat.Emission;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Effects;
-using Wassup.BattleCore.Map;
-using Wassup.UnitAi;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore.Combat;
+using Somnia.Battle.BattleCore.Combat.Emission;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Effects;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.UnitAi;
 
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 3 — **유닛이 때리고, 맞고, 죽는다.**
     //
@@ -165,7 +165,7 @@ namespace Wassup.BattleCore
                 var phase = UnitActionPhase.Resolve(actionLocked, atk.Swinging);
                 bool cooldownReady = atk.CooldownRemaining <= 0f;
 
-                // ⒞ 행동 상태 — **결정은 `Wassup.UnitAi`, 저장은 `Unit.Ai`**(구현 12).
+                // ⒞ 행동 상태 — **결정은 `Somnia.Battle.UnitAi`, 저장은 `Unit.Ai`**(구현 12).
                 //    공격 루프와 이동이 **같은 술어**를 봐야 데드락이 안 난다.
                 bool isDefenderAi = u.Kind == UnitKind.Defender;
                 bool summonAlive = atk.Policy == AttackPolicy.Summon && HasLiveSummon(ctx, u.Id);
@@ -267,7 +267,7 @@ namespace Wassup.BattleCore
 
         private int PickChebyshevNearest(Unit u, AttackState atk)
         {
-            int tileRange = Wassup.Skills.SkillMath.RangeToTiles(atk.Range);
+            int tileRange = Somnia.Battle.Skills.SkillMath.RangeToTiles(atk.Range);
             int2 selfCell = _map != null ? _map.CellOf(u.Position) : int2.zero;
             int n = 0;
             for (int i = 0; i < _candCount; i++)
@@ -304,7 +304,7 @@ namespace Wassup.BattleCore
                 return;
             }
 
-            int coverTiles = math.max(1, Wassup.Skills.SkillMath.RangeToTiles(atk.Range));
+            int coverTiles = math.max(1, Somnia.Battle.Skills.SkillMath.RangeToTiles(atk.Range));
             int2 anchor = _map != null ? _map.CellOf(u.Position) : int2.zero;
 
             bool gateOpen = atk.HasSummonedOnce;
@@ -316,7 +316,7 @@ namespace Wassup.BattleCore
                     if ((c.Faction & (int)Faction.EnemyUnit) == 0) continue;
                     if (!LayerBits.CanTarget(atk.TargetLayers, c.Layers)) continue;
                     // 골에 붙어 타워를 때리는 적도 순찰을 부를 이유다(C14 와 같은 근거).
-                    if (Wassup.BattleCore.Move.PatrolAreaMath.IsInArea(c.Cell, anchor, coverTiles)) gateOpen = true;
+                    if (Somnia.Battle.BattleCore.Move.PatrolAreaMath.IsInArea(c.Cell, anchor, coverTiles)) gateOpen = true;
                 }
             }
 

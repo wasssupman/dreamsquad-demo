@@ -2,13 +2,13 @@ using PrimeTween;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Wassup.BattleCore;
-using Wassup.Core;
-using Wassup.Data;
-using Wassup.UI;
-using Wassup.UI.Layout;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI;
+using Somnia.Battle.UI.Layout;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild unit 8a — "꿈결 위기!!" 보스 등장 경보 배너. 옛 `UI/BossWarningView.cs`(240줄,
     // boss-wave-cadence unit 1)의 복사·적응본이다. 바뀐 것은 **구동**뿐이다: 브리지가 bake 중에 `Show()` 를

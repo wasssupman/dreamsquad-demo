@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // sprite-unit-backend unit 0 — 유닛 하나의 스프라이트 모션 세트. 「모션당 시트 1장」.
     //
@@ -14,7 +14,7 @@ namespace Wassup.Data
     //
     // 빈 슬롯의 폴백은 아래 순수 메서드가 정한다. Spine 의 ResolveAnimation 후보 체인과 같은 정신 —
     // 단 idle 은 폴백이 없다(HasIdle 이 거짓이면 세트 자체가 무효라 풀이 쿼드 폴백으로 보낸다).
-    [CreateAssetMenu(menuName = "Wassup/Unit Sprite Motion Set", fileName = "MotionSet")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Unit Sprite Motion Set", fileName = "MotionSet")]
     public class UnitSpriteMotionSet : ScriptableObject
     {
         [Header("전 유닛")]

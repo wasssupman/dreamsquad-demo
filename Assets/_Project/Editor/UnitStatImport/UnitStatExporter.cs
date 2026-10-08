@@ -4,10 +4,10 @@ using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Data.StatImport;
+using Somnia.Battle.Data;
+using Somnia.Battle.Data.StatImport;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Somnia.Battle.Editor.UnitStatImport
 {
     // unit-stat-spreadsheet-schema Unit 5 — SO → JSON export, the reverse of the
     // importer. Produces one row-array file per sheet tab so the output maps 1:1

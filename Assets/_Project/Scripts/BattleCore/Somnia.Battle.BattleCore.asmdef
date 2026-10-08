@@ -1,7 +1,10 @@
 {
-    "name": "Wassup.SheetSync",
-    "rootNamespace": "Wassup.SheetSync",
-    "references": [],
+    "name": "Somnia.Battle.BattleCore",
+    "rootNamespace": "Somnia.Battle.BattleCore",
+    "references": [
+        "Somnia.Battle.Skills",
+        "Somnia.Battle.UnitAi"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

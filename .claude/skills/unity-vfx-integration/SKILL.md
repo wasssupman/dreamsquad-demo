@@ -22,18 +22,18 @@ This skill consumes authored `_SKELETON.prefab` assets and connects them to the 
 - 새 코어 사건(또는 기존 사건)에 VFX 를 새로 붙일 때
 
 ## 사건 → 뷰 풀 구독 (정본 경로)
-코어 쪽(`Wassup.BattleCore`):
+코어 쪽(`Somnia.Battle.BattleCore`):
 1. 사건 종류 = `CoreEventKind`(`BattleCore/Match/CoreEvent.cs`). **append-only** — 새 종류는 `_Count` 앞에 넣는다.
 2. 사건을 낼 곳 = 그 일의 **담당자**. 담당자가 `EventBus.Publish` 로 쌓고(`BattleCore/Match/EventBus.cs`) 틱 끝에 배달된다.
 3. 페이로드는 값 스냅샷이다 — 발화 시점의 자리·몸 반경·정의표 인덱스(`DefIndex`)·수치를 싣는다. 소멸·사망처럼 드레인 시점에 주체가 없는 사건이 있으므로 id 로 되물을 값을 싣지 않는 것이 아니라 **값 자체를** 싣는다.
 4. 새 종류를 열면 관측 정거장도 같이 연다 — `BattleCore/Harness/CoreTrace.cs` 의 `CoreTraceChannel`(append-only) + `TryChannel` 매핑.
 
-Unity 층(`Wassup.BattleCoreUnity`):
+Unity 층(`Somnia.Battle.BattleCoreUnity`):
 1. `BattleDriver` 가 틱 뒤·커맨드 적용 직후에 `DrainEvents()` 로 코어 사건을 구독자에게 다시 방출한다. 커맨드(배치 등)가 만든 사건은 `Apply` 안에서 즉시 배달된다 — 정지 중에도 배치가 보이는 이유.
 2. 뷰 풀은 `[SerializeField] private BattleDriver _driver;` 를 들고 `OnEnable` 에서 `_driver.Subscribe(ViewOrder.X, OnCoreEvent)`, `OnDisable` 에서 `_driver.Unsubscribe(OnCoreEvent)` 한다. 핸들러는 `switch (e.Kind)` 로 자기 사건만 고른다. 모범: `View/CoreVfxSpawner.cs`.
 3. 순서는 `ViewOrder` 상수(`BattleCoreUnity/ViewOrder.cs`)가 말한다 — `Leap → Board → Unit → Projectile → Effect → Damage → Status → Overhead → Hand → Audio → Outcome`. C# 이벤트 등록 순서(= 씬 나열 순서)에 기대지 않는다. 몸에 붙는 VFX 는 유닛 뷰가 선 뒤(`Effect` 이상)라야 앵커가 있다.
 4. `CoreEventKind.MatchStarted` 에서 판별 상태(대기 목록·카운터)를 비운다.
-5. 앵커가 필요하면 다른 풀이 노출한 읽기 창을 쓴다(예: `CoreUnitViewPool.TryResolveViewPosition`). sim→view 좌표는 `Wassup.Core.BoardSpace.ToView`.
+5. 앵커가 필요하면 다른 풀이 노출한 읽기 창을 쓴다(예: `CoreUnitViewPool.TryResolveViewPosition`). sim→view 좌표는 `Somnia.Battle.Core.BoardSpace.ToView`.
 
 ## Decision Tree
 ```text

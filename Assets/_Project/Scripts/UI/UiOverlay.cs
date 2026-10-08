@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     /// 팝업/오버레이 UI 뒤 전체화면 dim 의 단일 소스.
     /// 인게임 배틀 메뉴·전투 결과·드림캐쳐 카드팝업·스쿼드 피커·드림캐쳐 선택 등

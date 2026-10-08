@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // fluid-paint-mixing unit 0 — 유체 솔버의 아키텍처-blind 순수 계산 (plain in/out, EditMode 테스트 대상).
     // GraphicsFormat/RenderTexture/Time 을 모른다. 해상도·텍셀 크기만 값으로 결정하고, 결정된 값을

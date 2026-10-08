@@ -1,4 +1,4 @@
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 0 — 악몽의 가호. host 와 **같은 진영**에 실드를 나눠준다.
     //

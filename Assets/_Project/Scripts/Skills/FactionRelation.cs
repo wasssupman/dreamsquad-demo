@@ -1,4 +1,4 @@
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 2b — 진영을 **상대적으로** 부르는 순수 함수.
     //

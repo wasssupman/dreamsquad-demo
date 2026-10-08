@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // prop-upright-root unit 1 — 프레임 flip 불변식 가드(순수 트랜스폼 수학, Play 불필요).
     public class PropUprightRootTests

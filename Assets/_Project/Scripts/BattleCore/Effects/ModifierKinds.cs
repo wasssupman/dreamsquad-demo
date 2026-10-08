@@ -1,10 +1,10 @@
 using System;
 
-namespace Wassup.BattleCore.Effects
+namespace Somnia.Battle.BattleCore.Effects
 {
     // battle-core-rebuild unit 6a — 효과 어휘.
     //
-    // `StatKind`·`CombineOp`·`StackKind` 는 `Wassup.Skills` 의 `Skill*` 미러와 **값이 같아야
+    // `StatKind`·`CombineOp`·`StackKind` 는 `Somnia.Battle.Skills` 의 `Skill*` 미러와 **값이 같아야
     // 한다**(어댑터가 캐스트로 번역한다). 어셈블리가 갈려 컴파일러가 못 잡는 자리라
     // `CoreSkillEnumPinTests` 가 유일한 그물이다 — 옛 `SkillModifierKindPinTests` 의 후계다.
     //
@@ -30,7 +30,7 @@ namespace Wassup.BattleCore.Effects
         Override = 2,
     }
 
-    /// <summary>쌓이는 것. 값은 `Wassup.Skills.SkillStackKind` 와 같다.</summary>
+    /// <summary>쌓이는 것. 값은 `Somnia.Battle.Skills.SkillStackKind` 와 같다.</summary>
     public enum StackKind : byte
     {
         None = 0,

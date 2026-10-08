@@ -1,9 +1,9 @@
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Data.Season
+namespace Somnia.Battle.Data.Season
 {
-    [CreateAssetMenu(menuName = "Wassup/Season/SeasonData", fileName = "season")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Season/SeasonData", fileName = "season")]
     public sealed class SeasonData : ScriptableObject
     {
         public string seasonId = "S1_Forest";

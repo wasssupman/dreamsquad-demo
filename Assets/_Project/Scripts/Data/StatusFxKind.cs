@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // unit-status-fx Unit 0 — 상태 연출 종류. append-only(직렬화 안전: 새 상태는 끝에).
     // 각 kind 는 StatusFxRegistry 에서 프리팹으로 매핑된다(옛 전투에선 BattleBridge reconcile 이

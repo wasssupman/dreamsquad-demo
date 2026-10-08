@@ -1,10 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // battle-core-rebuild 5b 수정 — **배치 비행.** 옛 `DefenderDragPlacementController` 의
     // 드롭 하마(`StartDropDismount`·`RunDropDismount`, `defender-drop-dismount` +
@@ -91,7 +91,7 @@ namespace Wassup.BattleCoreUnity.View
         {
             if (_driver == null || !_driver.Running || _config == null) return false;
             if (_flight.ContainsKey(id.Value)) return false;          // 이미 난다(경계 동시 관통 방어)
-            if (!Wassup.Core.BoardSpace.IsConfigured) return false;
+            if (!Somnia.Battle.Core.BoardSpace.IsConfigured) return false;
 
             var u = _driver.Find(id);
             if (u == null) return false;
@@ -144,10 +144,10 @@ namespace Wassup.BattleCoreUnity.View
                 float raw = Mathf.Clamp01(elapsed / duration);
                 float f = raw <= recoilFrac
                     ? raw
-                    : recoilFrac + (1f - recoilFrac) * Wassup.Presentation.MotionMath.FlightTimeRemap(
+                    : recoilFrac + (1f - recoilFrac) * Somnia.Battle.Presentation.MotionMath.FlightTimeRemap(
                           (raw - recoilFrac) / (1f - recoilFrac), _config.dropHangPower);
 
-                Vector3 p = Wassup.Presentation.MotionMath.DismountPoint(
+                Vector3 p = Somnia.Battle.Presentation.MotionMath.DismountPoint(
                     start, Vector3.zero, end, camUp,
                     recoilFrac, _config.dropRecoilDip,
                     _config.dropArcHeightFactor, _config.dropArcMinHeight,
@@ -206,7 +206,7 @@ namespace Wassup.BattleCoreUnity.View
         /// </summary>
         private Vector3 RestViewPos(Unit u)
         {
-            Vector3 world = (Vector3)Wassup.Core.BoardSpace.ToView(u.Position);
+            Vector3 world = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(u.Position);
             var assets = _driver.DefenderAssets;
             var visual = u.DefIndex >= 0 && u.DefIndex < assets.Count
                 ? assets[u.DefIndex] as ISpineUnitVisualData
@@ -217,14 +217,14 @@ namespace Wassup.BattleCoreUnity.View
         private static Vector3 ScreenToBoardPoint(Camera cam, Vector2 screen, Vector3 fallback)
         {
             var ray = cam.ScreenPointToRay(screen);
-            var plane = Wassup.Core.BoardSpace.RaycastPlane();
+            var plane = Somnia.Battle.Core.BoardSpace.RaycastPlane();
             return plane.Raycast(ray, out float enter) && enter > 0f ? ray.GetPoint(enter) : fallback;
         }
 
         // 보드 평면 법선을 카메라 쪽으로 세운다(`BoardSpace` 의 법선은 아래를 향할 수 있다).
         private static Vector3 BoardNormalToward(Camera cam, Vector3 at)
         {
-            Vector3 n = Wassup.Core.BoardSpace.RaycastPlane().normal.normalized;
+            Vector3 n = Somnia.Battle.Core.BoardSpace.RaycastPlane().normal.normalized;
             if (Vector3.Dot(n, cam.transform.position - at) < 0f) n = -n;
             return n;
         }

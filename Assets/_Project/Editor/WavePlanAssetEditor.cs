@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.Editor
+namespace Somnia.Battle.Editor
 {
     // wave-plan-authoring-inspector unit 0 — WavePlanAsset 경량 작성 인스펙터.
     // SerializedProperty 기반(Undo/dirty/멀티 정상). 데이터 모델/런타임 무변경.

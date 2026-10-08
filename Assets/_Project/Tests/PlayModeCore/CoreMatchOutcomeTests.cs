@@ -2,12 +2,12 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Goals;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Goals;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 5c — **판이 끝나면 결과가 보이고, 올라갈 판만 올라간다.**
     //
@@ -152,7 +152,7 @@ namespace Wassup.Tests.PlayMode.Core
 
             var audio = Object.FindAnyObjectByType<CoreBattleAudio>();
             Assert.IsNotNull(audio, "BattleCoreScene 에 전투 사운드가 없다");
-            Assert.IsNotNull(Wassup.Core.SoundManager.Instance, "새 씬에 SoundManager 가 없다");
+            Assert.IsNotNull(Somnia.Battle.Core.SoundManager.Instance, "새 씬에 SoundManager 가 없다");
             Assert.AreEqual(0, audio.PlaceCues);
 
             driver.Apply(Command.FinishPlacement());

@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Map;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Map;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7d — **시즌 기믹이 저절로 일어난다.** 6b2 는 셈판을 세우고 「무엇이 언제 놓나」를 남겼다.
     // 여기서 묻는 것은 그 답의 모양이다: ⑴ 레드불만 **판**의 주기 ⑵ 온천·번아웃은 **유닛마다** 부착 시점이 위상

@@ -1,9 +1,9 @@
 using NUnit.Framework;
-using Wassup.Skills;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Goals;
+using Somnia.Battle.Skills;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Goals;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 4 — 목표 concrete 3 과 성적.
     [TestFixture]

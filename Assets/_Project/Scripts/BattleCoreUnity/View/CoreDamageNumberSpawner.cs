@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.Presentation;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.BattleCoreUnity.View
+namespace Somnia.Battle.BattleCoreUnity.View
 {
     // Prefab-only floating damage-number layer, mirroring VfxSpawner. Subscribes to
     // core damage events through `BattleDriver` and calls Spawn() per event. Pools popups to avoid GC spikes under heavy fire.
@@ -113,7 +113,7 @@ namespace Wassup.BattleCoreUnity.View
             int shown = Mathf.Max(1, Mathf.RoundToInt(amount));
 
             // sim → view: ToView applied here ONLY (View.Play receives view-space, no re-transform).
-            Vector3 viewPos = (Vector3)Wassup.Core.BoardSpace.ToView(worldPos);
+            Vector3 viewPos = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(worldPos);
             // Head anchor: lift in the camera plane (HeadAnchor 함정 참조 — world-up 은 외곽 타일에서
             // 팝업을 화면 바깥으로 민다), post-ToView (sim-Y is dropped by ToView), matching driftUp's axis.
             Vector3 anchor = HeadAnchor.Lift(viewPos, Vector3.up * style.headViewOffset, cam);

@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-migration unit 8 — **화염 브레스.** 정면 부채꼴에 즉발 피해.
     //

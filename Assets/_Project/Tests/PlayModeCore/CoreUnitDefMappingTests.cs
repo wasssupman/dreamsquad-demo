@@ -2,10 +2,10 @@ using System.Collections;
 using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 5b 수정 — **정의표 유닛 줄이 저작을 다 싣는가.**
     //

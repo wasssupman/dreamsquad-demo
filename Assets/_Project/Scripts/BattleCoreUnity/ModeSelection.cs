@@ -1,6 +1,6 @@
-using Wassup.Data;
+using Somnia.Battle.Data;
 
-namespace Wassup.BattleCoreUnity
+namespace Somnia.Battle.BattleCoreUnity
 {
     // battle-core-rebuild unit 5c — **「이 판을 무엇으로 짓나」가 씬 경계를 넘는 자리.**
     //

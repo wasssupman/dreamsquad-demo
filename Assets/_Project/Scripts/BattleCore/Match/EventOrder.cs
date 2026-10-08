@@ -1,4 +1,4 @@
-namespace Wassup.BattleCore
+namespace Somnia.Battle.BattleCore
 {
     // battle-core-rebuild unit 4 — **담당자 사이의 순서 계약을 한 화면에 모은 곳.**
     //

@@ -3,12 +3,12 @@ using System.Reflection;
 using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     // battle-core-rebuild unit 9 — 옛 `ProjectileVariationTests` 의 규칙을 새 풀(`CoreProjectileViewPool`)로 옮긴 것.
     //

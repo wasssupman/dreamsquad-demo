@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 323e27850bd0843e387d323670ebb3bb, type: 3}
   m_Name: Stone_022
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.Dreamstone.DreamstoneData
+  m_EditorClassIdentifier: Somnia.Battle.Runtime::Somnia.Battle.Data.Dreamstone.DreamstoneData
   id: stone_022
   displayName: Epic Attack Speed Stone
   icon: {fileID: 21300000, guid: e0fa3459a90c34a139914ecc104937b6, type: 3}

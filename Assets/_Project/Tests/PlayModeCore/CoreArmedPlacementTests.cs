@@ -4,14 +4,14 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.BattleCoreUnity.Input;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCoreUnity.Input;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 5b 수정 — **집어 들고 판을 탭해서 놓는 길이 있는가.**
     //
@@ -225,7 +225,7 @@ namespace Wassup.Tests.PlayMode.Core
         private static Vector2 ScreenOfCell(BattleDriver driver, Camera cam, Vector2Int cell)
         {
             float ts = driver.TileSize;
-            Vector3 world = (Vector3)Wassup.Core.BoardSpace.ToView(
+            Vector3 world = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(
                 new float3(cell.x * ts, 0f, cell.y * ts));
             return cam.WorldToScreenPoint(world);
         }

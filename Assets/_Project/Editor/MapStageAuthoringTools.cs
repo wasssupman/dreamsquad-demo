@@ -1,9 +1,9 @@
 using UnityEditor;
 using UnityEngine;
-using Wassup.Core;
-using Wassup.Data;
+using Somnia.Battle.Core;
+using Somnia.Battle.Data;
 
-namespace Wassup.EditorTools
+namespace Somnia.Battle.EditorTools
 {
     // map-diorama-stage — 사용자 저작 스테이지 프리팹에 마커를 심는 도구(러너 태스크/코드 호출 전용, 메뉴 없음).
     // 구 MapStageDummyGenerator(KayKit 절차 조립 — Pilot·DuelClassic)는 unit 12 에서 은퇴했다. 절차 조립 예시는
@@ -90,13 +90,13 @@ namespace Wassup.EditorTools
             var style = AssetDatabase.LoadAssetAtPath<MarkerPropStyle>(MarkerPropStylePath);
             var stage = stageInstance.GetComponent<MapStage>();
             if (style == null || stage == null) return -1;
-            return Wassup.Presentation.MarkerPropInstaller.Apply(stage, style);
+            return Somnia.Battle.Presentation.MarkerPropInstaller.Apply(stage, style);
         }
 
         // SpawnPortal_Red 의 색상 변형 — 파티클 startColor(min 흰색 / max 빨강 계열) 의 색조만 노랑으로 돌린다(채도·명도 유지).
         // 머티리얼(Portal_Circle/Point/Smoke)은 공유 — 색은 startColor 에만 있어야 GoalMarker 의 스트레스 틴트(머티리얼 _Color 에 곱)와 겹치지 않는다.
         // 방향은 스폰 포탈과 동일(루트 identity — 수직으로 선 포탈, 사용자 결정 2026-08-27). 멱등: 있으면 덮어쓴다.
-        [MenuItem("Window/Wassup/Map Stage/Create Goal Portal (Yellow)")]
+        [MenuItem("Window/Somnia/Battle/Map Stage/Create Goal Portal (Yellow)")]
         public static void CreateGoalPortalYellowMenu() => Debug.Log(CreateGoalPortalYellow());
 
         public static string CreateGoalPortalYellow()

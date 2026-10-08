@@ -5,15 +5,15 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Cards;
-using Wassup.BattleCoreUnity.Hud;
-using Wassup.BattleCoreUnity.Input;
-using Wassup.BattleCoreUnity.View;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Cards;
+using Somnia.Battle.BattleCoreUnity.Hud;
+using Somnia.Battle.BattleCoreUnity.Input;
+using Somnia.Battle.BattleCoreUnity.View;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild unit 7c — **카드가 손에 잡히나.** 사건 → 뷰 수 일치 · 회수 · 제스처 사슬(선택 → 손패 → 탭/끌기 → 커맨드 →
     // receipt → 카드 줄) · 거절 문구 = 코어 답 · 표식은 숙주 소멸로 거둔다.
@@ -104,7 +104,7 @@ namespace Wassup.Tests.PlayMode.Core
 
             // 반경 = 판정과 같은 함수(`RangeCatalog` → `RadiusWithOrigin(host 몸)`). 이 카드는 **몸에서 나오는 것**이라 원점 항 = 몸.
             var spec = CoreCardDragSlot.CardRangeOf(c.Driver.Definition, cardIndex);
-            Assert.AreNotEqual(Wassup.BattleCore.Trigger.RangeShape.None, spec.Shape, "시험 카드에 공간 도형이 없다 — 링을 증언할 수 없다");
+            Assert.AreNotEqual(Somnia.Battle.BattleCore.Trigger.RangeShape.None, spec.Shape, "시험 카드에 공간 도형이 없다 — 링을 증언할 수 없다");
             Assert.IsTrue(c.Overlay.TryGetCardArea(out float r, out var center), "유효 락온인데 부착 범위 링이 없다");
             var u = c.Driver.Find(host);
             Assert.AreEqual(spec.RadiusTiles + u.HitRadius, r, 1e-4f, "링 반경 = 반경 N + 숙주 몸(대상 몸은 안 그린다)");
@@ -226,7 +226,7 @@ namespace Wassup.Tests.PlayMode.Core
                 Assert.IsNotNull(cards[i], "카드 에셋이 없다: " + cardPaths[i]);
             }
             CoreSceneFixture.OverrideDeck(c.Driver, cards);
-            EnsureCardViews(UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.UI.DreamcatcherFocusConfig>(FocusConfig));
+            EnsureCardViews(UnityEditor.AssetDatabase.LoadAssetAtPath<Somnia.Battle.UI.DreamcatcherFocusConfig>(FocusConfig));
 #endif
             c.Hand = Object.FindAnyObjectByType<CoreHandView>();
             c.Selection = Object.FindAnyObjectByType<SelectionInput>();
@@ -249,7 +249,7 @@ namespace Wassup.Tests.PlayMode.Core
         }
 
         // 씬에 카드 화면이 아직 배선되지 않았으면 세운다(부착 조준 포커스 저작도 건다 — 포커스 경로를 같이 태운다).
-        private static void EnsureCardViews(Wassup.UI.DreamcatcherFocusConfig focus)
+        private static void EnsureCardViews(Somnia.Battle.UI.DreamcatcherFocusConfig focus)
         {
             if (Object.FindAnyObjectByType<CoreAwakeningGaugeView>() == null)
                 new GameObject("TestJarDock").AddComponent<CoreAwakeningGaugeView>();
@@ -312,7 +312,7 @@ namespace Wassup.Tests.PlayMode.Core
         {
             var cam = c.Hand.MainCamera;
             var u = c.Driver.Find(enemy);
-            var p = cam.WorldToScreenPoint((Vector3)Wassup.Core.BoardSpace.ToView(u.Position));
+            var p = cam.WorldToScreenPoint((Vector3)Somnia.Battle.Core.BoardSpace.ToView(u.Position));
             return new Vector2(p.x, p.y);
         }
 

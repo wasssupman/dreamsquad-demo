@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.Skills.Concrete
+namespace Somnia.Battle.Skills.Concrete
 {
     // skill-layer-foundation unit 5 — 첫 concrete. 자장가.
     //

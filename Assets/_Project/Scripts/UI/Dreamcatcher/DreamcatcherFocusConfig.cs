@@ -1,12 +1,12 @@
 using UnityEngine;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     // dreamcatcher-attach-lockon unit 0 — 부착 조준 포커스 연출의 모든 시각·타이밍
     // 노브. 경제/규칙 노브(AwakeningConfig)와 분리한 feel 튜닝 블록(런타임 튜닝 SO
     // DragSwaySettings 선례). DreamcatcherHandView 가 [SerializeField] 로 보유하고
     // DreamcatcherFocusPresenter 가 소비한다. 하드코딩 0 (제약 #6).
-    [CreateAssetMenu(menuName = "Wassup/Dreamcatcher/Focus Config", fileName = "DreamcatcherFocusConfig")]
+    [CreateAssetMenu(menuName = "Somnia/Battle/Dreamcatcher/Focus Config", fileName = "DreamcatcherFocusConfig")]
     public class DreamcatcherFocusConfig : ScriptableObject
     {
         [Header("A · 전장 dim")]
@@ -89,7 +89,7 @@ namespace Wassup.UI
         // 색 규칙: 시안 *계열*이되 리티클/base-ring 의 (0.42, 0.95, 1) 과 **같은 값 금지** — dim 곱 후
         // 「죽은 시안」으로 읽힌다. confirmPulseColor 가족(밝은 쪽)에서 시작해 실기기에서 튠.
         // 청보라 보드에서 실패하면 따뜻한 무채(달빛, 1 / 0.92 / 0.7 계열) 2안.
-        public Wassup.Data.RangeRingStyle attachRangeStyle
-            = new Wassup.Data.RangeRingStyle(new Color(0.72f, 1f, 0.96f, 1f), 0.4f, 0.9f);
+        public Somnia.Battle.Data.RangeRingStyle attachRangeStyle
+            = new Somnia.Battle.Data.RangeRingStyle(new Color(0.72f, 1f, 0.96f, 1f), 0.4f, 0.9f);
     }
 }

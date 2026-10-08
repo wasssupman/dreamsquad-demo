@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.U2D.Sprites;
 using UnityEngine;
-using Wassup.Data;
-using Wassup.Presentation;
+using Somnia.Battle.Data;
+using Somnia.Battle.Presentation;
 
-namespace Wassup.Editor
+namespace Somnia.Battle.Editor
 {
     // sprite-flipbook-player unit 3 — 통 시트에서 프레임 배열을 채우는 오소링 유틸.
     // 슬라이스 자체는 Unity 임포터(Sprite Mode = Multiple)가 하고, 여기는 나온 서브스프라이트를

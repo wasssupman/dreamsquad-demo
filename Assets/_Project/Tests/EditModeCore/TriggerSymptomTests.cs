@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Combat.Projectile;
-using Wassup.BattleCore.Trigger;
-using Wassup.Skills;
-using static Wassup.Tests.EditMode.Core.CoreTriggerFixtures;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Combat.Projectile;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.Skills;
+using static Somnia.Battle.Tests.EditMode.Core.CoreTriggerFixtures;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 7a — **증상 단언**(규칙이 화면에서 보이는 형태로) + 캐논 1:1 융단폭격.
     //
@@ -100,7 +100,7 @@ namespace Wassup.Tests.EditMode.Core
             Assert.IsTrue(spawned[0].B.IsNone, "시전자가 없다 — 귀속할 유닛이 없다");
             Assert.AreEqual(site.x, spawned[0].SiteFired.Pos.x, 1e-4f, "쓰러진 그 자리에서");
             Assert.AreEqual(body, spawned[0].SiteFired.OriginBody, 1e-5f, "자기 몸만큼(발화 시점 스냅샷 — 0 으로 새지 않는다)");
-            Assert.AreEqual(Wassup.Skills.Faction.DefenderUnit, spawned[0].Faction, "진영도 값이다 — 적을 때린다");
+            Assert.AreEqual(Somnia.Battle.Skills.Faction.DefenderUnit, spawned[0].Faction, "진영도 값이다 — 적을 때린다");
             Assert.IsTrue(hits.Exists(h => h.B == e.Id && System.Math.Abs(h.Amount - 7f) < 1e-4f), "옆의 적이 맞았다");
         }
 
@@ -118,7 +118,7 @@ namespace Wassup.Tests.EditMode.Core
                 new PatternDef
                 {
                     Id = "fixture_cannon_strike", BarrelProjectileDefIndex = 0,
-                    Selection = (int)Wassup.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin,
+                    Selection = (int)Somnia.Battle.BattleCore.Combat.Emission.PatternSelectionRule.RoundRobin,
                     Shots = new[] { new PatternShotDef { DirectionT = 0.5f } },
                     ReselectPerShot = true, TelegraphSec = 0.4f, ScopeTileRange = 3,
                     FanOutToAllCandidates = fanOut, FanOutStaggerSec = 0.08f,

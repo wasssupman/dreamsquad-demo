@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using Wassup.Presentation;
+using Somnia.Battle.Presentation;
 
 // idle-break-shared unit 0 — 대기 컷 전이 규칙. 두 뷰(Spine·스프라이트)가 이 구조체를 공유하므로
 // 여기가 빨개지면 양쪽 대기 동작이 같이 바뀐 것이다.

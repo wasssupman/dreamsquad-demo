@@ -1,7 +1,7 @@
 using UnityEngine;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.BattleCoreUnity.Hud
+namespace Somnia.Battle.BattleCoreUnity.Hud
 {
     // battle-core-rebuild unit 8a — **결과 화면 뒤로 전투 HUD 를 숨긴다**(README 고지 ⑴ · rules X19).
     //

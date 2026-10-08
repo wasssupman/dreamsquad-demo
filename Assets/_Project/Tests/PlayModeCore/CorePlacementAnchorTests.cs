@@ -3,12 +3,12 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Wassup.BattleCore;
-using Wassup.BattleCoreUnity;
-using Wassup.BattleCoreUnity.Input;
-using Wassup.Data;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.BattleCoreUnity.Input;
+using Somnia.Battle.Data;
 
-namespace Wassup.Tests.PlayMode.Core
+namespace Somnia.Battle.Tests.PlayMode.Core
 {
     // battle-core-rebuild 5b 수정 — **손끝이 가리킨 칸이 곧 결과인가.**
     //
@@ -70,7 +70,7 @@ namespace Wassup.Tests.PlayMode.Core
 
             // 그 칸 한가운데를 손끝으로 가리킨다.
             float ts = driver.TileSize;
-            Vector3 world = (Vector3)Wassup.Core.BoardSpace.ToView(
+            Vector3 world = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(
                 new float3(fingerCell.x * ts, 0f, fingerCell.y * ts));
             Vector2 screen = cam.WorldToScreenPoint(world);
 
@@ -113,7 +113,7 @@ namespace Wassup.Tests.PlayMode.Core
             Assert.IsTrue(found, "그 앵커의 손끝 칸을 못 찾았다");
 
             float ts = driver.TileSize;
-            Vector3 world = (Vector3)Wassup.Core.BoardSpace.ToView(
+            Vector3 world = (Vector3)Somnia.Battle.Core.BoardSpace.ToView(
                 new float3(fingerCell.x * ts, 0f, fingerCell.y * ts));
             Vector2 screen = cam.WorldToScreenPoint(world);
 

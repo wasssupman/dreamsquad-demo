@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
-    [CreateAssetMenu(fileName = "DreamstoneCatalog", menuName = "Wassup/DreamstoneCatalog", order = 24)]
+    [CreateAssetMenu(fileName = "DreamstoneCatalog", menuName = "Somnia/Battle/DreamstoneCatalog", order = 24)]
     public class DreamstoneCatalog : ScriptableObject
     {
         public DreamstoneData[] stones;

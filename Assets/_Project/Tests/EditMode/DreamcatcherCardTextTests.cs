@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Data.Authoring;
-using Wassup.Data;
-using Wassup.UI;
-using Wassup.BattleCore.Trigger;
+using Somnia.Battle.Data.Authoring;
+using Somnia.Battle.Data;
+using Somnia.Battle.UI;
+using Somnia.Battle.BattleCore.Trigger;
 
-namespace Wassup.Tests.EditMode
+namespace Somnia.Battle.Tests.EditMode
 {
     public class DreamcatcherCardTextTests
     {

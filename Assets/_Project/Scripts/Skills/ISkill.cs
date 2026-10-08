@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace Wassup.Skills
+namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 3 — 스킬 하나.
     //

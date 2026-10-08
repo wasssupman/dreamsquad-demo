@@ -1,6 +1,6 @@
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 6b2 — 기믹 셈판 테스트의 공용 고정구.
     //

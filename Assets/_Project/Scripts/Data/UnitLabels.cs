@@ -1,4 +1,4 @@
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
     // squad-character-page Unit 1 — shared enum -> Korean label mapping for
     // defender identity (class role, rarity). Extracted from UnitKitSummary on the

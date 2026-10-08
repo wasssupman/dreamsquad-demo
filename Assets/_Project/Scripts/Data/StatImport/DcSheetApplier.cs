@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-namespace Wassup.Data.StatImport
+namespace Somnia.Battle.Data.StatImport
 {
     // dreamcatcher-sheet-sync unit 2 — the dreamcatcher-tab apply core. Same
     // id-match partial-update philosophy as UnitStatApplier(flat tabs — cards · skills · configs).

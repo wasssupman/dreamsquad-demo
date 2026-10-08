@@ -3,9 +3,9 @@ using Spine.Unity;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace Wassup.Data
+namespace Somnia.Battle.Data
 {
-    [CreateAssetMenu(fileName = "AttackUnit", menuName = "Wassup/AttackUnit", order = 10)]
+    [CreateAssetMenu(fileName = "AttackUnit", menuName = "Somnia/Battle/AttackUnit", order = 10)]
     public class AttackUnitData : ScriptableObject, ISpineUnitVisualData
     {
         // unit-stat-spreadsheet-schema Unit 1 — stable id for spreadsheet import
@@ -82,8 +82,8 @@ namespace Wassup.Data
         // ⚠ **미저작 적의 실제 기본값은 이 이니셜라이저다**(`Resolve` 의 «0 = 폴백» 이 아니다).
         // YAML 에 키가 없으면 이 값이 남아 폴백 분기를 안 탄다 — 두 값을 같은 상수로 묶어둔 이유.
         [Tooltip("이 적이 노리는 대상(진영 × 종류). 비우면(None) 기본값 = 상대 진영 전부.")]
-        public Wassup.Skills.Faction targetFactions =
-            (Wassup.Skills.Faction)Wassup.Data.Authoring.EnemyTargetDefaults.DefaultEnemyMask;
+        public Somnia.Battle.Skills.Faction targetFactions =
+            (Somnia.Battle.Skills.Faction)Somnia.Battle.Data.Authoring.EnemyTargetDefaults.DefaultEnemyMask;
 
         public float health = 100f;
         public float moveSpeed = 2f;
@@ -141,7 +141,7 @@ namespace Wassup.Data
             BodySize.Medium => 0.5f,
             BodySize.Large => 1.0f,
             BodySize.Boss => bodyRadius,
-            _ => Wassup.Skills.SkillMath.StandardBodyRadiusTiles,   // Small = 표준 소형 상대
+            _ => Somnia.Battle.Skills.SkillMath.StandardBodyRadiusTiles,   // Small = 표준 소형 상대
         };
         // enemy-behavior-components Unit 6 — melee AoE. Nearest N in-range targets hit
         // per attack (melee/outputs path). 1 = single-target. Aggroed enemies are

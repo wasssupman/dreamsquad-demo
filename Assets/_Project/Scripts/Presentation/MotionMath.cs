@@ -1,9 +1,9 @@
 using UnityEngine;
 
-namespace Wassup.Presentation
+namespace Somnia.Battle.Presentation
 {
     // keyring-unify 0 → demo-diet unit 0 — 전투 연출이 쓰는 공통 운동 수학(스프링 추종 · 하마 궤적 · 비행 시간 재매핑).
-    // 옛 `Wassup.UI.KeyringSim` 의 후계다. 아웃게임 키링과 공유하던 파일이라 이름이 「키링」이었고, 로비 전용 몫
+    // 옛 `Somnia.Battle.UI.KeyringSim` 의 후계다. 아웃게임 키링과 공유하던 파일이라 이름이 「키링」이었고, 로비 전용 몫
     // (`FallStep` 낙하·`LeanAngle` 기울임·`ThrowArcControls` 던지기)은 아웃게임과 함께 지웠다. 소비처 = `CameraDirector`
     // (포인터 추종·헤드룸·오버뷰 가중치), `CoreHandView`(손패 간격), `CoreDeployFlightPresenter`·`CoreLeapPresenter`(하마).
     // 순수 static, 좌표계 비의존(Vector3 본체 + Vector2/스칼라 포워딩 오버로드 — z=0, bit-exact).

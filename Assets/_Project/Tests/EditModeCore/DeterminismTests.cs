@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using Unity.Mathematics;
-using Wassup.BattleCore;
+using Somnia.Battle.BattleCore;
 
-namespace Wassup.Tests.EditMode.Core
+namespace Somnia.Battle.Tests.EditMode.Core
 {
     // battle-core-rebuild unit 1 완료 기준 ② — 결정론.
     //
@@ -102,15 +102,15 @@ namespace Wassup.Tests.EditMode.Core
                 new AttackOutputDef
                 {
                     Kind = AttackOutputKind.ApplyStat,
-                    Stat = (int)Wassup.BattleCore.Effects.StatKind.MoveSpeedMul,
-                    Op = (int)Wassup.BattleCore.Effects.CombineOp.Multiplicative,
+                    Stat = (int)Somnia.Battle.BattleCore.Effects.StatKind.MoveSpeedMul,
+                    Op = (int)Somnia.Battle.BattleCore.Effects.CombineOp.Multiplicative,
                     Magnitude = 0.7f,
                     Duration = 2f,
                 },
                 new AttackOutputDef
                 {
                     Kind = AttackOutputKind.ApplyStack,
-                    StackKind = (int)Wassup.BattleCore.Effects.StackKind.Fire,
+                    StackKind = (int)Somnia.Battle.BattleCore.Effects.StackKind.Fire,
                     Magnitude = 1f,
                 },
             };
@@ -121,8 +121,8 @@ namespace Wassup.Tests.EditMode.Core
                 new AttackOutputDef
                 {
                     Kind = AttackOutputKind.ApplyStat,
-                    Stat = (int)Wassup.BattleCore.Effects.StatKind.AttackSpeedMul,
-                    Op = (int)Wassup.BattleCore.Effects.CombineOp.Multiplicative,
+                    Stat = (int)Somnia.Battle.BattleCore.Effects.StatKind.AttackSpeedMul,
+                    Op = (int)Somnia.Battle.BattleCore.Effects.CombineOp.Multiplicative,
                     Magnitude = 0.9f,
                     Duration = 1.5f,
                 },
@@ -132,7 +132,7 @@ namespace Wassup.Tests.EditMode.Core
                 new StackRuleDef
                 {
                     Id = "determinism_fire",
-                    Kind = (int)Wassup.BattleCore.Effects.StackKind.Fire,
+                    Kind = (int)Somnia.Battle.BattleCore.Effects.StackKind.Fire,
                     MaxStack = 5,
                     PerAppDuration = 3f,
                     Thresholds = new[]

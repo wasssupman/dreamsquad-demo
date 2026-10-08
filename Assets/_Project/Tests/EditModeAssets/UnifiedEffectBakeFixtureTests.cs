@@ -3,15 +3,15 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wassup.BattleCore;
-using Wassup.BattleCore.Trigger;
-using Wassup.BattleCoreUnity;
-using Wassup.Data;
-using Wassup.Tests.EditMode;
-using Wassup.Skills;
-using Wassup.Tests.EditMode.Core;
+using Somnia.Battle.BattleCore;
+using Somnia.Battle.BattleCore.Trigger;
+using Somnia.Battle.BattleCoreUnity;
+using Somnia.Battle.Data;
+using Somnia.Battle.Tests.EditMode;
+using Somnia.Battle.Skills;
+using Somnia.Battle.Tests.EditMode.Core;
 
-namespace Wassup.Tests.EditModeAssets
+namespace Somnia.Battle.Tests.EditModeAssets
 {
     // unified-effect-layer unit 5 — **하드 케이스 둘을 저작 경로로 굽는다**(가이드 §5 · 5_single_validator 완료 기준 3).
     //

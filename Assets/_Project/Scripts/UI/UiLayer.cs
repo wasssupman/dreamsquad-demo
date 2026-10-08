@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.UI
+namespace Somnia.Battle.UI
 {
     /// <summary>
     /// 런타임에 코드로 생성되는 UI GameObject 트리를 프로젝트 "UI" 레이어로 통일한다.

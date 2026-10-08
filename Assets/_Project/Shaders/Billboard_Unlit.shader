@@ -1,4 +1,4 @@
-Shader "Wassup/Billboard_Unlit"
+Shader "Somnia/Battle/Billboard_Unlit"
 {
     Properties
     {
