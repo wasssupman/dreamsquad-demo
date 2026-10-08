@@ -31,8 +31,9 @@ namespace PrimeTween {
     internal class InstallerInspector : Editor {
         internal const string pluginName = "PrimeTween";
         internal const string pluginPackageId = "com.kyrylokuzyk.primetween";
-        internal const string tgzPath = "Assets/Plugins/PrimeTween/internal/com.kyrylokuzyk.primetween.tgz";
-        internal const string newTgzPath = "Assets/Plugins/PrimeTween/internal/com.kyrylokuzyk.primetween-" + version + ".tgz";
+        internal const string packagesPath = "Packages/com.kyrylokuzyk.primetween.tgz";
+        const string assetsPath = "Assets/Plugins/PrimeTween/internal/com.kyrylokuzyk.primetween.tgz";
+        internal const string newAssetsPath = "Assets/Plugins/PrimeTween/internal/com.kyrylokuzyk.primetween-" + version + ".tgz";
         const string documentationUrl = "https://github.com/KyryloKuzyk/PrimeTween";
         bool isInstalled;
         bool hasNewTgz;
@@ -42,7 +43,7 @@ namespace PrimeTween {
 
         void OnEnable() {
             isInstalled = CheckPluginInstalled();
-            hasNewTgz = File.Exists(newTgzPath);
+            hasNewTgz = File.Exists(newAssetsPath);
         }
 
         /// Use Package Manager because Unity 2018 doesn't support version defines
@@ -77,6 +78,7 @@ namespace PrimeTween {
             if (hasNewTgz) {
                 if (Button($"Update to {version}", boldButtonStyle)) {
                     ReviewRequest.OnPackageUpdate();
+                    hasNewTgz = false;
                 }
                 Space(8);
             }
@@ -124,9 +126,10 @@ namespace PrimeTween {
 
             Space(8);
             if (Button("Uninstall", uninstallButtonStyle)) {
+                MoveToAssets();
                 Client.Remove(pluginPackageId);
                 isInstalled = false;
-                var msg = $"Please remove the folder manually to uninstall {pluginName} completely: 'Assets/Plugins/{pluginName}'";
+                string msg = $"Please remove the folder manually to uninstall {pluginName} completely: 'Assets/Plugins/{pluginName}'";
                 EditorUtility.DisplayDialog(pluginName, msg, "Ok");
                 Debug.Log(msg);
             }
@@ -159,17 +162,16 @@ namespace PrimeTween {
         }
 
         static void installPlugin() {
-            if (File.Exists(newTgzPath)) {
-                MoveAndRenameTgzArchive();
+            if (!MoveToPackages()) {
+                return;
             }
-
             ReviewRequest.OnBeforeInstall();
-            var path = $"file:../{tgzPath}";
+            var path = $"file:../{packagesPath}";
             var addRequest = Client.Add(path);
             while (!addRequest.IsCompleted) {
             }
             if (addRequest.Status == StatusCode.Success) {
-                Debug.Log($"{pluginName} installed successfully.\n" +
+                Debug.Log($"{pluginName} {version} installed successfully.\n" +
                           $"Offline documentation is located at Packages/{pluginName}/Documentation.md.\n" +
                           $"Online documentation: {documentationUrl}\n");
             } else {
@@ -177,20 +179,31 @@ namespace PrimeTween {
             }
         }
 
-        internal static void MoveAndRenameTgzArchive() {
-            Assert.IsTrue(File.Exists(newTgzPath));
-            Assert.IsTrue(File.Exists(newTgzPath + ".meta"));
-            File.Delete(tgzPath);
-            File.Delete(tgzPath + ".meta");
-            File.Move(newTgzPath, tgzPath);
-            File.Move(newTgzPath + ".meta", tgzPath + ".meta");
-            RevertTgzMeta();
+        internal static bool MoveToPackages() {
+            string origPath;
+            if (File.Exists(newAssetsPath)) {
+                origPath = newAssetsPath;
+
+                // delete the old file from before the Unity 6.5.5 fix
+                File.Delete(assetsPath);
+                File.Delete(assetsPath + ".meta");
+            } else if (File.Exists(assetsPath)) {
+                origPath = assetsPath;
+            } else {
+                Debug.LogError($"The installation archive is missing: '{newAssetsPath}'. Please re-import PrimeTween from Asset Store.");
+                return false;
+            }
+            File.Delete(packagesPath);
+            File.Move(origPath, packagesPath);
+            File.Delete(origPath + ".meta");
+            return true;
         }
 
-        static void RevertTgzMeta() {
-            const string path = tgzPath + ".meta";
-            Assert.IsTrue(File.Exists(path), path);
-            File.WriteAllText(path, @"fileFormatVersion: 2
+        static void MoveToAssets() {
+            if (File.Exists(packagesPath)) {
+                File.Delete(assetsPath);
+                File.Move(packagesPath, assetsPath);
+                File.WriteAllText(assetsPath + ".meta", @"fileFormatVersion: 2
 guid: cdd0c4b9889044d73bc958a922ada300
 DefaultImporter:
   externalObjects: {}
@@ -198,12 +211,14 @@ DefaultImporter:
   assetBundleName: 
   assetBundleVariant: 
 ");
+            }
         }
 
         [InitializeOnLoadMethod]
         static void InitOnLoad() {
             AssetDatabase.importPackageCompleted += name => {
                 if (name.Contains(pluginName)) {
+                    ReviewRequest.log($"importPackageCompleted {pluginName}");
                     if (CheckPluginInstalled()) {
                         ReviewRequest.OnPackageUpdate();
                     } else {
@@ -221,7 +236,7 @@ DefaultImporter:
             };
         }
 
-        internal const string version = "1.4.0";
+        internal const string version = "1.4.12";
     }
 
     internal static class FixedUpdateParameterMigration {
@@ -276,7 +291,6 @@ DefaultImporter:
                     Debug.unityLogger.Log(fixAutomatically.Value ? LogType.Warning : LogType.Error, logSb.ToString());
                 }
             }
-            // no need to call AssetDatabase.Refresh() here because MoveAndRenameTgzArchive() already does that
             return false;
         }
     }
@@ -288,12 +302,12 @@ DefaultImporter:
 
         internal static void OnPackageUpdate() {
             log("OnPackageUpdate");
-            if (!File.Exists(InstallerInspector.newTgzPath)) {
-                Debug.LogError($"The installation archive is missing: '{InstallerInspector.newTgzPath}'. Please re-import PrimeTween from Asset Store.");
+            if (!File.Exists(InstallerInspector.newAssetsPath)) {
+                Debug.LogError($"The installation archive is missing: '{InstallerInspector.newAssetsPath}'. Please re-import PrimeTween from Asset Store.");
                 return;
             }
             bool shouldAskForReview = true;
-            var scriptGuids = FixedUpdateParameterMigration.FindLocalScriptGuids();
+            string[] scriptGuids = FixedUpdateParameterMigration.FindLocalScriptGuids();
             if (FixedUpdateParameterMigration.Process(scriptGuids)) {
                 shouldAskForReview = false;
                 const string msg = "'bool useFixedUpdate' parameter was changed to 'UpdateType updateType' in version 1.3.0, which will cause breaking changes in your current project.\n" +
@@ -316,14 +330,17 @@ DefaultImporter:
                 bool fixAutomatically = response == 0;
                 FixedUpdateParameterMigration.Process(scriptGuids, fixAutomatically);
             }
-            InstallerInspector.MoveAndRenameTgzArchive();
+            if (!InstallerInspector.MoveToPackages()) {
+                return;
+            }
             if (UNITY_2018) {
                 var removeRequest = Client.Remove(InstallerInspector.pluginPackageId);
                 while (!removeRequest.IsCompleted) {
                 }
-                string path = $"file:../{InstallerInspector.tgzPath}";
+                string path = $"file:../{InstallerInspector.packagesPath}";
                 Client.Add(path);
             } else {
+                Client.Add($"file:../{InstallerInspector.packagesPath}");
                 EditorApplication.ExecuteMenuItem("Assets/Refresh"); // AssetDatabase.Refresh() refreshes the project only partially
             }
 
@@ -402,7 +419,7 @@ DefaultImporter:
         }
 
         [System.Diagnostics.Conditional("_")]
-        static void log(string msg) {
+        internal static void log(string msg) {
             Debug.Log($"ReviewRequest: {msg}");
         }
     }
@@ -443,7 +460,12 @@ DefaultImporter:
 
             string methodAssemblyName = methodsWithBug[0].Module.Assembly.FullName;
             const BindingFlags findAll = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-            int numPotentialIssues = AppDomain.CurrentDomain.GetAssemblies()
+            int numPotentialIssues =
+                #if UNITY_6000_7_OR_NEWER
+                UnityEngine.Assemblies.CurrentAssemblies.GetLoadedAssemblies()
+                #else
+                AppDomain.CurrentDomain.GetAssemblies()
+                #endif
                 .Where(assembly => assembly.GetReferencedAssemblies().Any(dependency => dependency.FullName == methodAssemblyName))
                 .Where(assembly => !assembly.GetName().Name.StartsWith("PrimeTween.", StringComparison.Ordinal))
                 .SelectMany(assembly => assembly.GetTypes())
