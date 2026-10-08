@@ -71,7 +71,7 @@
 - [x] **5** 문서 8 삭제 · stale 문단 · blueprint/CLAUDE.md · spec README 종료 · 커밋
 - [x] **리뷰 1** — `core-reviewer`: CRITICAL 씬 미배선(위 대기) · HIGH IncubusPact 테스트 2(반영) · MEDIUM 실행 순서 -100 의 입력 지연(반영 — 기본 순서로) · 약속한 테스트 2 미작성(반영 — `BattleAuthoringAssetTests`) · 중간 커밋 3 비컴파일(아래 기록) · LOW 픽스처 사본 누수(반영) · `UiCardFaceMesh` 미사용(삭제) · Check.csproj 주석(반영)
 - [x] **리뷰 2** — code-review 11건: 리뷰 1 과 겹침 5 · 새 지적 6 반영 — 팩토리 결측 로그를 슬롯별로(선택 슬롯 `cardCrumpleUi` 는 경고) · `BattleCoreUnity.Check.csproj` 에 새 SO 타입 3 명시 · 스모크 테스트의 요소 null 검사 복원 · 자가진단 메뉴가 카탈로그를 `BattleContent` 에서 · `PrimeTweenInstaller` 의 Demo 씬 참조 2 비움 · 배선 메뉴의 dirty 가드 · 주석 2
-- [ ] **Play 한 판**(사용자) — 편성 8 · 덱 12 · 효과 타일 · 프롭 · 탄 궤적 · 배치 음성 · 오버레이 · 카드 구김
+- [x] **Play 한 판**(사용자 2026-10-08 — 판 기동 · 배치 · 상세 패널 정상. 발견된 선행 결함 「탭 배치 직후 선택」은 `6df33a09e` 로 수정) — 편성 8 · 덱 12 · 효과 타일 · 프롭 · 탄 궤적 · 배치 음성 · 오버레이 · 카드 구김
 
 ## 알려진 것
 
