@@ -46,12 +46,16 @@ namespace Wassup.Tests.PlayMode.Core
 
         // battle-content-finish unit 0 — 편성·덱은 SO(`DefaultLoadout`)다. 테스트가 그 에셋을 고치면 디스크의 저작이 바뀌므로
         // **메모리 사본**을 드라이버에 꽂는다 — 판은 사본으로 짓고 에셋은 그대로다.
+        private const string CloneName = "TestLoadout";
+
         private static DefaultLoadout CloneLoadout(BattleDriver driver)
         {
             var field = typeof(BattleDriver).GetField("_loadout", BindingFlags.NonPublic | BindingFlags.Instance);
             var source = (DefaultLoadout)field.GetValue(driver);
+            if (source != null && source.name == CloneName) return source;   // 이미 사본 — 두 번 복제하지 않는다
             var clone = source != null ? UnityEngine.Object.Instantiate(source) : ScriptableObject.CreateInstance<DefaultLoadout>();
-            clone.name = "TestLoadout";
+            clone.name = CloneName;
+            clone.hideFlags = HideFlags.DontSave;
             field.SetValue(driver, clone);
             return clone;
         }
@@ -60,8 +64,10 @@ namespace Wassup.Tests.PlayMode.Core
         public static void OverrideDeck(BattleDriver driver, DreamcatcherCard[] cards)
         {
             var loadout = CloneLoadout(driver);
+            if (loadout.deck != null && loadout.deck.name == "TestDeck") UnityEngine.Object.Destroy(loadout.deck);
             var deck = ScriptableObject.CreateInstance<DreamcatcherDeck>();
             deck.name = "TestDeck";
+            deck.hideFlags = HideFlags.DontSave;
             deck.cards = cards;
             loadout.deck = deck;
         }

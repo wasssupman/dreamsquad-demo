@@ -6,8 +6,8 @@ namespace Wassup.BattleCoreUnity.Cards
 {
     // battle-core-rebuild unit 7c — 옛 `UiCardFaceMesh`(190줄)의 이식. **바뀐 것은 머티리얼 한 줄**이다: 옛 것은
     // 셰이더를 **이름으로 찾아** 새 머티리얼을 만들었고(추가 제약 위반 — 모바일 셰이더 스트리핑에서 null 로 조용히
-    // 구김이 사라진다), 새 것은 always-included 리소스 머티리얼의 인스턴스(`RuntimeMaterialFactory.CreateCardCrumpleUi`)다.
-    // 옛 것은 아웃게임이 계속 쓰므로 그대로 둔다(범위 밖).
+    // 구김이 사라진다), 새 것은 SO 참조 묶음(`RuntimeMaterialSet.cardCrumpleUi`)의 인스턴스(`RuntimeMaterialFactory.CreateCardCrumpleUi`)다.
+    // 옛 `UiCardFaceMesh` 는 소비자가 없어 battle-content-finish 에서 지웠다.
     //
     // card-crumple-unfold — 손패 카드 art 를 N×N 격자로 테셀레이트하고, 각 버텍스에
     // "구겨진 오프셋(uv1)+크리스 깊이(uv2)"를 정적으로 굽는다. 셰이더(Wassup/UI/CardCrumple)가

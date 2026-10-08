@@ -23,8 +23,6 @@ namespace Wassup.EditorTools.BattleCore
     {
         private const string MenuPath = "Wassup/BattleCore/Debug/카드 자가진단";
         private const string CardsRoot = "Assets/_Project/Data/Dreamcatcher";
-        private const string CatalogPath = "Assets/_Project/Data/Dreamcatcher/DreamcatcherCardCatalog.asset";
-        private const string DefenderCatalogPath = "Assets/_Project/Data/DefenderCatalog.asset";
 
         [MenuItem(MenuPath)]
         private static void Run()
@@ -60,9 +58,9 @@ namespace Wassup.EditorTools.BattleCore
 
             var mode = typeof(BattleDriver).GetField("_resolvedMode", BindingFlags.NonPublic | BindingFlags.Instance)
                            ?.GetValue(driver) as MatchModeData ?? Obj<MatchModeData>("_mode");
-            var content = driver.Content;   // battle-content-finish unit 0 — 판 콘텐츠는 SO 한 장
-            var defenders = AssetDatabase.LoadAssetAtPath<DefenderCatalog>(DefenderCatalogPath);
-            var cards = Cards();
+            var content = driver.Content;   // battle-content-finish unit 0 — 판 콘텐츠는 SO 한 장. 카탈로그 둘도 거기서(경로 하드코딩 없음).
+            var defenders = content != null ? content.defenderCatalog : null;
+            var cards = content != null ? Cards(content.cardCatalog) : null;
             if (mode == null || content == null || defenders == null || cards == null)
             {
                 Debug.LogError("[CoreCardSelfCheck] 모드 · BattleContent · 방어유닛 카탈로그 · 카드 카탈로그 중 하나가 없다 — 카탈로그 표를 건너뛴다.");
@@ -88,9 +86,8 @@ namespace Wassup.EditorTools.BattleCore
         }
 
         // 카탈로그 순 + 카탈로그 밖은 경로 순 — `CardEffectWitnessTests.Cards` 와 같은 규칙.
-        private static List<DreamcatcherCard> Cards()
+        private static List<DreamcatcherCard> Cards(DreamcatcherCardCatalog catalog)
         {
-            var catalog = AssetDatabase.LoadAssetAtPath<DreamcatcherCardCatalog>(CatalogPath);
             if (catalog == null) return null;
             var list = new List<DreamcatcherCard>();
             foreach (var c in catalog.cards) if (c != null && !list.Contains(c)) list.Add(c);

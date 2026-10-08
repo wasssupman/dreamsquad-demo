@@ -27,9 +27,9 @@ namespace Wassup.BattleCoreUnity
     //
     // 이 컴포넌트는 **규칙을 하나도 소유하지 않는다.** 판정·상태·저장이 여기 들어오면
     // 그것이 새 브리지의 첫 줄이다(절대 제약 1).
-    // battle-content-finish unit 4 — 실행 순서를 앞당긴다: 뷰 컴포넌트가 `OnEnable` 에서 머티리얼을 만들기 전에
-    // `Awake` 가 `RuntimeMaterialFactory` 에 묶음을 꽂아야 한다.
-    [DefaultExecutionOrder(-100)]
+    // battle-content-finish unit 4 — `Awake` 가 `RuntimeMaterialFactory` 에 머티리얼 묶음을 꽂는다. 실행 순서는 **기본값**이다 —
+    // 앞당기면(-100) `Update` 도 입력(`DragPlacementInput` -50 · `SelectionInput` -40)보다 먼저 돌아 커맨드가 한 프레임 늦게 틱에
+    // 들어간다(리뷰 지적). 머티리얼을 만드는 소비자는 전부 지연 생성(첫 Update/Start 이후)이라 Awake 단계 순서로 충분하다.
     [DisallowMultipleComponent]
     public sealed class BattleDriver : MonoBehaviour
     {
@@ -259,8 +259,10 @@ namespace Wassup.BattleCoreUnity
 
         private void Awake()
         {
-            // battle-content-finish unit 4 — 런타임 머티리얼 원본은 SO 참조로 온다(`Resources` 없음). 묶음이 비면 팩토리가 한 번 크게 말한다.
-            Wassup.Rendering.RuntimeMaterialFactory.Configure(_content != null ? _content.runtimeMaterials : null);
+            // battle-content-finish unit 4 — 런타임 머티리얼 원본은 SO 참조로 온다(`Resources` 없음). 콘텐츠가 없는 드라이버(테스트가
+            // `AddComponent` 로 세운 것)는 이미 꽂힌 묶음을 지우지 않는다 — 콘텐츠 없음은 `Begin` 이 크게 말한다.
+            if (_content != null)
+                Wassup.Rendering.RuntimeMaterialFactory.Configure(_content.runtimeMaterials);
         }
 
         private void Start()

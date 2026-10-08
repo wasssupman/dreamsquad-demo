@@ -56,7 +56,6 @@ namespace Wassup.Tests.EditMode
             // retire-recall unit 2 — 퇴근 시 부착분을 손패 맨 앞으로.
             { "handover", "인수인계" },
             { "heavy_strike", "강타" },
-            { "sub_incubus_pact", "희생계약" },
             { "last_flame", "불꽃폭주" },
             { "last_stand", "빈사폭주" },
             { "lullaby_dart", "자장가" },

@@ -65,6 +65,9 @@ namespace Wassup.Tests.EditMode
             var loadout = One<DefaultLoadout>(block, "_loadout");
             Assert.IsNotNull(content, "씬 드라이버에 BattleContent 가 없다");
             Assert.IsNotNull(loadout, "씬 드라이버에 DefaultLoadout 이 없다");
+            // 옛 Many<T> 가 GUID 하나하나의 해석을 단언했듯, 끊어진 참조(null 요소)가 조용히 빌더로 들어가지 않게 본다.
+            for (int i = 0; i < loadout.defenders.Length; i++) Assert.IsNotNull(loadout.defenders[i], $"DefaultLoadout.defenders[{i}] 가 비었다");
+            for (int i = 0; i < content.stackModifiers.Length; i++) Assert.IsNotNull(content.stackModifiers[i], $"BattleContent.stackModifiers[{i}] 가 비었다");
             var live = new Live
             {
                 Mode = One<MatchModeData>(block, "_mode"),

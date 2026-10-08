@@ -49,12 +49,10 @@ namespace Wassup.Tests.EditMode
             return rows;
         }
 
-        // 의도적으로 카탈로그에서 뺀 카드(= 뽑히지 않음). SO·기능 코드는 남겨 두므로
-        // 이 가드가 "등록 깜빡"으로 오인하지 않게 여기에 사유와 함께 명시한다.
-        //   Card_IncubusPact(희생계약) — 2026-08-08 사용자 결정으로 비활성화. 유출 허용치를
-        //   선불로 지불하는 카드인데, goal-tower-siege 이후 유출이 **골 파괴 뒤에만** 생겨
-        //   지불이 사실상 무비용이 됐다. 유출/스트레스 규칙이 안정되면 재등록 여부를 재판단.
-        private static readonly HashSet<string> IntentionallyDisabled = new() { "Card_IncubusPact" };
+        // 의도적으로 카탈로그에서 뺀 카드(= 뽑히지 않음)를 사유와 함께 적는 자리 — 이 가드가 "등록 깜빡"으로 오인하지 않게.
+        // 2026-08-08 비활성화했던 Card_IncubusPact(희생계약)는 battle-content-finish D8(2026-10-07)로 SO·효과·아트째 지웠다 —
+        // 되살릴 땐 git 에서 꺼내고 여기 다시 적는다.
+        private static readonly HashSet<string> IntentionallyDisabled = new();   // battle-content-finish D8 — Card_IncubusPact 는 2026-10-07 삭제(보관 종료)
 
         [Test]
         public void EveryNonActiveCard_IsRegisteredInCatalog()
@@ -107,14 +105,14 @@ namespace Wassup.Tests.EditMode
                 if (card.category == CardCategory.Subconscious)
                     actual.Add(card.id);
 
-            // subconscious-curse-expansion — 무의식 풀 6장 확정(기존 3 + 신규 3).
+            // subconscious-curse-expansion — 무의식 풀 6장 확정(기존 3 + 신규 3) → battle-content-finish D8 로 몽마의 계약 삭제(5장).
             // unit 0: 호접몽 / unit 1: 몽마의 계약 / unit 2: 살찌운 제물.
             // 림의 선물은 이 풀에서 서로 다른 2장 추출.
             CollectionAssert.AreEquivalent(
                 new[] { "slow_awakening", "calamity_heart", "cracked_grail",
-                        "sub_butterfly_dream", "sub_incubus_pact", "sub_fattened_offering" },
+                        "sub_butterfly_dream", "sub_fattened_offering" },
                 actual);
-            Assert.AreEqual(6, actual.Count, "Subconscious pool size changed");
+            Assert.AreEqual(5, actual.Count, "Subconscious pool size changed");
         }
 
         [Test]
@@ -140,29 +138,6 @@ namespace Wassup.Tests.EditMode
             Assert.Greater(m.payload.magnitude, 0f, "완주 버프 % 가 0 이면 고치가 보상 없는 잠이 된다");
             Assert.Greater(m.payload.duration, 0f, "잠 0 초면 고치가 즉시 깨어 수면 단계가 사라진다");
             Assert.AreEqual(CardBuffKind.AttackDamage, m.payload.buffStat);
-        }
-
-        [Test]
-        public void IncubusPactAsset_MatchesAuthoredContract()
-        {
-            // subconscious-curse-expansion unit 1 — 몽마의 계약: hosted Squad 버프
-            // (전군 공격력 +25%) + 유출 허용치 1 선불. 수치는 SO 소유 — 에셋 계약 잠금.
-            var byId = new Dictionary<string, DreamcatcherCard>();
-            foreach (var card in LoadAllCards()) byId[card.id] = card;
-
-            Assert.IsTrue(byId.ContainsKey("sub_incubus_pact"), "sub_incubus_pact in catalog");
-            var pact = byId["sub_incubus_pact"];
-            Assert.AreEqual(CardType.Squad, pact.type);
-            Assert.AreEqual(CardCategory.Subconscious, pact.category);
-            // skill-data-table unit 8 — 스쿼드 버프 = 진영 버프 효과 줄 하나(소유 줄 전부가 그 줄 — Squad 카드 분류).
-            var buffs = FactionBuffRows(pact);
-            Assert.AreEqual(1, buffs.Count);
-            Assert.AreEqual(1, pact.bindings.Length, "Squad 카드 = 진영 버프 줄만");
-            Assert.AreEqual(CardBuffKind.AttackDamage, buffs[0].buffStat);
-            Assert.AreEqual(CardTargetAxis.All, buffs[0].allyFilter, "전군(수혜 대상 = 효과의 뜻)");
-            Assert.Greater(buffs[0].percent, 0f,
-                "percent 는 시트 소유 — 여기서는 버프 부호(+)만 잠근다. 값은 자유 튜닝 (unit 1)");
-            Assert.AreEqual(1, pact.leakAllowanceCost, "유출 허용치 선불 1");
         }
 
         [Test]
@@ -254,7 +229,6 @@ namespace Wassup.Tests.EditMode
                 { "cracked_grail", "dreamcatcher_card_25" },
                 // subconscious-curse-expansion unit 5 — 신규 저주 3장 실아트.
                 { "sub_butterfly_dream", "dreamcatcher_card_26" },
-                { "sub_incubus_pact", "dreamcatcher_card_27" },
                 { "sub_fattened_offering", "dreamcatcher_card_28" },
             };
 

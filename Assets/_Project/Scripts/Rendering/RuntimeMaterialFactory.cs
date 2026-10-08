@@ -13,13 +13,14 @@ namespace Wassup.Rendering
     public static class RuntimeMaterialFactory
     {
         private static RuntimeMaterialSet _set;
-        private static bool _loggedMissing;
+        // 슬롯마다 한 번만 말한다 — 래치가 하나면 첫 결측 뒤의 다른 슬롯 결측이 영원히 조용하다(리뷰).
+        private static readonly System.Collections.Generic.HashSet<string> _reported = new System.Collections.Generic.HashSet<string>();
 
-        /// <summary>묶음을 꽂는다. null 이면 이후 생성이 전부 null + 에러 1회.</summary>
+        /// <summary>묶음을 꽂는다. null 이면 이후 생성이 전부 null + 슬롯마다 에러 1회.</summary>
         public static void Configure(RuntimeMaterialSet set)
         {
             _set = set;
-            _loggedMissing = false;
+            _reported.Clear();
         }
 
         public static bool IsConfigured => _set != null;
@@ -47,10 +48,10 @@ namespace Wassup.Rendering
         public static Material CreateBoardOverlay()
             => Clone(_set != null ? _set.boardOverlay : null, nameof(RuntimeMaterialSet.boardOverlay));
 
-        /// <summary>카드면 구김의 **인스턴스**(카드마다 `_Unfold` 가 다르다). 없으면 null — 호출부는 기본 UI 머티리얼로(구김만 없다).</summary>
+        /// <summary>카드면 구김의 **인스턴스**(카드마다 `_Unfold` 가 다르다). 없으면 null — 호출부는 기본 UI 머티리얼로(구김만 없다). 그래서 이 슬롯만 선택(경고).</summary>
         public static Material CreateCardCrumpleUi()
         {
-            var material = Clone(_set != null ? _set.cardCrumpleUi : null, nameof(RuntimeMaterialSet.cardCrumpleUi));
+            var material = Clone(_set != null ? _set.cardCrumpleUi : null, nameof(RuntimeMaterialSet.cardCrumpleUi), optional: true);
             if (material == null) return null;
             material.name = "CardCrumpleInst";
             material.hideFlags = HideFlags.HideAndDontSave;
@@ -79,15 +80,16 @@ namespace Wassup.Rendering
             return material;
         }
 
-        private static Material Clone(Material source, string slot)
+        private static Material Clone(Material source, string slot, bool optional = false)
         {
             if (source != null) return new Material(source);
-            if (!_loggedMissing)
+            if (_reported.Add(_set == null ? "(set)" : slot))
             {
-                _loggedMissing = true;
-                Debug.LogError(_set == null
+                string msg = _set == null
                     ? "[RuntimeMaterialFactory] 머티리얼 묶음이 안 꽂혔다 — BattleDriver 의 BattleContent.runtimeMaterials 를 확인하라."
-                    : $"[RuntimeMaterialFactory] RuntimeMaterialSet 의 '{slot}' 슬롯이 비었다 — 그 머티리얼을 쓰는 것이 마젠타로 그려진다.");
+                    : $"[RuntimeMaterialFactory] RuntimeMaterialSet 의 '{slot}' 슬롯이 비었다 — "
+                      + (optional ? "그 연출만 빠진다." : "그 머티리얼을 쓰는 것이 마젠타로 그려진다.");
+                if (optional && _set != null) Debug.LogWarning(msg); else Debug.LogError(msg);
             }
             return null;
         }

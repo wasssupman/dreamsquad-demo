@@ -8,7 +8,7 @@
     에디터의 UnityEngine 모듈 dll + 메인 워크트리 `Library/ScriptAssemblies` 의 옛 어셈블리에 대고
     **컴파일만** 한다(실행·테스트 없음). 코어는 ProjectReference 로 받는다. 정본은 여전히 Unity 에디터.
 
-    ⚠ 옛 `Wassup.Runtime.dll` 에는 코어로 옮긴 `MatchSeed`·`LegacyTraceV0` 사본이 아직 들어 있다
+    ⚠ 옛 `Wassup.Runtime.dll` 에는 코어로 옮긴 `MatchSeed` 사본이 아직 들어 있을 수 있고(`LegacyTraceV0` 는 2026-10-07 삭제), 새 타입(`RuntimeMaterialSet`)은 에디터가 한 번 컴파일해야 보인다
     (에디터가 그 이동 뒤 재컴파일한 적이 없다). Unity 층 소스가 그 둘을 직접 쓰면 CS0433 모호성이
     난다 — 그 경우만 이 lane 이 거짓 빨강이다(에디터 재컴파일 뒤 소멸).
   -->
@@ -38,6 +38,10 @@
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\ImbueCapConfig.cs" />
     <!-- 7c — 카드면 구김 머티리얼 창구(`CreateCardCrumpleUi`)를 새로 연 공용 팩토리. 같은 이유(에디터가 아직 컴파일한 적 없는 새 메서드). -->
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Rendering\RuntimeMaterialFactory.cs" />
+    <!-- battle-content-finish — 판 저작 SO 두 장 + 런타임 머티리얼 묶음. 같은 이유(에디터가 아직 컴파일한 적 없는 새 타입은 명시). -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\BattleContent.cs" />
+    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\DefaultLoadout.cs" />
+    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\RuntimeMaterialSet.cs" />
   </ItemGroup>
 
   <ItemGroup>
