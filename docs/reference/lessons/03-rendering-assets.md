@@ -4,10 +4,10 @@ Spine, 보드 오버레이, 프랍/VFX authoring, 카메라에서 겪은 함정.
 
 ## Spine 런타임은 4.3 — export 는 같은 major.minor(4.3.xx)만
 
-spine-unity 런타임은 **4.3**이다(2026-08-11 `a8c04840e` 로 4.2 → 4.3 교체, `Assets/Spine/package.json` = 4.3.102 · `Assets/Spine/version.txt`). 스켈레톤 데이터는 **major.minor 가 일치하는 런타임에서만 로드**된다 — 4.3 export ↔ 4.3.xx 런타임만 성립, 패치 버전만 상호 호환. 4.2 잔재 파일을 복원하거나 다른 버전 런타임 임포트로 덮어쓰지 말 것. (이 절 아래의 「4.2」 언급은 2026-07 업그레이드 당시 기록이다 — 원리는 같다.)
+spine-unity 런타임은 **4.3**이다(2026-08-11 `a8c04840e` 로 4.2 → 4.3 교체, `Assets/Plugins/Spine/package.json` = 4.3.102 · `Assets/Plugins/Spine/version.txt`). 스켈레톤 데이터는 **major.minor 가 일치하는 런타임에서만 로드**된다 — 4.3 export ↔ 4.3.xx 런타임만 성립, 패치 버전만 상호 호환. 4.2 잔재 파일을 복원하거나 다른 버전 런타임 임포트로 덮어쓰지 말 것. (이 절 아래의 「4.2」 언급은 2026-07 업그레이드 당시 기록이다 — 원리는 같다.)
 
 - 3.8 시절 리소스(player-main·몬스터1·BellKnight 등)는 원본 `.spine` 부재로 재-export 불가라 **전량 퇴역**했다(커밋 b758aa29). 신규 리소스는 반드시 원본 `.spine` 을 함께 보존한다 — 그래야 향후 4.3+ 업그레이드가 재제작이 아닌 재-export 로 끝난다.
-- **잘못 임포트 시 복구**(3.8 시절 검증, 동일 원리): `git checkout HEAD -- Assets/Spine "Assets/Spine Examples"` → `git clean -nfd`(dry-run 범위 확인) → `-fd` → stale CS2001 남으면 `AssetDatabase.Refresh(ForceUpdate)` + asmdef `ImportAsset(ForceUpdate)` + `CompilationPipeline.RequestScriptCompilation()`.
+- **잘못 임포트 시 복구**(3.8 시절 검증, 동일 원리): `git checkout HEAD -- Assets/Plugins/Spine "Assets/Plugins/Spine Examples"` → `git clean -nfd`(dry-run 범위 확인) → `-fd` → stale CS2001 남으면 `AssetDatabase.Refresh(ForceUpdate)` + asmdef `ImportAsset(ForceUpdate)` + `CompilationPipeline.RequestScriptCompilation()`.
 - **배치 모드 `-importPackage` 는 컴파일 에러 상태에서 abort** 된다("Scripts have compiler errors"). 런타임 폴더를 지운 뒤 재임포트하는 업그레이드 경로는 배치로 불가 — unitypackage 를 tar.gz 로 직접 추출해 pathname 대로 배치하면 GUID/meta 보존 동일 결과 (4.2 업그레이드에서 실증).
 
 ## Spine 신규 리소스 수급 규약
@@ -19,8 +19,8 @@ spine-unity 런타임은 **4.3**이다(2026-08-11 `a8c04840e` 로 4.2 → 4.3 �
 3. **확장자 rename**: `.skel` → `.skel.bytes`, `.atlas` → `.atlas.txt` (임포터 인식 조건. 3.8 시절 8종이 rename 누락으로 임포트 실패 전례).
 4. **파일명 ASCII 만**: 한글명은 위 NFC/NFD 함정 직행.
 5. **텍스처/알파**: PMA export 기본, Unity 텍스처 설정(sRGB, Alpha Is Transparency 끔)과 일치. 전투 Spine 뷰(`CoreSpineUnitView` — 당시 `SpineUnitView`, 이력: unit 9 에서 제거)의 사망 페이드가 PMA 전제(`skeleton.A` 직접 조작).
-6. **rig 방향**: "ScaleX=+1 에서 -x(왼쪽) 바라봄" 관례. 어기는 rig 은 SkeletonData 의 `skeletonDataModifiers` 에 `Assets/_Project/Characters/SkeletonFlipX.asset` 부착.
-7. **배치 위치**: `Assets/_Project/Characters/{SkeletonName}/` 폴더 단위.
+6. **rig 방향**: "ScaleX=+1 에서 -x(왼쪽) 바라봄" 관례. 어기는 rig 은 SkeletonData 의 `skeletonDataModifiers` 에 `Assets/_Project/Runtime/Battle/Characters/SkeletonFlipX.asset` 부착.
+7. **배치 위치**: `Assets/_Project/Runtime/Battle/Characters/{SkeletonName}/` 폴더 단위.
 8. **임포트 검증**: `_SkeletonData`/`_Atlas`/`_Material` 자동 생성 → 프리뷰 애니 재생 → 콘솔 경고 0.
 
 ## 한글명 Spine 에셋 macOS 임포트 깨짐 (3중 수정)
@@ -61,11 +61,11 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 ## 프랍이 눕거나 묻히면 = authoring 값, 배치 로직 아님
 
-프랍이 게임뷰에서 눕거나 바닥에 깔리면 원인은 billboardMode(FullCamera→`Tilted`)·sprite pivot(Center→`BottomCenter`) — 강제 도구는 `Assets/_Project/Editor/PropDataEditor.cs`. 여기 남길 진단 지식 하나: **visualOffset 은 접지 수단이 아니다** — 프랍은 90°X 회전 root 아래라 local +Y 가 월드 +Z(깊이)로 새서 수직으로 안 올라간다. 피벗을 고치면 visualOffset=0 이 정답.
+프랍이 게임뷰에서 눕거나 바닥에 깔리면 원인은 billboardMode(FullCamera→`Tilted`)·sprite pivot(Center→`BottomCenter`) — 강제 도구는 `Assets/_Project/Editor/Battle/PropDataEditor.cs`. 여기 남길 진단 지식 하나: **visualOffset 은 접지 수단이 아니다** — 프랍은 90°X 회전 root 아래라 local +Y 가 월드 +Z(깊이)로 새서 수직으로 안 올라간다. 피벗을 고치면 visualOffset=0 이 정답.
 
 ## 프랍/타일은 기존 애셋을 미러링하지 않는다
 
-코드베이스에 구세대(PPU 545, 프랍별 `_cast` mat)와 신세대(공용 mat) 패턴이 공존해 **"기존 애셋 미러링"이 그럴듯하지만 틀린 경로**다. 프랍 임포트·프리팹 값은 `Assets/_Project/Editor/PropDataEditor.cs` 가 강제한다.
+코드베이스에 구세대(PPU 545, 프랍별 `_cast` mat)와 신세대(공용 mat) 패턴이 공존해 **"기존 애셋 미러링"이 그럴듯하지만 틀린 경로**다. 프랍 임포트·프리팹 값은 `Assets/_Project/Editor/Battle/PropDataEditor.cs` 가 강제한다.
 
 ## PixPlays 이펙트는 duration 을 무시한다 (지속형은 loop 오버라이드)
 
@@ -83,13 +83,13 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 ## 드래그 배치 프리뷰 튜닝 위치
 
-- sway 튜닝값 = **`Assets/_Project/Data/Config/DragSwaySettings.asset`**(SO, Play 중 실시간 반영). 코드 아님.
+- sway 튜닝값 = **`Assets/_Project/Runtime/Battle/Data/Config/DragSwaySettings.asset`**(SO, Play 중 실시간 반영). 코드 아님.
 - **왜 SO 인가**: 같은 sway 값을 여러 뷰(`CoreDragPreviewPresenter` · `CoreDeployFlightPresenter` 등)가 `[SerializeField] DragSwaySettings` 로 공유한다 — 뷰마다 값을 따로 들지 않게.
 - sway 모델 = velocity-lean(목표각 ∝ 포인터 속도), 피벗 = 머리 위. 프리뷰 정렬 `BoardSortOrder.DragPreviewOrder=20000`.
 
 ## 평면 보드에서 sim-Y 는 화면 높이가 아니다
 
-`BoardSpace.ToView`(`Scripts/Core/BoardSpace.cs`)는 sim 의 XZ 만 셀로 매핑하고 **`simWorld.y` 를 완전히 버린다**(평면 tilemap 정책).
+`BoardSpace.ToView`(`Runtime/Battle/Scripts/Core/BoardSpace.cs`)는 sim 의 XZ 만 셀로 매핑하고 **`simWorld.y` 를 완전히 버린다**(평면 tilemap 정책).
 
 - **함정**: 투사체 arc·유닛 높이를 sim-Y 에 실으면 화면 반영 0(곡사포가 arc 없이 미끄러짐).
 - **정답**: 높이는 **presentation 층**에서 — `CoreProjectileViewPool.SyncTransforms` 가 뷰 위치에 `heightOffset`/arc 를 더하는 패턴. sim(ArcPosition)/AOE(셀 XZ)/타이밍은 sim-Y 무관이라 그대로. (프랍 "90°root라 +Y가 깊이로 샘"과 같은 뿌리.)
@@ -99,7 +99,7 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 배틀 카메라는 **원근**(배틀 카메라 프리셋: `orthographic: 0`, FOV 40)에 pitch 55°다. 이때 월드 up 은 카메라 공간에서 `(0, cosθ, -sinθ)` 로 분해된다 — 즉 뱃지를 `basePos + Vector3.up * h` 로 띄우면 **위로만 가는 게 아니라 카메라 쪽으로 당겨진다**. `view_z` 가 `h·sinθ` 만큼 줄고 `screen_x = f·view_x/view_z` 이므로 화면 x 가 그만큼 **확대**된다.
 
 - **증상**: 유닛 머리 위 아이콘이 화면 중앙에서 멀수록 좌우로 밀려 보인다. 오프셋 2.6 · 보드 끝에서 **≈57px@1080w**(화면 폭의 5%). 중앙 유닛은 `view_x≈0` 이라 멀쩡해서 "UI 레이어 문제인가?" 로 오진하기 쉽다 — **레이어와 무관하다**(문제의 뷰들은 이미 월드 SpriteRenderer 였다). 오프셋에 비례하므로 작은 값(히트바 1.0)은 티가 안 나 수년 잠복 가능.
-- **정답**: 오프셋을 **카메라 평면**에서 적용 — `HeadAnchor.Lift(basePos, offset, cam)`(`Scripts/Presentation/HeadAnchor.cs`). 카메라 up 은 시선축과 직교라 `view_z` 가 안 변해 어느 타일이든 같은 화면 거리를 유지하고, 페이즈별 pitch 변화(당시 Draft 40°↔Battle 55°)에도 높이가 `cosθ` 로 안 흔들린다.
+- **정답**: 오프셋을 **카메라 평면**에서 적용 — `HeadAnchor.Lift(basePos, offset, cam)`(`Runtime/Battle/Scripts/Presentation/HeadAnchor.cs`). 카메라 up 은 시선축과 직교라 `view_z` 가 안 변해 어느 타일이든 같은 화면 거리를 유지하고, 페이즈별 pitch 변화(당시 Draft 40°↔Battle 55°)에도 높이가 `cosθ` 로 안 흔들린다.
 - **값 이전 시 등가식**: `k = h·cosθ·view_z/(view_z − h·sinθ)` (55°/23u 기준 ≈ **0.63배**). 월드 기준으로 눈 튜닝한 값을 그대로 옮기면 뱃지가 너무 높이 뜬다. 실적용: DcIconStrip 2.6→1.64 · StatusFx 1.5→0.91/2.2→1.37 · HitBar 1.0→0.60 · DmgNum 1.4→0.85/driftUp 0.7→0.41.
 - **경계**: **billboard 여부가 기준**이다. 화면을 보는 뱃지 → 카메라 평면. 바닥에 눕힌 데칼(`TileHealthGaugeView`, Euler 90 BlobShadow 규약)의 z-fighting 리프트 → **월드 up 유지**(카메라 평면 적용하면 바닥에서 들림).
 - **동반 함정**: 위치를 카메라 회전에 묶는 순간 **실행 순서가 정답의 일부가 된다**. `CameraDirector`(`[DefaultExecutionOrder(-90)]`)가 **LateUpdate** 에서 포즈를 확정하므로, `Update` 에서 위치를 잡으면 지난 프레임 회전을 읽어 **위치만 1프레임 뒤처진다**(회전은 LateUpdate 라 최신 → 카메라 이동 중 뱃지가 유닛에서 미끄러짐). 위치·회전 **둘 다 LateUpdate** 로.

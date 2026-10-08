@@ -67,7 +67,7 @@ TrailSection { pointA, pointB, spawnTime, distance }   ← 한 프레임의 스�
 코드 0. 위 전제 조건 3개를 만족하면 SO 인스펙터에서 끝난다.
 
 1. 유닛 SO(`DefenderUnitData` 또는 `AttackUnitData`) 인스펙터 → **Weapon Trail** 섹션
-2. `weaponTrailPrefab` ← `Assets/_Project/VFX/WeaponTrail_Slash_{Look}.prefab` 중 하나
+2. `weaponTrailPrefab` ← `Assets/_Project/Runtime/Battle/VFX/WeaponTrail_Slash_{Look}.prefab` 중 하나
 3. `weaponTrailEndNormalized` ← **스윙이 끝나는 시각 ÷ 애니 전체 길이**
 
 세 번째 값이 방출 창을 정한다. 애니 끝까지 방출하면 **칼을 되돌리는 자국**이 남는다.
@@ -86,8 +86,8 @@ TrailSection { pointA, pointB, spawnTime, distance }   ← 한 프레임의 스�
 
 코드 0. 벤더 프리셋을 **직접 참조할 수 없다** — 반드시 복사본을 만든다.
 
-1. `Assets/Hovl Studio/Epic Sword Slash Effects System/Sword slash presets/` 에서 골라 복사
-   → `Assets/_Project/VFX/WeaponTrailPreset_{Look}.asset`
+1. `Assets/Plugins/Hovl Studio/Epic Sword Slash Effects System/Sword slash presets/` 에서 골라 복사
+   → `Assets/_Project/Runtime/Battle/VFX/WeaponTrailPreset_{Look}.asset`
 2. **반드시 덮을 3개** — 취향이 아니라 **동작 결함**이다:
 
    | 필드 | 벤더 | 우리 | 안 덮으면 |
@@ -155,7 +155,7 @@ Red(`Path18Slash`)와 Lightning(짙은 남색)이 이 이유로 탈락했다 —
 | `Play(float seconds)` | 방출 시작 + `seconds` 뒤 자동 정지. 연속 호출은 정지 시각을 **밀 뿐** 코루틴을 겹쳐 만들지 않는다 |
 | `StopNow()` | 즉시 정지 |
 
-현재 호출처는 전투 뷰 둘이다. Spine 유닛 = `BattleCoreUnity/View/CoreSpineUnitView.cs` 의 `AttachWeaponTrail`(스폰 시 1회, `Bind(_skeletonRenderer)`) / `PlayWeaponTrail`(`PlayAttack` 안). 스프라이트 유닛 = `BattleCoreUnity/View/CoreSpriteUnitView.cs` 의 `AttachWeaponTrail`(`Bind(null)` — 레시피 D 형) / `PlayAttack` 안의 `_weaponTrail.Play`. 다른 사건(스킬 시전·돌진·사망 연출)에 물리려면 그 자리에서 `Play` 를 부르면 된다 — **전투 코어(`Scripts/BattleCore/`)는 건드릴 일이 없다.** 궤적은 판정에 기여하지 않는다.
+현재 호출처는 전투 뷰 둘이다. Spine 유닛 = `BattleCoreUnity/View/CoreSpineUnitView.cs` 의 `AttachWeaponTrail`(스폰 시 1회, `Bind(_skeletonRenderer)`) / `PlayWeaponTrail`(`PlayAttack` 안). 스프라이트 유닛 = `BattleCoreUnity/View/CoreSpriteUnitView.cs` 의 `AttachWeaponTrail`(`Bind(null)` — 레시피 D 형) / `PlayAttack` 안의 `_weaponTrail.Play`. 다른 사건(스킬 시전·돌진·사망 연출)에 물리려면 그 자리에서 `Play` 를 부르면 된다 — **전투 코어(`Runtime/Battle/Scripts/BattleCore/`)는 건드릴 일이 없다.** 궤적은 판정에 기여하지 않는다.
 
 ---
 
@@ -190,7 +190,7 @@ Red(`Path18Slash`)와 Lightning(짙은 남색)이 이 이유로 탈락했다 —
 ## 파일 지도
 
 ```
-Assets/_Project/Scripts/
+Assets/_Project/Runtime/Battle/Scripts/
   Presentation/WeaponTrailRig.cs         리그 자립 컴포넌트 — Bind / Play / StopNow + 파티클 정렬
   BattleCoreUnity/View/CoreSpineUnitView.cs    AttachWeaponTrail · PlayWeaponTrail · UpdateSortingOrder 제외
   BattleCoreUnity/View/CoreSpriteUnitView.cs   AttachWeaponTrail(Bind(null)) · PlayAttack 안의 Play
@@ -199,15 +199,15 @@ Assets/_Project/Scripts/
   Data/DefenderUnitData.cs               weaponTrailPrefab / weaponTrailEndNormalized (직렬화 호환 위해 맨 뒤)
   Data/AttackUnitData.cs                 동일 (적·보스)
 
-Assets/_Project/VFX/
+Assets/_Project/Runtime/Battle/VFX/
   WeaponTrail_Slash.prefab               base 리그 — Animator(빈) + BoneFollower(Gear) + HS_SwordMeshTrail
                                           + WeaponTrailRig + Trail Point A/B
   WeaponTrail_Slash_{Look}.prefab        룩별 Variant 7종 — preset 참조만 오버라이드
   WeaponTrailPreset_{Look}.asset         프로젝트 소유 프리셋 7종 (벤더 복사본 + 오버라이드)
 
-Assets/Hovl Studio/                      벤더. HSFiles(184) + Epic Sword Slash(77) 전량 커밋됨
+Assets/Plugins/Hovl Studio/                      벤더. HSFiles(184) + Epic Sword Slash(77) 전량 커밋됨
   HSFiles/Scripts/HS_SwordMeshTrail.cs   절차 리본 생성. 수정 금지
-  HSFiles/Scripts/Hovl.HSFiles.asmdef    ★없으면 Wassup.Runtime 이 벤더 타입을 못 쓴다
+  HSFiles/Scripts/Hovl.HSFiles.asmdef    ★없으면 Somnia.Battle.Runtime 이 벤더 타입을 못 쓴다
   .../Demo scene/Sword_Mesh_Trail_System_User_Guide.docx.pdf   벤더 문서 14쪽
 ```
 

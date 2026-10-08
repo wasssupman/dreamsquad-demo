@@ -29,13 +29,15 @@
 
 ## 기록
 
-| 항목 | 기준선 | 변경 후 |
+2026-10-08, 에디터 닫고 배치(`scratchpad/{baseline,after,after2}.xml`).
+
+| 항목 | 기준선(단위 0 전) | 변경 후(단위 0~2 + 보정 `d297475aa`) |
 |---|---|---|
-| EditMode.Core total/failed | | |
-| EditMode total/failed | | |
-| EditMode.Assets total/failed | | |
-| 실패 id 집합 | | |
-| 골든 11 | | |
-| 헤드리스 빌드 2 | | |
-| 에디터 컴파일 | — | |
-| Play | — | |
+| 3 lane 합계 total / passed / failed / skipped | 2,212 / 2,201 / 7 / 4 (36초) | **2,212 / 2,201 / 7 / 4** (46초) |
+| 실패 id 집합 | 선행 빨강 7 — `DreamcatcherCardArtTests` 1 · `DreamcatcherCardAssetTextTests` 1 · `UnitKitCatalogTests` 1 · `CardBakeSnapshotTests` 2 · `SheetFullRoundTripTests` 1 · `SkillSheetRoundTripTests` 1 | **같은 7**(접두만 `Somnia.Battle.`) |
+| 골든(`CoreGoldenTests`) | 14/14 | **14/14** — 결정론 무변 |
+| 헤드리스 빌드 `BattleCore` · `BattleCoreUnity.Check` | — | **둘 다 exit 0**(배치가 남긴 `Library/ScriptAssemblies/Somnia.Battle.*.dll` 기준) |
+| 에디터 컴파일 | — | 사용자 확인 대기 |
+| Play | — | 사용자 확인 대기 |
+
+중간 실행(`after.xml`, 보정 전)은 새 빨강 5 — 전부 경로: 세그먼트 조립 `Path.Combine(dataPath, "_Project", "Scripts", …)` 2곳(4 테스트) · `binding_bake_snapshot.txt` 의 굳힌 에셋 경로. 단위 1 「구현 결과」에 기록, `d297475aa` 로 보정 후 재실행이 위 표.

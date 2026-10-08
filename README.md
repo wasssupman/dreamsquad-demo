@@ -1,6 +1,6 @@
 # Defense Tournament (wassup)
 
-비동기 토너먼트 디펜스 게임. 전투는 순수 C# 전투 코어(`Assets/_Project/Scripts/BattleCore/`, asmdef `Wassup.BattleCore`) + MonoBehaviour 드라이버·뷰, 나머지는 MonoBehaviour. 스펙 주도 개발(`docs/spec/`)로 진행한다.
+비동기 토너먼트 디펜스 게임. 전투는 순수 C# 전투 코어(`Assets/_Project/Runtime/Battle/Scripts/BattleCore/`, asmdef `Somnia.Battle.BattleCore`) + MonoBehaviour 드라이버·뷰, 나머지는 MonoBehaviour. 스펙 주도 개발(`docs/spec/`)로 진행한다.
 
 ## 요구사항
 

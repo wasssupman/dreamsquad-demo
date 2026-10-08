@@ -4,7 +4,7 @@
 
 ## EditMode 테스트 폴더 위치
 
-EditMode 테스트 `.cs` 는 **`Assets/_Project/Tests/EditMode/`** 에 둔다(asmdef `Wassup.Tests.EditMode`). `Assets/_Project/Scripts/**/Tests/` 같은 곳에 만들면 asmdef 밖이라 `run_tests` 가 **0개 매칭**되거나(같은 클래스명이면) 중복 타입으로 컴파일이 깨진다. PlayMode 는 `Assets/_Project/Tests/PlayMode/`.
+EditMode 테스트 `.cs` 는 **`Assets/_Project/Tests/EditMode/Battle/`** 에 둔다(asmdef `Somnia.Battle.Tests.EditMode`). `Assets/_Project/Runtime/Battle/Scripts/**/Tests/` 같은 곳에 만들면 asmdef 밖이라 `run_tests` 가 **0개 매칭**되거나(같은 클래스명이면) 중복 타입으로 컴파일이 깨진다. PlayMode 는 `Assets/_Project/Tests/PlayMode/`.
 
 ## 격리 테스트 리그 (에디터가 열려 있어도 배치 실행)
 

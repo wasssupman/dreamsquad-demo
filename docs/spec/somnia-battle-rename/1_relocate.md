@@ -52,4 +52,8 @@ PixPlays(.cs 12) · GabrielAguiar(.cs 3) 는 `_Project` 코드가 참조하지 �
 
 ## 구현 결과
 
-(미착수)
+커밋 `fa13b6802`(2026-10-08, 5,279 파일 — rename 5,264 · 새 폴더/asmdef meta 10 · 삭제 1) — 스크립트 `scratchpad/relocate.py`. 경로 리터럴은 규칙 11종으로 .cs 61+13 파일 · csproj 3 · `.claude` · `.gitattributes`(골든 LF 줄). csproj 의 맥 절대경로 기본값 4 → `$(RepoRoot)Library/ScriptAssemblies`.
+
+스크립트가 틀렸던 것 둘(적용 중 바로잡음): ① 폴더를 자기 안으로 옮길 때 바깥 `Editor.meta`·`Tests/EditMode.meta` 가 tmp 로 끌려가 새 GUID 가 생겼다 → `git mv -f` 로 되돌려 바깥은 옛 GUID, 안쪽 `Battle.meta` 만 새 GUID. ② `git rm` 이 rename 으로 스테이징된 `check_ledgers.py` 를 거부 → `-f`.
+
+**정규식이 못 잡은 꼴 둘(단위 4 배치가 잡음, 후속 커밋에서 보정)**: `Path.Combine(Application.dataPath, "_Project", "Scripts", …)` 처럼 **세그먼트로 조립**하는 테스트 2곳(`ReachEntryPointGuardTests`) · 스냅샷 fixture `binding_bake_snapshot.txt` 안의 에셋 경로 21줄(`.txt` 는 치환 대상이 아니었다).

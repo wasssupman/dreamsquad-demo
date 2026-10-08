@@ -96,7 +96,7 @@ Assets/Plugins/{Spine, Spine Examples, Layer Lab, PixPlays, GabrielAguiarProduct
 | **D1** | 이름 규칙 | (a) 접두 치환 1규칙(`Somnia.Battle.BattleCore` 포함) (b) 다듬기(`Somnia.Battle.Core` + `Wassup.Core` 새 이름) | **(a)** — 기계적 · 충돌 0 · 대조표 하나 |
 | **D2** | 루스 에디터 코드 31 | (a) 새 `Somnia.Battle.Editor` asmdef + Layer Lab 벤더 asmdef 1장(`LayerLabPresetImporter` 가 `LayerLab.ArtMaker` 를 쓴다 — asmdef 는 predefined 어셈블리를 참조 못 한다) (b) Assembly-CSharp-Editor 에 두고 ⑤에서 | **(a)** — somnia 는 Assembly-CSharp 를 안 쓴다. Layer Lab .cs 19 는 `UnityEditor` 토큰 0 이라 런타임 asmdef 1장이면 된다(Hovl 이 선례) |
 | **D3** | 벤더 8 폴더 `Assets/Plugins/` 이동 시점 | (a) 지금 (b) ⑤ 반입 때 | **(a)** — 코드 있는 벤더는 governance 하드 실패라 어차피 옮긴다. Demo 에서 옮겨야 Spine 경로 상수(`SpineSettings.asset` · `Editor/Resources` 마커)가 깨지지 않음을 테스트로 본다 |
-| **D4** | governance 선제 수정(단위 2) 포함 | (a) 포함 — `ModeSelection` 에디터 캐리 → Editor asmdef(`InitializeOnLoadMethod`), `MapStageGizmoUtil.Label` → 에디터가 꽂는 delegate, 주석 12줄, `PropDataEditor` WebGL 1줄, Spine `CHANGELOG.md` 삭제 (b) ⑤로 미룸 | **(a)** — 6 파일 · 로직 변경 2(둘 다 에디터 전용 분기의 자리 이동). 여기서 하면 PlayMode.Core 가 캐리를 검증한다 |
+| **D4** | governance 선제 수정(단위 2) 포함 | (a) 포함 — `ModeSelection` 에디터 캐리 → Editor asmdef(`InitializeOnLoadMethod`), `MapStageGizmoUtil.Label` → 에디터가 꽂는 delegate, 주석 12줄, `PropDataEditor` 브라우저 타깃 1줄, Spine `CHANGELOG.md` 삭제 (b) ⑤로 미룸 | **(a)** — 6 파일 · 로직 변경 2(둘 다 에디터 전용 분기의 자리 이동). 여기서 하면 PlayMode.Core 가 캐리를 검증한다 |
 | **D5** | 검증 | (a) 에디터 닫고 배치 EditMode 3 lane **전후 1회씩**(기준선 → 변경 후 diff) + 컴파일 0 + Play (b) 컴파일 0 + Play 만 | **(a)** — 경로 리터럴 68 파일은 Play 가 못 본다. 사용자 원칙 「배치 검증 필요없음」의 예외를 청한다 — 이 작업만 |
 
 묻지 않고 하는 것(관례): 메뉴 루트 `Somnia/Battle/…` · 셰이더 `Somnia/Battle/…` · EditorPrefs 키 · `m_EditorClassIdentifier` 재작성 · 없는 `MobileBuild` 참조 제거 · `tools/battle-core-rebuild/` → `tools/battle/` + 죽은 `check_ledgers.py` 삭제 · 씬은 평면 유지.
@@ -115,16 +115,16 @@ Assets/Plugins/{Spine, Spine Examples, Layer Lab, PixPlays, GabrielAguiarProduct
 
 ## 체크리스트
 
-- [ ] D1~D5 승인
-- [ ] 단위 4-0 기준선: 에디터 닫힘 확인(`Temp/UnityLockfile`) → 배치 EditMode 3 lane 결과 저장
-- [ ] 단위 0 커밋 — `grep -rw Wassup` 가 닫힌 spec 문서 · 프로젝트 별명(소문자 `wassup`) 밖에서 0
-- [ ] 단위 1 커밋 — `git status` 의 이동이 전부 rename 으로 잡힘(GUID 보존) · 경로 리터럴 0 잔존
-- [ ] 단위 2 커밋 — governance 네 검사의 정규식을 Demo 에 돌려 0
-- [ ] 단위 3 커밋
-- [ ] 단위 4: 배치 EditMode 3 lane — 기준선과 실패 id 집합 동일(선행 빨강 CRLF 9) · 골든 11 일치
-- [ ] 사용자: 에디터 열기 → 재임포트 → 컴파일 0 · PrimeTween/Spine 경고 0
+- [x] D1~D5 승인 (사용자 2026-10-08 — 전부 추천안)
+- [x] 단위 4-0 기준선: 에디터 닫힘 확인 → 배치 EditMode 3 lane 2,212 / 2,201 / 7 / 4
+- [x] 단위 0 커밋 `078386d3f` — 코드·에셋·도구 집합 `grep -rw Wassup` 0 (옛 ECS 인용 `Wassup.Battle.*` 28줄은 이력으로 복원 — `d297475aa`)
+- [x] 단위 1 커밋 `fa13b6802` — 5,264 rename(GUID 보존) · 경로 리터럴 0 잔존 · 보정 `d297475aa`(세그먼트 조립 2 · fixture 21)
+- [x] 단위 2 커밋 `70686ccaf` — `govcheck.py` 네 검사 0(잔존 = Spine 마커 폴더 1, ⑤ 예외)
+- [x] 단위 3 커밋 — 설명 문서 20 파일 · 이 spec 의 구현 결과
+- [x] 단위 4: 변경 후 배치 2,212 / 2,201 / 7 / 4 — 기준선과 실패 id 집합 동일(선행 빨강 7) · 골든 14/14 · 헤드리스 빌드 2 exit 0
+- [ ] 사용자: 에디터 열기 → 재임포트 → 컴파일 0 · asmdef/Spine/PrimeTween 경고 0
 - [ ] 사용자: Play 한 판(판 기동 · 배치 · 상세 패널 · 에디터 메뉴 `Somnia/Battle/…`)
-- [ ] 메모리 · `docs/spec/README.md` 갱신, push 승인
+- [ ] push 승인
 
 ## 완료 기준
 

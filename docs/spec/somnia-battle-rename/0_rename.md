@@ -38,4 +38,8 @@
 
 ## 구현 결과
 
-(미착수)
+커밋 `078386d3f`(2026-10-08, 1,311 파일) — 스크립트 `scratchpad/rename.py`(dry-run → apply). 치환 수: .cs 801 파일 2,689곳 · asmdef 10 파일 49 필드(+`MobileBuild` 참조 2 제거) · 셰이더 16 파일 17곳 · 에셋/씬 YAML 461 파일 604줄 · 도구/`.claude`/README/fixture 13 파일 69곳. 코드·에셋·도구 집합에서 `grep -rw Wassup` 0, asmdef 15 의 참조 전부 해소.
+
+dry-run 이 잡아 규칙에 보탠 것: `Window/Wassup/…` 메뉴 4 · 주석/툴팁의 셰이더·메뉴 경로(`\bWassup/` 로 일반화) · asmdef 이전의 낡은 식별자 `Assembly-CSharp(-Editor)::Wassup.*` 8.
+
+**이력 예외(단위 3 커밋에서 되돌림)**: 옛 ECS 루트 네임스페이스 `Wassup.Battle.*` 인용 28줄(코드 주석 12 파일 · docs 2 · `.claude` 1)은 규칙이 존재한 적 없는 `Somnia.Battle.Battle.*` 를 만들어 `Wassup.Battle.*` 로 복원했다 — 「salvaged from」 경로 주석과 같은 취급. 그래서 코드의 `Wassup` 잔존은 그 인용뿐이다.

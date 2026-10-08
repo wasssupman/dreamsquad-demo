@@ -10,11 +10,11 @@
 
 ## 시간 제어는 TimeManager 만 — `Time.timeScale` 금지
 
-시간 스케일 제어는 `Wassup.Core.TimeControl.TimeManager`(의도된 예외 싱글턴 — `CLAUDE.md` 「Unity 함정」)만 담당. 코드에서 `Time.timeScale` 은 **절대 write 안 함(항상 1)**.
+시간 스케일 제어는 `Somnia.Battle.Core.TimeControl.TimeManager`(의도된 예외 싱글턴 — `CLAUDE.md` 「Unity 함정」)만 담당. 코드에서 `Time.timeScale` 은 **절대 write 안 함(항상 1)**.
 
 - **Why**: 글로벌 `Time.timeScale` 은 너무 blunt — 전투만 멈추고 UI·드래그·카메라는 실시간으로 두려면 도메인 분리 필요.
 - **사용**: 정지 = `TimeManager.Instance.Request(TimeDomain.Battle, 0f, priority:100)`, 슬로우 = `Request(Battle, 0.2f)`. 반환 `TimeLease` 를 보관 후 Dispose(멱등)로 해제.
-- **전투 도메인 스케일(지금)**: 전투 코어는 고정 틱 1/60 이고 프레임을 모른다. 슬로모·정지는 **틱 발행률**이다 — `BattleDriver` 가 매 프레임 `TimeManager.Instance.ScaleOf(TimeDomain.Battle)` 을 읽어 그만큼만 틱을 발행한다(`Scripts/BattleCoreUnity/BattleDriver.cs`). 웨이브·타이머는 코어 담당자(`WaveScheduler`·`MatchClock`)가 틱으로 센다.
+- **전투 도메인 스케일(지금)**: 전투 코어는 고정 틱 1/60 이고 프레임을 모른다. 슬로모·정지는 **틱 발행률**이다 — `BattleDriver` 가 매 프레임 `TimeManager.Instance.ScaleOf(TimeDomain.Battle)` 을 읽어 그만큼만 틱을 발행한다(`Runtime/Battle/Scripts/BattleCoreUnity/BattleDriver.cs`). 웨이브·타이머는 코어 담당자(`WaveScheduler`·`MatchClock`)가 틱으로 센다.
 - (이력 — 옛 ECS 전투, unit 9 에서 제거) ECS 는 `BattleSimGroup` 위 `BattleScaledRateManager`(scale 0=skip, >0=scaled delta), 브리지가 `BattleTimeScale` singleton write + `_battleClock`(unscaledDeltaTime×scale)로 웨이브/타이머를 구동했다. 되돌리면 안 되던 것: 정리 루틴의 `DestroyEntitiesByType<BattleTimeScale>()`(빼면 orphan → 시간제어 무력화) · RateManager 로컬 `_elapsedTime` 누산(월드 elapsed 를 읽으면 정지 후 점프). 교훈 — **정지 후 재개에서 「누적 시간」을 어디서 읽는지가 점프를 만든다** — 은 유지.
 - **부작용**: `Time.timeScale=0` 으로는 웨이브/타이머가 안 멈춘다(발행률이 `TimeManager` 에서 온다). 검증 목적 완전 동결은 `TimeManager.Request(Battle,0)`. (→ `01-unity-mcp-operation.md` 애니 검증.)
 
@@ -45,14 +45,14 @@
 
 > (이력 — 옛 ECS 전투, unit 9 에서 제거) Bursted `ISystem` 과 `ComponentLookup` 은 이제 저장소에 없다(전투 코어는 Burst 를 쓰지 않는다). 아래 심볼(`HazardCastSystem`·`AttackSystem`·`EnemyAiStateSystem`·`PatrolFieldSystem`)은 옛 전투의 것이다. 교훈 — **「무관해 보이는 대량 실패」는 콘솔의 첫 에러(여기선 Burst BC1055)부터 본다 · 같은 파일에서 된다고 여기서도 된다고 가정하지 않는다** — 는 유지한다. Burst 를 다시 들일 일이 생기면 이 절이 그대로 지도다.
 
-전투 심의 순수 계산을 별 asmdef(`Wassup.Skills`)로 빼면 두 번 넘어진다. **증상이 둘 다
+전투 심의 순수 계산을 별 asmdef(`Somnia.Battle.Skills`)로 빼면 두 번 넘어진다. **증상이 둘 다
 「그 함수와 무관해 보이는 대량 실패」**라서 원인에 도달하는 데 시간이 든다.
 
 ### ① 대상 asmdef 이 `Unity.Burst` 를 참조하지 않으면 Burst 가 본체를 못 찾는다
 
 ```
 Burst error BC1055: Unable to resolve the definition of the method
-  `Wassup.Skills.SkillMath.InBodyReach(float, float, float, float)`
+  `Somnia.Battle.Skills.SkillMath.InBodyReach(float, float, float, float)`
 ```
 
 **호출하는 쪽이 아니라 정의된 쪽 asmdef 에 `Unity.Burst` 참조가 필요하다.** 없으면 Burst 가

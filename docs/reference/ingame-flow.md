@@ -16,7 +16,7 @@
 전원이 **같은 시드의 3분**을 완주하고, 그 안에서 **몇 마리를 처리했는지**로만 겨루는
 비동기 스코어어택 디펜스.
 
-> 이 문서의 규칙은 현행 라이브 매치 모드 `KillScoreTimed`(`Data/Modes/MatchMode_KillScore3Min.asset`) 기준이다.
+> 이 문서의 규칙은 현행 라이브 매치 모드 `KillScoreTimed`(`Runtime/Battle/Data/Modes/MatchMode_KillScore3Min.asset`) 기준이다.
 > 모드는 닫힌 목표 종류(`KillScoreTimed` · `WaveClear` · `TimeAttack`) 중 하나를 고르고, 종료의 «의미»(점수·승패 표기)는
 > 목표가 정한다 — 설계 `docs/spec/battle-core-rebuild/match-mode-design.md`.
 
@@ -38,7 +38,7 @@ flowchart TD
 **판이 끝나는 통로는 둘이다.** `complete`(3분 만료) · `stress_full`(스트레스 100 = 마음 파괴).
 `submitted`(유저 제출)는 **허용되지만 공식 게임 절차로 세지 않는다**(사용자 결정 2026-08-22) —
 언제든 빠져나갈 수 있는 탈출구이지 판의 결말이 아니라서 위 도표에 점선으로 뒀다.
-따라서 판을 끝내는 통로(`MatchClock.EndMatch` 의 사유)는 정확히 **3개**다(`Scripts/BattleCore/Owners/MatchClock.cs`).
+따라서 판을 끝내는 통로(`MatchClock.EndMatch` 의 사유)는 정확히 **3개**다(`Runtime/Battle/Scripts/BattleCore/Owners/MatchClock.cs`).
 
 **넷째 통로를 만들지 말 것.** 어느 쪽 통로든 결말은 같다 — 승패 표기 없이 그때까지의
 처치 수를 제출한다. 「이러이러하면 판을 끝낸다」를 하나 더 붙이는 순간 그게 곧 패배 조건의
@@ -164,16 +164,16 @@ flowchart TD
 
 | 값 | 위치 |
 |---|---|
-| 제한시간 | `Data/Modes/MatchMode_KillScore3Min.asset` (`durationSec` — 판 길이는 모드 단독) |
-| 당김 상한 · 마음 최대치 | `Data/Decks/Deck_*.asset` (`maxPullsPerClear` · `goalStabilityMax`) |
-| 코스트 시작/상한/리젠 | `Data/Config/DefaultCostConfig.asset` (모드의 `costConfig` 가 고른다) |
-| 자동 시작 카운트다운 · 인트로 페이즈 토글 2종 | `Data/Modes/MatchMode_KillScore3Min.asset` (`autoStartCountdownSec` · `placementPhaseEnabled` · `gimmickEnabled`) |
-| 각성 게이지/비용/손패 크기/부착 상한/슬로모 | `Data/Dreamcatcher/AwakeningConfig.asset` |
-| 덱 크기 · Squad 상한 | `Data/Dreamcatcher/DeckRuleConfig_Default.asset` |
-| 디폴트 덱 구성 | `Data/Dreamcatcher/DreamcatcherDeck_Default.asset` |
-| 적별 각성 보상 · 안정도 피해 | `Data/Enemies/*.asset` (`awakeningReward` · `stabilityDamage`) |
-| 아군 사망 각성 보상 | `Data/Defenders/*.asset` (`awakeningReward`) |
-| 제출 개방 시점(P1) | `Data/Modes/MatchMode_KillScore3Min.asset` (`submitUnlockSec` · 제출 허용 `allowSubmit`) — 코드 상수에서 저작으로 내려왔다 |
+| 제한시간 | `Runtime/Battle/Data/Modes/MatchMode_KillScore3Min.asset` (`durationSec` — 판 길이는 모드 단독) |
+| 당김 상한 · 마음 최대치 | `Runtime/Battle/Data/Decks/Deck_*.asset` (`maxPullsPerClear` · `goalStabilityMax`) |
+| 코스트 시작/상한/리젠 | `Runtime/Battle/Data/Config/DefaultCostConfig.asset` (모드의 `costConfig` 가 고른다) |
+| 자동 시작 카운트다운 · 인트로 페이즈 토글 2종 | `Runtime/Battle/Data/Modes/MatchMode_KillScore3Min.asset` (`autoStartCountdownSec` · `placementPhaseEnabled` · `gimmickEnabled`) |
+| 각성 게이지/비용/손패 크기/부착 상한/슬로모 | `Runtime/Battle/Data/Dreamcatcher/AwakeningConfig.asset` |
+| 덱 크기 · Squad 상한 | `Runtime/Battle/Data/Dreamcatcher/DeckRuleConfig_Default.asset` |
+| 디폴트 덱 구성 | `Runtime/Battle/Data/Dreamcatcher/DreamcatcherDeck_Default.asset` |
+| 적별 각성 보상 · 안정도 피해 | `Runtime/Battle/Data/Enemies/*.asset` (`awakeningReward` · `stabilityDamage`) |
+| 아군 사망 각성 보상 | `Runtime/Battle/Data/Defenders/*.asset` (`awakeningReward`) |
+| 제출 개방 시점(P1) | `Runtime/Battle/Data/Modes/MatchMode_KillScore3Min.asset` (`submitUnlockSec` · 제출 허용 `allowSubmit`) — 코드 상수에서 저작으로 내려왔다 |
 
 유닛 스탯과 드림캐쳐 카드는 **시트가 정본**이다. SO 만 고치면 다음 에디터 임포트가 되돌린다(런타임 덮어쓰기는 `demo-diet` 에서 제거).
 

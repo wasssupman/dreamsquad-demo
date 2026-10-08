@@ -22,7 +22,7 @@
 | Render Scale | 0.8 | 1.0 |
 
 - 퀄리티 레벨: Quality 0 = Mobile (Android 기본), Quality 1 = PC (에디터 기본)
-- 에셋 경로: `Assets/Settings/Mobile_RPAsset.asset`, `Assets/Settings/PC_RPAsset.asset`
+- 에셋 경로: `Assets/_Project/Runtime/Battle/Settings/Mobile_RPAsset.asset`, `Assets/_Project/Runtime/Battle/Settings/PC_RPAsset.asset`
 
 ## 변경 근거 (성능 관점)
 

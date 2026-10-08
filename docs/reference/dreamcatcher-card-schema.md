@@ -1,15 +1,15 @@
 # 드림캐쳐 카드 데이터 스키마
 
-> ⚠ **설계 이력 문서다.** 카드 · 효과 · 소유 줄의 현재 스키마 정본은 [`docs/spec/skill-data-table/tables.md`](../spec/skill-data-table/tables.md)(§7 `Cards` · §2~§4 효과 표 · 소유 줄 · §0 시트 탭)로 옮겼다. 지금 카드의 규칙은 `bindings`(소유 줄 `BindingSpec` → 효과 SO `EffectData` — `Scripts/Data/Effects/`)이고, 트리거 · 효과 종류는 코어 enum(`TriggerKind` · `EffectKind`)을 저작이 직접 쓴다. 아래의 `mechanics[]` · 거울 enum(`DcTriggerKind` · `DcPayloadKind`)은 `skill-data-table` unit 4, `effects[]` · `attackMods[]`(`DcAttackModSpec` · `DcAttackModKind`)는 unit 8 에서 은퇴했고, `CardBinding` · `placementWarmupSec` 는 그 전에 없어졌다. 아래는 각 spec 이 무엇을 들였는지의 **계보**로만 읽는다.
+> ⚠ **설계 이력 문서다.** 카드 · 효과 · 소유 줄의 현재 스키마 정본은 [`docs/spec/skill-data-table/tables.md`](../spec/skill-data-table/tables.md)(§7 `Cards` · §2~§4 효과 표 · 소유 줄 · §0 시트 탭)로 옮겼다. 지금 카드의 규칙은 `bindings`(소유 줄 `BindingSpec` → 효과 SO `EffectData` — `Runtime/Battle/Scripts/Data/Effects/`)이고, 트리거 · 효과 종류는 코어 enum(`TriggerKind` · `EffectKind`)을 저작이 직접 쓴다. 아래의 `mechanics[]` · 거울 enum(`DcTriggerKind` · `DcPayloadKind`)은 `skill-data-table` unit 4, `effects[]` · `attackMods[]`(`DcAttackModSpec` · `DcAttackModKind`)는 unit 8 에서 은퇴했고, `CardBinding` · `placementWarmupSec` 는 그 전에 없어졌다. 아래는 각 spec 이 무엇을 들였는지의 **계보**로만 읽는다.
 >
 > `DreamcatcherCard` SO 하나가 **3가지 카드 타입(Squad / Unit / Active)** 을 담는 union 구조다.
 > `type` 에 따라 서로 다른 효과 필드가 활성화된다. 이 문서는 **정의 계층(순수 데이터)** 의 스키마만 다룬다.
-> 해석·실행(SO → plain 정의표 → 전투 코어)은 Unity 층 `CardDefinitionBuilder`(`Scripts/BattleCoreUnity/`)와 코어 트리거 레이어(`Scripts/BattleCore/Trigger/` — `CardBindings`·`CoreSkills`·`TriggerDispatcher`) 소관이며 여기에 포함하지 않는다.
+> 해석·실행(SO → plain 정의표 → 전투 코어)은 Unity 층 `CardDefinitionBuilder`(`Runtime/Battle/Scripts/BattleCoreUnity/`)와 코어 트리거 레이어(`Runtime/Battle/Scripts/BattleCore/Trigger/` — `CardBindings`·`CoreSkills`·`TriggerDispatcher`) 소관이며 여기에 포함하지 않는다.
 >
 > 앵커 파일:
-> - `Assets/_Project/Scripts/Data/Dreamcatcher/DreamcatcherCard.cs`
-> - `Assets/_Project/Scripts/Data/Dreamcatcher/DcMechanic.cs`
-> - `Assets/_Project/Scripts/Data/SkillData.cs`
+> - `Assets/_Project/Runtime/Battle/Scripts/Data/Dreamcatcher/DreamcatcherCard.cs`
+> - `Assets/_Project/Runtime/Battle/Scripts/Data/Dreamcatcher/DcMechanic.cs`
+> - `Assets/_Project/Runtime/Battle/Scripts/Data/SkillData.cs`
 
 ---
 
@@ -150,7 +150,7 @@ SkillData (ScriptableObject) {
 
 ## 4. 정의 ↔ 실행 계층 경계
 
-- 이 SO/enum 들은 **순수 데이터 + 에셋 참조**다. 코어는 이 SO 를 모른다. (이력: 「저작은 코어를 참조하지 않는다」였으나 `skill-data-table` unit 4 부터 저작이 코어 enum `TriggerKind` · `EffectKind` 를 직접 쓴다 — `Wassup.Runtime` → `Wassup.BattleCore` 참조는 한 방향이다.)
+- 이 SO/enum 들은 **순수 데이터 + 에셋 참조**다. 코어는 이 SO 를 모른다. (이력: 「저작은 코어를 참조하지 않는다」였으나 `skill-data-table` unit 4 부터 저작이 코어 enum `TriggerKind` · `EffectKind` 를 직접 쓴다 — `Somnia.Battle.Runtime` → `Somnia.Battle.BattleCore` 참조는 한 방향이다.)
 - 해석(SO → plain `CardDef`·규칙 줄 굽기)은 `CardDefinitionBuilder`(판 밖에서 한 번 — 저작 검증 포함), 실행은 코어 트리거 레이어(`CardBindings.Plan`·`FireOnAttach`, 숙주 종속 판정은 `Applicability`)에 있다. (옛 `BattleBridge`·`AttackSystem` 경로는 이력 — 옛 ECS 전투, unit 9 에서 제거.)
 - 따라서 아키텍처를 바꿔도 **translator 만 다시 쓰면** 되고, 이 정의들은 건드리지 않는다.
 - ~~`mechanics[]` · `attackMods[]` 는 **bake-time read only**~~ — 두 칸은 은퇴했다. 같은 규칙이 지금 `bindings` 에 걸린다: 굽기(`BindingSpecBuilder`) · 문안 · 진단 시점에만 읽고, managed array 이므로 per-frame 순회 금지(`RuleView()` 는 호출마다 배열을 새로 만든다).

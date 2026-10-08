@@ -21,7 +21,7 @@
 
 ## 스폰/골 프랍 — 맵에 상관없이 공유
 
-스폰/골 마커의 포탈 프랍은 스테이지 프리팹이 아니라 **`Assets/_Project/Data/Maps/MarkerPropStyle.asset`** 하나에서 온다. 전투 씬 `BattleCoreScene` 의 `MarkerProps` 오브젝트(`MarkerPropInstaller`)가 스테이지가 켜질 때(`MapStage.Enabled`) `visualRoot` 가 빈 마커 밑에 프랍을 identity(수직)로 얹는다.
+스폰/골 마커의 포탈 프랍은 스테이지 프리팹이 아니라 **`Assets/_Project/Runtime/Battle/Data/Maps/MarkerPropStyle.asset`** 하나에서 온다. 전투 씬 `BattleCoreScene` 의 `MarkerProps` 오브젝트(`MarkerPropInstaller`)가 스테이지가 켜질 때(`MapStage.Enabled`) `visualRoot` 가 빈 마커 밑에 프랍을 identity(수직)로 얹는다.
 
 - 포탈의 색/모양을 바꾸려면 → `SpawnPortal_Red` / `GoalPortal_Yellow` 프리팹 또는 스타일 에셋의 슬롯을 바꾼다. 네 맵이 함께 바뀐다.
 - 포탈이 바라보는 방향 → 스타일 에셋의 `propEulerAngles`(Y 만, 현재 −90 = 정면이 카메라 쪽). X/Z 를 넣으면 «수직 포탈» 계약이 깨져 Assets lane 이 빨개진다.
@@ -64,7 +64,7 @@
 1. **기즈모** — 씬 뷰에서 셀 색(빨강=차단, 주황=배치금지, 초록=스폰, 보라=루트, 핑크=보너스 포탈, 파랑/빨강 3×3 `I`=방어/적 본능)이 의도와 맞는지.
 2. **Assets lane** (5초) — `StagePoolBuildabilityTests` 가 풀의 전 스테이지를 스캔→조립→연결성까지 검사. 등록 직후 이것부터.
 3. **스테퍼 Play** — 로비 dev 스테퍼로 진입해 이동·배치·전투 육안 확인.
-4. **테스트 씬 카메라** — 스테이지를 놓은 씬에서 `Window/Wassup/Map Stage/Frame Scene Camera As Battle`: 루트를 원점으로 정규화(`BattleDriver` 가 판 조립 때 하는 것과 동일)하고 런타임 산식(`CameraFramingMath.SolveStatePose` + Battle 레시피)으로 카메라 포즈를 푼다. 포즈는 **격자와 화면비의 함수**라 저장값은 스냅샷이다 — 격자·레시피·화면비가 바뀌면 버튼을 다시 누른다. fov 는 런타임과 같이 `fovMin/fovMax` 로 클램프한 값을 쓴다(현재 Battle 레시피 25 → 화면엔 31 — main 의 화각 수정이 되돌려진 상태, 디렉터와 동일하게 미러). **스테이지를 고친 뒤엔 반드시 다시 누른다** — 안 그러면 씬 카메라는 고치기 전 격자를 본다. DoF·포스트·디렉터 동역학은 씬이 재현하지 못하므로 최종 확인은 스테퍼 Play.
+4. **테스트 씬 카메라** — 스테이지를 놓은 씬에서 `Window/Somnia/Battle/Map Stage/Frame Scene Camera As Battle`: 루트를 원점으로 정규화(`BattleDriver` 가 판 조립 때 하는 것과 동일)하고 런타임 산식(`CameraFramingMath.SolveStatePose` + Battle 레시피)으로 카메라 포즈를 푼다. 포즈는 **격자와 화면비의 함수**라 저장값은 스냅샷이다 — 격자·레시피·화면비가 바뀌면 버튼을 다시 누른다. fov 는 런타임과 같이 `fovMin/fovMax` 로 클램프한 값을 쓴다(현재 Battle 레시피 25 → 화면엔 31 — main 의 화각 수정이 되돌려진 상태, 디렉터와 동일하게 미러). **스테이지를 고친 뒤엔 반드시 다시 누른다** — 안 그러면 씬 카메라는 고치기 전 격자를 본다. DoF·포스트·디렉터 동역학은 씬이 재현하지 못하므로 최종 확인은 스테퍼 Play.
 
 ## 증상 → 원인
 

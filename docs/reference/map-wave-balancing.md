@@ -9,10 +9,10 @@
 
 | 바꾸고 싶은 것 | 파일 / 도구 | 핵심 필드 |
 |---|---|---|
-| **어떤 맵이 등장하나** (맵 추가/제거) | `Assets/_Project/Data/Maps/MapStagePool.asset` | `entries` (스테이지 프리팹 + 덱 + 플랜 짝) |
+| **어떤 맵이 등장하나** (맵 추가/제거) | `Assets/_Project/Runtime/Battle/Data/Maps/MapStagePool.asset` | `entries` (스테이지 프리팹 + 덱 + 플랜 짝) |
 | **맵 지형** (경로·스폰·골·배치칸) | 스테이지 프리팹(`MapStage`) — [`map-stage-authoring.md`](map-stage-authoring.md) | 마커 · 프랍 |
 | **웨이브 난이도** (몬스터 수·종류·보스) | 맵별 `Deck_{맵}.asset` (AttackDeck) | 아래 §웨이브 knob |
-| **웨이브의 «성격»** (편성 컨셉) | `Assets/_Project/Data/WaveConcepts/Concept_*.asset` | 아래 §웨이브 컨셉 블록 |
+| **웨이브의 «성격»** (편성 컨셉) | `Assets/_Project/Runtime/Battle/Data/WaveConcepts/Concept_*.asset` | 아래 §웨이브 컨셉 블록 |
 | **개별 몬스터 강함** (HP·속도·공격) | `Enemy_*.asset` (AttackUnitData) | health/moveSpeed/attackRange/attackCooldown… |
 | **마음이 얼마나 버티나** (판 길이) | 맵별 `Deck_{맵}.asset` | `goalStabilityMax` — 아래 §마음 · 스트레스 |
 | **처치로 얼마나 되돌리나** (교환비) | 같은 파일 | `killHealPerAwakening` — 아래 §마음 · 스트레스 |
@@ -20,7 +20,7 @@
 | **맵 랜덤 on/off** | `BattleDriver._fixedMapSeed` (`BattleCoreScene` 의 드라이버 인스펙터) | `0`=시드 배정(아래 우선순위), 비0=한 맵 고정 |
 | **개발 중 특정 맵으로 진입** | 로비 맵 스테퍼(◀ ▶ OFF, dev/에디터 전용) | `DevMapOverride`(PlayerPrefs), OFF=시드 배정 복귀 |
 
-맵 인덱스 우선순위: **로비 스테퍼(dev override) > `fixedMapSeed`(비0) > 토너먼트 시드(같은 토너먼트 = 같은 맵) > 시드 부재 시 0번 폴백**. 판정 위치 = `MatchDefinitionBuilder.TrySelectEncounter`(`Scripts/BattleCoreUnity/MatchDefinitionBuilder.cs`).
+맵 인덱스 우선순위: **로비 스테퍼(dev override) > `fixedMapSeed`(비0) > 토너먼트 시드(같은 토너먼트 = 같은 맵) > 시드 부재 시 0번 폴백**. 판정 위치 = `MatchDefinitionBuilder.TrySelectEncounter`(`Runtime/Battle/Scripts/BattleCoreUnity/MatchDefinitionBuilder.cs`).
 
 ---
 
@@ -28,7 +28,7 @@
 
 풀의 각 엔트리 = `(MapStage 프리팹, AttackDeck, WavePlanAsset)`. **맵마다 자기 전용 덱**을 가진다(2026-07-23~).
 
-> 스테이지 풀 `Assets/_Project/Data/Maps/MapStagePool.asset`(map-diorama-stage unit 11·12, 2026-08-26): 라이브 4장이 시드 로테이션에
+> 스테이지 풀 `Assets/_Project/Runtime/Battle/Data/Maps/MapStagePool.asset`(map-diorama-stage unit 11·12, 2026-08-26): 라이브 4장이 시드 로테이션에
 > 들어간다. 시드 부재(직접 Play·게스트) = 0번 Duel. dev 슬롯은 현재 비어 있다(로비 스테퍼 전용).
 
 | 스테이지 프리팹 | 덱 | waveSeed | 보스 |
@@ -42,7 +42,7 @@
 
 (4번째 열 = 그 맵의 보스. 판당 보스가 1기라 덱마다 **1종을 저작**한다 — 시드 뽑기로는 어차피 맵마다 고정되고 «어느 맵이 어느 보스를 받나»만 시드에 맡겨진다. `wave-concept-blocks` unit 3.)
 
-- 덱 asset 위치는 `Assets/_Project/Data/Decks/`. 무한 모드 전용 `Deck_Endless` 는 (이력 — 옛 ECS 전투의 브리지 `endlessEncounter` 슬롯이 들던 덱. 지금 저장소에 그 자산은 없다 — 모드는 `Data/Modes/MatchMode_*.asset` 이 고른다).
+- 덱 asset 위치는 `Assets/_Project/Runtime/Battle/Data/Decks/`. 무한 모드 전용 `Deck_Endless` 는 (이력 — 옛 ECS 전투의 브리지 `endlessEncounter` 슬롯이 들던 덱. 지금 저장소에 그 자산은 없다 — 모드는 `Runtime/Battle/Data/Modes/MatchMode_*.asset` 이 고른다).
 - 맵과 덱은 **같은 인덱스로 함께 선택**된다(`MapPoolSelect.SelectIndex(seed, count)`), 그래서 "맵마다 고정된 적 패턴".
 - 맵 추가 = 풀 `entries` 에 (새 MapStage 프리팹, 덱) 한 쌍 추가 — 라이브 엔트리는 덱 필수(`StagePoolBuildabilityTests` 가 막는다). **코드 변경 불필요**(GUID 참조).
 - `WaveA.asset`/`WaveB.asset` 은 레거시 원본(테스트 참조) — 풀은 안 씀, 삭제 금지.
@@ -51,7 +51,7 @@
 
 ## 웨이브 난이도 knob (AttackDeck)
 
-전투 코어의 `WaveGenerator.Generate`(`Scripts/BattleCore/Wave/WaveGenerator.cs` — 판 시작 때 `WaveScheduler` 가 부른다)가 이 값들로 웨이브를 짠다. 덱 SO 는 `MatchDefinitionBuilder` 가 plain 정의표로 옮겨 싣는다:
+전투 코어의 `WaveGenerator.Generate`(`Runtime/Battle/Scripts/BattleCore/Wave/WaveGenerator.cs` — 판 시작 때 `WaveScheduler` 가 부른다)가 이 값들로 웨이브를 짠다. 덱 SO 는 `MatchDefinitionBuilder` 가 plain 정의표로 옮겨 싣는다:
 
 | 원하는 것 | 필드 | 현재 기본 |
 |---|---|---|
@@ -156,7 +156,7 @@ floor(180/20)+1 = 10, 즉시 밀면 14~16). 곡선은 그 구간에서 성장이
 | 원거리 | Shooter · **협공(두 lane)** | 0.7 | 7 | 1.0 |
 | 공습 | Air · 한 lane | 0.3 | 4 | 0.6 |
 
-**바꾸고 싶을 때 만지는 곳은 이 표 하나다** — `Assets/_Project/Data/WaveConcepts/Concept_*.asset`. `countMul`·`weight` 는 실측으로 조정할 초기값이다.
+**바꾸고 싶을 때 만지는 곳은 이 표 하나다** — `Assets/_Project/Runtime/Battle/Data/WaveConcepts/Concept_*.asset`. `countMul`·`weight` 는 실측으로 조정할 초기값이다.
 
 규칙 몇 개는 코드가 아니라 **데이터가 소유**한다:
 
@@ -180,7 +180,7 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 
 **같은 맵 = 매번 같은 웨이브** 는 `waveSeed` 로 보장된다:
 
-- `WaveScheduler`(`Scripts/BattleCore/Owners/WaveScheduler.cs`): `waveSeed = deck.WaveSeed != 0 ? deck.WaveSeed : MatchSeed.DeriveWaveSeed(matchSeed)`.
+- `WaveScheduler`(`Runtime/Battle/Scripts/BattleCore/Owners/WaveScheduler.cs`): `waveSeed = deck.WaveSeed != 0 ? deck.WaveSeed : MatchSeed.DeriveWaveSeed(matchSeed)`.
 - 덱 `waveSeed` **비0 고정** → `matchSeed`(매판 랜덤) **무시** → 시드 고정 → 웨이브(수·종류·순서·수량) **매판 동일**.
 - **`waveSeed` 를 0 으로 만들면 매판 달라진다 — 절대 금지.** (실증: 각 덱 3회 생성 시 유닛·수량까지 완전 일치.)
 - 매판 랜덤인 건 "**어느 맵이 나오냐**"(`fixedMapSeed=0`)뿐. 특정 맵이 나오면 그 맵 웨이브는 항상 같음.
@@ -210,9 +210,9 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 
 ## 검증
 
-- **회귀 가드**: `Tests/EditMode/MapConnectivityTests` · 흐름장은 코어 `Tests/EditModeCore/FlowFieldBuilderTests`. (`MultiGoalPoolSeparationTests` 는 이미 없고, `FlowFieldSingletonTests` 는 이력 — 옛 ECS 전투, unit 9 에서 제거.)
+- **회귀 가드**: `Tests/EditMode/MapConnectivityTests` · 흐름장은 코어 `Tests/EditMode/BattleCore/FlowFieldBuilderTests`. (`MultiGoalPoolSeparationTests` 는 이미 없고, `FlowFieldSingletonTests` 는 이력 — 옛 ECS 전투, unit 9 에서 제거.)
 - **런타임 검증**: `MapConnectivity.AllSpawnsReachGoal`(각 스폰 아무 골이든 도달) — 판 시작 때 `BattleDriver` 가 거는 가드.
-- **덱 결정론 확인**: 코어 `WaveGenerator.Generate` 를 같은 덱·같은 시드로 N회 생성해 signature(유닛 id+count) 비교(EditMode.Core `WaveGeneratorTests` 가 그 형태다) — 판 전체는 골든(`Tests/GoldenCore/`)이 증언한다.
+- **덱 결정론 확인**: 코어 `WaveGenerator.Generate` 를 같은 덱·같은 시드로 N회 생성해 signature(유닛 id+count) 비교(EditMode.Core `WaveGeneratorTests` 가 그 형태다) — 판 전체는 골든(`Tests/EditMode/BattleCore/Golden/`)이 증언한다.
 - **시트 검증**: 값을 curl 로 읽어 SO 대조(읽기 전용). 상세 `docs/reference/lessons/` + 메모리.
 
 ---

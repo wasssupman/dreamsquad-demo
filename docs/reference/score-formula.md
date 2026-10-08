@@ -1,10 +1,10 @@
 # 점수 산식 — 어디서 나오고 얼마인가
 
 > 한 판 끝나면 나오는 최종 점수의 전부. 판의 성적은 전투 코어의 `MatchOutcome` 값 하나로
-> 취합되고(조립 지점 = 목표의 `IMatchGoal.BuildOutcome` — `Scripts/BattleCore/Goals/`), 서버로 가는 수는 그 `Score` 하나다.
+> 취합되고(조립 지점 = 목표의 `IMatchGoal.BuildOutcome` — `Runtime/Battle/Scripts/BattleCore/Goals/`), 서버로 가는 수는 그 `Score` 하나다.
 > (옛 `MatchTally`·`BattleBridge.BuildTally` 는 이력 — 옛 ECS 전투, unit 9 에서 제거.)
 >
-> **이 문서는 현행 라이브 모드 `KillScoreTimed`(`Data/Modes/MatchMode_KillScore3Min.asset`) 기준이다.**
+> **이 문서는 현행 라이브 모드 `KillScoreTimed`(`Runtime/Battle/Data/Modes/MatchMode_KillScore3Min.asset`) 기준이다.**
 > 점수·승패 표기는 매치 모드의 목표가 정한다 — `WaveClear`·`TimeAttack` 은 마음이 부서지면 «패배»이고
 > `TimeAttack` 은 점수가 경과 시간이다(`docs/spec/battle-core-rebuild/match-mode-design.md` 사용자 판정 2).
 
@@ -35,7 +35,7 @@
 | 스트레스 100 | `stress_full` | 마음이 부서졌다. **조기 종료** (heart-stress-axis) |
 | 유저 「제출」 | `submitted` | 경과 60초 후 개방(P1). 무페널티. **공식 절차로 세지 않는다** |
 
-판을 끝내는 함수는 `MatchClock.EndMatch`(`Scripts/BattleCore/Owners/MatchClock.cs`) 하나이고 통로(사유)는 정확히 **3개**다.
+판을 끝내는 함수는 `MatchClock.EndMatch`(`Runtime/Battle/Scripts/BattleCore/Owners/MatchClock.cs`) 하나이고 통로(사유)는 정확히 **3개**다.
 호출처는 만료(`MatchClock`) · 붕괴(`HeartMeter`) · 제출(`CommandPhase`) + 목표 달성(`IMatchGoal` 의 `Complete` — `complete` 통로를 만료와 공유,
 `WaveClear`·`TimeAttack` 전용)이다. **넷째 통로를 만들지 말 것** — 「이러이러하면
 판을 끝낸다」를 하나 더 붙이는 순간 그게 곧 패배 조건의 부활이다.
@@ -61,7 +61,7 @@
   스트레스는 한 방향으로만 흐르지 않는다 — 되돌릴 수 있는 저울이다.
 - **맵에 방어 본능이 살아 있는 동안 마음은 표적이 되지 않는다.** 마지막 본능이 무너져야
   마음이 깎이기 시작한다(`CoreShielded`). 라이브에서 본능이 저작된 맵은 Isle·Ford·Duel.
-- 최대치는 `Deck_*.asset` → `goalStabilityMax`(현재 **1500**). 정본은 마음 담당자 `HeartMeter`(`Scripts/BattleCore/Owners/HeartMeter.cs`)의 체력.
+- 최대치는 `Deck_*.asset` → `goalStabilityMax`(현재 **1500**). 정본은 마음 담당자 `HeartMeter`(`Runtime/Battle/Scripts/BattleCore/Owners/HeartMeter.cs`)의 체력.
 
 ## 서버에 보내는 수 = 화면에 보이는 수
 
@@ -101,11 +101,11 @@
 | 값 | 위치 |
 |---|---|
 | ~~적별 처치 점수~~ | **없다.** 1킬 = 1점 고정 |
-| 적별 각성 보상 | `Data/Enemies/*.asset` → `awakeningReward` |
+| 적별 각성 보상 | `Runtime/Battle/Data/Enemies/*.asset` → `awakeningReward` |
 | 돌격형의 마음 직격 | 같은 파일 → `stabilityDamage` (라이브 Runner·Swift 50) |
-| 마음 최대치 = 스트레스 분모 | `Data/Decks/Deck_*.asset` → `goalStabilityMax` (라이브 1500) |
+| 마음 최대치 = 스트레스 분모 | `Runtime/Battle/Data/Decks/Deck_*.asset` → `goalStabilityMax` (라이브 1500) |
 | 처치 시 마음 회복 배율 | 같은 파일 → `killHealPerAwakening` (라이브 10) |
-| 제한시간 180초 | `Data/Modes/MatchMode_KillScore3Min.asset` → `durationSec` (판 길이는 모드 단독 — 덱의 `timerDurationSec` 는 판 길이에 안 쓰인다) |
+| 제한시간 180초 | `Runtime/Battle/Data/Modes/MatchMode_KillScore3Min.asset` → `durationSec` (판 길이는 모드 단독 — 덱의 `timerDurationSec` 는 판 길이에 안 쓰인다) |
 | 제출 개방 시점(P1) | 같은 모드 자산 → `submitUnlockSec`(경과 60초) |
 
 ## 전투 중 화면 위 점수

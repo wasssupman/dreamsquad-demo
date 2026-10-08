@@ -18,11 +18,11 @@
 - **정본으로 다듬는 대상**: 전투 코어 · 정의표(`MatchDefinition`) · 커맨드와 사건 · 효과 표와 소유 줄 · 시트 스키마.
 - **데모(정본 아님)**: 인게임 UI · 에셋. 바꿔도 되고, 설계 근거로 삼지 않는다. 아웃게임은 이 리포에 없다(`demo-diet` 2026-10-07 — somnia-client 가 담당).
 - **방향**: 서버 권위 실시간 게임 서버. 서버가 매치 설정을 주고 핵심 로직을 돌리며, 클라는 표시 + 커맨드 전송을 맡는다. **커맨드가 곧 서버 로직의 키워드**다. CI 는 시기상조.
-- **서버와 닿는 곳**: 이 리포엔 없다. 로그인 · 토너먼트 참가 · 결과 제출 · 랭킹은 somnia 아웃게임이 맡고, 전투는 입구 값(`MatchEntryInput`)과 출구 사건(`BattleDriver.MatchFinished(MatchOutcome)` 등)으로만 바깥과 통한다. 시트 읽기는 에디터 임포터(프록시 응답 파서 `Data/StatImport/ApiEnvelope`)만. 판 자체는 클라에서 돈다.
+- **서버와 닿는 곳**: 이 리포엔 없다. 로그인 · 토너먼트 참가 · 결과 제출 · 랭킹은 somnia 아웃게임이 맡고, 전투는 입구 값(`MatchEntryInput`)과 출구 사건(`BattleDriver.MatchFinished(MatchOutcome)` 등)으로만 바깥과 통한다. 시트 읽기는 에디터 임포터(프록시 응답 파서 `Runtime/Battle/Data/StatImport/ApiEnvelope`)만. 판 자체는 클라에서 돈다.
 
 ## 3. 한 판의 생애
 
-1. **입구** — 바깥(somnia 로비)이 스쿼드(유닛 + 드림스톤) · 드림캐쳐 덱 · 시드를 값 `MatchEntryInput` 으로 넘긴다(편성 검사 · 프리셋 · 로그인은 아웃게임 소관). 입력이 없으면 기본 편성 SO `Data/DefaultLoadout.asset` 이 기본값이다. (`BattleCoreUnity/MatchEntryInput` · `MatchEntryContext`)
+1. **입구** — 바깥(somnia 로비)이 스쿼드(유닛 + 드림스톤) · 드림캐쳐 덱 · 시드를 값 `MatchEntryInput` 으로 넘긴다(편성 검사 · 프리셋 · 로그인은 아웃게임 소관). 입력이 없으면 기본 편성 SO `Runtime/Battle/Data/DefaultLoadout.asset` 이 기본값이다. (`BattleCoreUnity/MatchEntryInput` · `MatchEntryContext`)
 2. **시드** — 토너먼트 시드는 `MatchEntryInput.MapSeed` 로 들어온다(참가 신청 · 시도 id 는 아웃게임 소관). 없으면 드라이버의 고정 시드.
 3. **판 조립** — 모드 SO 와 저작 SO 를 정의표로 굽고(`MatchDefinitionBuilder`), 시드가 맵과 그 맵에 짝지어진 적 덱 · 웨이브 플랜을 고른다(전원 동일). (`BattleCoreUnity/BattleDriver` · `MatchEntry`)
 4. **판** — 카운트다운 뒤 제한시간 동안 실시간. 코어(`BattleMatch`)가 고정 틱으로 돌고, 입력은 커맨드로 들어가고, 뷰는 사건을 받아 그린다.
@@ -35,23 +35,23 @@
 
 | 영역 | 무엇인가 | 정본 | 코드 입구 |
 |---|---|---|---|
-| 판(전투 코어) | 담당자들이 상태를 나눠 갖고, 틱 단계 목록이 순서를 정한다. 엔진을 모른다 | `../reference/battle-core-architecture.md` | `Scripts/BattleCore/Match/BattleMatch` · `TickPipeline` |
-| 방어유닛 | 코스트를 내고 배치하는 고정 개체. 클래스 5. 몸 = footprint 가로 반폭 | 시트 `Defenders` → `Data/Defenders/` · 카탈로그 `Data/DefenderCatalog.asset` | `Scripts/Data/DefenderUnitData` |
-| 적 · 보스 | 웨이브가 스폰해 마음으로 오는 개체. 클래스 × 등급. 몸 = 크기 티어(보스만 개별 저작) | 시트 `Enemies` → `Data/Enemies/` · `Data/EnemyCatalog.asset` | `Scripts/Data/AttackUnitData` |
-| 웨이브 | 적 덱(편성 knob)이 시드로 웨이브를 생성한다. 같은 맵 = 같은 웨이브 | `Scripts/Data/Decks/` · `Data/WaveConcepts/` · [`map-wave-balancing.md`](../reference/map-wave-balancing.md) | 코어 `Scripts/BattleCore/Wave/WaveGenerator` |
-| 맵 | 스테이지 프리팹이 맵의 정본이자 비주얼. 풀에서 시드로 고른다 | `Data/Maps/MapStagePool.asset` · [`map-stage-authoring.md`](../reference/map-stage-authoring.md) | `Scripts/Core/MapStage/` |
-| 적 이동 | 목적지별 흐름장 + 어그로 · 감지 · 웨이포인트 우선순위 | [`enemy-movement-algorithm.md`](../reference/enemy-movement-algorithm.md) | 코어 `Scripts/BattleCore/Move/` |
-| 드림캐쳐 | 카드가 유닛의 규칙을 바꾼다(스탯을 올리지 않는다). 큐 · 손패 · 각성 게이지 | 시트 `Cards` · `DcSkills` · `DcConfig` → `Data/Dreamcatcher/` · 스키마 `docs/spec/skill-data-table/tables.md` §7 | 코어 손패 `HandDeck` · 굽기 `CardDefinitionBuilder` |
-| 스킬 · 효과 | 카드 · 방어유닛 · 적이 같은 소유 줄(트리거 → 효과 id)을 든다. 효과 표 하나 | 시트 `Skills` · `SkillOwners` → `Data/Effects/` · `docs/spec/skill-data-table/` | `Scripts/BattleCore/Trigger/` · `Scripts/Skills/` |
-| 드림스톤 | 판 밖 스탯 배율(체급 공급원). 스쿼드 프리셋에 장착 | `Data/Dreamstones/DreamstoneCatalog.asset` | `Scripts/Data/Dreamstone/` |
-| 경제 | 코스트(배치) · 각성(카드) · 당김 크레딧 · 쿨타임 | 시트 `CostConfig` → `Data/Config/DefaultCostConfig.asset` · `Data/Dreamcatcher/AwakeningConfig.asset` | 코어 `CostLedger` 등 담당자 |
+| 판(전투 코어) | 담당자들이 상태를 나눠 갖고, 틱 단계 목록이 순서를 정한다. 엔진을 모른다 | `../reference/battle-core-architecture.md` | `Runtime/Battle/Scripts/BattleCore/Match/BattleMatch` · `TickPipeline` |
+| 방어유닛 | 코스트를 내고 배치하는 고정 개체. 클래스 5. 몸 = footprint 가로 반폭 | 시트 `Defenders` → `Runtime/Battle/Data/Defenders/` · 카탈로그 `Runtime/Battle/Data/DefenderCatalog.asset` | `Runtime/Battle/Scripts/Data/DefenderUnitData` |
+| 적 · 보스 | 웨이브가 스폰해 마음으로 오는 개체. 클래스 × 등급. 몸 = 크기 티어(보스만 개별 저작) | 시트 `Enemies` → `Runtime/Battle/Data/Enemies/` · `Runtime/Battle/Data/EnemyCatalog.asset` | `Runtime/Battle/Scripts/Data/AttackUnitData` |
+| 웨이브 | 적 덱(편성 knob)이 시드로 웨이브를 생성한다. 같은 맵 = 같은 웨이브 | `Runtime/Battle/Scripts/Data/Decks/` · `Runtime/Battle/Data/WaveConcepts/` · [`map-wave-balancing.md`](../reference/map-wave-balancing.md) | 코어 `Runtime/Battle/Scripts/BattleCore/Wave/WaveGenerator` |
+| 맵 | 스테이지 프리팹이 맵의 정본이자 비주얼. 풀에서 시드로 고른다 | `Runtime/Battle/Data/Maps/MapStagePool.asset` · [`map-stage-authoring.md`](../reference/map-stage-authoring.md) | `Runtime/Battle/Scripts/Core/MapStage/` |
+| 적 이동 | 목적지별 흐름장 + 어그로 · 감지 · 웨이포인트 우선순위 | [`enemy-movement-algorithm.md`](../reference/enemy-movement-algorithm.md) | 코어 `Runtime/Battle/Scripts/BattleCore/Move/` |
+| 드림캐쳐 | 카드가 유닛의 규칙을 바꾼다(스탯을 올리지 않는다). 큐 · 손패 · 각성 게이지 | 시트 `Cards` · `DcSkills` · `DcConfig` → `Runtime/Battle/Data/Dreamcatcher/` · 스키마 `docs/spec/skill-data-table/tables.md` §7 | 코어 손패 `HandDeck` · 굽기 `CardDefinitionBuilder` |
+| 스킬 · 효과 | 카드 · 방어유닛 · 적이 같은 소유 줄(트리거 → 효과 id)을 든다. 효과 표 하나 | 시트 `Skills` · `SkillOwners` → `Runtime/Battle/Data/Effects/` · `docs/spec/skill-data-table/` | `Runtime/Battle/Scripts/BattleCore/Trigger/` · `Runtime/Battle/Scripts/Skills/` |
+| 드림스톤 | 판 밖 스탯 배율(체급 공급원). 스쿼드 프리셋에 장착 | `Runtime/Battle/Data/Dreamstones/DreamstoneCatalog.asset` | `Runtime/Battle/Scripts/Data/Dreamstone/` |
+| 경제 | 코스트(배치) · 각성(카드) · 당김 크레딧 · 쿨타임 | 시트 `CostConfig` → `Runtime/Battle/Data/Config/DefaultCostConfig.asset` · `Runtime/Battle/Data/Dreamcatcher/AwakeningConfig.asset` | 코어 `CostLedger` 등 담당자 |
 | 마음 · 점수 | 마음 = 방어 거점의 체력(화면엔 스트레스). 점수 = 처치 수 | [`score-formula.md`](../reference/score-formula.md) | 코어 `HeartMeter` · `ScoreLedger` · 종료 `MatchClock.EndMatch` |
-| 시즌 기믹 | 판 전체에 얹히는 규칙(과로 · 번아웃 · 사직서 · 온천). 현행 라이브 모드는 꺼 둠 | `Data/Gimmick/` | 코어 `GimmickHost` |
-| 매치 모드 | 목표 종류(enum)를 고르는 SO. 현행 라이브는 하나(`KillScoreTimed`) | `Data/Modes/MatchMode_KillScore3Min.asset` · `docs/spec/battle-core-rebuild/match-mode-design.md` | `Scripts/BattleCore/Match/ModeDef` |
-| 시간 | 정지 · 슬로모는 도메인별 lease. 전투는 틱 발행률로 반영 | — | `Scripts/Core/TimeControl/TimeManager` · `BattleDriver` |
-| 뷰 · 연출 | 사건을 받아 그리는 뷰 풀들. 순서는 한 파일 | [`object-pipeline-map.md`](../reference/object-pipeline-map.md) · 무기 궤적 [`weapon-trail-authoring.md`](../reference/weapon-trail-authoring.md) | `Scripts/BattleCoreUnity/View/` · `ViewOrder` |
-| 바깥과의 경계 | 입구 값 `MatchEntryInput`(스쿼드 · 드림스톤 · 덱 · 플랜 · 맵 · 시드) · 출구 사건 `MatchStarted` · `DeckLocked` · `MatchFinished(MatchOutcome)` · `MatchAbandoned`. 로그인 · 프로필 · 토너먼트는 somnia | [`../spec/demo-diet/0_seams.md`](../spec/demo-diet/0_seams.md) | `Scripts/BattleCoreUnity/MatchEntryInput` · `BattleDriver` |
-| 테스트 · 골든 | 어셈블리 다섯 + 헤드리스 lane. 골든은 Unity 에서만 | [`test-procedure.md`](../reference/test-procedure.md) | `Tests/` · `Scripts/BattleCore/Harness/` |
+| 시즌 기믹 | 판 전체에 얹히는 규칙(과로 · 번아웃 · 사직서 · 온천). 현행 라이브 모드는 꺼 둠 | `Runtime/Battle/Data/Gimmick/` | 코어 `GimmickHost` |
+| 매치 모드 | 목표 종류(enum)를 고르는 SO. 현행 라이브는 하나(`KillScoreTimed`) | `Runtime/Battle/Data/Modes/MatchMode_KillScore3Min.asset` · `docs/spec/battle-core-rebuild/match-mode-design.md` | `Runtime/Battle/Scripts/BattleCore/Match/ModeDef` |
+| 시간 | 정지 · 슬로모는 도메인별 lease. 전투는 틱 발행률로 반영 | — | `Runtime/Battle/Scripts/Core/TimeControl/TimeManager` · `BattleDriver` |
+| 뷰 · 연출 | 사건을 받아 그리는 뷰 풀들. 순서는 한 파일 | [`object-pipeline-map.md`](../reference/object-pipeline-map.md) · 무기 궤적 [`weapon-trail-authoring.md`](../reference/weapon-trail-authoring.md) | `Runtime/Battle/Scripts/BattleCoreUnity/View/` · `ViewOrder` |
+| 바깥과의 경계 | 입구 값 `MatchEntryInput`(스쿼드 · 드림스톤 · 덱 · 플랜 · 맵 · 시드) · 출구 사건 `MatchStarted` · `DeckLocked` · `MatchFinished(MatchOutcome)` · `MatchAbandoned`. 로그인 · 프로필 · 토너먼트는 somnia | [`../spec/demo-diet/0_seams.md`](../spec/demo-diet/0_seams.md) | `Runtime/Battle/Scripts/BattleCoreUnity/MatchEntryInput` · `BattleDriver` |
+| 테스트 · 골든 | 어셈블리 다섯 + 헤드리스 lane. 골든은 Unity 에서만 | [`test-procedure.md`](../reference/test-procedure.md) | `Tests/` · `Runtime/Battle/Scripts/BattleCore/Harness/` |
 
 ## 5. 값이 흐르는 길
 
@@ -60,7 +60,7 @@
 ```
 
 - 시트가 밸런스 값의 정본이고, SO 는 그 사본이다. 탭 · 헤더 · 업서트 키의 정본은 `docs/spec/skill-data-table/5_sheet_io.md`.
-- 판의 콘텐츠(카탈로그 · 장판 · 길막 · 스택 · 부여 상한 · 이동 튜닝 · 시즌 · 보너스 · 공용 액티브 풀)는 SO `Data/BattleContent.asset` 한 장, 바깥 입력이 없을 때의 편성은 `Data/DefaultLoadout.asset` 한 장이 든다 — 씬의 `BattleDriver` 는 그 둘과 모드 SO 를 **참조만** 든다(`battle-content-finish` 2026-10-07). 런타임이 복제하는 머티리얼 원본도 SO(`Data/Materials/Runtime/RuntimeMaterialSet.asset`) — `Resources` 폴더는 없다.
+- 판의 콘텐츠(카탈로그 · 장판 · 길막 · 스택 · 부여 상한 · 이동 튜닝 · 시즌 · 보너스 · 공용 액티브 풀)는 SO `Runtime/Battle/Data/BattleContent.asset` 한 장, 바깥 입력이 없을 때의 편성은 `Runtime/Battle/Data/DefaultLoadout.asset` 한 장이 든다 — 씬의 `BattleDriver` 는 그 둘과 모드 SO 를 **참조만** 든다(`battle-content-finish` 2026-10-07). 런타임이 복제하는 머티리얼 원본도 SO(`Runtime/Battle/Data/Materials/Runtime/RuntimeMaterialSet.asset`) — `Resources` 폴더는 없다.
 - 코어가 SO 를 직접 읽는 곳은 없다. 읽는 곳은 `MatchDefinitionBuilder`(+ 옆의 `CombatDefinitionBuilder` · `CardDefinitionBuilder` · `BindingDefinitionBuilder` · `BoardEffectDefinitionBuilder`) 한 군데다.
 - 탄 · 패턴 · 장판 같은 모양 표는 아직 시트에 없다(에셋에서만 저작).
 

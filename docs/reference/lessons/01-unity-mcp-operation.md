@@ -14,7 +14,7 @@ MCP `execute_code` 로 Play 를 구동해도, **에디터 창이 포커스를 �
 
 `execute_code` 는 코드를 **method body** 로 컴파일한다(CodeDom, C#6).
 
-- `using` 지시문 금지 → `Wassup.Data.PropData` 처럼 풀네임. UnityEngine/UnityEditor 는 암시적.
+- `using` 지시문 금지 → `Somnia.Battle.Data.PropData` 처럼 풀네임. UnityEngine/UnityEditor 는 암시적.
 - 컴포넌트 내부 private 상태는 reflection 으로 조회(당시 예: 브리지의 `_defenderByTile`/`_effectTilesByCell`/`_generatedMap` — 이력, 옛 ECS 전투는 unit 9 에서 제거. 지금 전투 상태는 코어 담당자의 읽기 모델로 먼저 찾는다).
 - const 필드는 reflection 으로 못 바꾼다.
 
@@ -85,7 +85,7 @@ Codex 에도 unityMCP 가 붙어 있어(`~/.codex/config.toml`) 에디터 작업
 
 ## PlayMode 전투 테스트: 합성 더미는 **멜리 전용**, 투사체는 안 맞는다
 
-> (이력 — 옛 ECS 전투, unit 9 에서 제거) 아래 심볼(`em.CreateEntity`·`IncomingDamage`·`AttackSystem`·`ProjectileMoveSystem`·`ProjectileHitSystem`·`bridge.ForceNextWave`)은 옛 전투의 것이다. 교훈 — **합성 픽스처가 실제 스폰 경로의 무언가를 빠뜨리면 한 갈래만 초록이 된다, 산식은 통과하는 갈래로 고정하고 나머지 갈래는 같은 산식을 쓰는지 코드로 확인한다** — 는 유지한다. 전투 코어의 규칙 테스트는 이제 씬 없이 `Tests/EditModeCore/` 에서 실제 스폰 경로를 그대로 탄다.
+> (이력 — 옛 ECS 전투, unit 9 에서 제거) 아래 심볼(`em.CreateEntity`·`IncomingDamage`·`AttackSystem`·`ProjectileMoveSystem`·`ProjectileHitSystem`·`bridge.ForceNextWave`)은 옛 전투의 것이다. 교훈 — **합성 픽스처가 실제 스폰 경로의 무언가를 빠뜨리면 한 갈래만 초록이 된다, 산식은 통과하는 갈래로 고정하고 나머지 갈래는 같은 산식을 쓰는지 코드로 확인한다** — 는 유지한다. 전투 코어의 규칙 테스트는 이제 씬 없이 `Tests/EditMode/BattleCore/` 에서 실제 스폰 경로를 그대로 탄다.
 
 **증상**: PlayMode 통합 테스트에서 디펜더를 배치하고 `em.CreateEntity()` 로 만든 합성 더미 적(`Health`+`FactionTag`+`IncomingDamage`+`LocalTransform`)을 사거리 안에 두면 — **멜리 유닛(guardian)은 정상 공격·데미지**가 들어가는데, **투사체 유닛(ranger)은 대상을 아예 못 맞힌다**. 피격 데미지·`ProjectileState.damage` 둘 다 0 (거리 0.05/2 무관, dreamcatcher-new-abilities 마감 때 4회 시도 전부 0).
 

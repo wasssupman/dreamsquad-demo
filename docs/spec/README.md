@@ -119,7 +119,7 @@ code + git history        구현 상세
 
 - **규칙 · 구조**: `CLAUDE.md` · `docs/reference/`(게임 규칙 `ingame-flow.md` · 전투 구조 `battle-core-architecture.md` 외)
 - **남긴 spec 3개**(전부 완료 — 현행 계약이 아직 여기 있다):
-  - `battle-core-rebuild/` — 순수 C# 전투 코어 · 계약 13 · 장부(`ledgers/` — `tools/battle-core-rebuild/check_ledgers.py` 가 읽는다)
+  - `battle-core-rebuild/` — 순수 C# 전투 코어 · 계약 13 · 장부(`ledgers/` — 장부 검사 도구 `check_ledgers.py` 는 사라진 `Scripts/Bridge` 를 읽던 죽은 도구라 `somnia-battle-rename` 에서 삭제)
   - `unified-effect-layer/` — 스킬 = 효과 한 층 · 인계 `6_handoff_summary.md`
   - `skill-data-table/` — 효과 표 · 소유 줄 · 시트 8탭(헤더 정본 `5_sheet_io.md` — `SheetHeaderDocTests` 가 읽는다) · 인계 `6_` · `10_handoff_summary.md`
 - **초기화 뒤 완료된 spec**: `depth-parallax-removal/` — 뎁스맵 패럴랙스 기능 제거(2026-10-01). 의존성 전수표가 README 에 있다(삭제 spec 이라 handoff 없음). · `unity-6-6-upgrade/` — Unity 6000.6.3f1 전환(2026-10-07). 원인 6종 표와 「코어 경계」 보장의 이동(컴파일러 → 테스트 + 헤드리스)이 README 에 있다. · `demo-diet/` — 전투 로직만 남기는 정리(2026-10-07, 단위 0~4): 입구 값 `MatchEntryInput` · 출구 사건 seam, 아웃게임 코드/에셋 삭제 전수표, 벤더 7 참조 폐포 추림. · `battle-content-finish/` — 「옵션은 SO · 전투 콘텐츠만」 마무리(2026-10-07, 단위 0~5): 판 저작 SO 두 장 · 순방향/역방향 도달 검사로 고른 삭제 장부(`ledger.md`) · `Resources` 없음. 이 정리본이 somnia-client 로 옮겨 가는 payload 다.
@@ -127,7 +127,7 @@ code + git history        구현 상세
 
 ## 진행 중 spec
 
-- **`somnia-battle-rename/`** — somnia 이식 ④: `Wassup` → `Somnia.Battle.*` 개명 + somnia 레이아웃 재배치(반입 전, Demo 안에서). 2026-10-08 제안, 결정 D1~D5 대기. 단위 0~4.
+- **`somnia-battle-rename/`** — somnia 이식 ④: `Wassup` → `Somnia.Battle.*` 개명 + somnia 레이아웃 재배치(반입 전, Demo 안에서). 2026-10-08 단위 0~4 구현 완료(배치 EditMode 3 lane 기준선과 동일 · 골든 14/14) — 사용자 에디터 컴파일·Play 확인 대기. 어셈블리·폴더 대조표는 그 README.
 - 직전 완료 = `battle-content-finish/`(2026-10-07 — 판 저작 → SO 두 장 · 죽은 타입/코드 · 닿지 않는 에셋 장부 491 · 일회성 에디터 도구/시트 push/패키지 6 · `Resources` → `RuntimeMaterialSet` SO · 문서 8, 단위 0~5) · 그 전 `tilemap-untangle/`(2026-10-07 — Tile 에셋 껍데기 → Sprite · `GridLayout` 권위 → 보드 평면 Transform + tileSize · Tilemap 패키지/모듈 제거, 단위 0~2) · `demo-diet/`(2026-10-07 — 단위 0~4, 커밋 12) · `unity-6-6-upgrade/`(2026-10-07). 다음 후보: somnia-client 이식(`Somnia.Battle.*` 개명 — 세션 메모리 `somnia-migration-goal`). 그 전 = `design-blueprint/`(2026-10-01 — `CLAUDE.md` 재작성 + 현시점 요약 `docs/blueprint/README.md` · 남은 후보는 그 README 「후속 후보」).
 
 ## Follow-up Backlog
@@ -144,9 +144,9 @@ code + git history        구현 상세
 ### spec 초기화 잔여 (2026-10-01)
 
 - **Assets 안 지운 spec 경로 6곳** [S] · Unity 가 플레이 중이 아닐 때 한 커밋으로(재컴파일 1회).
-  - `Scripts/UnitAi/UnitActionPhase.cs` — 머리 주석이 **옛 ECS 동작을 현재처럼 설명한다**(배치 중 · 사망 제외를 옛 쿼리가 한다 · 옛 공격/이동 시스템 추출 · Burst 호환). 지금은 `CombatPhase` 가 `u.Deploying || u.Dead` 로 건너뛰고 `DefenderAi` 가 배치 중을 입력으로 받는다 · asmdef 에 Burst 없음 → 주석을 다시 쓴다.
-  - `Scripts/Data/StatImport/UnitStatImportDto.cs` · `DcSheetImportDto.cs` — 옛 JSON 계약 문서 → 현행 정본 `skill-data-table/5_sheet_io.md` 「실제 시트 설정」으로.
-  - `Tests/EditModeAssets/UnitRosterInvariantTests.cs` — 주석 + **실패 메시지**의 「투영 규칙(spec unit 0)」 → `UnitStatFieldMapper`.
+  - `Runtime/Battle/Scripts/UnitAi/UnitActionPhase.cs` — 머리 주석이 **옛 ECS 동작을 현재처럼 설명한다**(배치 중 · 사망 제외를 옛 쿼리가 한다 · 옛 공격/이동 시스템 추출 · Burst 호환). 지금은 `CombatPhase` 가 `u.Deploying || u.Dead` 로 건너뛰고 `DefenderAi` 가 배치 중을 입력으로 받는다 · asmdef 에 Burst 없음 → 주석을 다시 쓴다.
+  - `Runtime/Battle/Scripts/Data/StatImport/UnitStatImportDto.cs` · `DcSheetImportDto.cs` — 옛 JSON 계약 문서 → 현행 정본 `skill-data-table/5_sheet_io.md` 「실제 시트 설정」으로.
+  - `Tests/EditMode/BattleAssets/UnitRosterInvariantTests.cs` — 주석 + **실패 메시지**의 「투영 규칙(spec unit 0)」 → `UnitStatFieldMapper`.
   - `Shaders/Prop_Outline_Sprite.shader` — 경로 한 줄 삭제(머리 주석이 이미 설명한다).
 - **`attack_damage` 호환 코드 제거** [S] · 시트를 새로 만들어 그 열이 없다(`5_sheet_io.md` 「만들지 않는다」). `UnitStatImportDto.attackDamage` · `UnitStatApplier.WarnDeprecatedAttackDamage` · 테스트 3 · `SheetHeaderDocTests.NotInSheet`. 사용자 결정 대기.
 - 코드 주석의 옛 출처 메모(510 파일)는 일괄 정리하지 않는다 — 현재 동작을 틀리게 말하는 것만 그 파일을 만질 때 고친다.
@@ -185,7 +185,7 @@ code + git history        구현 상세
 - **조용한 기본값 폴백 → loud 거절 + enum 전수 테스트** [M] · 목표 종류 · 공격 정책 · 스탯 변환 · 해저드 모양. (`BCR/ledgers/rules.md` M2 · E7)
 - **겸용 파라미터 가방 분리** [M] · `SkillIntent` 보조 스칼라 · 25인자 생성자.
 - **거대 단계 파일 분할** [S~M] · `CombatPhase` · `TickProjectilePhase`. 틱 순서는 무변. (`BCR/ledgers/rules.md` C24)
-- **어셈블리 분할**(Outgame / BattleView / Data) [M] · 지금은 `BattleCoreUnity` · UI · Data 가 전부 `Wassup.Runtime` 한 asmdef 다.
+- **어셈블리 분할**(Outgame / BattleView / Data) [M] · 지금은 `BattleCoreUnity` · UI · Data 가 전부 `Somnia.Battle.Runtime` 한 asmdef 다.
 - **뷰 무음 구독 · `Find` 폴백 전수 검사** [S] · 배선 누락이 경고 없이 돈다.
 - **9b 규칙 증언 이식 잔여** [M] · (`BCR/ledgers/retire-test-pairs.md` 「부분 공백」)
 - **디버그 커맨드 게이트** [S] · 릴리스 빌드에서의 차단 여부를 전수로 정한다.

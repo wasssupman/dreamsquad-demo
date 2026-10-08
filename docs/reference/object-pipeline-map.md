@@ -2,13 +2,13 @@
 
 > **대조용 문서다.** 플레이 오브젝트를 신설하거나 저작→렌더 경로를 바꾸는 spec 의 README 를 쓸 때, 아래에서 가장 가까운 아키타입 표를 복사해 `파이프라인 커버리지` 섹션으로 붙인다. 해당 없는 정거장은 빈 칸이 아니라 **`N/A + 이유`** 를 적는다(빈 칸은 「잊었음」과 「필요 없음」을 구분하지 못한다). 대조 중 표가 코드와 어긋나면 **그 자리에서 이 문서를 고친다.**
 >
-> 2026-09-25 전면 재작성(battle-core-rebuild unit 8c) — 전투는 순수 C# 전투 코어(`Scripts/BattleCore/`)와 새 Unity 층(`Scripts/BattleCoreUnity/`)이 돈다. 옛 정거장(ECS 컴포넌트 · 시스템 · 큐 싱글턴 · 브리지 드레인)은 각 표 끝의 **이력 한 줄**로만 남긴다. 앵커는 심볼이다 — 경로는 `Scripts/` 기준. 구현 상세의 정본은 코드이고, 이 문서는 정거장 유무만 답한다.
+> 2026-09-25 전면 재작성(battle-core-rebuild unit 8c) — 전투는 순수 C# 전투 코어(`Runtime/Battle/Scripts/BattleCore/`)와 새 Unity 층(`Runtime/Battle/Scripts/BattleCoreUnity/`)이 돈다. 옛 정거장(ECS 컴포넌트 · 시스템 · 큐 싱글턴 · 브리지 드레인)은 각 표 끝의 **이력 한 줄**로만 남긴다. 앵커는 심볼이다 — 경로는 `Scripts/` 기준. 구현 상세의 정본은 코드이고, 이 문서는 정거장 유무만 답한다.
 
 ## 공통 정거장
 
 | # | 정거장 | 어디 | 확인 포인트 |
 |---|---|---|---|
-| 1 | 저작 SO | `Data/**`(유닛·적·탄·해저드·카드 SO) · `Data/BattleView/**`(뷰 설정 SO 7종) | 수치는 SO 에서만 온다(CLAUDE.md 「데이터」). 뷰만 쓰는 값은 뷰 설정 SO 로, 판 규칙 값은 정의표로 |
+| 1 | 저작 SO | `Runtime/Battle/Data/**`(유닛·적·탄·해저드·카드 SO) · `Runtime/Battle/Data/BattleView/**`(뷰 설정 SO 7종) | 수치는 SO 에서만 온다(CLAUDE.md 「데이터」). 뷰만 쓰는 값은 뷰 설정 SO 로, 판 규칙 값은 정의표로 |
 | 2 | 정의표 행 | `MatchDefinitionBuilder.Build` → `MatchDefinition` 배열(`Units`·`Enemies`·`Projectiles`·`Patterns`·`Structures`·`Hazards`·`BlockingHazards`·`EffectTiles`·`Cards`·`Gimmicks`·…) | **빌더 매핑 누락은 조용히 죽는다**(인계 함정 8) — 새 SO 필드마다 빌더 매핑 테스트 + 열거 번호 핀 테스트(`BuilderEnumPinTests`) |
 | 3 | 코어 스폰 · 사건 | `BattleWorld.Spawn*` · 담당자(`PlacementService`·`WaveScheduler`·`GimmickHost`·`HandDeck`) → `CoreEvent`(`CoreEventKind` 번호) | 사건은 **값 스냅샷**이다(`SimEntityId` 키 · 자리↔몸 짝, `battle-core-architecture.md` §6.1). 뷰는 사건으로 코어 상태를 되묻지 않는다 |
 | 4 | 뷰 풀 | `BattleDriver.Subscribe(order, handler)` 구독자 — `Core*ViewPool` · `Core*Presenter` · `Core*Spawner` | 풀마다 자기 구독(통합 뷰 없음). 틱 뒤 `BattleDriver` 가 사건을 순서대로 흘린다 |
@@ -24,7 +24,7 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 저작 SO | `DefenderUnitData`(+`DefenderCatalog`) · 평타 경로 능력 = `Data/Abilities/`(`DefenderAbilityData` 서브에셋) · 규칙(배치 스킬 · 실드 캐스트) = `bindings`(소유 줄 `BindingSpec`) → 효과 SO `EffectData`(`Data/Effects/`) | 신규 유닛은 **`DefenderCatalog` 등록까지**(미등록 = 로스터 미노출). 편성은 로비 → `MatchEntry.ResolveSquadUnits` · 효과 SO 는 카드 · 적과 같은 표다(같은 id 를 참조하면 복사 0 — 시트 `Skills` · `SkillOwners`) |
+| 저작 SO | `DefenderUnitData`(+`DefenderCatalog`) · 평타 경로 능력 = `Runtime/Battle/Data/Abilities/`(`DefenderAbilityData` 서브에셋) · 규칙(배치 스킬 · 실드 캐스트) = `bindings`(소유 줄 `BindingSpec`) → 효과 SO `EffectData`(`Runtime/Battle/Data/Effects/`) | 신규 유닛은 **`DefenderCatalog` 등록까지**(미등록 = 로스터 미노출). 편성은 로비 → `MatchEntry.ResolveSquadUnits` · 효과 SO 는 카드 · 적과 같은 표다(같은 id 를 참조하면 복사 0 — 시트 `Skills` · `SkillOwners`) |
 | 정의표 행 | `MatchDefinitionBuilder.ToUnitDef` → `UnitDef` · 공격 = `CombatDefinitionBuilder.BuildDefenderAttack` · 소유 줄 = `BindingDefinitionBuilder` → `BindingSpecBuilder`(카드 · 적과 한 경로) → 규칙 줄 `BindingDef` + 효과 줄 `MatchDefinition.Effects` | 배치 저작 7칸(코스트 등)이 정의표로 안 옮겨져 배치가 공짜였던 선례(함정 8) |
 | 코어 스폰 · 사건 | 커맨드 `PlaceDefender` → `PlacementService.TryPlace` → `PlacementService.SpawnDefender` → `Placed`(25) · 비행 착지 커맨드 → `DefenderActivated`(28) · 퇴근 → `Retired`(26) · 거절 → `PlacementRejected`(27) | 「배치 중」은 코어가 소유한 페이즈다(`PlacementService.StepActivation`) — 길이 = 배치 모션 |
 | 뷰 풀 | `CoreUnitViewPool`(`UnitSpawned`·`DefenderActivated`·`AttackResolved`·`Knockup`·`UnitSlain`) → `CoreSpineUnitView` / `CoreSpriteUnitView` / 폴백 `CoreQuadUnitView` · 배치 비행 `CoreDeployFlightPresenter` · 퇴근 비행 `CoreRetireFlightPresenter` · 드래그 `CoreDragPreviewPresenter` | ★백엔드 선택은 **`CoreUnitViewPool.TrySpawn` 한 곳**(스프라이트 모션이 있으면 스프라이트, 비면 Spine). 무기 궤적은 `CoreSpriteUnitView` 가 붙인다(`WeaponTrailRig`) |
@@ -80,7 +80,7 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 저작 SO | 스테이지 프리팹의 마커(`StructureMarker`·`GoalMarker`) + `Data/Structures/*` | 스테이지 프리팹이 곧 정본(bake 없음) |
+| 저작 SO | 스테이지 프리팹의 마커(`StructureMarker`·`GoalMarker`) + `Runtime/Battle/Data/Structures/*` | 스테이지 프리팹이 곧 정본(bake 없음) |
 | 정의표 행 | `CombatDefinitionBuilder.FillStructures` → `StructureDef` · 마음 = `MatchDefinitionBuilder.ToHeartConfig` → `HeartDef` | |
 | 코어 스폰 · 사건 | `BattleWorld.SpawnStructure` → `UnitSpawned`(2) · 마음 `HeartChanged`(29)/`HeartCollapsed`(30) | |
 | 뷰 풀 | `CoreStructurePropLayer` · 마음 게이지 = `CoreScoreHud`/`HeartHudConfig` | 붕괴 연출 = `CoreVfxSpawner.OnHeartCollapsed`(골 칸마다 붕괴 원샷) + `GoalMarker.MarkCollapsed`(마커 주저앉음) — 8a2 행 3 · 슬로모는 5c 도메인 리스 |
@@ -93,7 +93,7 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 저작 SO | `HazardSO` · `BlockingHazardSO`(8c 에 `Data/Authoring/` 으로 이사) · 캐스트 능력 `HazardCastAbility` | 길막 프리팹 2 에 `BlockingHazardPresenter` 가 붙어 있다(새 층은 부르지 않는다 — Missing Script 방지로 남긴 것) |
+| 저작 SO | `HazardSO` · `BlockingHazardSO`(8c 에 `Runtime/Battle/Data/Authoring/` 으로 이사) · 캐스트 능력 `HazardCastAbility` | 길막 프리팹 2 에 `BlockingHazardPresenter` 가 붙어 있다(새 층은 부르지 않는다 — Missing Script 방지로 남긴 것) |
 | 정의표 행 | `BoardEffectDefinitionBuilder.ToHazardDefs` → `HazardDef` · `BoardEffectDefinitionBuilder.ToBlockingHazardDefs` → `BlockingHazardDef` | 모양 = `BoardEffectDefinitionBuilder.ToCoreShape` · 원소 = `BoardEffectDefinitionBuilder.ToCoreDotElement` |
 | 코어 스폰 · 사건 | 존 = `BattleWorld.SpawnHazard` → `HazardSpawned`(44)/`HazardDestroyed`(45) · 길막 = `BlockerSpawn` → `UnitSpawned`(2, 길막 종류) · 디버그 커맨드 17·18(`CoreHazardDebugMenu`) | 길막은 **유닛**이다(부술 수 있는 벽) — 그래서 스폰·소멸이 유닛 사건이다 |
 | 뷰 풀 | `CoreHazardViewPool`(장판 그림 + 길막 프리팹 `Instantiate` · 스폰/파괴 VFX) | 스폰 VFX 는 SO 의 것이다(프리젠터에 안 넘겨 죽은 저작이 됐던 선례) |
@@ -147,7 +147,7 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 저작 SO | `DreamcatcherCard` · `DreamcatcherCardCatalog` · 드림스톤 · 규칙 = `bindings`(소유 줄 `BindingSpec`) → 효과 SO `EffectData`(`Data/Effects/`) | 문안은 `DreamcatcherCardText`(로비·새 층 공유) · 카드 규칙은 카드 SO 안이 아니라 효과 SO 에 있다 — 새 카드 = 효과 SO(또는 기존 효과 id 참조) + 소유 줄 |
+| 저작 SO | `DreamcatcherCard` · `DreamcatcherCardCatalog` · 드림스톤 · 규칙 = `bindings`(소유 줄 `BindingSpec`) → 효과 SO `EffectData`(`Runtime/Battle/Data/Effects/`) | 문안은 `DreamcatcherCardText`(로비·새 층 공유) · 카드 규칙은 카드 SO 안이 아니라 효과 SO 에 있다 — 새 카드 = 효과 SO(또는 기존 효과 id 참조) + 소유 줄 |
 | 정의표 행 | `CardDefinitionBuilder.Fill` → `CardDef`(소유 줄 = `BindingSpecBuilder` — 유닛 · 적과 한 경로) · 덱 = `CoreDeckComposition.Compose`(확정 덱 + 판 시드 액티브 롤) | 52장 자동 증언 = `CardProbe`(7e) |
 | 코어 스폰 · 사건 | `HandDeck.TryAttach`/`HandDeck.TryCast` → `CardAttached`(60)/`CardDetached`(61)/`CardCast`(62) · 규칙 = `BindingRegistry` → `BindingAttached`(57)/`TriggerFired`(56)/`SkillVisual`(59) | 트랜잭션 = ① 적용 → ② 차감 → ③ 순환 |
 | 뷰 풀 | 손패 `CoreHandView`·`CoreCardDragSlot`·`CoreCardFocusPresenter` · 각성 항아리 `CoreAwakeningGaugeView` · 선택 패널 `CoreSelectionPanel` · 부착 범위 링 `CoreMapOverlay.ShowAttachRange` · 표식·오라 `CoreStatusFxSpawner`·`CoreDcAuraVisualPool` · 발동 임팩트·빔 `CoreVfxSpawner`·`CoreBeamPresenter` | 부착 범위 링은 사건 구독자가 아니다 — 손패 드래그가 오버레이에 민다 |

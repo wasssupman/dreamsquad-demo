@@ -4,7 +4,7 @@
 > **§1 은 아키텍처 중립 설계 아웃라인**이다 — 판 위에 무엇이 존재하고, 어떤 축을 갖고, 어떤 규칙으로
 > 맞물리는지를 구현 구분 없이 적는다. 다른 아키텍처의 도면을 그릴 때 **입력으로 쓰는 층**이다.
 > 값(숫자)은 적지 않는다 — 값은 SO·시트가 소유하고, 이 층은 축과 규칙만 갖는다.
-> **§2 이하는 현행 구현 = 순수 C# 「전투 코어」(`Wassup.BattleCore`)와 그 Unity 층의 구조 지도**다 —
+> **§2 이하는 현행 구현 = 순수 C# 「전투 코어」(`Somnia.Battle.BattleCore`)와 그 Unity 층의 구조 지도**다 —
 > 누가 무엇을 소유하고, 한 틱이 어떤 순서로 돌고, 사건이 어떤 차례로 뷰에 닿는지.
 > 옛 ECS 구현(맥락·큐·시스템 순서)은 `battle-core-rebuild` unit 9 에서 제거됐다 — §9 와 git 이력.
 >
@@ -15,7 +15,7 @@
 > **그 자리에서 이 문서를 고친다.**
 >
 > 작성 2026-09-03 · §1 추가 2026-09-04 · 전면 재정합 2026-09-21 · **§2~§10 을 전투 코어 구조 지도로 교체 2026-09-25**
-> (`battle-core-rebuild` unit 9). 경로는 `Assets/_Project/Scripts/` 기준.
+> (`battle-core-rebuild` unit 9). 경로는 `Assets/_Project/Runtime/Battle/Scripts/` 기준.
 
 ---
 
@@ -31,14 +31,14 @@ flowchart LR
         SHEET["구글 시트"] --> SO["ScriptableObject<br/>MatchModeData · DefenderUnitData · AttackUnitData<br/>DreamcatcherCard · AttackDeck · WavePlanAsset · MapStagePool"]
         STAGE["MapStage 프리팹<br/>(프랍 = 맵 정본이자 비주얼)"]
     end
-    subgraph UL["Unity 층 — Wassup.Runtime / BattleCoreUnity"]
+    subgraph UL["Unity 층 — Somnia.Battle.Runtime / BattleCoreUnity"]
         ENTRY["MatchEntry · ModeSelection<br/>(어느 문으로 · 어느 모드로)"]
         BUILD["MatchDefinitionBuilder<br/>SO → plain 정의표"]
         DRV["BattleDriver<br/>시간(틱 발행률) · 커맨드 문 · 사건 방출"]
         INPUT["Input/ — 드래그 배치 · 카드 · 선택 · 제출<br/>→ Command"]
         VIEW["뷰 풀 · HUD · 손패<br/>풀마다 ViewOrder 로 구독"]
     end
-    subgraph CORE["전투 코어 — Wassup.BattleCore (엔진 모듈은 MathematicsModule 만)"]
+    subgraph CORE["전투 코어 — Somnia.Battle.BattleCore (엔진 모듈은 MathematicsModule 만)"]
         BM["BattleMatch<br/>조립 지점: 담당자 생성 + 틱 순서 나열"]
         OWN["담당자 8 + 규칙 레이어<br/>MatchClock · CostLedger · ScoreLedger · HeartMeter<br/>WaveScheduler · PlacementService · HandDeck · GimmickHost"]
         PIPE["TickPipeline<br/>Command → FieldPrep → AiMove → TickProjectile → Combat<br/>→ 담당자 단계 → Goal → Clock → Flush"]
@@ -69,8 +69,8 @@ flowchart LR
 
 | 개체 | 설계상 정의 | 현행 포인터 |
 |---|---|---|
-| **방어유닛** | 플레이어가 코스트를 내고 배치하는 고정 개체. 클래스 5(Ranger·Guardian·Fighter·Caster·Support). footprint(W×H 칸)를 점유하고 몸은 그 **가로 반폭**(세로 깊이는 몸에 기여하지 않는다 — 적은 정면에서 오고 유닛의 크기는 레인을 가로막는 폭이다) | `Data/DefenderUnitData.cs` · `DefenderClass` |
-| **적** | 웨이브가 스폰하고 골(마음)을 향해 이동하는 개체. 클래스 4(Tanker·Runner·Bruiser·Shooter) × 등급 3(Normal·Elite·Boss). 몸은 크기 티어에서 파생 | `Data/AttackUnitData.cs` · `EnemyClass` · `EnemyTier` |
+| **방어유닛** | 플레이어가 코스트를 내고 배치하는 고정 개체. 클래스 5(Ranger·Guardian·Fighter·Caster·Support). footprint(W×H 칸)를 점유하고 몸은 그 **가로 반폭**(세로 깊이는 몸에 기여하지 않는다 — 적은 정면에서 오고 유닛의 크기는 레인을 가로막는 폭이다) | `Runtime/Battle/Data/DefenderUnitData.cs` · `DefenderClass` |
+| **적** | 웨이브가 스폰하고 골(마음)을 향해 이동하는 개체. 클래스 4(Tanker·Runner·Bruiser·Shooter) × 등급 3(Normal·Elite·Boss). 몸은 크기 티어에서 파생 | `Runtime/Battle/Data/AttackUnitData.cs` · `EnemyClass` · `EnemyTier` |
 | **순찰 소환물** | 아군이지만 이동하는 유일한 개체. 소환사의 담당 구역(사거리) 안을 순찰. 배치 점유·각성·사직서·죽음 보상을 **갖지 않는다** | `SummonPatrolAbility` · 코어 `CombatPhase.SpawnPatrol` · `UnitKind.Patrol` |
 | **거점** | 움직이지 않고 공격받는 개체. 방어 마음(=골 타워, HP 는 덱 소유) · 본능(맵 저작, 3×3 점유, 편 소속, 공격할 수 있음) · 적 마음/본능(진영 비트 존재, 현 저작 규칙은 본능만 허용). 유닛 태그를 갖지 않아 배치·카드·코스트 규칙에 걸리지 않는다 | 코어 `BattleWorld.SpawnStructure` — 세우는 자: 본능·적 마음 = `FieldPrepPhase.Begin` · 방어 마음 = `HeartMeter` · `StructureData` · `UnitKind.Structure` |
 | **투사체** | 궤적 × 페이로드로 정의되는 발사체(§1.4). 발사 명세(패턴)가 「누구를·몇 발·어떤 간격」을 정한다 | `ProjectileData` · `ProjectilePatternData` |
@@ -192,13 +192,13 @@ flowchart LR
 - **의도 어휘**(24 + 메타 2): 피해·회복(DealDamage · Heal) / 상태(ApplyStatModifier · ApplyStack · ApplyCc · ApplyDot · ClearCc · GrantShield) / 표적(Taunt · CreditThreat · ScaleKillReward) / 이동(Blink · BeginUltimateLeap) / 생성(SpawnProjectile · EmitPattern · SpawnOrbitProjectile · SpawnZoneCarrier · SpawnFieldCarrier) / 진행형 개시(BeginDreamCocoon · StartLethalTimer · GrantCharge · DelaySelfAttack) / 관측(Report · PlayVisual) / 자원(GainCost · ReduceSkillCooldown).
 - **컨텍스트 질의**: 자리(위치·셀·셀 중심·타일 크기·바라보는 방향) · 정체(진영·체력·실효 스탯·술어 8종·통행층·실드) · 후보(Opponents/Allies + 필터 7) · 격자 판단(밀집 셀·착지 셀) · 발사 명세 조준 필요 여부.
 - **진행형 상태**는 스킬이 아니라 개체의 상태다(도약 비행 · 수면 완주 감시 · 시한부 · 궤도 탄) — 스킬은 개시와 수치까지.
-- **통합 효과 층 계약**(`unified-effect-layer` · 2026-09-28 확정 — `docs/spec/unified-effect-layer/README.md` 계약 1~5 · 전수 표 `census.md`). 원점은 드레인(`TriggerDispatcher.Execute`) 한 곳이 `SkillOrigin`(`Scripts/Skills/ISkill.cs`)에 채우고 concrete 는 `target.Origin` 만 읽는다 · 발사 요청은 `IntentApplier.SpawnProjectile` 한 갈래 · 버스트 슬롯은 발동 주체(`PatternSlotState.Subject`)에서 쏜다 · 저작 검증은 `Trigger/EffectComboRule.cs` 하나:
+- **통합 효과 층 계약**(`unified-effect-layer` · 2026-09-28 확정 — `docs/spec/unified-effect-layer/README.md` 계약 1~5 · 전수 표 `census.md`). 원점은 드레인(`TriggerDispatcher.Execute`) 한 곳이 `SkillOrigin`(`Runtime/Battle/Scripts/Skills/ISkill.cs`)에 채우고 concrete 는 `target.Origin` 만 읽는다 · 발사 요청은 `IntentApplier.SpawnProjectile` 한 갈래 · 버스트 슬롯은 발동 주체(`PatternSlotState.Subject`)에서 쏜다 · 저작 검증은 `Trigger/EffectComboRule.cs` 하나:
   1. **원점은 두 값** — 발사 자리(발동 주체 = 사건 주체, 없으면 스냅샷) · 효과 좌표(조준 대상의 자리 또는 사건이 실은 자리 + 선택적 대상 엔티티). 효과는 출처를 모른다.
   2. **원점 항은 효과의 형이 정한다**(§8-7) — 몸형 = 원점 주인의 몸(감지자 스냅샷) · 자리형 = 0(칸 반폭). 키 = (트리거 × 효과 형).
   3. **호밍 여부는 탄 궤적의 성질** — 발사 요청 조립은 궤적 결합 종류(대상 · 칸 · 방향)로만 갈린다.
   4. **귀속·발사 자리 = 발동 주체 · 수명 = 발동 주체 ∧ 바인딩을 든 자.** 출처(`BindingOrigin`)는 수명·표기 꼬리표.
   5. **저작 검증은 하나** — 출처(카드 · 유닛 능력 · 악몽)는 검증 입력이 아니다.
-- **스킬 데이터 표 계약**(`skill-data-table` · 2026-09-29 구현 — `docs/spec/skill-data-table/README.md` 계약 1~10 · 표 설계 `tables.md` · 인계 `6_handoff_summary.md`). 코어 = `MatchDefinition.Effects`(`EffectDef` · 규칙 줄 `BindingDef.EffectIndex`) · 저작 = 효과 SO `EffectData`(`Data/Effects/`) + 소유자 `bindings`(`BindingSpec`) · 굽기 한 경로 `BindingSpecBuilder` · 시트 탭 `Skills` · `SkillOwners`(`SkillSheet`):
+- **스킬 데이터 표 계약**(`skill-data-table` · 2026-09-29 구현 — `docs/spec/skill-data-table/README.md` 계약 1~10 · 표 설계 `tables.md` · 인계 `6_handoff_summary.md`). 코어 = `MatchDefinition.Effects`(`EffectDef` · 규칙 줄 `BindingDef.EffectIndex`) · 저작 = 효과 SO `EffectData`(`Runtime/Battle/Data/Effects/`) + 소유자 `bindings`(`BindingSpec`) · 굽기 한 경로 `BindingSpecBuilder` · 시트 탭 `Skills` · `SkillOwners`(`SkillSheet`):
   1. **정체는 효과 줄에 있다** — 효과 표(종류 + 수치 + 수치 방식 + 안정 `Id`)가 탄·패턴·장판 표와 나란한 넷째 id 참조 표. 수치가 다르면 다른 줄 · 소유자별 덮어쓰기 없음. 피해는 효과 줄에만(패턴·장판·길막은 모양).
   2. **소유 = 참조 줄** — 카드 · 유닛 · 적이 같은 (트리거 · 주체 · 게이트 · 발동 상한 → 효과 id) 줄을 든다.
   3. **스킬은 소유자를 묻지 않는다** — 소유자마다 달라야 하는 결과는 그 상태의 담당자가 진영으로 정한다.
@@ -248,11 +248,11 @@ flowchart LR
 
 | 층 | 어셈블리 · 폴더 | 갖는 것 | 갖지 않는 것 |
 |---|---|---|---|
-| **전투 코어** | `Wassup.BattleCore`(`BattleCore/`). 참조 = `Wassup.Skills` · `Wassup.UnitAi` + 엔진 모듈 `UnityEngine.MathematicsModule`(6.6 부터 `Unity.Mathematics` 의 자리 — 그래서 `noEngineReferences` 는 꺼져 있다) | 판정 · 상태 · 순서 전부. 폴더 = `Match/`(조립·정의표·커맨드·사건) · `Owners/`(담당자) · `Phases/`(틱 단계) · `World/`(개체) · `Map/` · `Move/` · `Combat/` · `Effects/` · `Trigger/`(트리거→발동) · `Wave/` · `Goals/`(매치 목표) · `Trace/` · `Harness/`(골든 러너) | `UnityEngine` 타입 · SO · 아트 참조 · 프레임 시간 · 로거(진단은 `BattleMatch.Report` 통로로 **밖에** 넘긴다) |
-| **Unity 층** | `Wassup.Runtime` 안의 `BattleCoreUnity/` | ① **정의표 물질화** — `MatchDefinitionBuilder`(+ `CombatDefinitionBuilder` · `CardDefinitionBuilder` · `BindingDefinitionBuilder` · `BoardEffectDefinitionBuilder`) ② **시간** — `BattleDriver` ③ **뷰** — `View/` · `Hud/` · `Cards/` · `CoreBattleAudio` · `CoreMatchEndBeat` ④ **입력** — `Input/`(`DragPlacementInput` · `CardInput` · `SelectionInput` · `SubmitInput`) ⑤ **진입** — `MatchEntry` · `ModeSelection` | 규칙. 판정·상태·저장이 여기 들어오면 그것이 새 브리지의 첫 줄이다 |
+| **전투 코어** | `Somnia.Battle.BattleCore`(`BattleCore/`). 참조 = `Somnia.Battle.Skills` · `Somnia.Battle.UnitAi` + 엔진 모듈 `UnityEngine.MathematicsModule`(6.6 부터 `Unity.Mathematics` 의 자리 — 그래서 `noEngineReferences` 는 꺼져 있다) | 판정 · 상태 · 순서 전부. 폴더 = `Match/`(조립·정의표·커맨드·사건) · `Owners/`(담당자) · `Phases/`(틱 단계) · `World/`(개체) · `Map/` · `Move/` · `Combat/` · `Effects/` · `Trigger/`(트리거→발동) · `Wave/` · `Goals/`(매치 목표) · `Trace/` · `Harness/`(골든 러너) | `UnityEngine` 타입 · SO · 아트 참조 · 프레임 시간 · 로거(진단은 `BattleMatch.Report` 통로로 **밖에** 넘긴다) |
+| **Unity 층** | `Somnia.Battle.Runtime` 안의 `BattleCoreUnity/` | ① **정의표 물질화** — `MatchDefinitionBuilder`(+ `CombatDefinitionBuilder` · `CardDefinitionBuilder` · `BindingDefinitionBuilder` · `BoardEffectDefinitionBuilder`) ② **시간** — `BattleDriver` ③ **뷰** — `View/` · `Hud/` · `Cards/` · `CoreBattleAudio` · `CoreMatchEndBeat` ④ **입력** — `Input/`(`DragPlacementInput` · `CardInput` · `SelectionInput` · `SubmitInput`) ⑤ **진입** — `MatchEntry` · `ModeSelection` | 규칙. 판정·상태·저장이 여기 들어오면 그것이 새 브리지의 첫 줄이다 |
 
 - 세 축이 코어에서 무엇으로 존재하나:
-  - **유닛** — `World/Unit.cs`(종류 `UnitKind`: Defender · Enemy · Patrol · Structure · BlockingHazard — 거점과 길막도 유닛의 종류다) + 부분(`UnitParts.cs` · `CombatParts.cs` 의 `AttackState` · `MoveState` · `Detection` · `Aggro` · `Footprint` …). 「그 부분이 있나」 분기 대신 nullable 부분 + 한 술어 `Unit.IsTargetable()`. 행동 상태의 **결정**은 `Wassup.UnitAi` 가 하고 코어(`AiMovePhase`)는 입력을 만들어 답을 저장한다.
+  - **유닛** — `World/Unit.cs`(종류 `UnitKind`: Defender · Enemy · Patrol · Structure · BlockingHazard — 거점과 길막도 유닛의 종류다) + 부분(`UnitParts.cs` · `CombatParts.cs` 의 `AttackState` · `MoveState` · `Detection` · `Aggro` · `Footprint` …). 「그 부분이 있나」 분기 대신 nullable 부분 + 한 술어 `Unit.IsTargetable()`. 행동 상태의 **결정**은 `Somnia.Battle.UnitAi` 가 하고 코어(`AiMovePhase`)는 입력을 만들어 답을 저장한다.
   - **드림캐쳐** — 개체가 없다. 자원(큐·손패·각성·부착)은 `HandDeck`, 규칙은 `Trigger/` 의 `Binding`(`BindingRegistry` 가 숙주별로 든다). 카드 → `BindingDef` 굽기는 Unity 층 `BindingDefinitionBuilder`.
   - **맵** — 판 밖 `MapStage` 프리팹 → `BattleDriver` 가 `MapStageScanner.Scan` → `DioramaMapBuilder.Assemble` → `MatchDefinitionBuilder.BuildMap` 으로 plain `MapSnapshot` 을 만든다. 판 안은 `Map/MapRuntime.cs`(`Snapshot` · `Flow` · `Nav` · `Obstacles` · `Hunt` · `Occupancy`) — 한 번 서고 판 내내 읽힌다(흐름장은 장애물 시그니처로 재빌드).
 - sim↔view 변환은 `Core/BoardSpace.cs`, 그 평면(격자) 선언은 `View/CoreBoardPlane.cs` 한 곳이다.
@@ -286,7 +286,7 @@ flowchart TD
 
 ### 3.1 매치 모드 — 닫힌 집합
 
-- 저작 = `Data/MatchModeData.cs`(SO, 필드 append-only, `modeId` 는 리네임 금지) → 굽기 = `Match/ModeDef.cs`(plain).
+- 저작 = `Runtime/Battle/Data/MatchModeData.cs`(SO, 필드 append-only, `modeId` 는 리네임 금지) → 굽기 = `Match/ModeDef.cs`(plain).
 - 목표 종류 = `GoalKind`(KillScoreTimed · WaveClear · TimeAttack, append-only) → `MatchGoals.Create` 가 concrete(`KillScoreTimedGoal` · `WaveClearGoal` · `TimeAttackGoal`)를 만든다. 목표는 담당자 읽기 모델(`MatchGoalContext`)로 「끝났나 / 몇 점인가」 둘만 판정하고, 쓰기 권한은 `EndMatch` 하나다.
 - 축 enum: `ClockKind`(FixedLimit · CountUp) · `WaveSourceKind`(GeneratedFromDeck · AuthoredPlan).
 - **담당자는 모드를 모른다**(담당자 안 `if (mode == …)` 금지 — `CoreArchitectureTests` 가 소스로 검사). 모드는 값을 덮어쓰지 않고 «어느 저작 자산을 쓸지» 고른다.
@@ -296,7 +296,7 @@ flowchart TD
 
 ## 4. 한 틱 — `TickPipeline`
 
-`BattleMatch` 생성자가 나열한 목록이 **곧 계약**이다(`Match/TickPipeline.cs` 는 목록을 돌 뿐). 순서를 바꾸는 것은 규칙을 바꾸는 것이다. 실제 순서는 에디터 메뉴 `Wassup/BattleCore/Harness/Print Tick Order` 로 찍힌다.
+`BattleMatch` 생성자가 나열한 목록이 **곧 계약**이다(`Match/TickPipeline.cs` 는 목록을 돌 뿐). 순서를 바꾸는 것은 규칙을 바꾸는 것이다. 실제 순서는 에디터 메뉴 `Somnia/Battle/BattleCore/Harness/Print Tick Order` 로 찍힌다.
 
 | # | 단계 | 담당 | 안에서 도는 순서 · seam |
 |---|---|---|---|
@@ -315,7 +315,7 @@ flowchart TD
 | 12 | `FlushPhase` | 배달 | `EventBus.Flush` — 담당자가 다 돈 뒤에 사건이 배달된다 |
 
 - **seam 번호 ≠ 실행 순서.** `Seam`(`Phases/SeamHooks.cs`)의 값은 append-only 번호다 — `Periodic`(4)은 `Attack`(0) **앞**에서 돈다. 「후속 seam 인가」 판정은 `SeamTickOrder`(파이프라인의 `ISeamHost.AppendSeams` 에서 한 곳에서 만든다)로만 한다. 실행 순서 = Immediate → Periodic → Attack → Death → Lifecycle → Threshold.
-- 트리거 발동: 감지자는 `TickContext.Triggers` 에 사실을 **값으로** 올리고(`TriggerEvent`), `TriggerDispatcher` 가 seam 마다 줄 세워 드레인한다(세대 BFS · 직접 재진입 깊이 `MaxDepth` 4 · 초과는 조용히 버리지 않고 `Report`). 스킬 concrete(`Wassup.Skills.ISkill`)의 쓰기는 `CoreSkillContext` → `IntentApplier` 한 표면만 지난다. 공격 변조는 바인딩 밖 `Combat/AttackMod.cs`.
+- 트리거 발동: 감지자는 `TickContext.Triggers` 에 사실을 **값으로** 올리고(`TriggerEvent`), `TriggerDispatcher` 가 seam 마다 줄 세워 드레인한다(세대 BFS · 직접 재진입 깊이 `MaxDepth` 4 · 초과는 조용히 버리지 않고 `Report`). 스킬 concrete(`Somnia.Battle.Skills.ISkill`)의 쓰기는 `CoreSkillContext` → `IntentApplier` 한 표면만 지난다. 공격 변조는 바인딩 밖 `Combat/AttackMod.cs`.
 - UML 초안의 `DeathConvergePhase` 는 만들지 않았다 — 사망 표시는 피해 단계, 제거는 소멸 단계(한 틱 뒤), 배치 활성화는 `PlacementService` 로 각자 주인을 찾았다.
 
 ---
@@ -396,7 +396,7 @@ flowchart TD
 구글 시트 ──(에디터 임포터 · 사용자가 누를 때)──▶ SO ──(MatchDefinitionBuilder)──▶ MatchDefinition(plain) ──▶ 담당자 · 단계
 ```
 
-- 카드 임포터(`Data/StatImport/DcSheetApplier.cs`)의 의미가 둘이다: `RebuildEffects` 류는 **시트가 정본**, `OverlayMechanics` 는 **Unity 가 정본**(투사체 SO 참조를 들고 있어 값만 덮음). SO 만 고치면 로비 진입이 되돌린다.
+- 카드 임포터(`Runtime/Battle/Data/StatImport/DcSheetApplier.cs`)의 의미가 둘이다: `RebuildEffects` 류는 **시트가 정본**, `OverlayMechanics` 는 **Unity 가 정본**(투사체 SO 참조를 들고 있어 값만 덮음). SO 만 고치면 로비 진입이 되돌린다.
 - `MatchDefinition.ComputeConfigHash()`(SHA-256 16자)가 판의 「조건」을 접는다 — `Canonicalize` 가 명시 필드만 쓴다(아트 필드가 정의표 타입에 아예 없다). ⚠ 정의표에 필드를 추가하면 `Canonicalize` 도 같이 고친다 — 안 고치면 「스탯을 바꿨는데 해시가 그대로」.
 
 **결정론** (계약 5):
@@ -406,15 +406,15 @@ flowchart TD
 - 분산·지터는 RNG 보다 **구조 결정론**(순번 · row-major · 정렬 규약 — 예: `DioramaMapBuilder.CompareStructureRowMajor`).
 - ⚠ **같은 런타임 안의 계약이다.** Unity Mono 는 float 식을 확장 정밀도로 평가해 .NET 9 와 약 300틱부터 1 ulp 갈린다(`kill_race_3min` 은 9,887틱에서 이벤트 순서까지). **골든의 정본 런타임 = Unity EditMode.**
 
-**골든 · 하네스**: 시나리오 = `BattleCore/Harness/CoreGoldenCorpus.cs`(`Scenario` 목록 · `…Fixture` 정의표) · 러너 `CoreHarness` · 기록 `CoreTrace`(포맷은 `Trace/LegacyTraceV0` 와 같은 `LTV0` 텍스트) · 저장 `CoreGoldenStore` → `Tests/GoldenCore/*.trace.txt`. 굽기·대조는 Unity 메뉴 `Wassup/BattleCore/Golden/Bake Missing` · `Verify`.
+**골든 · 하네스**: 시나리오 = `BattleCore/Harness/CoreGoldenCorpus.cs`(`Scenario` 목록 · `…Fixture` 정의표) · 러너 `CoreHarness` · 기록 `CoreTrace`(포맷은 `Trace/LegacyTraceV0` 와 같은 `LTV0` 텍스트) · 저장 `CoreGoldenStore` → `Tests/EditMode/BattleCore/Golden/*.trace.txt`. 굽기·대조는 Unity 메뉴 `Somnia/Battle/BattleCore/Golden/Bake Missing` · `Verify`.
 
 **테스트 lane** (상세 `test-procedure.md`):
 
 | lane | 무엇 |
 |---|---|
-| `Wassup.Tests.EditMode.Core`(`Tests/EditModeCore/`) | 코어 규칙. 엔진·씬 없음. 골든 대조는 `[Category("Golden")]`(`CoreGoldenTests`). 구조 계약은 `CoreArchitectureTests` 가 **소스로** 못박는다(엔진 참조 0 · 매니저/브리지/컨트롤러 이름 0 · 담당자는 모드를 모름 · `EndMatch` 호출처 넷 · 스킬 쓰기는 `IntentApplier` 한 표면 · 손패에 효과 0 …) |
-| 헤드리스 `tools/battle-core-rebuild/headless/` | 같은 소스를 .NET 으로 — `BattleCore.csproj` · `BattleCore.Tests.csproj`(골든 제외) · `BattleCoreUnity.Check.csproj`(Unity 층 컴파일 확인) |
-| `Wassup.Tests.PlayMode.Core`(`Tests/PlayModeCore/`) | `BattleCoreScene` 부팅 · 뷰 방출 순서 · 틱 발행률 · 배치 사슬 · 씬 배선 |
+| `Somnia.Battle.Tests.EditMode.Core`(`Tests/EditMode/BattleCore/`) | 코어 규칙. 엔진·씬 없음. 골든 대조는 `[Category("Golden")]`(`CoreGoldenTests`). 구조 계약은 `CoreArchitectureTests` 가 **소스로** 못박는다(엔진 참조 0 · 매니저/브리지/컨트롤러 이름 0 · 담당자는 모드를 모름 · `EndMatch` 호출처 넷 · 스킬 쓰기는 `IntentApplier` 한 표면 · 손패에 효과 0 …) |
+| 헤드리스 `tools/battle/headless/` | 같은 소스를 .NET 으로 — `BattleCore.csproj` · `BattleCore.Tests.csproj`(골든 제외) · `BattleCoreUnity.Check.csproj`(Unity 층 컴파일 확인) |
+| `Somnia.Battle.Tests.PlayMode.Core`(`Tests/PlayMode/BattleCore/`) | `BattleCoreScene` 부팅 · 뷰 방출 순서 · 틱 발행률 · 배치 사슬 · 씬 배선 |
 
 ---
 
@@ -426,7 +426,7 @@ flowchart TD
 
 1. **매니저·브리지를 두지 않는다.** 판정·상태·저장은 그 일의 담당자만, 담당자 간 순서는 사건 구독 순서. 「여기 두면 편한데」가 매니저의 신호다 — `CLAUDE.md` 「제약」 · 계약 12.
 2. **쓰기는 소유자만.** 마음 체력은 `HeartMeter` 만, 종료는 `MatchClock.EndMatch` 만, 스킬 경로의 세계 쓰기는 `IntentApplier` 만. 한 함수가 담당자 둘을 차례로 부르지 않는다.
-3. **엔진-프리 로직 레이어가 셋이고, 경계는 테스트와 헤드리스 빌드가 지킨다.** `Wassup.Skills`(무엇을 할 것인가) · `Wassup.UnitAi`(지금 무엇을 하고 있나) · `Wassup.BattleCore`(판 전체). 엔진 모듈은 `UnityEngine.MathematicsModule` 하나만 본다(6.6 부터 `Unity.Mathematics` 가 엔진 모듈이라 `noEngineReferences` 는 껐다 — `unity-6-6-upgrade`). `UnityEngine`·`UnityEditor` 토큰은 `CoreArchitectureTests.코어에는_엔진_참조가_없다` 가 세 디렉터리를 스캔해 막고, 헤드리스 `BattleCore.csproj` 는 `CoreModule` 없이 빌드된다 — 규율이 아니라 자동 검사다. 새 판정은 plain 값 입력 → 결정 출력 형태를 따른다.
+3. **엔진-프리 로직 레이어가 셋이고, 경계는 테스트와 헤드리스 빌드가 지킨다.** `Somnia.Battle.Skills`(무엇을 할 것인가) · `Somnia.Battle.UnitAi`(지금 무엇을 하고 있나) · `Somnia.Battle.BattleCore`(판 전체). 엔진 모듈은 `UnityEngine.MathematicsModule` 하나만 본다(6.6 부터 `Unity.Mathematics` 가 엔진 모듈이라 `noEngineReferences` 는 껐다 — `unity-6-6-upgrade`). `UnityEngine`·`UnityEditor` 토큰은 `CoreArchitectureTests.코어에는_엔진_참조가_없다` 가 세 디렉터리를 스캔해 막고, 헤드리스 `BattleCore.csproj` 는 `CoreModule` 없이 빌드된다 — 규율이 아니라 자동 검사다. 새 판정은 plain 값 입력 → 결정 출력 형태를 따른다.
 4. **감지는 분산, 실행은 단일.** 감지자(공격·피해·소멸·경계·주기·커맨드)가 `TriggerEvent` 를 값으로 올리고 `TriggerDispatcher` 가 seam 마다 드레인한다. seam 의 틱 안 순서는 enum 번호가 아니라 `SeamTickOrder` 가 정한다.
 5. **사건은 값 스냅샷이다.** 반경은 **자리와 짝**으로 다닌다(`SiteFired`/`SiteTarget` 의 `OriginBody`). 단일 필드면 시체폭발이 킬러의 몸으로 적 시체 위 폭발을 정한다 — `distance-based-range` unit 23b.
 6. **배치 판정은 층 비트 하나.** 클래스 분기 금지 — `MapSnapshot.PlaceableAt(cell, PlacementLayers)`. `placeMask` 로 통행을 판정하지 않는다 — `placement-mask` · `traversal-layers` unit 5.
@@ -437,7 +437,7 @@ flowchart TD
    ```
 
    - **「원점 항」은 «효과의 형»이 정한다** — **몸에서 나오는 것**(사거리·자기중심 광역·자폭·시체폭발·오라·도발) → 그 몸의 `HitRadius` · **자리에 떨어지는 것**(퇴근 운석·투사체 착탄·수류탄·장판·회오리·착지 슬램) → 칸 반폭(몸이 아니라 도형 보정항). 좌표를 «지정한» 유닛의 몸은 안 붙는다.
-   - 본체는 `Wassup.Skills.SkillMath` — 칸 상수 `CellHalfWidthTiles` 와 본문 `Reach` 는 `private`, 공개 진입점 넷(`ReachFromUnit` · `ReachFromCell` · `ReachWithOrigin` · `ReachFromImpact`)은 원점 항이 **데이터에서 오는** 것만 허용한다. 코어 쪽 어댑터는 `BattleCore/Combat/AttackReach.cs`(`InReach` · `InReachShaped` — `float3` ↔ 타일 단위 변환만). 형 ↔ 원점 항 매핑은 `Trigger/RangeCatalog.cs`(`RangeMetric`).
+   - 본체는 `Somnia.Battle.Skills.SkillMath` — 칸 상수 `CellHalfWidthTiles` 와 본문 `Reach` 는 `private`, 공개 진입점 넷(`ReachFromUnit` · `ReachFromCell` · `ReachWithOrigin` · `ReachFromImpact`)은 원점 항이 **데이터에서 오는** 것만 허용한다. 코어 쪽 어댑터는 `BattleCore/Combat/AttackReach.cs`(`InReach` · `InReachShaped` — `float3` ↔ 타일 단위 변환만). 형 ↔ 원점 항 매핑은 `Trigger/RangeCatalog.cs`(`RangeMetric`).
    - 몸은 원 · sim 위치 = 발밑(`Footprint.FootPosition`) · 방어유닛 몸 = footprint 가로/2. 인라인 판정 금지 — 이동의 정지 조건(`Move/ReachProbe`)·공격·감지가 **같은 술어**를 받아야 한다(한 곳만 조였다가 순찰병 교착이 났다).
    - **방향 도형은 AND 로 곱해지는 둘째 항**이고 넓히지 못한다 — 부가 타격에만 붙고 진입점은 `AttackReach.InReachShaped` 하나 — `directional-attack-shape` rev 3.
    - 사건·투사체를 경유해도 원점은 안 바뀐다 — 원점의 몸을 경계 너머까지 실어 보내고, 실을 값이 없으면 0 — `distance-based-range` unit 22 · 23.

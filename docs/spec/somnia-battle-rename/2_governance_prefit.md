@@ -34,4 +34,4 @@ Assets .cs:   \bResources\.Load(?:All)?\s*\(                      → 0 (이미)
 
 ## 구현 결과
 
-(미착수)
+커밋 `70686ccaf`(2026-10-08). `WavePlanTestCarry.cs` · `MapStageGizmoLabels.cs`(새, `Somnia.Battle.Editor`) · `ModeSelection.cs` 블록 제거 · `MapStageGizmoUtil.LabelDrawer` · `InternalsVisibleTo("Somnia.Battle.Editor")` · 주석 12줄 · `PropDataEditor` 1줄 · Spine `CHANGELOG.md` 삭제. `scratchpad/govcheck.py`(somnia 의 정규식 그대로) 결과: 네 검사 0, 잔존 = Spine `Editor/Resources` 마커 폴더 1(⑤ 스크립트 예외). 처음엔 내 주석의 「`UnityEditor.` 토큰」 문구 자체가 정규식에 걸렸다 — 「에디터 전용 API」로 쓴다.

@@ -14,7 +14,7 @@
 
 플로우 필드는 **적마다 계산하지 않는다.** 맵당 1벌을 굽고 모든 적이 공유한다.
 
-전투 코어는 고정 틱(1/60)마다 `TickPipeline`(`Scripts/BattleCore/Match/TickPipeline.cs`)에 나열된 단계를 차례로 돈다. 이동에 관여하는 것은 앞의 셋이다(순서의 정본 = `BattleMatch` 생성자의 단계 목록과 각 단계 파일의 헤더 주석).
+전투 코어는 고정 틱(1/60)마다 `TickPipeline`(`Runtime/Battle/Scripts/BattleCore/Match/TickPipeline.cs`)에 나열된 단계를 차례로 돈다. 이동에 관여하는 것은 앞의 셋이다(순서의 정본 = `BattleMatch` 생성자의 단계 목록과 각 단계 파일의 헤더 주석).
 
 ```mermaid
 flowchart LR
@@ -22,7 +22,7 @@ flowchart LR
   B --> C["TickProjectilePhase<br/>CombatPhase<br/>= 발사·공격·피해"]
 ```
 
-파일: `Scripts/BattleCore/Phases/FieldPrepPhase.cs` · `Scripts/BattleCore/Phases/AiMovePhase.cs`.
+파일: `Runtime/Battle/Scripts/BattleCore/Phases/FieldPrepPhase.cs` · `Runtime/Battle/Scripts/BattleCore/Phases/AiMovePhase.cs`.
 
 **분리(Separation)가 이동 뒤에 도는 것이 계약이다.** 한 루프에 섞으면 밀어냄이 다음 적의 이동 입력이 되어 순회 순서에 결과가 의존한다. 코어에서는 `AiMovePhase` 안에서 이동(`StepMovement`)이 전원 끝난 뒤 별도 패스(`StepSeparation`)로 돈다.
 
@@ -94,7 +94,7 @@ flowchart TD
 둘 다 없으면 -1                                            → 골 직행 (현행, 무회귀)
 ```
 
-결정 지점: 적 스폰(`Scripts/BattleCore/World/EnemySpawn.cs` — 레인이 있으면 `MapSnapshot.RouteForSpawn(lane)` 을 조회, 레인이 없는 분열 자식은 -1) → `WaypointRouting.ResolvePathIndex`(`Scripts/BattleCore/Move/WaypointProgress.cs`, 순수 함수, 우선순위 소유) → `MoveState.PathIndex` 에 기록. (코어판 `ResolvePathIndex` 는 적 정의와 레인 기본 사이에 **웨이브 컨셉** 인자를 하나 더 받는다 — 순서는 같은 「좁은 쪽이 이긴다」이고 정본은 그 함수의 헤더다.)
+결정 지점: 적 스폰(`Runtime/Battle/Scripts/BattleCore/World/EnemySpawn.cs` — 레인이 있으면 `MapSnapshot.RouteForSpawn(lane)` 을 조회, 레인이 없는 분열 자식은 -1) → `WaypointRouting.ResolvePathIndex`(`Runtime/Battle/Scripts/BattleCore/Move/WaypointProgress.cs`, 순수 함수, 우선순위 소유) → `MoveState.PathIndex` 에 기록. (코어판 `ResolvePathIndex` 는 적 정의와 레인 기본 사이에 **웨이브 컨셉** 인자를 하나 더 받는다 — 순서는 같은 「좁은 쪽이 이긴다」이고 정본은 그 함수의 헤더다.)
 
 **우선순위를 호출부에서 삼항으로 풀지 않는 이유**: 그러면 "좁은 쪽이 이긴다"는 계약이 코드에만 남고 EditMode 로 고정할 지점이 없어진다. `ResolvePathIndex` 하나가 그 계약의 source of truth 다.
 
@@ -217,7 +217,7 @@ flowchart TD
 
 | 무엇 | 어디 |
 |---|---|
-| 유닛 반지름 | `Data/Config/MovementTuningConfig.asset` 의 `AgentRadiusTiles` → 코어 `MovementTuningDef.AgentRadiusTiles` (`continuous-agent-movement/12_corridor_clearance.md` — 태그 `archive/pre-spec-reset` · 군집 통과로 검산한 값) |
+| 유닛 반지름 | `Runtime/Battle/Data/Config/MovementTuningConfig.asset` 의 `AgentRadiusTiles` → 코어 `MovementTuningDef.AgentRadiusTiles` (`continuous-agent-movement/12_corridor_clearance.md` — 태그 `archive/pre-spec-reset` · 군집 통과로 검산한 값) |
 | 평활화 전방 탐색 K | `PathSmoothing.DefaultLookahead` (24) |
 | 대각/직교 비용 | `FlowFieldBuilder.CostOrtho` / `CostDiag` (10 / 14) |
 | 분리 강도·상한 | `Separation.DefaultStrength` (0.5, **프레임당**) · 상한 = 반지름 |
