@@ -2,7 +2,7 @@
 
 ## 상태
 
-- **구현 완료 (2026-10-07)** — 단위 0~5 커밋 7(`c1289bc00` · `85e48a310` · `dedf84044` · `5a8c327c9` · `81c8f324c` · `3260b71b3` · 잔재 1) + 씬 커밋. 에디터 전체 재컴파일 0 · 헤드리스 코어 빌드 0. Play 한 판은 사용자 몫.
+- **구현 완료 (2026-10-08)** — 단위 0~5 커밋 7(`c1289bc00` · `85e48a310` · `dedf84044` · `5a8c327c9` · `81c8f324c` · `3260b71b3` · 잔재 `b78bc42d8`) + spec `84003f0ec` + 리뷰 1·2 반영 `fffb981be` + 씬 배선 `80db78267` + 잔재 `24a806c99`. 에디터 전체 재컴파일 0 · 헤드리스 코어 빌드 0. Play 한 판은 사용자 몫.
 
 ## 목표
 
@@ -63,14 +63,21 @@
 
 결정 D1~D9 는 2026-10-07 전부 **추천안으로 승인**됐다.
 
-- [x] **0** 판 저작 → SO — `BattleContent.cs` · `DefaultLoadout.cs` · 에셋 2 · 기본 덱 갱신 · 드라이버/선택/진입/빌더/메뉴/테스트 10 · `SeasonRuntime` 삭제 · `Lobby` → `External` · 컴파일 0 · 씬 배선(일회용 메뉴) · 커밋
+- [x] **0** 판 저작 → SO — `BattleContent.cs` · `DefaultLoadout.cs` · 에셋 2 · 기본 덱 갱신 · 드라이버/선택/진입/빌더/메뉴/테스트 10 · `SeasonRuntime` 삭제 · `Lobby` → `External` · 컴파일 0 · 커밋 · 씬 배선(사용자 메뉴 클릭 → `80db78267`)
 - [x] **1** 죽은 타입·코드 — SO 타입 3 + 에셋 3 · 코드 9 · `GamePhase.Draft/Tally` + 카메라 SO int 이동 · 컴파일 0 · 커밋
 - [x] **2** 닿지 않는 에셋 — 장부 A(306) · B(127) · C(55) · D(3) · 덱/플랜 이동 + 테스트 상수 · `reach.py` 재실행 = 남기는 것뿐 · 커밋
 - [x] **3** 에디터 도구 4 · push 3(export 는 유지 — 헤더 계약 테스트의 타입 원천) · 패키지 6 · 모듈(lock 기준) · `map-stage-authoring.md` 2줄 · 컴파일 0 · 커밋
 - [x] **4** `RuntimeMaterialSet` SO · `Resources` 폴더 삭제 · `Shader.Find` 0 · 커밋
 - [x] **5** 문서 8 삭제 · stale 문단 · blueprint/CLAUDE.md · spec README 종료 · 커밋
-- [ ] **리뷰** — 전체 diff 코드리뷰(`core-reviewer` + code-review) → 지적 반영 커밋
+- [x] **리뷰 1** — `core-reviewer`: CRITICAL 씬 미배선(위 대기) · HIGH IncubusPact 테스트 2(반영) · MEDIUM 실행 순서 -100 의 입력 지연(반영 — 기본 순서로) · 약속한 테스트 2 미작성(반영 — `BattleAuthoringAssetTests`) · 중간 커밋 3 비컴파일(아래 기록) · LOW 픽스처 사본 누수(반영) · `UiCardFaceMesh` 미사용(삭제) · Check.csproj 주석(반영)
+- [x] **리뷰 2** — code-review 11건: 리뷰 1 과 겹침 5 · 새 지적 6 반영 — 팩토리 결측 로그를 슬롯별로(선택 슬롯 `cardCrumpleUi` 는 경고) · `BattleCoreUnity.Check.csproj` 에 새 SO 타입 3 명시 · 스모크 테스트의 요소 null 검사 복원 · 자가진단 메뉴가 카탈로그를 `BattleContent` 에서 · `PrimeTweenInstaller` 의 Demo 씬 참조 2 비움 · 배선 메뉴의 dirty 가드 · 주석 2
 - [ ] **Play 한 판**(사용자) — 편성 8 · 덱 12 · 효과 타일 · 프롭 · 탄 궤적 · 배치 음성 · 오버레이 · 카드 구김
+
+## 알려진 것
+
+- 커밋 `c1289bc00` · `85e48a310` · `dedf84044` 는 **단독으로 컴파일되지 않는다** — `BattleDriver.Awake` 의 `RuntimeMaterialFactory.Configure` 가 `5a8c327c9` 에서 온다(단위 0 과 4 가 `BattleDriver` · `BattleContent` 를 나눠 가져 경로 지정 커밋이 겹쳤다). bisect 는 `5a8c327c9` 이후부터.
+- `PrimeTweenInstaller.asset` 의 Demo 씬 참조 2 는 missing 으로 남는다(벤더 설치 에셋 — 무해).
+- Hovl 편집기 로직이 임포트 때 `VFX/WeaponTrail_Slash_Cyan.prefab` 을 다시 쓴다(이 spec 과 무관 · 미커밋 · 백로그).
 
 ## 구현 문서
 
