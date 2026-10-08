@@ -13,6 +13,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 11400000, guid: bb1014b4ecdf24515a8d3f428a43a127, type: 2}
     - target: {fileID: 212822236448720489, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: appliedEffectPreset
+      value: 
+      objectReference: {fileID: 11400000, guid: bb1014b4ecdf24515a8d3f428a43a127, type: 2}
+    - target: {fileID: 212822236448720489, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
       propertyPath: alphaOverLifetime.m_Curve.Array.data[1].inSlope
       value: -0.041247908
       objectReference: {fileID: 0}
