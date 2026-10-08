@@ -1,6 +1,6 @@
 # somnia-battle-rename — `Wassup` → `Somnia.Battle.*` 개명 · somnia 레이아웃 재배치 (반입 전, Demo 리포 안에서)
 
-**상태**: 제안 — 결정 D1~D5 대기 (2026-10-08)
+**상태**: 완료 2026-10-08 — 단위 0~4 구현 · 배치 전후 동일 · 에디터 컴파일 0 · Play 확인(사용자). 커밋 `927dd6df9`(제안) · `078386d3f`(이름) · `fa13b6802`(자리) · `70686ccaf`(governance) · `d297475aa`(보정) · `ca24f280a`(문서).
 
 somnia-client 이식 순서 ①경계 → ②demo-diet → ③6.6 → **④ 개명·재배치** → ⑤ 반입 중 ④다. 사용자 지시: 「반입하기 전 `Somnia.Battle.*` 개명·재배치 작업까지만」. 반입(somnia 쪽 ADR · 패키지 ledger · 전송)은 범위 밖이고 §「⑤ 에 넘기는 것」에 적어 둔다.
 
@@ -122,8 +122,8 @@ Assets/Plugins/{Spine, Spine Examples, Layer Lab, PixPlays, GabrielAguiarProduct
 - [x] 단위 2 커밋 `70686ccaf` — `govcheck.py` 네 검사 0(잔존 = Spine 마커 폴더 1, ⑤ 예외)
 - [x] 단위 3 커밋 — 설명 문서 20 파일 · 이 spec 의 구현 결과
 - [x] 단위 4: 변경 후 배치 2,212 / 2,201 / 7 / 4 — 기준선과 실패 id 집합 동일(선행 빨강 7) · 골든 14/14 · 헤드리스 빌드 2 exit 0
-- [ ] 사용자: 에디터 열기 → 재임포트 → 컴파일 0 · asmdef/Spine/PrimeTween 경고 0
-- [ ] 사용자: Play 한 판(판 기동 · 배치 · 상세 패널 · 에디터 메뉴 `Somnia/Battle/…`)
+- [x] 사용자: 에디터 열기 → 재임포트 → 컴파일 0(`error CS` 0, 새 예외 0 — 남은 건 알려진 Hovl 1)
+- [x] 사용자: Play 한 판 (2026-10-08 「플레이 확인함」)
 - [ ] push 승인
 
 ## 완료 기준
