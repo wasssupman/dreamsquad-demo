@@ -255,7 +255,7 @@ namespace Somnia.Battle.BattleCore.Map
     {
         public int2 Cell;
 
-        /// <summary>`Somnia.Battle.Battle.Units.Faction` 의 int 값. 거점 아닌 비트는 빌더에서 나올 수 없다.</summary>
+        /// <summary>`Wassup.Battle.Units.Faction` 의 int 값. 거점 아닌 비트는 빌더에서 나올 수 없다.</summary>
         public int Faction;
 
         /// <summary>점유 한 변(마음 1 · 본능 3). 상수를 박으면 1×1 마음이 3×3 이라고 거짓말한다.</summary>

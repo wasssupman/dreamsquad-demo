@@ -2,7 +2,7 @@ namespace Somnia.Battle.Skills
 {
     // skill-layer-foundation unit 5 — 도메인이 부르는 CC 이름.
     //
-    // Runtime 의 `Somnia.Battle.Battle.Effects.CcKind` 와 **값이 같아야 한다** — 어댑터가
+    // Runtime 의 `Wassup.Battle.Effects.CcKind` 와 **값이 같아야 한다** — 어댑터가
     // 캐스트로 번역한다. 별도 enum 을 두는 이유는 그쪽이 Entities 를 참조하는
     // 어셈블리에 있고 이 어셈블리가 그것을 참조하지 않기 때문이다(계약 1).
     //

@@ -3,7 +3,7 @@ using System;
 // 위치(`Scripts/Skills/`)·어셈블리·네임스페이스가 모두 `Somnia.Battle.Skills` 다.
 // skill-layer-foundation unit 2a 가 이 파일을 어셈블리만 옮겼다 — 도메인 계층
 // (`Somnia.Battle.Skills`)이 진영을 표현해야 하는데 이 파일이 Runtime 에 있으면 순환 참조가
-// 된다(Skills → Runtime → Skills). 네임스페이스는 한동안 옛 `Somnia.Battle.Battle.Units` 로 남았다가
+// 된다(Skills → Runtime → Skills). 네임스페이스는 한동안 옛 `Wassup.Battle.Units` 로 남았다가
 // battle-core-rebuild unit 9(`64dc493da`)에서 `Somnia.Battle.Skills` 로 옮겼다(이력).
 //
 // 이 파일은 순수 C# 이다(`using System;` 뿐). 그래서 엔진 참조 없는 어셈블리에서 산다.

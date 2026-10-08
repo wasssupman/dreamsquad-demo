@@ -1,5 +1,5 @@
 // salvaged from Assets/_Project/Scripts/Battle/Effects/HeatMath.cs (battle-core-rebuild unit 6b2)
-// 이식 시 바뀐 것: 네임스페이스만(`Somnia.Battle.Battle.Effects` → `Somnia.Battle.BattleCore.Effects`). 산식은 **그대로**다.
+// 이식 시 바뀐 것: 네임스페이스만(`Wassup.Battle.Effects` → `Somnia.Battle.BattleCore.Effects`). 산식은 **그대로**다.
 using Unity.Mathematics;
 
 namespace Somnia.Battle.BattleCore.Effects

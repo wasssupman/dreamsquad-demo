@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Somnia.Battle.BattleCoreUnity.View
 {
-    // battle-core-rebuild unit 6c — 옛 `Somnia.Battle.Battle.Effects.ResignationPresenter` 의 복사본. 바뀐 것은
+    // battle-core-rebuild unit 6c — 옛 `Wassup.Battle.Effects.ResignationPresenter` 의 복사본. 바뀐 것은
     // 플레이스홀더 머티리얼(`Shader.Find` → `RuntimeMaterialFactory`) 하나다.
     //
     // season-gimmick-clockout unit 1 — 사직서 뷰 (`CoreResignationViewPool` 이 코어 개체↔GameObject 조정).

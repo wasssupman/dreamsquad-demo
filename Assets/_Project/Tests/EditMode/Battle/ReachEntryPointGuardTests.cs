@@ -24,7 +24,7 @@ namespace Somnia.Battle.Tests.EditMode
     {
 
         private static string SkillsRoot =>
-            Path.Combine(UnityEngine.Application.dataPath, "_Project", "Scripts", "Skills");
+            Path.Combine(UnityEngine.Application.dataPath, "_Project", "Runtime", "Battle", "Scripts", "Skills");
 
 
         // 표기 전용 접근자. sim 은 이 값을 **판정에 쓰면 안 된다** — 형은 `RangeMetric` 이 정한다.
@@ -89,7 +89,7 @@ namespace Somnia.Battle.Tests.EditMode
     {
         private static string Read(params string[] parts)
             => File.ReadAllText(Path.Combine(
-                new[] { UnityEngine.Application.dataPath, "_Project", "Scripts" }
+                new[] { UnityEngine.Application.dataPath, "_Project", "Runtime", "Battle", "Scripts" }
                     .Concat(parts).ToArray()));
 
         // 선언 위치부터 **중괄호가 닫히는 데까지**. 소스 그물의 윈도를 글자 수나 「다음 선언」으로

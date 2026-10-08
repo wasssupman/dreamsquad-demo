@@ -2,7 +2,7 @@ namespace Somnia.Battle.Skills
 {
     // skill-layer-migration — 도메인이 부르는 모디파이어 어휘.
     //
-    // Runtime 의 `Somnia.Battle.Battle.Effects.{StatKind, CombineOp, ModifierOrigin}` 과
+    // Runtime 의 `Wassup.Battle.Effects.{StatKind, CombineOp, ModifierOrigin}` 과
     // **값이 같아야 한다**. `SkillCcKind` 와 같은 이유이고 같은 위험이다 — 어셈블리가
     // 갈려 컴파일러가 못 잡으므로 `SkillModifierKindPinTests` 가 유일한 그물이다.
     //

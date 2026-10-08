@@ -1,5 +1,5 @@
 # unified-effect-layer 5 — 유닛 능력 · 악몽 굽기 스냅샷(+ 카드 굽기 로그). 손으로 고치지 말 것: 파일을 지우고 테스트를 돌리면 다시 굽는다
-[unit Assets/_Project/Data/Defenders/Defender_Archer.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Archer.asset]
 [rule 0] Defender_Archer mechanic 0
 trigger=9
 payload=27
@@ -35,7 +35,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Bastion.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Bastion.asset]
 [rule 1] Defender_Bastion mechanic 0
 trigger=9
 payload=23
@@ -71,7 +71,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_BombMan.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_BombMan.asset]
 [rule 2] Defender_BombMan mechanic 0
 trigger=9
 payload=17
@@ -108,7 +108,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Bruiser.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Bruiser.asset]
 [rule 3] Defender_Bruiser mechanic 0
 trigger=9
 payload=2
@@ -144,7 +144,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Busters.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Busters.asset]
 [rule 4] Defender_Busters mechanic 0
 trigger=9
 payload=32
@@ -180,7 +180,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Cannon.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Cannon.asset]
 [rule 5] Defender_Cannon mechanic 0
 trigger=9
 payload=17
@@ -217,7 +217,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Guardian.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Guardian.asset]
 [rule 6] Defender_Guardian mechanic 0
 trigger=9
 payload=26
@@ -253,7 +253,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_MachineGunner.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_MachineGunner.asset]
 [rule 7] Defender_MachineGunner mechanic 0
 trigger=9
 payload=17
@@ -290,7 +290,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Malphite.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Malphite.asset]
 [rule 8] Defender_Malphite mechanic 0
 trigger=9
 payload=31
@@ -326,7 +326,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Marksman.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Marksman.asset]
 [rule 9] Defender_Marksman mechanic 0
 trigger=9
 payload=17
@@ -363,7 +363,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Piercer.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Piercer.asset]
 [rule 10] Defender_Piercer mechanic 0
 trigger=9
 payload=17
@@ -400,7 +400,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Ranger.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Ranger.asset]
 [rule 11] Defender_Ranger mechanic 0
 trigger=9
 payload=29
@@ -436,7 +436,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Scout.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Scout.asset]
 [rule 12] Defender_Scout mechanic 0
 trigger=9
 payload=28
@@ -472,7 +472,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_ShieldShuttle.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_ShieldShuttle.asset]
 [rule 13] Defender_ShieldShuttle mechanic 0
 trigger=9
 payload=19
@@ -543,7 +543,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Shotgunner.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Shotgunner.asset]
 [rule 15] Defender_Shotgunner mechanic 0
 trigger=9
 payload=17
@@ -580,7 +580,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Slasher.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Slasher.asset]
 [rule 16] Defender_Slasher mechanic 0
 trigger=9
 payload=30
@@ -616,7 +616,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[unit Assets/_Project/Data/Defenders/Defender_Sniper.asset]
+[unit Assets/_Project/Runtime/Battle/Data/Defenders/Defender_Sniper.asset]
 [rule 17] Defender_Sniper mechanic 0
 trigger=9
 payload=17
@@ -653,7 +653,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[enemy Assets/_Project/Data/Enemies/Enemy_Boss_Jjangssen.asset]
+[enemy Assets/_Project/Runtime/Battle/Data/Enemies/Enemy_Boss_Jjangssen.asset]
 [rule 18] Enemy_Boss_Jjangssen mechanic 0
 trigger=5
 payload=2
@@ -797,7 +797,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[enemy Assets/_Project/Data/Enemies/Enemy_Boss_Mamemo.asset]
+[enemy Assets/_Project/Runtime/Battle/Data/Enemies/Enemy_Boss_Mamemo.asset]
 [rule 22] Enemy_Boss_Mamemo mechanic 0
 trigger=4
 payload=16
@@ -903,7 +903,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[enemy Assets/_Project/Data/Enemies/Enemy_Boss_Nightmare.asset]
+[enemy Assets/_Project/Runtime/Battle/Data/Enemies/Enemy_Boss_Nightmare.asset]
 [rule 25] Enemy_Boss_Nightmare mechanic 0
 trigger=4
 payload=17
@@ -1011,7 +1011,7 @@ lifetime=0
 lifetimeSec=0
 revoke=0
 origin=0
-[enemy Assets/_Project/Data/Enemies/Enemy_Dragon.asset]
+[enemy Assets/_Project/Runtime/Battle/Data/Enemies/Enemy_Dragon.asset]
 [rule 28] Enemy_Dragon mechanic 0
 trigger=1
 payload=21
